@@ -1,0 +1,272 @@
+%---------------------------PREAMBLE-------------------------------------------- %
+\documentclass[9pt]{article}
+% \documentclass[9pt]{amsart}
+% \documentclass[9pt]{revtex4-2}
+
+
+%------------------- PACKAGES 
+
+\usepackage{graphicx}
+	\graphicspath{ {plots/} }
+\usepackage{caption}
+\usepackage{epstopdf}
+\usepackage{pdfpages}
+\usepackage{array}
+\usepackage{ulem}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage{amsthm}
+	\newtheorem{definition}{Definition}[section]
+	\newtheorem*{remark}{Remark}
+	\newtheorem{theorem}{Theorem}[section]
+	\newtheorem{corollary}{Corollary}[theorem]
+	\newtheorem{lemma}[theorem]{Lemma}
+\usepackage{mathrsfs}
+\usepackage{color}
+\usepackage{tikz}
+	\usetikzlibrary{tikzmark}
+\usepackage{enumerate}
+\usepackage{array}
+\usepackage{wrapfig}
+\usepackage{enumitem}
+\usepackage{bm}
+\usepackage{booktabs}
+\usepackage{siunitx}
+\usepackage{authblk}
+\usepackage{cancel}
+\usepackage{listings}
+\usepackage[utf8]{inputenc}
+% \usepackage[table]{xcolor}
+
+\usepackage[unicode,psdextra, colorlinks=true, linkcolor=black, citecolor=black, urlcolor=blue, breaklinks]{hyperref}[2012/08/13]
+
+
+\setlength{\arrayrulewidth}{0.5mm}
+% \setlength{\tabcolsep}{10pt}
+\renewcommand{\arraystretch}{1.0}
+
+
+%------------------ USEFULL MACROS ------------------%
+%-- MISC
+\newcommand{\comment}[1]{}                                % for adding an inline comment
+\makeatletter 											  % This entire thing is for redefining *matrix environment in amsmath so that you can specify the line spacing in a matrix by  - \begin{pmatrix}[1.5]
+\renewcommand*\env@matrix[1][\arraystretch]{%             
+  \edef\arraystretch{#1}%
+  \hskip -\arraycolsep
+  \let\@ifnextchar\new@ifnextchar
+  \array{*\c@MaxMatrixCols c}}
+\makeatother
+
+%-- DERIVATIVES
+\newcommand{\der}[2]{\frac{\mathrm{d}#1}{\mathrm{d}#2}}          	 % first derivative
+\newcommand{\dder}[2]{\frac{\mathrm{d}^{2}#1}{\mathrm{d}#2^{2}}}	 % second derivative
+\newcommand{\nder}[3]{\frac{\mathrm{d}^{#3}#1}{\mathrm{d}#2^{#3}}}   % nth derivative
+\newcommand{\pder}[2]{\frac{\partial #1}{\partial #2}}               % first partial derivative
+\newcommand{\ppder}[2]{\frac{\partial^2 #1}{\partial {#2}^2}}        % second partial derivative
+\newcommand{\npder}[3]{\frac{\partial^{#3} #1}{\partial {#2}^{#3}}}  % second partial derivative
+
+%-- SUMMATION
+\newcommand{\sumk}[3]{\sum_{#1 = #2}^{#3}}        			% sum over #1 with limits #2 #3
+\newcommand{\sumkk}[2]{\sum_{#1, #2} }         	  			% sum over #1 and #2 no limits
+\newcommand{\sumkkdom}[3]{\sum_{#1 , #2 \in #3}}   			% sum over #1 and #2 with domain specified
+
+%-- RESEARCH RELATED
+\newcommand{\uhat}[1]{\hat{u}_{#1}}      				          % quick fourier mode
+\newcommand{\akak}[2]{a_{#1}a_{#2}}      				          % quick convolution amplitudes
+\newcommand{\akakak}[3]{\frac{a_{#1}a_{#2}}{a_{#3}}}      	      % quick convolution amplitudes
+\newcommand{\triadexpl}[3]{\phi_{#1} + \phi_{#2} - \phi_{#3}}      % quick triad explicitly
+\newcommand{\triad}[3]{\varphi_{#1, #2}^{#3}}                     % quick varphi triad
+\newcommand{\ii}{\mathrm{i}}      								  % imaginary i
+\newcommand{\e}{\mathrm{e}}      								  % e
+\newcommand{\Mod}[1]{\ (\mathrm{mod}\ #1)}
+\newcommand{\grad}[1]{\nabla{#1}}								% gradient operator
+\newcommand{\curl}[1]{\nabla \times {#1}}								% gradient operator
+\newcommand{\diverg}[1]{\nabla \cdot {#1}}			% divergence operator
+\newcommand{\bfu}{\mathbf{u}}											% vector u in bold font
+\newcommand{\omegahat}[1]{\hat{\omega}_{ \mathbf{#1} } }								% gradient operator
+\newcommand{\bfx}{\mathbf{x}}								% gradient operator
+\newcommand{\bfk}{\mathbf{k}}								% gradient operator
+\newcommand{\bfkn}[1]{\mathbf{k}_{#1}}								% gradient operator
+
+
+
+%-- CODE SNIPPETS
+\newcommand{\code}[1]{\texttt{#1}}
+
+
+
+
+
+%-------- PAGE STYLE & MARGIN SIZE
+% \pagestyle{plain} \setlength{\oddsidemargin}{0.05in}
+% \setlength{\evensidemargin}{0.05in} \setlength{\topmargin}{0in}
+% \setlength{\footskip}{1.05in} \setlength{\headsep}{0in}
+% \setlength{\textwidth}{6.4in} \setlength{\textheight}{8.25in}
+\usepackage[a4paper, margin=2.7cm]{geometry}
+
+
+
+
+\title{\textbf{Phase Dynamics: 2D Navier Stokes}}
+
+\author[$1$]{E. M. Carroll}
+\author[$1$]{M. D. Bustamante}
+\affil[$1$]{Department of Mathematics and Statistics, University College Dublin, Dublin, Ireland} 
+
+
+
+
+
+\begin{document}
+
+
+\maketitle	
+
+
+\section{2D Ekman Navier Stokes Equations}
+
+We start with the 2D incompressible Navier Stokes equations with an Ekman friction coefficient 
+
+\begin{align}
+	\pder{\bfu}{t} + \left(\bfu \cdot \nabla \right) \bfu &= -\frac{\nabla p}{\rho} + \nu \Delta \bfu - \alpha \bfu + \mathbf{F} \label{eq:conserv_momentum} \\
+	\diverg{\bfu} &= 0 
+	\label{eq:conserv_mass}
+\end{align}
+where $\bfu = (u, v, w)^{T} \in \mathbf{\Omega} = [0, 2 \pi]^3$ is the velocity vector field, $p$ is the scalar pressure field, $\rho$ is the density, $\nu$ is the kinematic viscosity, $\mathbf{F}$ is the forcing and $\alpha$ is the Ekman friction coeficient. The Ekman friction term is introduced to remove energy from the flow at larges scales making the inverse energy cascade stationary.
+
+Recal that 
+
+\begin{align}
+	\bfu = (u, v, w)^{T}, \quad \text and \quad \grad{\bfu} = \left(\pder{u}{x}, \pder{v}{y}, \pder{w}{z} \right)^{T}
+\end{align}
+while
+
+
+\begin{align}
+	\left(\bfu \cdot \nabla \right) &= (u, v, w) \cdot  \begin{pmatrix}
+           \pder{}{x} \\
+           \pder{}{y} \\
+           \pder{}{z}\\
+         \end{pmatrix} \notag\\
+         &\left(u\pder{}{x} + v\pder{}{y} + w\pder{}{z}\right) \notag
+\end{align}
+therefore
+
+\begin{align}
+	\left(\bfu \cdot \nabla \right) \bfu &= \left(u\pder{}{x} + v\pder{}{y} + w\pder{}{z}\right) \cdot \begin{pmatrix}
+           u \\
+           v \\
+           w\\
+         \end{pmatrix} \notag\\
+         & = \begin{pmatrix}
+           u\pder{u}{x} + v\pder{u}{y} + w\pder{u}{z} \\
+           u\pder{v}{x} + v\pder{v}{y} + w\pder{v}{z} \\
+           u\pder{w}{x} + v\pder{w}{y} + w\pder{w}{z}\\
+         \end{pmatrix}. \notag
+\end{align}
+
+
+The system in equations (\ref{eq:conserv_momentum}) and (\ref{eq:conserv_mass}) can be rewritten in vorticity formulation in the following way. First note the vorticity is given by 
+
+\begin{align}
+	\omega = \curl{\bfu}
+	\label{eq:vort}
+\end{align}
+and second, we make use of the following identity
+
+\begin{align}
+	\left(\bfu \cdot \nabla \right)\bfu = \nabla \left( \frac{1}{2} \bfu \cdot \bfu \right) - \bfu \times \curl{\bfu}
+	\label{eq:nolinear_identity}
+\end{align}
+
+Substituting (\ref{eq:nolinear_identity}) into equation (\ref{eq:conserv_momentum}) and taking the curl we get
+
+\begin{align}
+	\curl{\left(\pder{\bfu}{t} + \nabla \left( \frac{1}{2} \bfu \cdot \bfu \right) - \bfu \times \curl{\bfu}\right)} &= \curl{\left( -\frac{\nabla p}{\rho} + \nu \Delta \bfu - \alpha \bfu + \mathbf{F} \right)} \notag \\
+	\pder{\curl{\bfu}}{t} + \curl{\nabla \left( \frac{1}{2} \bfu \cdot \bfu \right)} - \curl{\bfu \times \curl{\bfu}} &= -\frac{1}{\rho}\curl{\grad{p}} + \nu \curl{\Delta \bfu } - \alpha \curl{\omega} + \curl{\mathbf{F}} \notag,
+\end{align}
+using (\ref{eq:vort}) and noting that the curl of the gradient is 0 we get 
+
+\begin{align}
+	\pder{\omega}{t} - \curl{\left( \bfu  \times \omega\right)} = \nu \Delta \omega  - \alpha \omega + \curl{\mathbf{F}}.
+\end{align}
+We also make use of the following
+
+\begin{align}
+	\curl{\left( \bfu  \times \omega\right)} &= -\omega \left(\diverg{\bfu} \right) + \left( \omega \cdot \nabla\right)\bfu - \left(\bfu \cdot \nabla\right)\omega \notag \\
+	&= - \left(\bfu \cdot \nabla\right)\omega
+\end{align}
+since $\omega = \left(0, 0, \pder{v}{x} - \pder{u}{y}\right)^{T}$ and $ \left(\bfu \cdot \nabla\right)\omega = \left(0 \pder{u}{x}, 0 \pder{v}{y}, 0 \omega\right)^T = \mathbf{0}$ and we have used the incompresibilty condition for the first term. 
+Therefore the 2D incompressible Ekman Nvaier Stokes equations in vorticity form are 
+
+\begin{align}
+	\pder{\omega}{t} + \left(\bfu \cdot \nabla\right)\omega = \nu \Delta\omega - \alpha \omega +  \curl{F}
+\end{align}
+
+To ensure the uniqueness of solutions and that the incompressibilty condition is satisfied, once the vorticity $\omega$ is known, we must find the stream function $\psi = (0, 0, \psi)^T$ for the flow by solving the following equation
+
+\begin{align}
+	\Delta\psi = -\omega.
+\end{align}
+This comes from the fact that the stream function is defined in such a way that 
+
+\begin{align}
+	u = \pder{\psi}{y}, \quad v = -\pder{\psi}{x}
+	\label{eq:stream_function}
+\end{align}
+and so
+
+\begin{align}
+\nabla \cdot \bfu = \pder{u}{x} + \pder{v}{y} = \psi_{y x}-\psi_{x y}=0.
+\end{align}
+Once the stream function is known the real space velocity can then be found using (\ref{eq:stream_function}).
+
+In summary, we have the following system
+
+\begin{align}
+	\pder{\omega}{t} + \left(\bfu \cdot \nabla\right)\omega &= \nu \Delta\omega - \alpha \omega +  \curl{F}, \label{eq:vort_eq}\\
+	\Delta\psi &= -\omega. \label{eq:laplace}
+\end{align}
+To solve this system we perform a Fourier decomposition of the scalar vorticity field in space
+
+\begin{align}
+	\omega(\mathbf{x}, t) = \sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}}\hat{\omega}_{\mathbf{k}}(t)\e^{\ii \mathbf{k}\cdot \mathbf{x}}
+\end{align}
+where $\bfx = (x, y)$ and $\bfk = (k_x, k_y)$. The various terms in (\ref{eq:vort_eq}) become
+
+\begin{align}
+	\pder{\omega}{t} = \sum_{\bfk \in \mathbb{Z}^2\setminus \mathbf{0}} \pder{\omegahat{k}}{t} \e^{\ii \mathbf{k}\cdot \mathbf{x}}
+\end{align}
+
+\begin{align}
+	-\alpha\omega = -\alpha \sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}}\hat{\omega}_{\mathbf{k}}(t)\e^{\ii \mathbf{k}\cdot \mathbf{x}}
+\end{align}
+
+\begin{align}
+	\nu \Delta \omega = \nu \left(\ppder{\omega}{x} + \ppder{\omega}{y}\right) &= -\sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}} k_x^2\hat{\omega}_{\mathbf{k}}\e^{\ii \mathbf{k}\cdot \mathbf{x}} -\sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}} k_y^2\hat{\omega}_{\mathbf{k}}\e^{\ii \mathbf{k}\cdot \mathbf{x}} \notag \\
+	&= -\sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}} |\bfk|^2\hat{\omega}_{\mathbf{k}}\e^{\ii \mathbf{k}\cdot \mathbf{x}}
+\end{align}
+with the nonlinear term becoming 
+
+\begin{align}
+\left(\bfu \cdot \nabla\right) \omega	= u\pder{\omega}{x} + v\pder{\omega}{y} &= \pder{\psi}{y}\pder{\omega}{x} - \pder{\psi}{x}\pder{\omega}{y} \notag \\
+&= \pder{}{y}\left(-\Delta\right)^{-1}\omega\pder{\omega}{x} - \pder{}{x}\left(-\Delta\right)^{-1}\omega\pder{\omega}{y} \notag \\
+&= \sum_{\mathbf{k}_1\in \mathbb{Z}^2\setminus \mathbf{0}} \frac{-\ii k_{1y}}{|\bfkn{1}|^2}\hat{\omega}_{\bfkn{1}} \e^{\ii \bfkn{1}\cdot \mathbf{x}} \sum_{\mathbf{k}_2\in \mathbb{Z}^2\setminus \mathbf{0}} -\ii k_{2x}\hat{\omega}_{\bfkn{2}} \e^{\ii \bfkn{2}\cdot \mathbf{x}} \notag\\
+&\qquad - \sum_{\mathbf{k}_1\in \mathbb{Z}^2\setminus \mathbf{0}} \frac{-\ii k_{1x}}{|\bfkn{1}|^2}\hat{\omega}_{\bfkn{1}} \e^{\ii \bfkn{1}\cdot \mathbf{x}} \sum_{\mathbf{k}_2\in \mathbb{Z}^2\setminus \mathbf{0}} -\ii k_{2y}\hat{\omega}_{\bfkn{2}} \e^{\ii \bfkn{2}\cdot \mathbf{x}} \notag \\
+&= \sum_{\mathbf{k}_1, \mathbf{k}_2\in \mathbb{Z}^2\setminus \mathbf{0}}\frac{k_{1x}k_{2y} - k_{1y}k_{2x}}{|\bfkn{1}|^2} \omegahat{\bfkn{1}}\omegahat{\bfkn{2}} \e^{\ii (\bfkn{1} + \bfkn{2}) \cdot \bfx}
+\end{align}
+Putting them all together and performing the transform
+
+\begin{align}
+	\omegahat{\bfk} (t)= \frac{1}{(2\pi)^2}\int_0^{2\pi}\omega(\bfx, t)\e^{-\ii \bfk \cdot \bfx}\mathrm{d}\mathbf{x}
+\end{align}
+
+system in Fourier space becomes
+
+% \begin{align}
+	
+% \end{align}
+
+
+\end{document}
