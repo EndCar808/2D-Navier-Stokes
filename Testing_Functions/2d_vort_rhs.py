@@ -50,18 +50,18 @@ v = np.zeros((Nx, Ny))
 for i in range(Nx):
     for j in range(Ny):
         u[i, j] = np.cos(x[i]) * np.sin(y[j])
-#         print("u0[{}]: {:+0.16f}\t".format(i * Ny + j, np.cos(x[i]) * np.sin(y[j])), end = "")
-#     print()
-# print()
-# print()
+        print("u0[{}]: {:+0.16f}\t".format(i * Ny + j, np.cos(x[i]) * np.sin(y[j])), end = "")
+    print()
+print()
+print()
 for i in range(Nx):
     for j in range(Ny):
         v[i, j] =  -np.sin(x[i]) * np.cos(y[j])
-#         print("v0[{}]: {:+0.16f}\t".format(i * Ny + j, -np.sin(x[i]) * np.cos(y[j])), end = "")
-#     print()
-# print()
-# print()
-# print()
+        print("v0[{}]: {:+0.16f}\t".format(i * Ny + j, -np.sin(x[i]) * np.cos(y[j])), end = "")
+    print()
+print()
+print()
+print()
 # print()
 
 ## Transform both to Fourier Space
@@ -101,78 +101,78 @@ w_hat = np.ones((Nx, int(Ny / 2 + 1))) * np.complex(0.0, 0.0)
 for i in range(Nx):
     for j in range(int(Ny / 2 + 1)):
         w_hat[i, j] = np.complex(0.0, 1.0) * (kx[i] * v_hat[i, j]  - ky[j] * u_hat[i, j])
-#         print("wh[{}]: {:+0.16f} {:+0.16f} I\t".format(i * int(Ny/ 2 + 1) + j, np.real(w_hat[i, j] ), np.imag(w_hat[i, j] )), end = "")
+        print("wh[{}]: {:+0.16f} {:+0.16f} I\t".format(i * int(Ny/ 2 + 1) + j, np.real(w_hat[i, j] ), np.imag(w_hat[i, j] )), end = "")
+    print()
+print()
+print()
+
+
+
+
+
+# for i in range(Nx):
+#     for j in range(int(Ny / 2 + 1)):
+#         k_sqr = kx[i] * kx[i] + ky[j] * ky[j] + 1e-50
+#         u_hat[i, j] = np.complex(0.0, 1.0) * ky[j] * w_hat[i, j] / k_sqr 
+#         v_hat[i, j] = -np.complex(0.0, 1.0) * kx[i] * w_hat[i, j] / k_sqr
+
+
+# u_tmp = np.fft.irfft2(u_hat) * (Nx * Ny)
+# v_tmp = np.fft.irfft2(v_hat) * (Nx * Ny)
+# for i in range(Nx):
+#     for j in range(int(Ny)):
+#         print("u0[{}]: {:+0.16f}\t".format(i * int(Ny/ 2 + 1) + j, u_tmp[i, j]), end = "")
+#     print()
+# print()
+# print()
+# for i in range(Nx):
+#     for j in range(int(Ny)):
+#         print("v0[{}]: {:+0.16f}\t".format(i * int(Ny/ 2 + 1) + j, u_tmp[i, j]), end = "")
 #     print()
 # print()
 # print()
 
+# dwhat_dx = np.ones((Nx, int(Ny / 2 + 1))) * np.complex(0.0, 0.0)
+# dwhat_dy = np.ones((Nx, int(Ny / 2 + 1))) * np.complex(0.0, 0.0)
+# for i in range(Nx):
+#     for j in range(int(Ny / 2 + 1)):
+#         dwhat_dx[i, j] = np.complex(0.0, -1.0) * kx[i] * w_hat[i, j]
+#         dwhat_dy[i, j] = np.complex(0.0, -1.0) * ky[j] * w_hat[i, j]
 
 
+# dw_dx = np.fft.irfft2(dwhat_dx) * (Nx * Ny)
+# dw_dy = np.fft.irfft2(dwhat_dy) * (Nx * Ny)
+# for i in range(Nx):
+#     for j in range(int(Ny)):
+#         print("du0[{}]: {:+0.16f}\t".format(i * int(Ny/ 2 + 1) + j, dw_dx[i, j]), end = "")
+#     print()
+# print()
+# print()
+# for i in range(Nx):
+#     for j in range(int(Ny)):
+#         print("dv0[{}]: {:+0.16f}\t".format(i * int(Ny/ 2 + 1) + j, dw_dy[i, j]), end = "")
+#     print()
+# print()
+# print()
 
+# dw_dt = np.zeros((Nx, Ny))
+# for i in range(Nx):
+#     for j in range(Ny):
+#         dw_dt[i, j] = -(u_tmp[i, j] * dw_dx[i, j] + v_tmp[i, j] * dw_dy[i, j])
+# for i in range(Nx):
+#     for j in range(int(Ny)):
+#         print("dwdt[{}]: {:+0.16f}\t".format(i * int(Ny/ 2 + 1) + j, dw_dt[i, j]), end = "")
+#     print()
+# print()
+# print()
+# dw_hat_dt = np.fft.rfft2(dw_dt)
 
-for i in range(Nx):
-    for j in range(int(Ny / 2 + 1)):
-        k_sqr = kx[i] * kx[i] + ky[j] * ky[j] + 1e-50
-        u_hat[i, j] = np.complex(0.0, 1.0) * ky[j] * w_hat[i, j] / k_sqr 
-        v_hat[i, j] = -np.complex(0.0, 1.0) * kx[i] * w_hat[i, j] / k_sqr
-
-
-u_tmp = np.fft.irfft2(u_hat) * (Nx * Ny)
-v_tmp = np.fft.irfft2(v_hat) * (Nx * Ny)
-for i in range(Nx):
-    for j in range(int(Ny)):
-        print("u0[{}]: {:+0.16f}\t".format(i * int(Ny/ 2 + 1) + j, u_tmp[i, j]), end = "")
-    print()
-print()
-print()
-for i in range(Nx):
-    for j in range(int(Ny)):
-        print("v0[{}]: {:+0.16f}\t".format(i * int(Ny/ 2 + 1) + j, u_tmp[i, j]), end = "")
-    print()
-print()
-print()
-
-dwhat_dx = np.ones((Nx, int(Ny / 2 + 1))) * np.complex(0.0, 0.0)
-dwhat_dy = np.ones((Nx, int(Ny / 2 + 1))) * np.complex(0.0, 0.0)
-for i in range(Nx):
-    for j in range(int(Ny / 2 + 1)):
-        dwhat_dx[i, j] = np.complex(0.0, -1.0) * kx[i] * w_hat[i, j]
-        dwhat_dy[i, j] = np.complex(0.0, -1.0) * ky[j] * w_hat[i, j]
-
-
-dw_dx = np.fft.irfft2(dwhat_dx) * (Nx * Ny)
-dw_dy = np.fft.irfft2(dwhat_dy) * (Nx * Ny)
-for i in range(Nx):
-    for j in range(int(Ny)):
-        print("du0[{}]: {:+0.16f}\t".format(i * int(Ny/ 2 + 1) + j, dw_dx[i, j]), end = "")
-    print()
-print()
-print()
-for i in range(Nx):
-    for j in range(int(Ny)):
-        print("dv0[{}]: {:+0.16f}\t".format(i * int(Ny/ 2 + 1) + j, dw_dy[i, j]), end = "")
-    print()
-print()
-print()
-
-dw_dt = np.zeros((Nx, Ny))
-for i in range(Nx):
-    for j in range(Ny):
-        dw_dt[i, j] = -(u_tmp[i, j] * dw_dx[i, j] + v_tmp[i, j] * dw_dy[i, j])
-for i in range(Nx):
-    for j in range(int(Ny)):
-        print("dwdt[{}]: {:+0.16f}\t".format(i * int(Ny/ 2 + 1) + j, dw_dt[i, j]), end = "")
-    print()
-print()
-print()
-dw_hat_dt = np.fft.rfft2(dw_dt)
-
-for i in range(Nx):
-    for j in range(int(Ny/ 2 + 1)):
-        print("dwhdt[{}]: {:+0.16f} {:+0.16f}I\t".format(i * int(Ny/ 2 + 1) + j, np.real(dw_hat_dt[i, j] ), np.imag(dw_hat_dt[i, j] )), end = "")
-    print()
-print()
-print()
+# for i in range(Nx):
+#     for j in range(int(Ny/ 2 + 1)):
+#         print("dwhdt[{}]: {:+0.16f} {:+0.16f}I\t".format(i * int(Ny/ 2 + 1) + j, np.real(dw_hat_dt[i, j] ), np.imag(dw_hat_dt[i, j] )), end = "")
+#     print()
+# print()
+# print()
 
 # u_hat1 = Dft_2d(u, Nx, Ny)
 # print(u_hat1)
