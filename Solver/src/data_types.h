@@ -9,16 +9,16 @@
 // ---------------------------------------------------------------------
 #ifndef __DATA_TYPES
 
-#ifndef __FFTW3
-#include <fftw3-mpi.h>
-#define __FFTW3
-#endif
-
 #ifndef __HDF5_HDR
 #include <hdf5.h>
 #include <hdf5_hl.h>
 #define __HDF5_HDR
 #endif
+#ifndef __FFTW3
+#include <fftw3-mpi.h>
+#define __FFTW3
+#endif
+
 
 
 // ---------------------------------------------------------------------
@@ -30,23 +30,42 @@
 
 
 // ---------------------------------------------------------------------
-//  Global Variables
+//  Integration Functionality
 // ---------------------------------------------------------------------
+// #define __EULER
+#define __NAVIER
 #define __RK4
 // #define __RK5
-
+#define __DEALIAS_23
+// #define __DEALIAS_HOU_LI
 #define __PRINT_SCREEN
+#define SAVE_EVERY 10
 
+// ---------------------------------------------------------------------
+//  Datasets to Write to File
+// ---------------------------------------------------------------------
+#define __VORT_REAL
+// #define __VORT_FOUR
+// #define __MODES
+// #define __REALSPACE
+#define __TIME
+#define __COLLOC_PTS
+#define __WAVELIST
+// ---------------------------------------------------------------------
+//  Global Variables
+// ---------------------------------------------------------------------
 #define SYS_DIM 2
 #define NU 0.00001
-#define VIS_POW 2.0
+#define VIS_POW 1.0
 #define EKMN_ALPHA 0.0
+#define EKMN_POW 0.0
 
 // ---------------------------------------------------------------------
 //  Global Struct Definitions
 // ---------------------------------------------------------------------
 // System variables struct
 typedef struct system_vars_struct {
+	char* u0;							// String to indicate the initial condition to use
 	long int N[SYS_DIM];				// Array holding the no. of collocation pts in each dim
 	fftw_plan fftw_2d_dft_r2c;			// FFTW plan to perform transform from Real to Fourier
 	fftw_plan fftw_2d_dft_c2r;			// FFTW plan to perform transform from Fourier to Real
@@ -58,6 +77,8 @@ typedef struct system_vars_struct {
 	ptrdiff_t local_Nx_start;			// Position where the local arrays start in the undistributed array
 	int num_procs;						// Variable to hold the number of active provcesses
 	int rank;							// Rank of the active processes
+	long int num_t_steps;				// Number of iteration steps to perform
+	long int num_print_steps;           // Number of times system was saved to file
 	double t0;							// Intial time
 	double T;							// Final time
 	double t;							// Time variable
@@ -95,7 +116,7 @@ typedef struct HDF_file_info_struct {
 	char output_file_name[512];     // Output file name array
 	char output_dir[512];			// Output directory
 	hid_t output_file_handle;		// File handle for the output file 
-	hid_t cmplx_dtyp;				// Complex datatype handle
+	hid_t COMPLEX_DTYPE;			// Complex datatype handle
 } HDF_file_info_struct;
 
 // Complex datatype struct for HDF5

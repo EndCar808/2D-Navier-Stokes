@@ -11,8 +11,8 @@ CCFLAG := -O3 -W -Wall #-g
 LIBFLAG := -lfftw3_mpi -lfftw3 -lm -lhdf5 -lhdf5_hl #-fopenmp -lpthread -lfftw3_omp
 # GSLFLAG := -lgsl -lgslcblas
 # LAPACKFLAG := -llapacke -llapack -lblas -lgfortran
-INCDIR = -I/usr/include/hdf5/serial/  -I/usr/include/gsl/
-LIBDIR = -L/usr/lib/x86_64-linux-gnu/hdf5/serial/ 
+INCDIR = -I/usr/include/hdf5/openmpi/  #-I/usr/include/gsl/
+LIBDIR = -L/usr/lib/x86_64-linux-gnu/hdf5/openmpi 
 
 
 DEPS = $(wildcard *.h) 
