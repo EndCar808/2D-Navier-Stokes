@@ -36,6 +36,7 @@
 #define __NAVIER
 #define __RK4
 // #define __RK5
+// #define __ADAPTIVE_STEP
 #define __DEALIAS_23
 // #define __DEALIAS_HOU_LI
 #define __PRINT_SCREEN
@@ -55,11 +56,14 @@
 //  Global Variables
 // ---------------------------------------------------------------------
 #define SYS_DIM 2
-#define NU 0.00001
+#define NU 0.01
 #define VIS_POW 1.0
 #define EKMN_ALPHA 0.0
 #define EKMN_POW 0.0
 
+#define MIN_STEP_SIZE 1e-10
+#define MAX_ITERS 1e+6
+#define MAX_VORT_LIM 1e+100
 // ---------------------------------------------------------------------
 //  Global Struct Definitions
 // ---------------------------------------------------------------------
@@ -85,6 +89,7 @@ typedef struct system_vars_struct {
 	double dt;							// Timestep
 	double dx;							// Collocation point spaceing in the x direction
 	double dy;							// Collocation point spacing in the y direction
+	double w_max_init					// Max vorticity of the initial condition
 } system_vars_struct;
 
 // Runtime data struct
@@ -95,6 +100,10 @@ typedef struct runtime_data_struct {
 	fftw_complex* u_hat;     // Fourier space velocity
 	double* w;				 // Real space vorticity
 	double* u;				 // Real space velocity
+	double* tot_energy;      // Array to hold the total energy over the simulation
+	double* tot_enstr;		 // Array to hold the total entrophy over the simulation
+	double* tot_palin;		 // Array to hold the total palinstrophy over the simulaiotns
+	double* time;			 // Array to hold the simulation times
 } runtime_data_struct;
 
 // Runge-Kutta Integration struct
@@ -130,8 +139,6 @@ typedef struct complex_type_tmp {
 extern system_vars_struct *sys_vars; 		    // Global pointer to system parameters struct
 extern runtime_data_struct *run_data; 			// Global pointer to system runtime variables struct 
 extern HDF_file_info_struct *file_info; 		// Global pointer to system forcing variables struct 
-
-
 
 #define __DATA_TYPES
 #endif

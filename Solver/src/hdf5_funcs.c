@@ -77,7 +77,7 @@ void CreateOutputFileWriteICs(const long int* N, double dt) {
 	// Create Group for Initial Conditions
 	// --------------------------------------
 	// Initialize Group Name
-	sprintf(group_name, "/Timestep_%04d", 0);
+	sprintf(group_name, "/Iter_%05d", 0);
 	
 	// Create group for the current iteration data
 	group_id = CreateGroup(group_name, 0.0, dt, 0);
@@ -184,7 +184,7 @@ void WriteDataToFile(double t, double dt, long int iters) {
 	// Create Group 
 	// -------------------------------
 	// Initialize Group Name
-	sprintf(group_name, "/Timestep_%04d", (int)iters);
+	sprintf(group_name, "/Iter_%05d", (int)iters);
 	
 	// Create group for the current iteration data
 	group_id = CreateGroup(group_name, t, dt, iters);
@@ -524,11 +524,11 @@ void FinalWriteAndCloseOutputFile(const long int* N) {
 	if (!(sys_vars->rank)) {
 		dims1D[0] = Nx;
 		if ( (H5LTmake_dataset(file_info->output_file_handle, "kx", D1, dims1D, H5T_NATIVE_INT, k0)) < 0) {
-			printf("\n[WARNING] --- Failed to make dataset [%s]n", "kx");
+			printf("\n[WARNING] --- Failed to make dataset [%s]\n", "kx");
 		}
 		dims1D[0] = Ny_Fourier;
 		if ( (H5LTmake_dataset(file_info->output_file_handle, "ky", D1, dims1D, H5T_NATIVE_INT, run_data->k[1])) < 0) {
-			printf("\n[WARNING] --- Failed to make dataset [%s]n", "ky");
+			printf("\n[WARNING] --- Failed to make dataset [%s]\n", "ky");
 		}
 	}
 	fftw_free(k0);
@@ -546,15 +546,60 @@ void FinalWriteAndCloseOutputFile(const long int* N) {
 	if (!(sys_vars->rank)) {
 		dims1D[0] = Nx;
 		if ( (H5LTmake_dataset(file_info->output_file_handle, "x", D1, dims1D, H5T_NATIVE_DOUBLE, x0)) < 0) {
-			printf("\n[WARNING] --- Failed to make dataset [%s]n", "x");
+			printf("\n[WARNING] --- Failed to make dataset [%s]\n", "x");
 		}
 		dims1D[0] = Ny;
 		if ( (H5LTmake_dataset(file_info->output_file_handle, "y", D1, dims1D, H5T_NATIVE_DOUBLE, run_data->x[1]))< 0) {
-			printf("\n[WARNING] --- Failed to make dataset [%s]n", "y");
+			printf("\n[WARNING] --- Failed to make dataset [%s]\n", "y");
 		}
 	}
 	fftw_free(x0);
 	#endif
+
+	// -------------------------------
+	// Write System Measures
+	// -------------------------------
+	// Time
+	#ifdef __TIME
+	// Time array only on rank 0
+	if (!(sys_vars->rank)) {
+		dims1D[0] = sys_vars->num_print_steps;
+		if ( (H5LTmake_dataset(file_info->output_file_handle, "Time", D1, dims1D, H5T_NATIVE_DOUBLE, run_data->time)) < 0) {
+			printf("\n[WARNING] --- Failed to make dataset [%s]\n", "Time");
+		}
+	}
+	#endif
+
+	
+	// Total Energy, Enstrophy and Palinstrophy -> need to reduce (in place on rank 0) all arrays across the processess
+	if (!(sys_vars->rank)) {
+		// Reduce on to rank 0
+		MPI_Reduce(MPI_IN_PLACE, run_data->tot_energy, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(MPI_IN_PLACE, run_data->tot_enstr, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(MPI_IN_PLACE, run_data->tot_palin, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+
+		// Dataset dims
+		dims1D[0] = sys_vars->num_print_steps;
+
+		// Energy
+		if ( (H5LTmake_dataset(file_info->output_file_handle, "TotalEnergy", D1, dims1D, H5T_NATIVE_DOUBLE, run_data->tot_energy)) < 0) {
+			printf("\n[WARNING] --- Failed to make dataset [%s]\n", "TotalEnergy");
+		}
+		// Enstrophy
+		if ( (H5LTmake_dataset(file_info->output_file_handle, "TotalEnstrophy", D1, dims1D, H5T_NATIVE_DOUBLE, run_data->tot_enstr)) < 0) {
+			printf("\n[WARNING] --- Failed to make dataset [%s]\n", "TotalEnstrophy");
+		}
+		// Palinstrophy
+		if ( (H5LTmake_dataset(file_info->output_file_handle, "TotalPalinstrophy", D1, dims1D, H5T_NATIVE_DOUBLE, run_data->tot_palin)) < 0) {
+			printf("\n[WARNING] --- Failed to make dataset [%s]\n", "TotalPalinstrophy");
+		}
+	}
+	else {
+		// Reduce all other process to rank 0
+		MPI_Reduce(run_data->tot_energy, NULL,  sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(run_data->tot_enstr, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(run_data->tot_palin, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+	}
 
 	// -------------------------------
 	// Close File for the final time

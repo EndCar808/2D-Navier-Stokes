@@ -9,7 +9,7 @@
 // ---------------------------------------------------------------------
 #include <stdlib.h>
 #include <stdio.h>
-
+#include <time.h>
 // ---------------------------------------------------------------------
 //  User Libraries and Headers
 // ---------------------------------------------------------------------
@@ -56,7 +56,9 @@ int main(int argc, char** argv) {
 	// Initialize FFTW MPI interface - must be called after MPI_Init but before anything else in FFTW
 	fftw_mpi_init();
 
-	
+	// Start timer
+	MPI_Barrier(MPI_COMM_WORLD);
+	clock_t begin = clock();
 
 	//////////////////////////////////
 	// Call Solver
@@ -66,8 +68,19 @@ int main(int argc, char** argv) {
 	// Call Solver
 	//////////////////////////////////
 	
+	MPI_Barrier(MPI_COMM_WORLD);
+	if (!(sys_vars->rank)) {
+		// Finish timing
+		clock_t end = clock();
 
-
+		// calculate execution time
+		double time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
+		int hh = (int) time_spent / 3600;
+		int mm = ((int )time_spent - hh * 3600) / 60;
+		int ss = time_spent - hh * 3600 - mm * 60;
+		printf("\n\nTotal Execution Time: %5.10lf --> %d hrs : %d mins : %d secs\n\n", time_spent, hh, mm, ss);
+	}
+	
 	// Cleanup FFTW MPI interface - Calls the serial fftw_cleanup function also
 	fftw_mpi_cleanup();    
 

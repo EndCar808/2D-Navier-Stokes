@@ -52,8 +52,8 @@ void SpectralSolve(void) {
 	int tmp;
 	int indx;
 	sys_vars->u0   = "TAYLOR_GREEN";
-	sys_vars->N[0] = 64;
-	sys_vars->N[1] = 64;
+	sys_vars->N[0] = 256;
+	sys_vars->N[1] = 256;
 	herr_t status;
 	const long int N[SYS_DIM] = {sys_vars->N[0], sys_vars->N[1]};
 	const long int NBatch[SYS_DIM] = {sys_vars->N[0], sys_vars->N[1] / 2 + 1};
@@ -81,34 +81,39 @@ void SpectralSolve(void) {
 	// -------------------------------
 	// Initialize the collocation points and wavenumber space 
 	InitializeSpaceVariables(run_data->x, run_data->k, N);
-	// PrintSpaceVariables(N);
-
 
 	// Get initial conditions
 	InitialConditions(run_data->w_hat, run_data->u, run_data->u_hat, N);
-	// PrintVelocityReal(N);
-	// PrintVorticityFourier(N);
-	// NonlinearRHSBatch(run_data->w_hat, RK_data->RK1, RK_data->nabla_psi, RK_data->nabla_w);
-	// PrintScalarFourier(RK_data->RK1, N, "RHS");
-	
-	
+		
 	// -------------------------------
 	// Integration Variables
 	// -------------------------------
+	// Set the spatial increments
+	sys_vars->dx = 2.0 * M_PI / (double )Nx;
+	sys_vars->dy = 2.0 * M_PI / (double )Ny;
+
+	// Get the timestep using a CFL like condition
+	double umax          = GetMaxData("VEL");
+	sys_vars->w_max_init = GetMaxData("VORT");
+	sys_vars->dt         = (sys_vars->dx) / umax;
+
 	// Compute integration time variables
 	sys_vars->t0 = 0.0;
-	sys_vars->dt = 0.005;
-	sys_vars->T  = 1.0;
-	double t0 = sys_vars->t0;
-	double t  = t0;
-	double dt = sys_vars->dt;
-	double T  = sys_vars->T;
+	sys_vars->T  = 0.008;
+	double t0    = sys_vars->t0;
+	double t     = t0;
+	double dt    = sys_vars->dt;
+	double T     = sys_vars->T;
 
+	// Number of iterations
 	sys_vars->num_t_steps     = (T - t0) / dt;
 	sys_vars->num_print_steps = sys_vars->num_t_steps / SAVE_EVERY + 1; // plus one to include initial condition
-	int print_update = (sys_vars->num_t_steps >= 10 ) ? (int)((double)sys_vars->num_t_steps * 0.1) : 1;
-	printf("print update: %d\n", print_update);
+	if (!(sys_vars->rank)){
+		printf("Total Iters: %ld\t Saving Iters: %ld\n", sys_vars->num_t_steps, sys_vars->num_print_steps);
+	}
 
+	// Variable to control how ofter to print to screen -> 10% of num time steps
+	int print_update = (sys_vars->num_t_steps >= 10 ) ? (int)((double)sys_vars->num_t_steps * 0.1) : 1;
 
 	// -------------------------------
 	// Create & Open Output File
@@ -116,7 +121,10 @@ void SpectralSolve(void) {
 	// Create and open the output file - also write initial conditions to file
 	CreateOutputFileWriteICs(N, dt);
 
-	
+	// Inialize system measurables
+	InitializeSystemMeasurables();
+
+
 	//////////////////////////////
 	// Begin Integration
 	//////////////////////////////
@@ -125,7 +133,7 @@ void SpectralSolve(void) {
 	while (t < T) {
 
 
-		// -------------------------------
+		// -------------------------------	
 		// Integration Step
 		// -------------------------------
 		#ifdef __RK4
@@ -138,8 +146,11 @@ void SpectralSolve(void) {
 		// Write To File
 		// -------------------------------
 		if (iters % SAVE_EVERY == 0) {
+			// Record System Measurables
+			RecordSystemMeasures(t, save_data_indx);
+
 			// Write the appropriate datasets to file
-			WriteDataToFile(t, dt, iters);
+			WriteDataToFile(t, dt, save_data_indx);
 			
 			// Update saving data index
 			save_data_indx++;
@@ -151,16 +162,24 @@ void SpectralSolve(void) {
 		#ifdef __PRINT_SCREEN
 		if( !(sys_vars->rank) ) {
 			if (iters % print_update == 0) {
-				printf("Iter: %d/%ld\tTimestep: %5.6lf/%5.3lf\n", iters, sys_vars->num_t_steps, t, T);
+				printf("Iter: %d/%ld\tt: %1.6lf/%1.3lf\tdt: %g\tE: %g\tZ: %g\tP: %g\n", iters, sys_vars->num_t_steps, t, T, dt, run_data->tot_energy[save_data_indx], run_data->tot_enstr[save_data_indx], run_data->tot_palin[save_data_indx]);
 			}
 		}
 		#endif
 
 		// -------------------------------
-		// Update for Next Iterataion
+		// Update & System Check
 		// -------------------------------
+		// Update timestep & iteration counter
+		#ifdef __ADAPTIVE_STEP
+		GetTimestep(&t);
+		#else
 		t = iters * dt;
+		#endif
 		iters++;
+
+		// Check System: Determine if system has blown up or integration limits reached
+		SystemCheck(t, iters);
 	}
 	//////////////////////////////
 	// End Integration
@@ -172,6 +191,7 @@ void SpectralSolve(void) {
 	// -------------------------------
 	FinalWriteAndCloseOutputFile(N);
 	
+
 	// -------------------------------
 	// Clean Up 
 	// -------------------------------
@@ -425,7 +445,6 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* u, 
 	// ----------------------------------
 	// Batch transform both fourier velocites to real space
 	fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_batch_c2r), dw_hat_dt, u);
-	// PrintVectorReal(u, sys_vars->N, "u", "v");
 
 	// ---------------------------------------------
 	// Compute Fourier Space Vorticity Derivatives
@@ -447,7 +466,6 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* u, 
 	// ----------------------------------
 	// Batch transform both fourier vorticity derivatives to real space
 	fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_batch_c2r), dw_hat_dt, nabla_w);
-	// PrintVectorReal(nabla_w, sys_vars->N, "whx", "why");
 
 	// -----------------------------------
 	// Perform Convolution in Real Space
@@ -462,7 +480,6 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* u, 
  			nonlinterm[indx] = -1.0 * ((u[SYS_DIM * indx + 0] * nabla_w[SYS_DIM * indx + 0]) + (u[SYS_DIM * indx + 1] * nabla_w[SYS_DIM * indx + 1]));
  		}
  	}
- 	// PrintScalarReal(nonlinterm, sys_vars->N, "dwdt");
 
  	// -------------------------------------
  	// Transform Nonlinear Term To Fourier
@@ -509,7 +526,7 @@ void ApplyDealiasing(fftw_complex* w_hat, const long int* N, const double norm_f
 			indx = tmp + j;
 
 			#ifdef __DEALIAS_23
-			if ( (abs(run_data->k[0][i]) < (int) ceil((double)Nx / 3.0)) && (abs(run_data->k[1][j]) < (int) ceil((double)Ny / 3.0))) {
+			if (sqrt(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]) < (int) ceil((double)Nx / 3.0)) {  // (abs(run_data->k[0][i]) < (int) ceil((double)Nx / 3.0)) && (abs(run_data->k[1][j]) < (int) ceil((double)Ny / 3.0))
 				// Apply DFT normaliztin to undealiased modes
 				w_hat[indx] *= norm_fac;
 			}
@@ -669,6 +686,317 @@ void InitializeSpaceVariables(double** x, int** k, const long int* N) {
 	}
 }
 /**
+ * Function used to compute of either the velocity or vorticity
+ * @return  Returns the computed maximum
+ */
+double GetMaxData(char* dtype) {
+
+	// Initialize variables
+	const long int Ny 		  = sys_vars->N[1];
+	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
+	int tmp;
+	int indx;
+	double dt;
+	fftw_complex k_sqr;
+
+	// -------------------------------
+	// Compute the Data 
+	// -------------------------------
+	if (strcmp(dtype, "VEL") == 0) {
+		// Compute the velocity in Fourier space
+		for (int i = 0; i < sys_vars->local_Nx; ++i) {
+			tmp = i * Ny_Fourier;
+			for (int j = 0; j < Ny_Fourier; ++j) {
+				indx = tmp + j;
+
+				// Compute the factor
+				k_sqr = I / (double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j] + (double) 1e-50);
+
+				// compute the velocity in Fourier space
+				run_data->u_hat[SYS_DIM * indx + 0] = ((double) run_data->k[1][j]) * k_sqr * run_data->w_hat[indx];
+				run_data->u_hat[SYS_DIM * indx + 1] = -((double) run_data->k[0][i]) * k_sqr * run_data->w_hat[indx];
+			}
+		}
+
+		// Transform back to Fourier space
+		fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_batch_c2r), run_data->u_hat, run_data->u);
+	}
+	else if (strcmp(dtype, "VORT") == 0) {
+		// Perform transform back to real space for the vorticity
+		fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_c2r), run_data->w_hat, run_data->w);
+	}
+
+	// -------------------------------
+	// Find the maximum
+	// -------------------------------
+	// Define the maximum
+	double wmax = 0.0;
+
+	// Loop over array to find the maximum
+	for (int i = 0; i < sys_vars->local_Nx; ++i) {
+		// Find the max of the Real Space vorticity
+		if (strcmp(dtype, "VORT_FOUR") == 0) {
+			tmp = i * Ny_Fourier;
+			for (int j = 0; j < Ny_Fourier; ++j) {
+				indx = tmp + j;
+
+				// Check if maximum
+				if (cabs(run_data->w_hat[indx]) > wmax) {
+					wmax = cabs(run_data->w_hat[indx]);
+				}	
+				else {
+					continue;
+				}
+			}			
+		}
+		// Find the max of the Fourier Vorticity
+		else if (strcmp(dtype, "VORT") == 0) {
+			tmp = i * Ny;
+			for (int j = 0; j < Ny; ++j) {
+				indx = tmp + j;
+
+				// Check if maximum
+				if (cabs(run_data->w[indx]) > wmax) {
+					wmax = cabs(run_data->w[indx]);
+				}	
+				else {
+					continue;
+				}
+			}			
+		}
+		// Find the max of the Real space velocity
+		else if (strcmp(dtype, "VEL") == 0) {
+			tmp = i * (Ny + 2);
+			for (int j = 0; j < Ny; ++j) {
+				for (int l = 0; l < SYS_DIM; ++l) {
+					indx = tmp + j;
+
+					// Check if maximum
+					if (cabs(run_data->u[SYS_DIM * indx + l]) > wmax) {
+						wmax = cabs(run_data->u[SYS_DIM * indx + l]);
+					}	
+					else {
+						continue;
+					}
+				}
+			}
+		}
+	}
+
+	// Now synchronize the maximum over all process
+	MPI_Allreduce(MPI_IN_PLACE, &wmax, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+
+	
+	return wmax;
+}
+/**
+ * Function that checks the system to see if it is ok to continue integrations. Checks for blow up, timestep and iteration limits etc
+ * @param dt    The updated timestep for the next iteration
+ * @param iters The number of iterations for the next iteration
+ */
+void SystemCheck(double dt, int iters) {
+
+	// Initialize variables
+	double w_max;	
+
+	// -------------------------------
+	// Get Current Max Vorticity 
+	// -------------------------------
+	w_max = GetMaxData("VORT");
+
+	// -------------------------------
+	// Check Stopping Criteria 
+	// -------------------------------
+	if (w_max >= MAX_VORT_LIM)	{
+		fprintf(stderr, "\n[SOVLER FAILURE] --- System has reached maximum Vorticity limt at Iter: %d!\n-->> Exiting!!!n", iters);
+		exit(1);
+	}
+	else if (dt <= MIN_STEP_SIZE) {
+		fprintf(stderr, "\n[SOVLER FAILURE] --- Timestep has become too small to continue at Iter: %d!\n-->> Exiting!!!\n", iters);
+		exit(1);		
+	}
+	else if (iters >= MAX_ITERS) {
+		fprintf(stderr, "\n[SOVLER FAILURE] --- The maximum number of iterations has been reached at Iter: %d!\n-->> Exiting!!!\n", iters);
+		exit(1);		
+	}
+}
+/**
+ * Function to update the timestep if adaptive timestepping is enabled
+ * @param dt The current timestep
+ */
+void GetTimestep(double* dt) {
+
+	// Initialize variables
+	double dt_new;
+	double w_max;
+
+	// -------------------------------
+	// Get Current Max Vorticity 
+	// -------------------------------
+	w_max = GetMaxData("VORT");
+	
+	// -------------------------------
+	// Compute New Timestep
+	// -------------------------------
+	// Find proposed timestep = h_0 * (max{w_hat(0)} / max{w_hat(t)}) -> this ensures that the maximum vorticity by the timestep is constant
+	dt_new = sys_vars->dt * (sys_vars->w_max_init / w_max);	
+
+	// Gather new timesteps from all processes -> pick the smallest one
+	MPI_Allreduce(MPI_IN_PLACE, &dt_new, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
+	
+	// -------------------------------
+	// Update Timestep
+	// -------------------------------
+	// Check if new timestep meets approved criteria
+	if (dt_new > 2.0 * (*dt)) {  
+		// Timestep can be increased by no more than twice current timestep
+		(*dt) = 2.0 * (*dt); 
+	}
+	else {
+		// Update with new timestep - new timestep is checked for criteria in SystemsCheck() function 
+		(*dt) = dt_new;
+	}
+}
+/**
+ * Function to compute the total energy in the system at the current timestep
+ * @return  The total energy in the system
+ */
+double TotalEnergy(void) {
+
+	// Initialize variables
+	int tmp;
+	int indx;
+	fftw_complex k_sqr;
+	ptrdiff_t local_Nx 		  = sys_vars->local_Nx;
+	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
+
+	// -------------------------------
+	// Compute Fourier Space Velocity 
+	// -------------------------------
+	for (int i = 0; i < local_Nx; ++i) {
+		tmp = i * Ny_Fourier;
+		for (int j = 0; j < Ny_Fourier; ++j) {
+			indx = tmp + j;
+
+			// The prefactor
+			k_sqr = I / (double )(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j] + 1e-50);
+
+			// Compute the Foureir velocities
+			run_data->u_hat[SYS_DIM * indx + 0] = k_sqr * ((double) run_data->k[1][j]) * run_data->w_hat[indx];
+			run_data->u_hat[SYS_DIM * indx + 1] = -k_sqr * ((double) run_data->k[0][i]) * run_data->w_hat[indx];
+		}
+	}
+
+	// -------------------------------
+	// Compute The Total Energy 
+	// -------------------------------
+	// Initialize the energy 
+	double tot_energy = 0.0;
+
+	// Loop over Fourier velocities
+	for (int i = 0; i < local_Nx; ++i) {
+		tmp = i * Ny_Fourier;
+		for (int j = 0; j < Ny_Fourier; ++j) {
+			indx = tmp + j;
+
+			// Update the sum for the total energy
+			tot_energy += 0.5 * (cabs(run_data->u_hat[SYS_DIM * indx + 0] * conj(run_data->u_hat[SYS_DIM * indx + 0])) + cabs(run_data->u_hat[SYS_DIM * indx + 1] * conj(run_data->u_hat[SYS_DIM * indx + 1])));
+		}
+	}
+	
+	return tot_energy;	
+}
+/**
+ * Function to compute the total enstrophy in the system at the current timestep
+ * @return  The total enstrophy in the system
+ */
+double TotalEnstrophy(void) {
+
+	// Initialize variables
+	int tmp;
+	int indx;
+	ptrdiff_t local_Nx 		  = sys_vars->local_Nx;
+	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
+
+
+	// -------------------------------
+	// Compute The Total Energy 
+	// -------------------------------
+	// Initialize total enstrophy
+	double tot_enstr = 0.0;
+
+	// Loop over Fourier vorticity
+	for (int i = 0; i < local_Nx; ++i) {
+		tmp = i * Ny_Fourier;
+		for (int j = 0; j < Ny_Fourier; ++j) {
+			indx = tmp + j;
+
+			// Update the sum for the total enstrophy
+			tot_enstr += 0.5 * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+		}
+	}
+
+}
+/**
+ * Function to compute the total palinstrophy of the system at the current timestep
+ * @return  The total palinstrophy
+ */
+double TotalPalinstrophy(void) {
+	
+	// Initialize variables
+	int tmp;
+	int indx;
+	double w_hat_dx;
+	double w_hat_dy;
+	ptrdiff_t local_Nx 		  = sys_vars->local_Nx;
+	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
+
+
+	// -------------------------------
+	// Compute The Total Energy 
+	// -------------------------------
+	// Initialize total enstrophy
+	double tot_palin = 0.0;
+
+	// Loop over Fourier vorticity
+	for (int i = 0; i < local_Nx; ++i) {
+		tmp = i * Ny_Fourier;
+		for (int j = 0; j < Ny_Fourier; ++j) {
+			indx = tmp + j;
+
+			// Compute the sum for the total palinstrophy
+			w_hat_dx = I * ((double ) run_data->k[0][i]) * run_data->w_hat[indx];
+			w_hat_dy = I * ((double ) run_data->k[1][j]) * run_data->w_hat[indx];
+			tot_palin += 0.5 * (cabs(w_hat_dx * conj(w_hat_dx)) + cabs(w_hat_dy * conj(w_hat_dy)));
+		}
+	}
+
+
+	return tot_palin;
+}	
+/**
+ * Function to record the system measures for the current timestep 
+ * @param t          The current time in the simulation
+ * @param print_indx The current index of the measurables arrays
+ */
+void RecordSystemMeasures(double t, int print_indx) {
+
+	// -------------------------------
+	// Record the System Measures 
+	// -------------------------------
+	// The integration time
+	#ifdef __TIME
+	if (!(sys_vars->rank)) {
+		run_data->time[print_indx] = t;
+	}
+	#endif
+
+	// Total Energy, enstrophy and palinstrophy
+	run_data->tot_enstr[print_indx] = TotalEnstrophy();
+	run_data->tot_energy[print_indx] = TotalEnergy();
+	run_data->tot_palin[print_indx] = TotalPalinstrophy();
+}
+/**
  * Wrapper function used to allocate memory all the nessecary local and global system and integration arrays
  * @param NBatch  Array holding the dimensions of the Fourier space arrays
  * @param RK_data Pointer to struct containing the integration arrays
@@ -820,6 +1148,72 @@ void InitializeFFTWPlans(const long int* N) {
 	}
 }
 /**
+ * Function to initialize the system measurables and compute the measurables of the initial conditions
+ */
+void InitializeSystemMeasurables(void) {
+
+	// Set the size of the arrays to twice the number of printing steps to account for extra steps due to adaptive stepping
+	#ifdef __ADAPTIVE_STEP
+	int print_steps = 2 * sys_vars->num_print_steps;
+	#else
+	int print_steps = sys_vars->num_print_steps;
+	#endif
+		
+	// ------------------------
+	// Allocate Memory
+	// ------------------------
+	// Total Energy in the system
+	run_data->tot_energy = (double* )fftw_malloc(sizeof(double) * print_steps);
+	if (run_data->tot_energy == NULL) {
+		fprintf(stderr, "\n[ERROR] --- Unable to allocate memory for the Total Energy \n-->> Exiting!!!\n");
+		exit(1);
+	}	
+
+	// Total Enstrophy
+	run_data->tot_enstr = (double* )fftw_malloc(sizeof(double) * print_steps);
+	if (run_data->tot_enstr == NULL) {
+		fprintf(stderr, "\n[ERROR] --- Unable to allocate memory for the Total Enstrophy \n-->> Exiting!!!\n");
+		exit(1);
+	}	
+
+	// Total Palinstrophy
+	run_data->tot_palin = (double* )fftw_malloc(sizeof(double) * print_steps);
+	if (run_data->tot_palin == NULL) {
+		fprintf(stderr, "\n[ERROR] --- Unable to allocate memory for the Total Palinstrophy \n-->> Exiting!!!\n");
+		exit(1);
+	}	
+
+	// Time
+	#ifdef __TIME
+	if (!(sys_vars->rank)){
+		run_data->time = (double* )fftw_malloc(sizeof(double) * print_steps);
+		if (run_data->time == NULL) {
+			fprintf(stderr, "\n[ERROR] --- Unable to allocate memory for the Time \n-->> Exiting!!!\n");
+			exit(1);
+		}	
+	}
+	#endif
+
+	// ----------------------------
+	// Get Measurables of the ICs
+	// ----------------------------
+	// Total Energy
+	run_data->tot_energy[0] = TotalEnergy();
+
+	// Total Enstrophy
+	run_data->tot_enstr[0] = TotalEnstrophy();
+
+	// Total Palinstrophy
+	run_data->tot_palin[0] = TotalPalinstrophy();
+
+	// Time
+	#ifdef __TIME
+	if (!(sys_vars->rank)) {
+		run_data->time[0] = sys_vars->t0;
+	}
+	#endif
+}
+/**
  * Wrapper function that frees any memory dynamcially allocated in the programme
  * @param RK_data Pointer to a struct contaiing the integraiont arrays
  */
@@ -839,6 +1233,14 @@ void FreeMemory(RK_data_struct* RK_data) {
 	fftw_free(run_data->u_hat);
 	fftw_free(run_data->w);
 	fftw_free(run_data->w_hat);
+	fftw_free(run_data->tot_enstr);
+	fftw_free(run_data->tot_palin);
+	fftw_free(run_data->tot_energy);
+	#ifdef __TIME
+	if (!(sys_vars->rank)){
+		fftw_free(run_data->time);
+	}
+	#endif
 
 	// Free integration variables
 	fftw_free(RK_data->RK1);

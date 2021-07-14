@@ -33,6 +33,17 @@ void ApplyDealiasing(fftw_complex* w_hat, const long int* N, const double norm_f
 // Initialize the system functions
 void InitializeSpaceVariables(double** x, int** k, const long int* N);
 void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, const long int* N);
+double GetMaxData(char* dtype);
+void InitializeSystemMeasurables(void);
+// Timestep
+void GetTimestep(double* dt);
+// Check System
+void SystemCheck(double dt, int iters);
+// System Measurables 
+double TotalEnergy(void);
+double TotalEnstrophy(void);
+double TotalPalinstrophy(void);
+void RecordSystemMeasures(double t, int print_indx);
 // Memory Functions
 void AllocateMemory(const long int* NBatch, RK_data_struct* RK_data);
 void InitializeFFTWPlans(const long int* N);
