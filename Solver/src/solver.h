@@ -26,7 +26,7 @@ void SpectralSolve(void);
 #ifdef __RK4
 void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Nx, RK_data_struct* RK_data);
 #elif defined(__RK5)
-void RK5DPStep(const double dt, const long int* N, const ptrdiff_t local_Nx, RK_data_struct* RK_data);
+void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdiff_t local_Nx, RK_data_struct* RK_data);
 #endif
 void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* u, double* w);
 void ApplyDealiasing(fftw_complex* w_hat, const long int* N, const double norm_fac);
@@ -43,6 +43,8 @@ void SystemCheck(double dt, int iters);
 double TotalEnergy(void);
 double TotalEnstrophy(void);
 double TotalPalinstrophy(void);
+double* EnergySpectrum(int spectrum_size);
+double* EnstrophySpectrum(int spectrum_size);
 void RecordSystemMeasures(double t, int print_indx);
 // Memory Functions
 void AllocateMemory(const long int* NBatch, RK_data_struct* RK_data);

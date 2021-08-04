@@ -293,7 +293,7 @@ Enstrophy for incompressible flows is defined as
 Using (\ref{eq:fourier_decomp}) the enstrophy in Fourier space is given as 
 
 \begin{align}
-	\mathcal{E}(\bfu) &= \int_{0}^{2\pi} \left(\sum_{\mathbf{k}_1\in \mathbb{Z}^2\setminus \mathbf{0}}\hat{\omega}_{\mathbf{k}_1}\e^{\ii \mathbf{k}_1\cdot \mathbf{x}}\right)\left(\sum_{\mathbf{k}_2\in \mathbb{Z}^2\setminus \mathbf{0}}\hat{\omega}_{\mathbf{k}_2}\e^{\ii \mathbf{k}_2\cdot \mathbf{x}}\right)  \mathrm{d}\bfx, \notag \\
+	\mathcal{E}(\omegahat{k}) &= \int_{0}^{2\pi} \left(\sum_{\mathbf{k}_1\in \mathbb{Z}^2\setminus \mathbf{0}}\hat{\omega}_{\mathbf{k}_1}\e^{\ii \mathbf{k}_1\cdot \mathbf{x}}\right)\left(\sum_{\mathbf{k}_2\in \mathbb{Z}^2\setminus \mathbf{0}}\hat{\omega}_{\mathbf{k}_2}\e^{\ii \mathbf{k}_2\cdot \mathbf{x}}\right)  \mathrm{d}\bfx, \notag \\
 	&= \int_{0}^{2\pi}\sum_{\mathbf{k}_1, \bfkn{2}\in \mathbb{Z}^2\setminus \mathbf{0}}\hat{\omega}_{\mathbf{k}_1}\hat{\omega}_{\mathbf{k}_2} \e^{\ii \left(\mathbf{k}_1 + \bfkn{2}\right)\cdot \mathbf{x}}\mathrm{d}\bfx \notag \\
 	&=\sum_{\mathbf{k}_1, \bfkn{2}\in \mathbb{Z}^2\setminus \mathbf{0}}\hat{\omega}_{\mathbf{k}_1}\hat{\omega}_{\mathbf{k}_2} \int_{0}^{2\pi} \e^{\ii \left(\mathbf{k}_1 + \bfkn{2}\right)\cdot \mathbf{x}}\mathrm{d}\bfx \notag \\
 	&= \sum_{\mathbf{k}_1, \bfkn{2}\in \mathbb{Z}^2\setminus \mathbf{0}}\hat{\omega}_{\mathbf{k}_1}\hat{\omega}_{\mathbf{k}_2} \delta_{\bfkn{1}, \bfkn{2}} 4 \pi^2 \notag \\

@@ -110,16 +110,17 @@ void CreateOutputFileWriteICs(const long int* N, double dt) {
 	file_info->COMPLEX_DTYPE = CreateComplexDatatype();
 
 	// Create dimension arrays
-	dset_dims[0] = sys_vars->N[0];
-	dset_dims[1] = sys_vars->N[1] / 2 + 1;
-	slab_dims[0] = sys_vars->local_Nx;
-	slab_dims[1] = sys_vars->N[1] / 2 + 1;
+	dset_dims[0] 	  = sys_vars->N[0];
+	dset_dims[1] 	  = sys_vars->N[1] / 2 + 1;
+	slab_dims[0] 	  = sys_vars->local_Nx;
+	slab_dims[1] 	  = sys_vars->N[1] / 2 + 1;
 	mem_space_dims[0] = sys_vars->local_Nx;
 	mem_space_dims[1] = sys_vars->N[1] / 2 + 1;
 
 	// Write the real space vorticity
 	WriteDataFourier(0.0, 0, group_id, "w_hat", file_info->COMPLEX_DTYPE, dset_dims, slab_dims, mem_space_dims, sys_vars->local_Nx_start, run_data->w_hat);
 	#endif
+	
 
 
 	// ------------------------------------
@@ -339,7 +340,7 @@ void WriteDataFourier(double t, int iters, hid_t group_id, char* dset_name, hid_
 	}
 
 	// Create the file space id for the dataset in the group
-	file_space = H5Dcreate(group_id, dset_name, H5T_NATIVE_DOUBLE, dset_space, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+	file_space = H5Dcreate(group_id, dset_name, dtype, dset_space, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 
 	// -------------------------------
 	// Create Appropriate Hyperslabs

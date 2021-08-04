@@ -180,7 +180,7 @@ void PrintScalarFourier(fftw_complex* data, const long int* N, char* arr_name) {
 	if ( !(sys_vars->rank) ) {
 		for (int i = 0; i < Nx; ++i) {
 			for (int j = 0; j < Ny_Fourier; ++j) {
-				printf("%s[%ld]: %+5.16lf %+5.16lfI\t", arr_name, i * (Ny_Fourier) + j, creal(w_hat0[i * Ny_Fourier + j]), cimag(w_hat0[i * Ny_Fourier + j]));
+				printf("%s[%ld]: %g %gI\t", arr_name, i * (Ny_Fourier) + j, creal(w_hat0[i * Ny_Fourier + j]), cimag(w_hat0[i * Ny_Fourier + j]));
 			}
 			printf("\n");
 		}
@@ -293,6 +293,49 @@ void PrintSpaceVariables(const long int* N) {
 	// Free up memory
 	fftw_free(x0);
 	fftw_free(k0);
+}
+/**
+ * Function used to find the max between two numbers -> used in the Dormand Prince scheme
+ * @param  a Double that will be used to find the max
+ * @param  b Double that will be used to find the max
+ * @return   The max between the two inputs
+ */
+double DPMax(double a, double b) {
+
+	// Initailize max
+	double max;
+
+	// Check Max
+	if (a > b) {
+		max = a;
+	}
+	else {
+		max = b;
+	}
+
+	// Return max
+	return max;
+}
+/**
+ * Function used to find the min between two numbers
+ * @param  a Double that will be used to find the min
+ * @param  b Double that will be used to find the min
+ * @return   The minimum of the two inputs
+ */
+double DPMin(double a, double b) {
+
+	// Initialize min
+	double min;
+
+	if (a < b) {
+		min = a;
+	}
+	else {
+		min = b;
+	}
+
+	// return the result
+	return min;
 }
 // ---------------------------------------------------------------------
 //  End of File

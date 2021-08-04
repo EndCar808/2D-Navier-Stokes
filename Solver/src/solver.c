@@ -31,14 +31,15 @@ static const double RK4_C2 = 0.5, 	  RK4_A21 = 0.5, \
 				  	RK4_C4 = 1.0,                      									   RK4_A43 = 1.0, \
 				              	 	  RK4_B1 = 1.0/6.0, 		RK4_B2  = 1.0/3.0, 		   RK4_B3  = 1.0/3.0, 		RK4_B4 = 1.0/6.0;
 // Define RK5 Dormand Prince variables
-#elif defined(__RK5)
+#elif defined(__RK5) || defined(__DPRK5)
 static const double RK5_C2 = 0.2, 	  RK5_A21 = 0.2, \
 				  	RK5_C3 = 0.3,     RK5_A31 = 3.0/40.0,       RK5_A32 = 0.5, \
 				  	RK5_C4 = 0.8,     RK5_A41 = 44.0/45.0,      RK5_A42 = -56.0/15.0,	   RK5_A43 = 32.0/9.0, \
 				  	RK5_C5 = 8.0/9.0, RK5_A51 = 19372.0/6561.0, RK5_A52 = -25360.0/2187.0, RK5_A53 = 64448.0/6561.0, RK5_A54 = -212.0/729.0, \
 				  	RK5_C6 = 1.0,     RK5_A61 = 9017.0/3168.0,  RK5_A62 = -355.0/33.0,     RK5_A63 = 46732.0/5247.0, RK5_A64 = 49.0/176.0,    RK5_A65 = -5103.0/18656.0, \
 				  	RK5_C7 = 1.0,     RK5_A71 = 35.0/384.0,								   RK5_A73 = 500.0/1113.0,   RK5_A74 = 125.0/192.0,   RK5_A75 = -2187.0/6784.0,    RK5_A76 = 11.0/84.0, \
-				              		  RK5_B1  = 35.0/384.0, 							   RK5_B3  = 500.0/1113.0,   RK5_B4  = 125.0/192.0,   RK5_B5  = -2187.0/6784.0,     RK5_B6  = 11.0/84.0;
+				              		  RK5_B1  = 35.0/384.0, 							   RK5_B3  = 500.0/1113.0,   RK5_B4  = 125.0/192.0,   RK5_B5  = -2187.0/6784.0,    RK5_B6  = 11.0/84.0, \
+				              		  RK5_Bs1 = 5179.0/57600.0, 						   RK5_Bs3 = 7571.0/16695.0, RK5_Bs4 = 393.0/640.0,   RK_Bs5  = -92097.0/339200.0, RK5_Bs6 = 187.0/2100.0, RK5_Bs7 = 1.0/40.0;
 #endif
 // ---------------------------------------------------------------------
 //  Function Definitions
@@ -52,8 +53,8 @@ void SpectralSolve(void) {
 	int tmp;
 	int indx;
 	sys_vars->u0   = "TAYLOR_GREEN";
-	sys_vars->N[0] = 256;
-	sys_vars->N[1] = 256;
+	sys_vars->N[0] = 4;
+	sys_vars->N[1] = 4;
 	herr_t status;
 	const long int N[SYS_DIM] = {sys_vars->N[0], sys_vars->N[1]};
 	const long int NBatch[SYS_DIM] = {sys_vars->N[0], sys_vars->N[1] / 2 + 1};
@@ -84,7 +85,11 @@ void SpectralSolve(void) {
 
 	// Get initial conditions
 	InitialConditions(run_data->w_hat, run_data->u, run_data->u_hat, N);
-		
+	PrintVelocityReal(N);
+	PrintVorticityReal(N);
+	PrintVorticityFourier(N);
+	NonlinearRHSBatch(run_data->w_hat, RK_data->RK1, RK_data->nabla_psi, RK_data->nabla_w);
+	PrintScalarFourier(RK_data->RK1, N, "RHS");
 	// -------------------------------
 	// Integration Variables
 	// -------------------------------
@@ -115,6 +120,7 @@ void SpectralSolve(void) {
 	// Variable to control how ofter to print to screen -> 10% of num time steps
 	int print_update = (sys_vars->num_t_steps >= 10 ) ? (int)((double)sys_vars->num_t_steps * 0.1) : 1;
 
+
 	// -------------------------------
 	// Create & Open Output File
 	// -------------------------------
@@ -128,59 +134,81 @@ void SpectralSolve(void) {
 	//////////////////////////////
 	// Begin Integration
 	//////////////////////////////
+	#ifdef __DPRK5
+	try = 1;
+	double dt_new;
+	#endif
 	int iters          = 1;
 	int save_data_indx = 1;
-	while (t < T) {
+	// while (t < T) {
 
+	// 	// -------------------------------	
+	// 	// Integration Step
+	// 	// -------------------------------
+	// 	#ifdef __RK4
+	// 	RK4Step(dt, N, sys_vars->local_Nx, RK_data);
+	// 	#elif defined(__RK5)
+	// 	RK5DPStep(dt, N, sys_vars->local_Nx, RK_data);
+	// 	#elif defined(__DPRK5)
+	// 	while (try) {
+	// 		// Try a Dormand Prince step and compute the local error
+	// 		RK5DPStep(dt, N, sys_vars->local_Nx, RK_data);
 
-		// -------------------------------	
-		// Integration Step
-		// -------------------------------
-		#ifdef __RK4
-		RK4Step(dt, N, sys_vars->local_Nx, RK_data);
-		#elif defined(__RK5)
-		RK5DPStep(dt, N, sys_vars->local_Nx, RK_data);
-		#endif
-
-		// -------------------------------
-		// Write To File
-		// -------------------------------
-		if (iters % SAVE_EVERY == 0) {
-			// Record System Measurables
-			RecordSystemMeasures(t, save_data_indx);
-
-			// Write the appropriate datasets to file
-			WriteDataToFile(t, dt, save_data_indx);
+	// 		// Compute the new timestep
+	// 		dt_new = dt * DPMin(DP_DELTA_MAX, DPMax(DP_DELTA_MIN, DP_DELTA * pow(1.0 / RK_data->DP_errr, 0.2)))
 			
-			// Update saving data index
-			save_data_indx++;
-		}
+	// 		// If error is bad repeat else move on
+	// 		if (RK_data->DP_err < 1.0) {
+	// 			RK->DP_fails++;
+	// 			dt = dt_new;
+	// 			continue;
+	// 		}
+	// 		else {
+	// 			dt = dt_new;
+	// 			break;
+	// 		}
+	// 	}
+	// 	#endif
 
-		// -------------------------------
-		// Print Update To Screen
-		// -------------------------------
-		#ifdef __PRINT_SCREEN
-		if( !(sys_vars->rank) ) {
-			if (iters % print_update == 0) {
-				printf("Iter: %d/%ld\tt: %1.6lf/%1.3lf\tdt: %g\tE: %g\tZ: %g\tP: %g\n", iters, sys_vars->num_t_steps, t, T, dt, run_data->tot_energy[save_data_indx], run_data->tot_enstr[save_data_indx], run_data->tot_palin[save_data_indx]);
-			}
-		}
-		#endif
+	// 	// -------------------------------
+	// 	// Write To File
+	// 	// -------------------------------
+	// 	if (iters % SAVE_EVERY == 0) {
+	// 		// Record System Measurables
+	// 		RecordSystemMeasures(t, save_data_indx);
 
-		// -------------------------------
-		// Update & System Check
-		// -------------------------------
-		// Update timestep & iteration counter
-		#ifdef __ADAPTIVE_STEP
-		GetTimestep(&t);
-		#else
-		t = iters * dt;
-		#endif
-		iters++;
+	// 		// Write the appropriate datasets to file
+	// 		WriteDataToFile(t, dt, save_data_indx);
+			
+	// 		// Update saving data index
+	// 		save_data_indx++;
+	// 	}
 
-		// Check System: Determine if system has blown up or integration limits reached
-		SystemCheck(t, iters);
-	}
+	// 	// -------------------------------
+	// 	// Print Update To Screen
+	// 	// -------------------------------
+	// 	#ifdef __PRINT_SCREEN
+	// 	if( !(sys_vars->rank) ) {
+	// 		if (iters % print_update == 0) {
+	// 			printf("Iter: %d/%ld\tt: %1.6lf/%1.3lf\tdt: %g\tE: %g\tZ: %g\tP: %g\n", iters, sys_vars->num_t_steps, t, T, dt, run_data->tot_energy[save_data_indx], run_data->tot_enstr[save_data_indx], run_data->tot_palin[save_data_indx]);
+	// 		}
+	// 	}
+	// 	#endif
+
+	// 	// -------------------------------
+	// 	// Update & System Check
+	// 	// -------------------------------
+	// 	// Update timestep & iteration counter
+	// 	#if defined(__ADAPTIVE_STEP) 
+	// 	GetTimestep(&t);
+	// 	#elif !defined(__DPRK5) && !defined(__ADAPTIVE_STEP)
+	// 	t = iters * dt;
+	// 	#endif
+	// 	iters++;
+
+	// 	// Check System: Determine if system has blown up or integration limits reached
+	// 	SystemCheck(t, iters);
+	// }
 	//////////////////////////////
 	// End Integration
 	//////////////////////////////
@@ -198,14 +226,14 @@ void SpectralSolve(void) {
 	FreeMemory(RK_data);
 }
 /**
- * Function to perform a single step of the RK5 Dormand Prince scheme
+ * Function to perform a single step of the RK5 or Dormand Prince scheme
  * @param dt       The current timestep of the system
  * @param N        Array containing the dimensions of the system
  * @param local_Nx Int indicating the local size of the first dimension of the arrays	
  * @param RK_data  Struct pointing the Integration variables: stages, tmp arrays, rhs and arrays needed for NonlinearRHS function
  */
-#ifdef __RK5
-void RK5DPStep(const double dt, const long int* N, const ptrdiff_t local_Nx, RK_data_struct* RK_data) {
+#if defined(__RK5) || defined(__DPRK5)
+void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdiff_t local_Nx, RK_data_struct* RK_data) {
 
 
 	// Initialize vairables
@@ -216,9 +244,11 @@ void RK5DPStep(const double dt, const long int* N, const ptrdiff_t local_Nx, RK_
 	double D_fac;
 	#endif
 	const long int Ny_Fourier = N[1] / 2 + 1;
-
-
-
+	#ifdef __DPRK5
+	const long int Nx = N[0];
+	double dp_ho_step;
+	#endif
+	
 	/////////////////////
 	/// RK STAGES
 	/////////////////////
@@ -279,6 +309,7 @@ void RK5DPStep(const double dt, const long int* N, const ptrdiff_t local_Nx, RK_
 	}
 	// ----------------------- Stage 6
 	NonlinearRHSBatch(RK_data->RK_tmp, RK_data->RK6, RK_data->nabla_psi, RK_data->nabla_w);
+	#ifdef __DPRK5
 	for (int i = 0; i < local_Nx; ++i) {
 		tmp = i * Ny_Fourier;
 		for (int j = 0; j < Ny_Fourier; ++j) {
@@ -288,7 +319,9 @@ void RK5DPStep(const double dt, const long int* N, const ptrdiff_t local_Nx, RK_
 			RK_data->RK_tmp[indx] = run_data->w_hat[indx] + dt * RK5_A71 * RK_data->RK1[indx] + dt * RK5_A73 * RK_data->RK3[indx] + dt * RK5_A74 * RK_data->RK4[indx] + dt * RK5_A75 * RK_data->RK5[indx] + dt * RK5_A76 * RK_data->RK6[indx];
 		}
 	}
-
+	// ----------------------- Stage 6
+	NonlinearRHSBatch(RK_data->RK_tmp, RK_data->RK7, RK_data->nabla_psi, RK_data->nabla_w);
+	#endif
 
 	/////////////////////
 	/// UPDATE STEP
@@ -307,11 +340,43 @@ void RK5DPStep(const double dt, const long int* N, const ptrdiff_t local_Nx, RK_
 			k_sqr = (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 			D_fac = dt * (NU * pow(k_sqr, VIS_POW) + EKMN_ALPHA * pow(k_sqr, EKMN_POW)); 
 
-			// Complete the update step for the nonlinear term
+			// Complete the update step
 			run_data->w_hat[indx] = run_data->w_hat[indx] * ((2 - D_fac) / (2 + D_fac)) + (2 * dt / (2 + D_fac)) * ((RK5_B1 * RK_data->RK1[indx]) + (RK5_B3 * RK_data->RK3[indx]) + (RK5_B4 * RK_data->RK4[indx]) + (RK5_B5 * RK_data->RK5[indx]) + (RK5_B6 * RK_data->RK6[indx]));
+			#endif
+			#ifdef __DPRK5
+			if (iters > 1) {
+				// Get the higher order update step
+				dp_ho_step = run_data->w_hat[indx] + (dt * (RK5_Bs1 * RK_data->RK1[indx]) + dt * (RK5_Bs3 * RK_data->RK3[indx]) + dt * (RK5_Bs4 * RK_data->RK4[indx]) + dt * (RK5_Bs5 * RK_data->RK5[indx]) + dt * (RK5_Bs6 * RK_data->RK6[indx])) + dt * (RK5_Bs7 * RK_data->RK7[indx]));
+
+				// Denominator in the error
+				err_denom = DP_ABS_TOL + DPMax(cabs(RK_data->w_hat_last[indx]), cabs(run_data->w_hat[indx])) * DP_REL_TOL;
+
+				// Compute the sum for the error
+				err_sum += pow((run_data->w_hat[indx] - dp_ho_step) /  err_denom, 2.0);
+			}
 			#endif
 		}
 	}
+	#ifdef __DPRK5
+	if (iters > 1) {
+		// Reduce and sync the error sum across the processes
+		MPI_Allreduce(MPI_IN_PLACE, &err_sum, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+
+		// Compute the error
+		RK_data->DP_err = sqrt(1.0/ (Nx * Ny_Fourier) * err_sum);
+
+		// Record the Fourier vorticity for the next step
+		for (int i = 0; i < local_Nx; ++i) {
+			tmp = i * Ny_Fourier;
+			for (int j = 0; j < Ny_Fourier; ++j) {
+				indx = tmp + j;
+
+				// Record the vorticity
+				RK_data->w_hat_last[indx] = run_data->w_hat[indx];
+			}
+		}
+	}
+	#endif
 }
 #endif
 /**
@@ -572,8 +637,8 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 				indx = (tmp + j);
 
 				// Fill the velocities
-				u[SYS_DIM * indx + 0] = cos(run_data->x[0][i]) * sin(run_data->x[1][j]);
-				u[SYS_DIM * indx + 1] = -sin(run_data->x[0][i]) * cos(run_data->x[1][j]);		
+				u[SYS_DIM * indx + 0] = sin(run_data->x[0][i]) * cos(run_data->x[1][j]);
+				u[SYS_DIM * indx + 1] = -cos(run_data->x[0][i]) * sin(run_data->x[1][j]);		
 			}
 		}
 
@@ -839,7 +904,7 @@ void GetTimestep(double* dt) {
 	// Compute New Timestep
 	// -------------------------------
 	// Find proposed timestep = h_0 * (max{w_hat(0)} / max{w_hat(t)}) -> this ensures that the maximum vorticity by the timestep is constant
-	dt_new = sys_vars->dt * (sys_vars->w_max_init / w_max);	
+	dt_new = (sys_vars->dt) * (sys_vars->w_max_init / w_max);	
 
 	// Gather new timesteps from all processes -> pick the smallest one
 	MPI_Allreduce(MPI_IN_PLACE, &dt_new, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
@@ -856,6 +921,102 @@ void GetTimestep(double* dt) {
 		// Update with new timestep - new timestep is checked for criteria in SystemsCheck() function 
 		(*dt) = dt_new;
 	}
+}
+/**
+ * Function used to compute the energy spectrum of the current iteration. The energy spectrum is defined as all(sum) of the energy contained in concentric annuli in
+ * wavenumber space. 	
+ * @param  spectrum_size Variable used to store the size of the spectrum
+ * @return               Pointer to the computed spectrum
+ */
+double* EnergySpectrum(int spectrum_size) {
+
+	// Initialize variables
+	int tmp;
+	int indx;
+	int spec_indx;
+	double u_hat;
+	double v_hat;
+	fftw_complex k_sqr;
+	ptrdiff_t local_Nx 		  = sys_vars->local_Nx;
+	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
+
+	// ------------------------------------
+	// Allocate Memory
+	// ------------------------------------
+	// Size of the spectrum
+	spectrum_size = (int) sqrt((double) ((sys_vars->N[0] / 2) * (sys_vars->N[0] / 2) + (sys_vars->N[1] / 2) * (sys_vars->N[1] / 2))) + 1; // plus 1 for the 0 mode
+	
+	// Allocate memory
+	double* spectrum = (double* )fftw_malloc(sizeof(double) * spectrum_size);
+	
+	// ------------------------------------
+	// Compute Spectrum
+	// ------------------------------------
+	for (int i = 0; i < local_Nx; ++i) {
+		tmp = i * Ny_Fourier;
+		for (int j = 0; j < Ny_Fourier; ++j) {
+			indx = tmp + j;
+
+			// Compute the prefactor
+			k_sqr = I / (double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j] + 1e-50);
+
+			// Compute Fourier velocities
+			u_hat = k_sqr * ((double) run_data->k[1][j]) * run_data->w_hat[indx];
+			v_hat = -k_sqr * ((double) run_data->k[0][i]) * run_data->w_hat[indx];
+
+			// Get spectrum index -> spectrum is computed by summing over the energy contained in concentric annuli in wavenumber space
+			spec_indx = (int) sqrt((double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]));
+
+			// Update the energy sum for the current mode
+			spectrum[spec_indx] += cabs(u_hat * conj(u_hat)) + cabs(v_hat * conj(v_hat));
+		}
+	}
+
+	// Return spectrum
+	return spectrum;
+}
+/**
+ * Function used to compute the enstrophy spectrum for the current iteration. The enstrophy spectrum is defined as the total enstrophy contained in concentric annuli 
+ * in wavenumber space
+ * @param  spectrum_size The size of the enstrophy spectrum
+ * @return               A pointer to the enstrophy spectrum
+ */
+double* EnstrophySpectrum(int spectrum_size) {
+
+	// Initialize variables
+	int tmp;
+	int indx;
+	int spec_indx;
+	ptrdiff_t local_Nx 		  = sys_vars->local_Nx;
+	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
+
+	// ------------------------------------
+	// Allocate Memory
+	// ------------------------------------
+	// Size of the spectrum
+	spectrum_size = (int) sqrt((double) ((sys_vars->N[0] / 2) * (sys_vars->N[0] / 2) + (sys_vars->N[1] / 2) * (sys_vars->N[1] / 2))) + 1; // plus 1 for the 0 mode
+	
+	// Allocate memory
+	double* spectrum = (double* )fftw_malloc(sizeof(double) * spectrum_size);
+	
+	// ------------------------------------
+	// Compute Spectrum
+	// ------------------------------------
+	for (int i = 0; i < local_Nx; ++i) {
+		tmp = i * Ny_Fourier;
+		for (int j = 0; j < Ny_Fourier; ++j) {
+			indx = tmp + j;
+
+			// Get spectrum index -> spectrum is computed by summing over the energy contained in concentric annuli in wavenumber space
+			spec_indx = (int) sqrt((double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]));
+
+			// Update the sum of the enstrophy in the current mode
+			spectrum[spec_indx] += cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+		}
+	}
+
+	// Return the spectrum
+	return spectrum;
 }
 /**
  * Function to compute the total energy in the system at the current timestep
@@ -904,6 +1065,7 @@ double TotalEnergy(void) {
 		}
 	}
 	
+	// Return result
 	return tot_energy;	
 }
 /**
@@ -936,6 +1098,8 @@ double TotalEnstrophy(void) {
 		}
 	}
 
+	// Return result
+	return tot_enstr;
 }
 /**
  * Function to compute the total palinstrophy of the system at the current timestep
@@ -971,7 +1135,7 @@ double TotalPalinstrophy(void) {
 		}
 	}
 
-
+	// Return result
 	return tot_palin;
 }	
 /**
@@ -1068,49 +1232,61 @@ void AllocateMemory(const long int* NBatch, RK_data_struct* RK_data) {
 	// -------------------------------
 	// Runge-Kutta Integration arrays
 	RK_data->nabla_psi = (double* )fftw_malloc(sizeof(double) * 2 * sys_vars->alloc_local_batch);
-	if (run_data->u_hat == NULL) {
+	if (RK_data->nabla_psi == NULL) {
 		fprintf(stderr, "\n[ERROR] --- Unable to allocate memory for Integration Array [%s] \n-->> Exiting!!!\n", "nabla_psi");
 		exit(1);
 	}
 	RK_data->nabla_w   = (double* )fftw_malloc(sizeof(double) * 2 * sys_vars->alloc_local_batch);
-	if (run_data->u_hat == NULL) {
+	if (RK_data->nabla_w == NULL) {
 		fprintf(stderr, "\n[ERROR] --- Unable to allocate memory for Integration Array [%s] \n-->> Exiting!!!\n", "nabla_w");
 		exit(1);
 	}
 	RK_data->RK1       = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->alloc_local_batch);
-	if (run_data->u_hat == NULL) {
+	if (RK_data->RK1 == NULL) {
 		fprintf(stderr, "\n[ERROR] --- Unable to allocate memory for Integration Array [%s] \n-->> Exiting!!!\n", "RK1");
 		exit(1);
 	}
 	RK_data->RK2       = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->alloc_local_batch);
-	if (run_data->u_hat == NULL) {
+	if (RK_data->RK2 == NULL) {
 		fprintf(stderr, "\n[ERROR] --- Unable to allocate memory for Integration Array [%s] \n-->> Exiting!!!\n", "RK2");
 		exit(1);
 	}
 	RK_data->RK3       = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->alloc_local_batch);
-	if (run_data->u_hat == NULL) {
+	if (RK_data->RK3 == NULL) {
 		fprintf(stderr, "\n[ERROR] --- Unable to allocate memory for Integration Array [%s] \n-->> Exiting!!!\n", "RK3");
 		exit(1);
 	}
 	RK_data->RK4       = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->alloc_local_batch);
-	if (run_data->u_hat == NULL) {
+	if (RK_data->RK4 == NULL) {
 		fprintf(stderr, "\n[ERROR] --- Unable to allocate memory for Integration Array [%s] \n-->> Exiting!!!\n", "RK4");
 		exit(1);
 	}
 	RK_data->RK_tmp    = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->alloc_local_batch);
-	if (run_data->u_hat == NULL) {
+	if (RK_data->RK_tmp == NULL) {
 		fprintf(stderr, "\n[ERROR] --- Unable to allocate memory for Integration Array [%s] \n-->> Exiting!!!\n", "RK_tmp");
 		exit(1);
 	}
 	#ifdef __RK5
 	RK_data->RK5       = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->alloc_local_batch);
-	if (run_data->u_hat == NULL) {
+	if (RK_data->RK5 == NULL) {
 		fprintf(stderr, "\n[ERROR] --- Unable to allocate memory for Integration Array [%s] \n-->> Exiting!!!\n", "RK5");
 		exit(1);
 	}
 	RK_data->RK6       = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->alloc_local_batch);
-	if (run_data->u_hat == NULL) {
+	if (RK_data->RK6 == NULL) {
 		fprintf(stderr, "\n[ERROR] --- Unable to allocate memory for Integration Array [%s] \n-->> Exiting!!!\n", "RK6");
+		exit(1);
+	}
+	#endif
+	#ifdef __DPRK5
+	RK_data->RK7       = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->alloc_local_batch);
+	if (RK_data->RK7 == NULL) {
+		fprintf(stderr, "\n[ERROR] --- Unable to allocate memory for Integration Array [%s] \n-->> Exiting!!!\n", "RK7");
+		exit(1);
+	}
+	RK_data->w_hat_last = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->alloc_local_batch);
+	if (RK_data->w_hat_last == NULL) {
+		fprintf(stderr, "\n[ERROR] --- Unable to allocate memory for Integration Array [%s] \n-->> Exiting!!!\n", "w_hat_last");
 		exit(1);
 	}
 	#endif
@@ -1251,6 +1427,10 @@ void FreeMemory(RK_data_struct* RK_data) {
 	fftw_free(RK_data->RK5);
 	fftw_free(RK_data->RK6);
 	#endif 
+	#ifdef __DPRK5
+	fftw_free(RK_data->RK7);
+	fftw_free(RK_data->w_hat_last);
+	#endif
 	fftw_free(RK_data->RK_tmp);
 	fftw_free(RK_data->nabla_w);
 	fftw_free(RK_data->nabla_psi);

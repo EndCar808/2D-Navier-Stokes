@@ -26,6 +26,8 @@ void PrintScalarFourier(fftw_complex* data, const long int* N, char* arr_name);
 void PrintVectorReal(double* data, const long int* N, char* arr_name1, char* arr_name2);
 void PrintSpaceVariables(const long int* N);
 void PrintScalarReal(double* data, const long int* N, char* arr_name);
+double DPMax(double a, double b);
+double DPMin(double a, double b);
 // ---------------------------------------------------------------------
 //  End of File
 // ---------------------------------------------------------------------

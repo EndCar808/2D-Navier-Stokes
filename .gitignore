@@ -48,3 +48,12 @@ Thumbs.db
 *.mov
 *.wmv
 
+# Data Folder 
+/Data/
+
+# Data files
+*.pdf
+*.h5
+
+# Misc
+/Solver/bin/.*

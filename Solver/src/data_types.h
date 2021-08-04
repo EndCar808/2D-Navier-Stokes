@@ -36,6 +36,7 @@
 #define __NAVIER
 #define __RK4
 // #define __RK5
+// #define __DPRK5
 // #define __ADAPTIVE_STEP
 #define __DEALIAS_23
 // #define __DEALIAS_HOU_LI
@@ -46,9 +47,10 @@
 //  Datasets to Write to File
 // ---------------------------------------------------------------------
 #define __VORT_REAL
-// #define __VORT_FOUR
+#define __VORT_FOUR
 // #define __MODES
 // #define __REALSPACE
+// #define __SPECT
 #define __TIME
 #define __COLLOC_PTS
 #define __WAVELIST
@@ -60,6 +62,12 @@
 #define VIS_POW 1.0
 #define EKMN_ALPHA 0.0
 #define EKMN_POW 0.0
+
+#define DP_ABS_TOL 1e-7
+#define DP_REL_TOL 1e-7
+#define DP_DELTA_MIN 0.01
+#define DP_DELTA_MAX 1.5
+#define DP_DELTA 0.8
 
 #define MIN_STEP_SIZE 1e-10
 #define MAX_ITERS 1e+6
@@ -89,7 +97,7 @@ typedef struct system_vars_struct {
 	double dt;							// Timestep
 	double dx;							// Collocation point spaceing in the x direction
 	double dy;							// Collocation point spacing in the y direction
-	double w_max_init					// Max vorticity of the initial condition
+	double w_max_init;					// Max vorticity of the initial condition
 } system_vars_struct;
 
 // Runtime data struct
@@ -108,15 +116,19 @@ typedef struct runtime_data_struct {
 
 // Runge-Kutta Integration struct
 typedef struct RK_data_struct {
-	fftw_complex* RK1;		// Array to hold the result of the first stage
-	fftw_complex* RK2;		// Array to hold the result of the second stage
-	fftw_complex* RK3;		// Array to hold the result of the third stage
-	fftw_complex* RK4;		// Array to hold the result of the fourth stage
-	fftw_complex* RK5;		// Array to hold the result of the fifth stage of RK5DP scheme
-	fftw_complex* RK6;		// Array to hold the result of the sixth stage of RK5DP scheme
-	fftw_complex* RK_tmp;	// Array to hold the tempory updates to w_hat - input to RHS function
-	double* nabla_psi;		// Batch array the velocities u = d\psi_dy and v = -d\psi_dx
-	double* nabla_w;		// Batch array to hold \nabla\omega - the vorticity derivatives
+	fftw_complex* RK1;		  // Array to hold the result of the first stage
+	fftw_complex* RK2;		  // Array to hold the result of the second stage
+	fftw_complex* RK3;		  // Array to hold the result of the third stage
+	fftw_complex* RK4;		  // Array to hold the result of the fourth stage
+	fftw_complex* RK5;		  // Array to hold the result of the fifth stage of RK5 scheme
+	fftw_complex* RK6;		  // Array to hold the result of the sixth stage of RK5 scheme
+	fftw_complex* RK7; 		  // Array to hold the result of the seventh stage of the Dormand Prince Scheme
+	fftw_complex* RK_tmp;	  // Array to hold the tempory updates to w_hat - input to RHS function
+	fftw_complex* w_hat_last; // Array to hold the values of the Fourier space vorticity from the previous iteration - used in the stepsize control in DP scheme
+	double* nabla_psi;		  // Batch array the velocities u = d\psi_dy and v = -d\psi_dx
+	double* nabla_w;		  // Batch array to hold \nabla\omega - the vorticity derivatives
+	double DP_err; 			  // Variable to hold the error between the embedded methods in the Dormand Prince scheme
+	int DP_fails;
 } RK_data_struct;
 
 // HDF5 file info struct
