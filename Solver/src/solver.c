@@ -53,8 +53,8 @@ void SpectralSolve(void) {
 	int tmp;
 	int indx;
 	sys_vars->u0   = "TAYLOR_GREEN";
-	sys_vars->N[0] = 4;
-	sys_vars->N[1] = 4;
+	sys_vars->N[0] = 8;
+	sys_vars->N[1] = 8;
 	herr_t status;
 	const long int N[SYS_DIM] = {sys_vars->N[0], sys_vars->N[1]};
 	const long int NBatch[SYS_DIM] = {sys_vars->N[0], sys_vars->N[1] / 2 + 1};
@@ -82,12 +82,16 @@ void SpectralSolve(void) {
 	// -------------------------------
 	// Initialize the collocation points and wavenumber space 
 	InitializeSpaceVariables(run_data->x, run_data->k, N);
+	PrintSpaceVariables(N);
 
 	// Get initial conditions
 	InitialConditions(run_data->w_hat, run_data->u, run_data->u_hat, N);
 	PrintVelocityReal(N);
+	PrintVelocityFourier(N);
 	PrintVorticityReal(N);
 	PrintVorticityFourier(N);
+
+
 	NonlinearRHSBatch(run_data->w_hat, RK_data->RK1, RK_data->nabla_psi, RK_data->nabla_w);
 	PrintScalarFourier(RK_data->RK1, N, "RHS");
 	// -------------------------------
@@ -510,6 +514,7 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* u, 
 	// ----------------------------------
 	// Batch transform both fourier velocites to real space
 	fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_batch_c2r), dw_hat_dt, u);
+	PrintVectorReal(u, sys_vars->N, "u", "v");
 
 	// ---------------------------------------------
 	// Compute Fourier Space Vorticity Derivatives
@@ -525,12 +530,14 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* u, 
 			dw_hat_dt[SYS_DIM * indx + 1] = I * ((double) run_data->k[1][j]) * w_hat[indx]; 
 		}
 	}
+	PrintVectorFourier(dw_hat_dt, sys_vars->N, "wh_dx", "wh_dy");
 
 	// ----------------------------------
 	// Transform to Real Space
 	// ----------------------------------
 	// Batch transform both fourier vorticity derivatives to real space
 	fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_batch_c2r), dw_hat_dt, nabla_w);
+	PrintVectorReal(nabla_w, sys_vars->N, "w_dx", "w_dy");
 
 	// -----------------------------------
 	// Perform Convolution in Real Space
@@ -620,6 +627,7 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 
 	// Initialize variables
 	int tmp, indx;
+	const long int Nx         = N[0];
 	const long int Ny 		  = N[1];
 	const long int Ny_Fourier = N[1] / 2 + 1; 
 
@@ -639,6 +647,9 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 				// Fill the velocities
 				u[SYS_DIM * indx + 0] = sin(run_data->x[0][i]) * cos(run_data->x[1][j]);
 				u[SYS_DIM * indx + 1] = -cos(run_data->x[0][i]) * sin(run_data->x[1][j]);		
+
+				// // Fill real space vorticity
+				// run_data->w[indx] = 2.0 * sin(run_data->x[0][i]) * sin(run_data->x[1][j]);
 			}
 		}
 
@@ -657,6 +668,8 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 				w_hat[indx] = I * (run_data->k[0][i] * u_hat[SYS_DIM * (indx) + 1] - run_data->k[1][j] * u_hat[SYS_DIM * (indx) + 0]);
 			}
 		}
+		// Transform what		
+		fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_c2r), w_hat, run_data->w);
 	}
 	else if (!(strcmp(sys_vars->u0, "TESTING"))) {
 		// Initialize temp variables
@@ -667,7 +680,7 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 			for (int j = 0; j < Ny_Fourier; ++j) {
 				indx = tmp + j;
 
-				if (run_data->k[0][i] == 0 || run_data->k[1][j] == 0){
+				if ((run_data->k[0][i] == 0 || run_data->k[1][j] == 0) || (j == Ny / 2 || run_data->k[0][i] == Nx / 2)){
 					// Fill zero modes
 					w_hat[indx] = 0.0 + 0.0 * I;
 				}
@@ -680,6 +693,8 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 				}
 			}
 		}
+		// Transform to Real space to get omega	
+		fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_c2r), w_hat, run_data->w);
 	}
 	else {
 		// Use random initial conditions
@@ -691,13 +706,15 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 				// Fill vorticity
 				w_hat[indx] = rand() * 2.0 * M_PI + rand() * 2.0 * M_PI * I;
 			}
-		}
+		}		
+		// // Transform what		
+		// fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_c2r), w_hat, run_data->w);
 	}
 	
 	// -------------------------------------------------
 	// Initialize the Dealiasing
 	// -------------------------------------------------
-	ApplyDealiasing(w_hat, N, 1.0);
+	// ApplyDealiasing(w_hat, N, 1.0);
 }
 /**
  * Function to initialize the Real space collocation points arrays and Fourier wavenumber arrays

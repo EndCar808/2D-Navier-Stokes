@@ -7,7 +7,7 @@
 #  Compiler flags
 # ---------------------------------------------------------------------
 GCC := mpicc
-CCFLAG := -O3 -W -Wall #-g
+CCFLAG := -O3 -W -Wall -g
 LIBFLAG := -lfftw3_mpi -lfftw3 -lm -lhdf5 -lhdf5_hl #-fopenmp -lpthread -lfftw3_omp
 # GSLFLAG := -lgsl -lgslcblas
 # LAPACKFLAG := -llapacke -llapack -lblas -lgfortran
