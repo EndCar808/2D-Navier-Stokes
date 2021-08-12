@@ -54,7 +54,7 @@ void CreateOutputFileWriteICs(const long int* N, double dt) {
 	// -----------------------------------
 	char file_data[512];
 	sprintf(file_data, "_N[%ld,%ld]_ITERS[%ld].h5", sys_vars->N[0], sys_vars->N[1], sys_vars->num_t_steps);
-	strcpy(file_info->output_file_name,"/work/projects/TurbPhase/Phase_Dynamics_Navier_Stokes/2D_NavierStokes/Data/Test/Test");
+	strcpy(file_info->output_file_name,"../Data/Test/Test"); // /work/projects/TurbPhase/Phase_Dynamics_Navier_Stokes/2D_NavierStokes
 	strcat(file_info->output_file_name, file_data);
 	if ( !(sys_vars->rank) ) {
 		printf("\nOutput File: %s\n\n", file_info->output_file_name);

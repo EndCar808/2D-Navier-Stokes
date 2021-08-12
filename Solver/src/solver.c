@@ -52,15 +52,18 @@ void SpectralSolve(void) {
 	// Initialize variables
 	int tmp;
 	int indx;
-	sys_vars->u0   = "TAYLOR_GREEN";
-	sys_vars->N[0] = 8;
-	sys_vars->N[1] = 8;
+	sys_vars->u0   = "TAYLOR_GREEN_VORT";
+	sys_vars->N[0] = 64;
+	sys_vars->N[1] = 64;
 	herr_t status;
 	const long int N[SYS_DIM] = {sys_vars->N[0], sys_vars->N[1]};
 	const long int NBatch[SYS_DIM] = {sys_vars->N[0], sys_vars->N[1] / 2 + 1};
 	const long int Nx 		  = N[0];
 	const long int Ny 		  = N[1];
 	const long int Ny_Fourier = N[1] / 2 + 1;
+	#ifdef __TESTING
+	double norms[2];
+	#endif
 
 	// Initialize the Runge-Kutta struct
 	struct RK_data_struct* RK_data;	// Initialize pointer to a RK_data_struct
@@ -82,18 +85,18 @@ void SpectralSolve(void) {
 	// -------------------------------
 	// Initialize the collocation points and wavenumber space 
 	InitializeSpaceVariables(run_data->x, run_data->k, N);
-	PrintSpaceVariables(N);
+	// PrintSpaceVariables(N);
 
 	// Get initial conditions
 	InitialConditions(run_data->w_hat, run_data->u, run_data->u_hat, N);
-	PrintVelocityReal(N);
-	PrintVelocityFourier(N);
-	PrintVorticityReal(N);
-	PrintVorticityFourier(N);
+	// PrintVelocityReal(N);
+	// PrintVelocityFourier(N);
+	// PrintVorticityReal(N);
+	// PrintVorticityFourier(N);
 
-
-	NonlinearRHSBatch(run_data->w_hat, RK_data->RK1, RK_data->nabla_psi, RK_data->nabla_w);
-	PrintScalarFourier(RK_data->RK1, N, "RHS");
+	
+	// NonlinearRHSBatch(run_data->w_hat, RK_data->RK1, RK_data->nabla_psi, RK_data->nabla_w);
+	// PrintScalarFourier(RK_data->RK1, N, "RHS");
 	// -------------------------------
 	// Integration Variables
 	// -------------------------------
@@ -108,7 +111,7 @@ void SpectralSolve(void) {
 
 	// Compute integration time variables
 	sys_vars->t0 = 0.0;
-	sys_vars->T  = 0.008;
+	sys_vars->T  = 1.0;
 	double t0    = sys_vars->t0;
 	double t     = t0;
 	double dt    = sys_vars->dt;
@@ -134,7 +137,11 @@ void SpectralSolve(void) {
 	// Inialize system measurables
 	InitializeSystemMeasurables();
 
-
+	// If testing 
+	#ifdef __TESTING
+	TestTaylorGreenVortex(0.0, N, norms);
+	printf("Iter: %d\tt: %1.6lf\t L2 Err: %g\t Linf Err: %g\n", 0, 0.0, norms[0], norms[1]);
+	#endif
 	//////////////////////////////
 	// Begin Integration
 	//////////////////////////////
@@ -144,75 +151,88 @@ void SpectralSolve(void) {
 	#endif
 	int iters          = 1;
 	int save_data_indx = 1;
-	// while (t < T) {
+	while (t < 50 * dt) {
 
-	// 	// -------------------------------	
-	// 	// Integration Step
-	// 	// -------------------------------
-	// 	#ifdef __RK4
-	// 	RK4Step(dt, N, sys_vars->local_Nx, RK_data);
-	// 	#elif defined(__RK5)
-	// 	RK5DPStep(dt, N, sys_vars->local_Nx, RK_data);
-	// 	#elif defined(__DPRK5)
-	// 	while (try) {
-	// 		// Try a Dormand Prince step and compute the local error
-	// 		RK5DPStep(dt, N, sys_vars->local_Nx, RK_data);
+		// -------------------------------	
+		// Integration Step
+		// -------------------------------
+		#ifdef __RK4
+		RK4Step(dt, N, sys_vars->local_Nx, RK_data);
+		#elif defined(__RK5)
+		RK5DPStep(dt, N, sys_vars->local_Nx, RK_data);
+		#elif defined(__DPRK5)
+		while (try) {
+			// Try a Dormand Prince step and compute the local error
+			RK5DPStep(dt, N, sys_vars->local_Nx, RK_data);
 
-	// 		// Compute the new timestep
-	// 		dt_new = dt * DPMin(DP_DELTA_MAX, DPMax(DP_DELTA_MIN, DP_DELTA * pow(1.0 / RK_data->DP_errr, 0.2)))
+			// Compute the new timestep
+			dt_new = dt * DPMin(DP_DELTA_MAX, DPMax(DP_DELTA_MIN, DP_DELTA * pow(1.0 / RK_data->DP_errr, 0.2)))
 			
-	// 		// If error is bad repeat else move on
-	// 		if (RK_data->DP_err < 1.0) {
-	// 			RK->DP_fails++;
-	// 			dt = dt_new;
-	// 			continue;
-	// 		}
-	// 		else {
-	// 			dt = dt_new;
-	// 			break;
-	// 		}
-	// 	}
-	// 	#endif
+			// If error is bad repeat else move on
+			if (RK_data->DP_err < 1.0) {
+				RK->DP_fails++;
+				dt = dt_new;
+				continue;
+			}
+			else {
+				dt = dt_new;
+				break;
+			}
+		}
+		#endif
 
-	// 	// -------------------------------
-	// 	// Write To File
-	// 	// -------------------------------
-	// 	if (iters % SAVE_EVERY == 0) {
-	// 		// Record System Measurables
-	// 		RecordSystemMeasures(t, save_data_indx);
+		// -------------------------------
+		// Write To File
+		// -------------------------------
+		if (iters % SAVE_EVERY == 0) {
+			// Record System Measurables
+			RecordSystemMeasures(t, save_data_indx);
 
-	// 		// Write the appropriate datasets to file
-	// 		WriteDataToFile(t, dt, save_data_indx);
+			// Write the appropriate datasets to file
+			WriteDataToFile(t, dt, save_data_indx);
 			
-	// 		// Update saving data index
-	// 		save_data_indx++;
-	// 	}
+			// Update saving data index
+			save_data_indx++;
+		}
 
-	// 	// -------------------------------
-	// 	// Print Update To Screen
-	// 	// -------------------------------
-	// 	#ifdef __PRINT_SCREEN
-	// 	if( !(sys_vars->rank) ) {
-	// 		if (iters % print_update == 0) {
-	// 			printf("Iter: %d/%ld\tt: %1.6lf/%1.3lf\tdt: %g\tE: %g\tZ: %g\tP: %g\n", iters, sys_vars->num_t_steps, t, T, dt, run_data->tot_energy[save_data_indx], run_data->tot_enstr[save_data_indx], run_data->tot_palin[save_data_indx]);
-	// 		}
-	// 	}
-	// 	#endif
+		// -------------------------------
+		// Update & System Check
+		// -------------------------------
+		// Update timestep & iteration counter
+		#if defined(__ADAPTIVE_STEP) 
+		GetTimestep(&dt);
+		t += dt; 
+		#elif !defined(__DPRK5) && !defined(__ADAPTIVE_STEP)
+		t = iters * dt;
+		#endif
+		iters++;
 
-	// 	// -------------------------------
-	// 	// Update & System Check
-	// 	// -------------------------------
-	// 	// Update timestep & iteration counter
-	// 	#if defined(__ADAPTIVE_STEP) 
-	// 	GetTimestep(&t);
-	// 	#elif !defined(__DPRK5) && !defined(__ADAPTIVE_STEP)
-	// 	t = iters * dt;
-	// 	#endif
-	// 	iters++;
+		// Check System: Determine if system has blown up or integration limits reached
+		SystemCheck(dt, iters);
 
-	// 	// Check System: Determine if system has blown up or integration limits reached
-	// 	SystemCheck(t, iters);
-	// }
+		// -------------------------------
+		// Print Update To Screen
+		// -------------------------------
+		#ifdef __PRINT_SCREEN
+		if( !(sys_vars->rank) ) {	
+				#ifdef __TESTING
+				if (iters % TEST_PRINT == 0) {
+					// Call testing 
+					TestTaylorGreenVortex(t, N, norms);
+					printf("Iter: %d\tt: %1.6lf\t L2 Err: %g\t Linf Err: %g\n", iters, t, norms[0], norms[1]);
+				}
+				#else
+				if (iters % print_update == 0) {
+					// If needed compute system measures for printing to screen
+					if ( iters % SAVE_EVERY != 0) {
+						RecordSystemMeasures(t, save_data_indx);
+					}
+					printf("Iter: %d/%ld\tt: %1.6lf/%1.3lf\tdt: %g\t ----------- \tKE: %1.5lf\tENS: %1.5lf\tPAL: %1.5lf\n", iters, sys_vars->num_t_steps, t, T, dt, run_data->tot_energy[save_data_indx], run_data->tot_enstr[save_data_indx], run_data->tot_palin[save_data_indx]);
+				}
+				#endif
+		}
+		#endif
+	}
 	//////////////////////////////
 	// End Integration
 	//////////////////////////////
@@ -323,7 +343,7 @@ void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdif
 			RK_data->RK_tmp[indx] = run_data->w_hat[indx] + dt * RK5_A71 * RK_data->RK1[indx] + dt * RK5_A73 * RK_data->RK3[indx] + dt * RK5_A74 * RK_data->RK4[indx] + dt * RK5_A75 * RK_data->RK5[indx] + dt * RK5_A76 * RK_data->RK6[indx];
 		}
 	}
-	// ----------------------- Stage 6
+	// ----------------------- Stage 7
 	NonlinearRHSBatch(RK_data->RK_tmp, RK_data->RK7, RK_data->nabla_psi, RK_data->nabla_w);
 	#endif
 
@@ -514,7 +534,7 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* u, 
 	// ----------------------------------
 	// Batch transform both fourier velocites to real space
 	fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_batch_c2r), dw_hat_dt, u);
-	PrintVectorReal(u, sys_vars->N, "u", "v");
+	// PrintVectorReal(u, sys_vars->N, "u", "v");
 
 	// ---------------------------------------------
 	// Compute Fourier Space Vorticity Derivatives
@@ -530,14 +550,14 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* u, 
 			dw_hat_dt[SYS_DIM * indx + 1] = I * ((double) run_data->k[1][j]) * w_hat[indx]; 
 		}
 	}
-	PrintVectorFourier(dw_hat_dt, sys_vars->N, "wh_dx", "wh_dy");
+	// PrintVectorFourier(dw_hat_dt, sys_vars->N, "wh_dx", "wh_dy");
 
 	// ----------------------------------
 	// Transform to Real Space
 	// ----------------------------------
 	// Batch transform both fourier vorticity derivatives to real space
 	fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_batch_c2r), dw_hat_dt, nabla_w);
-	PrintVectorReal(nabla_w, sys_vars->N, "w_dx", "w_dy");
+	// PrintVectorReal(nabla_w, sys_vars->N, "w_dx", "w_dy");
 
 	// -----------------------------------
 	// Perform Convolution in Real Space
@@ -635,7 +655,7 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 	ptrdiff_t local_Nx = sys_vars->local_Nx;
 	
 
-	if(!(strcmp(sys_vars->u0, "TAYLOR_GREEN"))) {
+	if(!(strcmp(sys_vars->u0, "TAYLOR_GREEN_VEL"))) {
 		// ------------------------------------------------
 		// Taylor Green Initial Condition - Real Space
 		// ------------------------------------------------
@@ -645,8 +665,8 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 				indx = (tmp + j);
 
 				// Fill the velocities
-				u[SYS_DIM * indx + 0] = sin(run_data->x[0][i]) * cos(run_data->x[1][j]);
-				u[SYS_DIM * indx + 1] = -cos(run_data->x[0][i]) * sin(run_data->x[1][j]);		
+				u[SYS_DIM * indx + 0] = cos(KAPPA * run_data->x[0][i]) * sin(KAPPA * run_data->x[1][j]);
+				u[SYS_DIM * indx + 1] = -sin(KAPPA * run_data->x[0][i]) * cos(KAPPA * run_data->x[1][j]);		
 
 				// // Fill real space vorticity
 				// run_data->w[indx] = 2.0 * sin(run_data->x[0][i]) * sin(run_data->x[1][j]);
@@ -670,6 +690,49 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 		}
 		// Transform what		
 		fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_c2r), w_hat, run_data->w);
+	}
+	else if(!(strcmp(sys_vars->u0, "TAYLOR_GREEN_VORT"))) {
+		// ------------------------------------------------
+		// Taylor Green Initial Condition - Real Space
+		// ------------------------------------------------
+		for (int i = 0; i < local_Nx; ++i) {
+			tmp = i * (Ny + 2);
+			for (int j = 0; j < Ny; ++j) {
+				indx = (tmp + j);
+
+				// Compute the vorticity of the Taylor Green vortex
+				run_data->w[indx] = 2.0 * KAPPA * cos(KAPPA * run_data->x[0][i]) * cos(KAPPA * run_data->x[1][j]); 
+			}
+		}
+
+		// ---------------------------------------
+		// Transform to Fourier Space
+		// ---------------------------------------
+		fftw_mpi_execute_dft_r2c((sys_vars->fftw_2d_dft_r2c), run_data->w, w_hat);
+	}
+	else if(!(strcmp(sys_vars->u0, "DOUBLE_SHEAR_LAYER"))) {
+		// ------------------------------------------------
+		// Double Shear Lyaer - Real Space Vorticity
+		// ------------------------------------------------
+		for (int i = 0; i < local_Nx; ++i) {
+			tmp = i * (Ny + 2);
+			for (int j = 0; j < Ny; ++j) {
+				indx = (tmp + j);
+
+				// Compute the vorticity of the double shear layer
+				if (run_data->x[1][j] <= M_PI) {
+					run_data->w[indx] = DELTA * cos(run_data->x[0][i]) - SIGMA / pow(cosh(SIGMA * (run_data->x[1][j] - 0.5 * M_PI)), 2.0); 
+				}
+				else {
+					run_data->w[indx] = DELTA * cos(run_data->x[0][i]) + SIGMA / pow(cosh(SIGMA * (1.5 * M_PI - run_data->x[1][j])), 2.0); 
+				}
+			}
+		}
+
+		// ---------------------------------------
+		// Transform to Fourier Space
+		// ---------------------------------------
+		fftw_mpi_execute_dft_r2c((sys_vars->fftw_2d_dft_r2c), run_data->w, w_hat);
 	}
 	else if (!(strcmp(sys_vars->u0, "TESTING"))) {
 		// Initialize temp variables
@@ -890,7 +953,7 @@ void SystemCheck(double dt, int iters) {
 	// Check Stopping Criteria 
 	// -------------------------------
 	if (w_max >= MAX_VORT_LIM)	{
-		fprintf(stderr, "\n[SOVLER FAILURE] --- System has reached maximum Vorticity limt at Iter: %d!\n-->> Exiting!!!n", iters);
+		fprintf(stderr, MAGENTA"\n[SOVLER FAILURE]" RESET" --- System has reached maximum Vorticity limt at Iter: %d!\n-->> Exiting!!!n", iters);
 		exit(1);
 	}
 	else if (dt <= MIN_STEP_SIZE) {
@@ -909,17 +972,67 @@ void SystemCheck(double dt, int iters) {
 void GetTimestep(double* dt) {
 
 	// Initialize variables
+	int tmp;
+	int indx;
 	double dt_new;
 	double w_max;
-
-	// -------------------------------
-	// Get Current Max Vorticity 
-	// -------------------------------
-	w_max = GetMaxData("VORT");
 	
 	// -------------------------------
 	// Compute New Timestep
 	// -------------------------------
+	#ifdef __CFL_STEP
+	// -------------------------------
+	// Compute the Velocity
+	// -------------------------------
+	fftw_complex k_sqr;
+
+	// Compute the velocity in Fourier space
+	for (int i = 0; i < sys_vars->local_Nx; ++i) {
+		tmp = i * sys_vars->N[1] / 2 + 1;
+		for (int j = 0; j < sys_vars->N[1] / 2 + 1; ++j) {
+			indx = tmp + j;
+
+			// Compute the factor
+			k_sqr = I / (double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j] + (double) 1e-50);
+
+			// compute the velocity in Fourier space
+			run_data->u_hat[SYS_DIM * indx + 0] = ((double) run_data->k[1][j]) * k_sqr * run_data->w_hat[indx];
+			run_data->u_hat[SYS_DIM * indx + 1] = -((double) run_data->k[0][i]) * k_sqr * run_data->w_hat[indx];
+		}
+	}
+
+	// Transform back to Fourier space
+	fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_batch_c2r), run_data->u_hat, run_data->u);
+
+	// -------------------------------
+	// Find the Times Scales 
+	// -------------------------------
+	// Find the convective scales
+	double scales_convect = 0.0;
+	for (int i = 0; i < sys_vars->local_Nx; ++i) {
+		tmp = i * sys_vars->N[1] / 2 + 1;
+		for (int j = 0; j < sys_vars->N[1] / 2 + 1; ++j) {
+			indx = tmp + j;
+
+			scales_convect = fmax(M_PI * (fabs(run_data->u[SYS_DIM * indx + 0]) / sys_vars->dx + fabs(run_data->u[SYS_DIM * indx + 1]) / sys_vars->dy), scales_convect);
+		}
+	}
+	// Gather the maximum of the convective scales
+	MPI_Allreduce(MPI_IN_PLACE, &scales_convect, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+
+	// Find the diffusive scales
+	double scales_diff = pow(M_PI, 2.0) * (NU / pow(sys_vars->dx, 2.0) + NU / pow(sys_vars->dy, 2.0));
+
+	// -------------------------------
+	// Update Timestep
+	// -------------------------------
+	(* dt) = CFL_CONST / (scales_convect + scales_diff);
+	#else
+	// -------------------------------
+	// Get Current Max Vorticity 
+	// -------------------------------
+	w_max = GetMaxData("VORT");
+
 	// Find proposed timestep = h_0 * (max{w_hat(0)} / max{w_hat(t)}) -> this ensures that the maximum vorticity by the timestep is constant
 	dt_new = (sys_vars->dt) * (sys_vars->w_max_init / w_max);	
 
@@ -938,6 +1051,69 @@ void GetTimestep(double* dt) {
 		// Update with new timestep - new timestep is checked for criteria in SystemsCheck() function 
 		(*dt) = dt_new;
 	}
+	#endif
+}
+/**
+ * Function to test the code against the Taylor-Green vortex solution
+ * @param t The current time of the system - used to compute the exact solution
+ * @param N Array containing the dimensions of the system
+ * @return  Returns a pointer to an array holding the L2 and Linf norms
+ */
+void TestTaylorGreenVortex(const double t, const long int* N, double* norms) {
+
+	// Initialize variables
+	int tmp;
+	int indx;
+	const long int Nx         = N[0];
+	const long int Ny         = N[1];
+	const long int Ny_Fourier = Ny / 2 + 1;
+	double norm_const = 1.0 / (double)(Nx * Ny);
+	double linf_norm  = 0.0;
+	double l2_norm    = 0.0;
+	double tg_exact;
+	double abs_err;
+
+	// --------------------------------
+	// Get the Real Space Vorticity
+	// --------------------------------
+	// Transform back to Fourier space
+	fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_c2r), run_data->w_hat, run_data->w);
+	
+	// --------------------------------
+	// Compute The Error
+	// --------------------------------
+	for (int i = 0; i < sys_vars->local_Nx; ++i) {
+		tmp = i * (Ny + 2);
+		for (int j = 0; j < Ny; ++j) {
+			indx = tmp + j;
+
+			// Compute the exact solution
+			tg_exact = 2.0 * KAPPA * cos(KAPPA * run_data->x[0][i]) * cos(KAPPA * run_data->x[1][j]) * exp(-pow(KAPPA, 2.0) * NU * t);
+
+			// Get the absolute error
+			abs_err = fabs(run_data->w[indx] * norm_const - tg_exact);
+
+			// Update L2-norm sum
+			l2_norm += pow(abs_err, 2.0);
+
+			// Update the Linf-norm 
+			linf_norm = fmax(abs_err, linf_norm);
+		}
+	}	
+
+	// // Gather the norms from each process
+	MPI_Allreduce(MPI_IN_PLACE, &l2_norm, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+	MPI_Allreduce(MPI_IN_PLACE, &linf_norm, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+
+	// // Compute the L2-norm
+	l2_norm = sqrt((1.0 / (Nx * Ny)) * l2_norm);
+
+
+	// --------------------------------
+	// Return results
+	// --------------------------------
+	norms[0] = l2_norm;
+	norms[1] = linf_norm;
 }
 /**
  * Function used to compute the energy spectrum of the current iteration. The energy spectrum is defined as all(sum) of the energy contained in concentric annuli in
@@ -1347,10 +1523,15 @@ void InitializeSystemMeasurables(void) {
 
 	// Set the size of the arrays to twice the number of printing steps to account for extra steps due to adaptive stepping
 	#ifdef __ADAPTIVE_STEP
-	int print_steps = 2 * sys_vars->num_print_steps;
+	#ifdef __CFL_STEP
+	sys_vars->num_print_steps = 3 * sys_vars->num_print_steps;
 	#else
-	int print_steps = sys_vars->num_print_steps;
+	sys_vars->num_print_steps = 2 * sys_vars->num_print_steps;
 	#endif
+	#else
+	sys_vars->num_print_steps = sys_vars->num_print_steps;
+	#endif
+	int print_steps = sys_vars->num_print_steps;
 		
 	// ------------------------
 	// Allocate Memory

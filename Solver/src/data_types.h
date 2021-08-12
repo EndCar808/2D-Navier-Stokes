@@ -28,7 +28,14 @@
 	({fprintf(stderr, "ERROR ("__FILE__":%d) -- %s\n", __LINE__, strerror(errno)); \
 	exit(-1);-1;}) : __val; })
 
-
+// For coloured printing to screen
+#define RED     "\x1b[31m"
+#define GREEN   "\x1b[32m"
+#define YELLOW  "\x1b[33m"
+#define BLUE    "\x1b[34m"
+#define MAGENTA "\x1b[35m"
+#define CYAN    "\x1b[36m"
+#define RESET   "\x1b[0m"
 // ---------------------------------------------------------------------
 //  Integration Functionality
 // ---------------------------------------------------------------------
@@ -37,11 +44,15 @@
 #define __RK4
 // #define __RK5
 // #define __DPRK5
-// #define __ADAPTIVE_STEP
+#define __ADAPTIVE_STEP
+#define __CFL_STEP
 #define __DEALIAS_23
 // #define __DEALIAS_HOU_LI
 #define __PRINT_SCREEN
 #define SAVE_EVERY 10
+
+#define __TESTING
+#define TEST_PRINT 1
 
 // ---------------------------------------------------------------------
 //  Datasets to Write to File
@@ -58,7 +69,7 @@
 //  Global Variables
 // ---------------------------------------------------------------------
 #define SYS_DIM 2
-#define NU 0.01
+#define NU 0.001
 #define VIS_POW 1.0
 #define EKMN_ALPHA 0.0
 #define EKMN_POW 0.0
@@ -68,6 +79,12 @@
 #define DP_DELTA_MIN 0.01
 #define DP_DELTA_MAX 1.5
 #define DP_DELTA 0.8
+
+#define CFL_CONST 1.7
+
+#define KAPPA 1.0
+#define SIGMA 15.0 / M_PI
+#define DELTA 0.005
 
 #define MIN_STEP_SIZE 1e-10
 #define MAX_ITERS 1e+6
