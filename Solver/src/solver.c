@@ -151,7 +151,7 @@ void SpectralSolve(void) {
 	#endif
 	int iters          = 1;
 	int save_data_indx = 1;
-	while (t < 50 * dt) {
+	while (t < 500 * dt) {
 
 		// -------------------------------	
 		// Integration Step
@@ -569,7 +569,7 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* u, 
 			indx = tmp + j; 
  			
  			// Perform multiplication of the nonlinear term 
- 			nonlinterm[indx] = -1.0 * ((u[SYS_DIM * indx + 0] * nabla_w[SYS_DIM * indx + 0]) + (u[SYS_DIM * indx + 1] * nabla_w[SYS_DIM * indx + 1]));
+ 			nonlinterm[indx] = ((u[SYS_DIM * indx + 0] * nabla_w[SYS_DIM * indx + 0]) + (u[SYS_DIM * indx + 1] * nabla_w[SYS_DIM * indx + 1]));
  		}
  	}
 
