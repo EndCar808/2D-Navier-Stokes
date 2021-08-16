@@ -53,8 +53,8 @@ void SpectralSolve(void) {
 	int tmp;
 	int indx;
 	sys_vars->u0   = "TAYLOR_GREEN_VORT";
-	sys_vars->N[0] = 64;
-	sys_vars->N[1] = 64;
+	sys_vars->N[0] = 128;
+	sys_vars->N[1] = 128;
 	herr_t status;
 	const long int N[SYS_DIM] = {sys_vars->N[0], sys_vars->N[1]};
 	const long int NBatch[SYS_DIM] = {sys_vars->N[0], sys_vars->N[1] / 2 + 1};
@@ -93,6 +93,15 @@ void SpectralSolve(void) {
 	// PrintVelocityFourier(N);
 	// PrintVorticityReal(N);
 	// PrintVorticityFourier(N);
+	
+
+	for (int i = 0; i < 5; ++i)
+	{
+		for (int j = 0; j < 5; ++j)
+		{
+			printf("wh[%d]: %1.16lf %1.16lf I\n", i * Ny_Fourier + j, creal(run_data->w_hat[i * Ny_Fourier + j]), cimag(run_data->w_hat[i * Ny_Fourier + j]));
+		}
+	}
 
 	
 	// NonlinearRHSBatch(run_data->w_hat, RK_data->RK1, RK_data->nabla_psi, RK_data->nabla_w);
@@ -151,7 +160,7 @@ void SpectralSolve(void) {
 	#endif
 	int iters          = 1;
 	int save_data_indx = 1;
-	while (t < 500 * dt) {
+	while (t < 10 * dt) {
 
 		// -------------------------------	
 		// Integration Step
@@ -1088,7 +1097,7 @@ void TestTaylorGreenVortex(const double t, const long int* N, double* norms) {
 			indx = tmp + j;
 
 			// Compute the exact solution
-			tg_exact = 2.0 * KAPPA * cos(KAPPA * run_data->x[0][i]) * cos(KAPPA * run_data->x[1][j]) * exp(-pow(KAPPA, 2.0) * NU * t);
+			tg_exact = 2.0 * KAPPA * cos(KAPPA * run_data->x[0][i]) * cos(KAPPA * run_data->x[1][j]) * exp(-2.0 * pow(KAPPA, 2.0) * NU * t);
 
 			// Get the absolute error
 			abs_err = fabs(run_data->w[indx] * norm_const - tg_exact);
