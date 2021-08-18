@@ -170,7 +170,7 @@ void PrintVelocityFourier(const long int* N) {
 
 		for (int i = 0; i < Nx; ++i) {
 			for (int j = 0; j < Ny_Fourier; ++j) {
-				printf("vh[%ld]: %+5.10lf %+5.10lfI\t", i * (Ny_Fourier) + j, creal(u_hat0[SYS_DIM * (i * Ny_Fourier + j) + 1]), cimag(u_hat0[SYS_DIM * (i * Ny_Fourier + j) + 1]));
+				printf("vh[%ld]: %+5.10lf %+5.10lf I\t", i * (Ny_Fourier) + j, creal(u_hat0[SYS_DIM * (i * Ny_Fourier + j) + 1]), cimag(u_hat0[SYS_DIM * (i * Ny_Fourier + j) + 1]));
 			}
 			printf("\n");
 		}
@@ -206,9 +206,8 @@ void PrintScalarFourier(fftw_complex* data, const long int* N, char* arr_name) {
 	if ( !(sys_vars->rank) ) {
 		for (int i = 0; i < Nx; ++i) {
 			for (int j = 0; j < Ny_Fourier; ++j) {
-				printf("%s[%ld]: %g %gI\t", arr_name, i * (Ny_Fourier) + j, creal(w_hat0[i * Ny_Fourier + j]), cimag(w_hat0[i * Ny_Fourier + j]));
+				printf("%s[%ld]: %1.16lf %1.16lf I\n", arr_name, i * (Ny_Fourier) + j, creal(w_hat0[i * Ny_Fourier + j]), cimag(w_hat0[i * Ny_Fourier + j]));
 			}
-			printf("\n");
 		}
 		printf("\n\n");
 	}
@@ -242,9 +241,8 @@ void PrintScalarReal(double* data, const long int* N, char* arr_name) {
 	if ( !(sys_vars->rank) ) {
 		for (int i = 0; i < Nx; ++i) {
 			for (int j = 0; j < Ny; ++j) {
-				printf("%s[%ld]: %+5.16lf\t", arr_name, i * (Ny) + j, w_hat0[i * (Ny + 2) + j]);
+				printf("%s[%ld]: %g\n", arr_name, i * (Ny) + j, w_hat0[i * (Ny + 2) + j]);
 			}
-			printf("\n");
 		}
 		printf("\n\n");
 	}
@@ -279,17 +277,15 @@ void PrintVectorReal(double* data, const long int* N, char* arr_name1, char* arr
 	if ( !(sys_vars->rank) ) {
 		for (int i = 0; i < Nx; ++i) {
 			for (int j = 0; j < Ny; ++j) {
-				printf("%s[%ld]: %+5.16lf\t", arr_name1, i * (Ny) + j, u0[SYS_DIM * (i * (Ny + 2) + j) + 0]);
+				printf("%s[%ld]: %+5.16lf\n", arr_name1, i * (Ny) + j, u0[SYS_DIM * (i * (Ny + 2) + j) + 0]);
 			}
-			printf("\n");
 		}
 		printf("\n\n");
 
 		for (int i = 0; i < Nx; ++i) {
 			for (int j = 0; j < Ny; ++j) {
-				printf("%s[%ld]: %+5.16lf\t", arr_name2, i * (Ny) + j, u0[SYS_DIM * (i * (Ny + 2) + j) + 1]);
+				printf("%s[%ld]: %+5.16lf\n", arr_name2, i * (Ny) + j, u0[SYS_DIM * (i * (Ny + 2) + j) + 1]);
 			}
-			printf("\n");
 		}
 		printf("\n\n");
 	}
@@ -314,22 +310,20 @@ void PrintVectorFourier(fftw_complex* data, const long int* N, char* arr_name1, 
 
 	// Gather all the local arrays into u_hat0 and v_hat0
 	MPI_Gather(data, sys_vars->local_Nx * (Ny_Fourier) * SYS_DIM, MPI_C_DOUBLE_COMPLEX, u_hat0, sys_vars->local_Nx * (Ny_Fourier)* SYS_DIM, MPI_C_DOUBLE_COMPLEX, 0, MPI_COMM_WORLD);
-	
+
 	// On the master rank print the result
 	if ( !(sys_vars->rank) ) {
 		for (int i = 0; i < Nx; ++i) {
 			for (int j = 0; j < Ny_Fourier; ++j) {
-				printf("%s[%ld]: %+5.10lf %+5.10lfI\t", arr_name1, i * (Ny_Fourier) + j, creal(u_hat0[SYS_DIM * (i * (Ny_Fourier) + j) + 0]), cimag(u_hat0[SYS_DIM * (i * (Ny_Fourier) + j) + 0]));
+				printf("%s[%ld]: %5.16lf %5.16lf I\n", arr_name1, i * (Ny_Fourier) + j, creal(u_hat0[SYS_DIM * (i * (Ny_Fourier) + j) + 0]), cimag(u_hat0[SYS_DIM * (i * (Ny_Fourier) + j) + 0]));
 			}
-			printf("\n");
 		}
 		printf("\n\n");
 
 		for (int i = 0; i < Nx; ++i) {
 			for (int j = 0; j < Ny_Fourier; ++j) {
-				printf("%s[%ld]: %+5.10lf %+5.10lfI\t", arr_name2, i * (Ny_Fourier) + j, creal(u_hat0[SYS_DIM * (i * (Ny_Fourier) + j) + 1]), cimag(u_hat0[SYS_DIM * (i * (Ny_Fourier) + j) + 0]));
+				printf("%s[%ld]: %5.16lf %5.16lf I\n", arr_name2, i * (Ny_Fourier) + j, creal(u_hat0[SYS_DIM * (i * (Ny_Fourier) + j) + 1]), cimag(u_hat0[SYS_DIM * (i * (Ny_Fourier) + j) + 0]));
 			}
-			printf("\n");
 		}
 		printf("\n\n");
 	}

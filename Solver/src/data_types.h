@@ -49,10 +49,10 @@
 #define __DEALIAS_23
 // #define __DEALIAS_HOU_LI
 #define __PRINT_SCREEN
-#define SAVE_EVERY 10
+#define SAVE_EVERY 1000
 
 #define __TESTING
-#define TEST_PRINT 1
+#define TEST_PRINT 100
 
 // ---------------------------------------------------------------------
 //  Datasets to Write to File
@@ -69,7 +69,7 @@
 //  Global Variables
 // ---------------------------------------------------------------------
 #define SYS_DIM 2
-#define NU 0.001
+#define NU 1.0
 #define VIS_POW 1.0
 #define EKMN_ALPHA 0.0
 #define EKMN_POW 0.0
@@ -80,7 +80,7 @@
 #define DP_DELTA_MAX 1.5
 #define DP_DELTA 0.8
 
-#define CFL_CONST 1.7
+#define CFL_CONST 1.73205080757 // = sqrt(3)
 
 #define KAPPA 1.0
 #define SIGMA 15.0 / M_PI

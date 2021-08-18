@@ -29,7 +29,7 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Nx, RK_da
 void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdiff_t local_Nx, RK_data_struct* RK_data);
 #endif
 void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* u, double* w);
-void ApplyDealiasing(fftw_complex* w_hat, const long int* N, const double norm_fac);
+void ApplyDealiasing(fftw_complex* w_hat, const long int* N);
 // Initialize the system functions
 void InitializeSpaceVariables(double** x, int** k, const long int* N);
 void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, const long int* N);
