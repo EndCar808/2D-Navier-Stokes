@@ -30,10 +30,15 @@
 void CreateOutputFileWriteICs(const long int* N, double dt) {
 
 	// Initialize variabeles
+	const long int Nx 		  = N[0];
+	const long int Ny 		  = N[1];
+	const long int Ny_Fourier = N[1] / 2 + 1;
 	hid_t group_id;
 	char group_name[128];
 	herr_t status;
 	hid_t plist_id;
+	int tmp;
+	int indx;
 	
 	///////////////////////////
 	/// Create & Open File
@@ -53,7 +58,7 @@ void CreateOutputFileWriteICs(const long int* N, double dt) {
 	// Create Output Directory and Path
 	// -----------------------------------
 	char file_data[512];
-	sprintf(file_data, "_N[%ld,%ld]_ITERS[%ld].h5", sys_vars->N[0], sys_vars->N[1], sys_vars->num_t_steps);
+	sprintf(file_data, "_N[%ld,%ld]_ITERS[%ld].h5", Nx, Ny, sys_vars->num_t_steps);
 	strcpy(file_info->output_file_name,"../Data/Test/Test"); // /work/projects/TurbPhase/Phase_Dynamics_Navier_Stokes/2D_NavierStokes
 	strcat(file_info->output_file_name, file_data);
 	if ( !(sys_vars->rank) ) {
@@ -93,14 +98,23 @@ void CreateOutputFileWriteICs(const long int* N, double dt) {
 	hsize_t mem_space_dims[Dims2D];   // Array to hold the dimensions of the memoray space - for real data this will be different to slab_dims due to 0 padding
 
 	#ifdef __VORT_REAL
-	// Transform vorticity back to real space
+	// Transform vorticity back to real space and normalize
 	fftw_mpi_execute_dft_c2r(sys_vars->fftw_2d_dft_c2r, run_data->w_hat, run_data->w);
+	for (int i = 0; i < sys_vars->local_Nx; ++i) {
+		tmp = i * (Ny + 2);
+		for (int j = 0; j < Ny; ++j) {
+			indx = tmp + j;
+
+			// Normalize
+			run_data->w[indx] *= 1.0 / (double) (Nx * Ny);
+		}
+	}
 
 	// Specify dataset dimensions
 	slab_dims[0]      = sys_vars->local_Nx;
-	slab_dims[1]      = sys_vars->N[1];
+	slab_dims[1]      = Ny;
 	mem_space_dims[0] = sys_vars->local_Nx;
-	mem_space_dims[1] = sys_vars->N[1] + 2;
+	mem_space_dims[1] = Ny + 2;
 
 	// Write the real space vorticity
 	WriteDataReal(0.0, 0, group_id, "w", H5T_NATIVE_DOUBLE, (hsize_t* )sys_vars->N, slab_dims, mem_space_dims, sys_vars->local_Nx_start, run_data->w);
@@ -110,12 +124,12 @@ void CreateOutputFileWriteICs(const long int* N, double dt) {
 	file_info->COMPLEX_DTYPE = CreateComplexDatatype();
 
 	// Create dimension arrays
-	dset_dims[0] 	  = sys_vars->N[0];
-	dset_dims[1] 	  = sys_vars->N[1] / 2 + 1;
+	dset_dims[0] 	  = Nx;
+	dset_dims[1] 	  = Ny_Fourier;
 	slab_dims[0] 	  = sys_vars->local_Nx;
-	slab_dims[1] 	  = sys_vars->N[1] / 2 + 1;
+	slab_dims[1] 	  = Ny_Fourier;
 	mem_space_dims[0] = sys_vars->local_Nx;
-	mem_space_dims[1] = sys_vars->N[1] / 2 + 1;
+	mem_space_dims[1] = Ny_Fourier;
 
 	// Write the real space vorticity
 	WriteDataFourier(0.0, 0, group_id, "w_hat", file_info->COMPLEX_DTYPE, dset_dims, slab_dims, mem_space_dims, sys_vars->local_Nx_start, run_data->w_hat);
@@ -143,6 +157,8 @@ void CreateOutputFileWriteICs(const long int* N, double dt) {
 void WriteDataToFile(double t, double dt, long int iters) {
 
 	// Initialize Variables
+	int tmp;
+	int indx;
 	char group_name[128];
 	const long int Nx 		  = sys_vars->N[0];
 	const long int Ny 		  = sys_vars->N[1];
@@ -195,8 +211,17 @@ void WriteDataToFile(double t, double dt, long int iters) {
 	// Write Data to File
 	// -------------------------------
 	#ifdef __VORT_REAL
-	// Transform Fourier space vorticiy to real space
+	// Transform Fourier space vorticiy to real space and normalize
 	fftw_mpi_execute_dft_c2r(sys_vars->fftw_2d_dft_c2r, run_data->w_hat, run_data->w);
+	for (int i = 0; i < sys_vars->local_Nx; ++i) {
+		tmp = i * (Ny + 2);
+		for (int j = 0; j < Ny; ++j) {
+			indx = tmp + j;
+
+			// Normalize
+			run_data->w[indx] *= 1.0 / (double) (Nx * Ny);
+		}
+	}
 
 	// Create dimension arrays
 	slab_dims[0]      = sys_vars->local_Nx;
@@ -216,6 +241,16 @@ void WriteDataToFile(double t, double dt, long int iters) {
 
 	// Write the real space vorticity
 	WriteDataFourier(t, (int)iters, group_id, "w_hat", file_info->COMPLEX_DTYPE, dset_dims, slab_dims, slab_dims, sys_vars->local_Nx_start, run_data->w_hat);
+	#endif
+	#ifdef __TESTING
+	// Create dimension arrays
+	slab_dims[0]      = sys_vars->local_Nx;
+	slab_dims[1]      = Ny;
+	mem_space_dims[0] = sys_vars->local_Nx;
+	mem_space_dims[1] = Ny + 2;
+
+	// Write the real space vorticity
+	WriteDataReal(t, (int)iters, group_id, "TGSoln", H5T_NATIVE_DOUBLE, (hsize_t* )sys_vars->N, slab_dims, mem_space_dims, sys_vars->local_Nx_start, run_data->tg_soln);	
 	#endif
 
 	// -------------------------------

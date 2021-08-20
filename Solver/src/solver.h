@@ -48,6 +48,7 @@ double* EnstrophySpectrum(int spectrum_size);
 void RecordSystemMeasures(double t, int print_indx);
 // Testing
 void TestTaylorGreenVortex(const double t, const long int* N, double* norms);
+void TaylorGreenSoln(const double t, const long int* N);
 // Memory Functions
 void AllocateMemory(const long int* NBatch, RK_data_struct* RK_data);
 void InitializeFFTWPlans(const long int* N);

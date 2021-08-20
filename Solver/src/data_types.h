@@ -49,10 +49,10 @@
 #define __DEALIAS_23
 // #define __DEALIAS_HOU_LI
 #define __PRINT_SCREEN
-#define SAVE_EVERY 1000
+#define SAVE_EVERY 100
 
 #define __TESTING
-#define TEST_PRINT 100
+#define TEST_PRINT 10
 
 // ---------------------------------------------------------------------
 //  Datasets to Write to File
@@ -129,6 +129,7 @@ typedef struct runtime_data_struct {
 	double* tot_enstr;		 // Array to hold the total entrophy over the simulation
 	double* tot_palin;		 // Array to hold the total palinstrophy over the simulaiotns
 	double* time;			 // Array to hold the simulation times
+	double* tg_soln;			 // Array for computing the Taylor Green vortex solution
 } runtime_data_struct;
 
 // Runge-Kutta Integration struct
