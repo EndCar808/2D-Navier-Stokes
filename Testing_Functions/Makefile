@@ -6,3 +6,6 @@ rhs:
 
 dealias:
 	mpicc  dealiasing.c -o test_dealias -lfftw3_mpi -lfftw3 -lm
+
+batch_transform:
+	mpicc  test_batch_mpi_transform.c -o test_batch_transform -lfftw3_mpi -lfftw3 -lm

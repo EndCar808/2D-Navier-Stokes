@@ -1,8 +1,11 @@
+#!/usr/bin/env python    
+# line above specifies which program should be called to run this script - called shebang
+# the way it is called above (and not #!/user/bin/python) ensures portability amongst Unix distros
 ######################
 ##  Library Imports ##
 ######################
 import matplotlib as mpl
-mpl.use('Agg') # Use this backend for writing plots to file
+# mpl.use('PDF') # Use this backend for writing plots to file
 mpl.rcParams['text.usetex'] = True
 mpl.rcParams['font.family'] = 'serif'
 mpl.rcParams['font.serif']  = 'Computer Modern Roman'
@@ -31,14 +34,14 @@ def plot_snaps(i, w, w_hat, x, y, t, w_min, w_max, kx, ky, kx_max, time_t, tot_e
     print("SNAP: {}".format(i))
 
     ## Create Figure
-    fig = plt.figure(figsize = (16, 8), tight_layout = False)
-    gs  = GridSpec(3, 3, hspace = 0.4, wspace = 0.4)
+    fig = plt.figure(figsize = (16, 8))
+    gs  = GridSpec(3, 2, hspace = 0.4, wspace = 0.4)
 
     ##-------------------------
     ## Plot vorticity   
     ##-------------------------
-    ax1 = fig.add_subplot(gs[0:2, 0:2])
-    im1 = ax1.imshow(w, extent = (y[0], y[-1], x[-1], x[0]), cmap = cm.jet, vmin = w_min, vmax = w_max)
+    ax1 = fig.add_subplot(gs[0:2, 0:1])
+    im1 = ax1.imshow(w, extent = (y[0], y[-1], x[-1], x[0]), cmap = "RdBu", vmin = w_min, vmax = w_max)
     ax1.set_xlabel(r"$y$")
     ax1.set_ylabel(r"$x$")
     ax1.set_xlim(0.0, y[-1])
@@ -58,36 +61,36 @@ def plot_snaps(i, w, w_hat, x, y, t, w_min, w_max, kx, ky, kx_max, time_t, tot_e
     #-------------------------
     # Plot Energy Spectrum   
     #-------------------------
-    ax2 = fig.add_subplot(gs[0, 2])
+    ax2 = fig.add_subplot(gs[0, 1])
     engy_spec, engy_spec_sum = energy_spectrum(w_hat, kx, ky, Nx, Ny)
     krange = np.arange(0, engy_spec.shape[0])
     ax2.plot(engy_spec[1:kx_max] / engy_spec_sum)  # kx[1:kx_max],
-    kpower = (1 / (kx[11:61] ** 4))
-    ax2.plot(kx[11:61], kpower , linestyle = ':', linewidth = 0.5, color = 'black')
+    # kpower = (1 / (kx[11:61] ** 4))
+    # ax2.plot(kx[11:61], kpower , linestyle = ':', linewidth = 0.5, color = 'black')
     ax2.set_xlabel(r"$k$")
     ax2.set_ylabel(r"$E(k) / \sum E(k)$")
     ax2.set_title(r"Energy Spectrum")
     # ax2.set_ylim(1e-8, 1)
     ax2.set_yscale('log')
     ax2.set_xscale('log')
-    ax2.text(x = kx[61],  y = kpower[-1], s = r"$k^{-4}$")
+    # ax2.text(x = kx[61],  y = kpower[-1], s = r"$k^{-4}$")
 
     #--------------------------
     # Plot Enstrophy Spectrum   
     #--------------------------
-    ax3 = fig.add_subplot(gs[1, 2])
+    ax3 = fig.add_subplot(gs[1, 1])
     enstr_spec, enstr_spec_sum = enstrophy_spectrum(w_hat, Nx, Ny)
     krange = np.arange(0, enstr_spec.shape[0])
-    ax3.plot(enstr_spec[1:kx_max] / enstr_spec_sum)  # kx[1:kx_max], 
-    kpower = (1 / (np.power(kx[11:61], 5 / 3)))
-    ax3.plot(kx[11:61], kpower , linestyle = ':',  linewidth = 0.5, color = 'black')
+    # ax3.plot(enstr_spec[1:kx_max] / enstr_spec_sum)  # kx[1:kx_max], 
+    # kpower = (1 / (np.power(kx[11:61], 5 / 3)))
+    # ax3.plot(kx[11:61], kpower, linestyle = ':', linewidth = 0.5, color = 'black')
     ax3.set_xlabel(r"$k$")
     ax3.set_ylabel(r"$S(k) / \sum S(k)$")
     ax3.set_title(r"Enstrophy Spectrum")
     # ax3.set_ylim(1e-5, 1)
     ax3.set_yscale('log')
     ax3.set_xscale('log')
-    ax3.text(x = kx[61],  y = kpower[-1], s = r"$k^{-5/3}$")
+    # ax3.text(x = kx[61],  y = kpower[-1], s = r"$k^{-5/3}$")
 
 
     #--------------------------
@@ -104,7 +107,7 @@ def plot_snaps(i, w, w_hat, x, y, t, w_min, w_max, kx, ky, kx_max, time_t, tot_e
     ax4.legend([r"Total Energy", r"Total Enstrophy", r"Total Palinstrophy"])
 
     ## Save figure
-    plt.savefig(output_dir + "SNAP_{:05d}.png".format(i), bbox_inches='tight', format = 'png', dpi = 400) 
+    plt.savefig(output_dir + "SNAP_{:05d}.png".format(i), bbox_inches='tight') 
     plt.close()
 
     
@@ -112,7 +115,7 @@ def plot_snaps(i, w, w_hat, x, y, t, w_min, w_max, kx, ky, kx_max, time_t, tot_e
 def energy_spectrum(w_h, kx, ky, Nx, Ny):
 
     ## Spectrum size
-    spec_size = int(np.sqrt((Nx / 2) * (Nx / 2) + (Ny / 2) * (Ny / 2)) + 1)
+    spec_size = int(np.sqrt((Nx / 2) * (Nx / 2) + (Ny / 2) * (Ny / 2)))
 
     ## Velocity arrays
     energy_spec = np.zeros(spec_size)
@@ -184,16 +187,16 @@ if __name__ == '__main__':
     #--------------------------------
     Nx = 64
     Ny = 64
-    int_iters = 333
+    int_iters = 41721
     u0 = "TAYLOR_GREEN"
-    kymax = int(Ny / 2)
-    kxmax = int(Nx / 2)
+    kymax = int(2 * Ny / 3)
+    kxmax = int(2 * Nx / 3)
 
     #-------------------------------
     ## --------- Directories
     #-------------------------------
-    input_dir  = "/work/projects/TurbPhase/Phase_Dynamics_Navier_Stokes/2D_NavierStokes/Data/Test/"
-    output_dir = "/work/projects/TurbPhase/Phase_Dynamics_Navier_Stokes/2D_NavierStokes/Data/Test/SNAPS_N[{},{}]_ITERS[{}]_u0[{}]/".format(Nx, Ny, int_iters, u0)
+    input_dir  = "../Data/Test/" # /work/projects/TurbPhase/Phase_Dynamics_Navier_Stokes/2D_NavierStokes/
+    output_dir = "../Data/Test/SNAPS_N[{},{}]_ITERS[{}]_u0[{}]/".format(Nx, Ny, int_iters, u0) # /work/projects/TurbPhase/Phase_Dynamics_Navier_Stokes/2D_NavierStokes/
 
     if os.path.isdir(output_dir) != True:
         print("Making folder: SNAPS_N[{},{}]_ITERS[{}]_u0[{}]/".format(Nx, Ny, int_iters, u0))
@@ -224,7 +227,7 @@ if __name__ == '__main__':
                 time[i] = file[group].attrs["TimeValue"]
             else:
                 continue
- 
+
         # Define min and max for plotiting
         w_min = np.amin(w)
         w_max = np.amax(w)
@@ -245,6 +248,7 @@ if __name__ == '__main__':
             tot_enstr = file['TotalEnstrophy'][:]
         if 'TotalPalinstrophy' in list(file.keys()):
             tot_palin = file['TotalPalinstrophy'][:]
+
     #-----------------------
     ## ------ Transform w
     #-----------------------
@@ -261,70 +265,72 @@ if __name__ == '__main__':
     # enstr_spec, enstr_spec_sum = enstrophy_spectrum(w_hat[0, :], kx_max)
     # energy_spec, energy_spec_sum = energy_spectrum(w_hat[0, :, :], kx, ky, kxmax)
     # print(energy_spec)
+
+
+    i = 0
+    plot_snaps(i, w[i, :, :], w_hat[i, :, :], x, y, time[i], w_min, w_max, kx, ky, kxmax, time[:i], tot_energy[:i], tot_enstr[:i], tot_palin[:i], time[0], time[-1], Nx, Ny)
+    i = 1000
+    plot_snaps(i, w[i, :, :], w_hat[i, :, :], x, y, time[i], w_min, w_max, kx, ky, kxmax, time[:i], tot_energy[:i], tot_enstr[:i], tot_palin[:i], time[0], time[-1], Nx, Ny)
+    i = num_saves - 1
+    plot_snaps(i, w[i, :, :], w_hat[i, :, :], x, y, time[i], w_min, w_max, kx, ky, kxmax, time[:i], tot_energy[:i], tot_enstr[:i], tot_palin[:i], time[0], time[-1], Nx, Ny)
     # -----------------------
     ## ------ Plot Snaps
     # -----------------------
     ## Start timer
-    start = TIME.perf_counter()
+    # start = TIME.perf_counter()
 
-    ## No. of processes
-    proc_lim = 35
+    # ## No. of processes
+    # proc_lim = 1
 
-    ## Create tasks for the process pool
-    groups_args = [(mprocs.Process(target = plot_snaps, args = (i, w[i, :, :], w_hat[i, :, :], x, y, time[i], w_min, w_max, kx, ky, kxmax, time[:i], tot_energy[:i], tot_enstr[:i], tot_palin[:i], time[0], time[-1], Nx, Ny)) for i in range(w.shape[0]))] * proc_lim
+    # ## Create tasks for the process pool
+    # groups_args = [(mprocs.Process(target = plot_snaps, args = (i, w[i, :, :], w_hat[i, :, :], x, y, time[i], w_min, w_max, kx, ky, kxmax, time[:i], tot_energy[:i], tot_enstr[:i], tot_palin[:i], time[0], time[-1], Nx, Ny)) for i in range(w.shape[0]))] * proc_lim
 
-    ## Loop of grouped iterable
-    for procs in zip_longest(*groups_args): 
-        pipes     = []
-        processes = []
-        for p in filter(None, procs):
-            recv, send = mprocs.Pipe(False)
-            processes.append(p)
-            pipes.append(recv)
-            p.start()
+    # ## Loop of grouped iterable
+    # for procs in zip_longest(*groups_args): 
+    #     pipes     = []
+    #     processes = []
+    #     for p in filter(None, procs):
+    #         recv, send = mprocs.Pipe(False)
+    #         processes.append(p)
+    #         pipes.append(recv)
+    #         p.start()
 
-        for process in processes:
-            process.join()
+    #     for process in processes:
+    #         process.join()
 
-    # ## Record function ouptut
-    # output = [x.recv() for x in pipes]
-    # with open(output_dir + "/output.txt", "w") as file:
-    #     for item in output:
-    #         file.write("%s\n" % item)
-
-    ## End timer
-    end = TIME.perf_counter()
-    plot_time = end - start
-    print("\n\nPlotting Time: {:5.8f}s\n\n".format(plot_time))
+    # ## End timer
+    # end = TIME.perf_counter()
+    # plot_time = end - start
+    # print("\n\nPlotting Time: {:5.8f}s\n\n".format(plot_time))
         
 
 
     #-----------------------
     # ----- Make Video
     #-----------------------
-    framesPerSec = 15
-    inputFile    = output_dir + "SNAP_%05d.png"
-    videoName    = output_dir + "2D_NavierStokes_N[{},{}]_ITERS[{}]_u0[{}].mp4".format(Nx, Ny, int_iters, u0)
-    cmd = "ffmpeg -y -r {} -f image2 -s 1920x1080 -i {} -vf 'pad=ceil(iw/2)*2:ceil(ih/2)*2' -vcodec libx264 -crf 25 -pix_fmt yuv420p {}".format(framesPerSec, inputFile, videoName)
-    # cmd = "ffmpeg -r {} -f image2 -s 1280×720 -i {} -vcodec libx264 -preset ultrafast -crf 35 -pix_fmt yuv420p {}".format(framesPerSec, inputFile, videoName)
+    # framesPerSec = 15
+    # inputFile    = output_dir + "SNAP_%05d.png"
+    # videoName    = output_dir + "2D_NavierStokes_N[{},{}]_ITERS[{}]_u0[{}].mp4".format(Nx, Ny, int_iters, u0)
+    # cmd = "ffmpeg -y -r {} -f image2 -s 1920x1080 -i {} -vf 'pad=ceil(iw/2)*2:ceil(ih/2)*2' -vcodec libx264 -crf 25 -pix_fmt yuv420p {}".format(framesPerSec, inputFile, videoName)
+    # # cmd = "ffmpeg -r {} -f image2 -s 1280×720 -i {} -vcodec libx264 -preset ultrafast -crf 35 -pix_fmt yuv420p {}".format(framesPerSec, inputFile, videoName)
 
-    ## Start timer
-    start = TIME.perf_counter()
+    # ## Start timer
+    # start = TIME.perf_counter()
 
-    process = Popen(cmd, shell = True, stdout = PIPE, stdin = PIPE, universal_newlines = True)
-    [runCodeOutput, runCodeErr] = process.communicate()
-    print(runCodeOutput)
-    print(runCodeErr)
-    process.wait()
+    # process = Popen(cmd, shell = True, stdout = PIPE, stdin = PIPE, universal_newlines = True)
+    # [runCodeOutput, runCodeErr] = process.communicate()
+    # print(runCodeOutput)
+    # print(runCodeErr)
+    # process.wait()
 
 
-    print("Finished making video...")
-    print("Video Location...")
-    print("\n" + videoName + "\n")
+    # print("Finished making video...")
+    # print("Video Location...")
+    # print("\n" + videoName + "\n")
 
-    ## Start timer
-    end = TIME.perf_counter()
+    # ## Start timer
+    # end = TIME.perf_counter()
 
-    print("\n\nPlotting Time: {:5.8f}s\n\n".format(plot_time))
-    print("Movie Time: {:5.8f}s\n\n".format(end - start))
-    
+    # print("\n\nPlotting Time: {:5.8f}s\n\n".format(plot_time))
+    # print("Movie Time: {:5.8f}s\n\n".format(end - start))
+    # 

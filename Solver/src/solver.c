@@ -594,7 +594,7 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* u, 
  			
  			// Perform multiplication of the nonlinear term 
  			nonlinterm[indx] = (u[SYS_DIM * indx + 0] * nabla_w[SYS_DIM * indx + 0] + u[SYS_DIM * indx + 1] * nabla_w[SYS_DIM * indx + 1]);
- 			nonlinterm[indx] *= 1.0 / pow((Nx * Ny), 1.0);
+ 			nonlinterm[indx] *= 1.0 / pow((Nx * Ny), 2.0);
  		}
  	}
 
