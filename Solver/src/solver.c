@@ -53,8 +53,8 @@ void SpectralSolve(void) {
 	int tmp;
 	int indx;
 	sys_vars->u0   = "TAYLOR_GREEN_VORT";
-	sys_vars->N[0] = 128;
-	sys_vars->N[1] = 128;
+	sys_vars->N[0] = 8;
+	sys_vars->N[1] = 8;
 	herr_t status;
 	const long int N[SYS_DIM] = {sys_vars->N[0], sys_vars->N[1]};
 	const long int NBatch[SYS_DIM] = {sys_vars->N[0], sys_vars->N[1] / 2 + 1};
@@ -91,8 +91,8 @@ void SpectralSolve(void) {
 	// Get initial conditions
 	InitialConditions(run_data->w_hat, run_data->u, run_data->u_hat, N);
 	
-
-	// PrintScalarFourier(run_data->w_hat, N, "wh");
+	PrintScalarReal(run_data->w, N, "w");
+	PrintScalarFourier(run_data->w_hat, N, "wh");
 
 	
 	// NonlinearRHSBatch(run_data->w_hat, RK_data->RK1, RK_data->nabla_psi, RK_data->nabla_w);
@@ -154,95 +154,95 @@ void SpectralSolve(void) {
 	#endif
 	int iters          = 1;
 	int save_data_indx = 1;
-	while (t < T) {
+	// while (t < T) {
 
-		// -------------------------------	
-		// Integration Step
-		// -------------------------------
-		#ifdef __RK4
-		RK4Step(dt, N, sys_vars->local_Nx, RK_data);
-		#elif defined(__RK5)
-		RK5DPStep(dt, N, sys_vars->local_Nx, RK_data);
-		#elif defined(__DPRK5)
-		while (try) {
-			// Try a Dormand Prince step and compute the local error
-			RK5DPStep(dt, N, sys_vars->local_Nx, RK_data);
+	// 	// -------------------------------	
+	// 	// Integration Step
+	// 	// -------------------------------
+	// 	#ifdef __RK4
+	// 	RK4Step(dt, N, sys_vars->local_Nx, RK_data);
+	// 	#elif defined(__RK5)
+	// 	RK5DPStep(dt, N, sys_vars->local_Nx, RK_data);
+	// 	#elif defined(__DPRK5)
+	// 	while (try) {
+	// 		// Try a Dormand Prince step and compute the local error
+	// 		RK5DPStep(dt, N, sys_vars->local_Nx, RK_data);
 
-			// Compute the new timestep
-			dt_new = dt * DPMin(DP_DELTA_MAX, DPMax(DP_DELTA_MIN, DP_DELTA * pow(1.0 / RK_data->DP_errr, 0.2)))
+	// 		// Compute the new timestep
+	// 		dt_new = dt * DPMin(DP_DELTA_MAX, DPMax(DP_DELTA_MIN, DP_DELTA * pow(1.0 / RK_data->DP_errr, 0.2)))
 			
-			// If error is bad repeat else move on
-			if (RK_data->DP_err < 1.0) {
-				RK->DP_fails++;
-				dt = dt_new;
-				continue;
-			}
-			else {
-				dt = dt_new;
-				break;
-			}
-		}
-		#endif
+	// 		// If error is bad repeat else move on
+	// 		if (RK_data->DP_err < 1.0) {
+	// 			RK->DP_fails++;
+	// 			dt = dt_new;
+	// 			continue;
+	// 		}
+	// 		else {
+	// 			dt = dt_new;
+	// 			break;
+	// 		}
+	// 	}
+	// 	#endif
 
-		// -------------------------------
-		// Write To File
-		// -------------------------------
-		if (iters % SAVE_EVERY == 0) {
-			#ifdef __TESTING
-			TaylorGreenSoln(t, N);
-			#endif
+	// 	// -------------------------------
+	// 	// Write To File
+	// 	// -------------------------------
+	// 	if (iters % SAVE_EVERY == 0) {
+	// 		#ifdef __TESTING
+	// 		TaylorGreenSoln(t, N);
+	// 		#endif
 
-			// Record System Measurables
-			RecordSystemMeasures(t, save_data_indx);
+	// 		// Record System Measurables
+	// 		RecordSystemMeasures(t, save_data_indx);
 
-			// Write the appropriate datasets to file
-			WriteDataToFile(t, dt, save_data_indx);
+	// 		// Write the appropriate datasets to file
+	// 		WriteDataToFile(t, dt, save_data_indx);
 			
-			// Update saving data index
-			save_data_indx++;
-		}
+	// 		// Update saving data index
+	// 		save_data_indx++;
+	// 	}
 
-		// -------------------------------
-		// Update & System Check
-		// -------------------------------
-		// Update timestep & iteration counter
-		#if defined(__ADAPTIVE_STEP) 
-		GetTimestep(&dt);
-		t += dt; 
-		#elif !defined(__DPRK5) && !defined(__ADAPTIVE_STEP)
-		t = iters * dt;
-		#endif
-		iters++;
+	// 	// -------------------------------
+	// 	// Update & System Check
+	// 	// -------------------------------
+	// 	// Update timestep & iteration counter
+	// 	#if defined(__ADAPTIVE_STEP) 
+	// 	GetTimestep(&dt);
+	// 	t += dt; 
+	// 	#elif !defined(__DPRK5) && !defined(__ADAPTIVE_STEP)
+	// 	t = iters * dt;
+	// 	#endif
+	// 	iters++;
 
-		// Check System: Determine if system has blown up or integration limits reached
-		SystemCheck(dt, iters);
+	// 	// Check System: Determine if system has blown up or integration limits reached
+	// 	SystemCheck(dt, iters);
 
-		// -------------------------------
-		// Print Update To Screen
-		// -------------------------------
-		#ifdef __PRINT_SCREEN
-		#ifdef __TESTING
-		if (iters % TEST_PRINT == 0) {
-			// Call testing 
-			TestTaylorGreenVortex(t, N, norms);
-			max_vort = GetMaxData("VORT");
-			if( !(sys_vars->rank) ) {	
-				printf("Iter: %d\tt: %1.6lf\tdt: %g\tMax Vort: %1.4lf \tL2 Err: %g\tLinf Err: %g\n", iters, t, dt, max_vort, norms[0], norms[1]);
-			}
-		}
-		#else
-		if( !(sys_vars->rank) ) {	
-			if (iters % print_update == 0) {
-				// If needed compute system measures for printing to screen
-				if ( iters % SAVE_EVERY != 0) {
-					RecordSystemMeasures(t, save_data_indx);
-				}
-				printf("Iter: %d/%ld\tt: %1.6lf/%1.3lf\tdt: %g\t ----------- \tKE: %1.5lf\tENS: %1.5lf\tPAL: %1.5lf\n", iters, sys_vars->num_t_steps, t, T, dt, run_data->tot_energy[save_data_indx], run_data->tot_enstr[save_data_indx], run_data->tot_palin[save_data_indx]);
-			}
-		}
-		#endif	
-		#endif
-	}
+	// 	// -------------------------------
+	// 	// Print Update To Screen
+	// 	// -------------------------------
+	// 	#ifdef __PRINT_SCREEN
+	// 	#ifdef __TESTING
+	// 	if (iters % TEST_PRINT == 0) {
+	// 		// Call testing 
+	// 		TestTaylorGreenVortex(t, N, norms);
+	// 		max_vort = GetMaxData("VORT");
+	// 		if( !(sys_vars->rank) ) {	
+	// 			printf("Iter: %d\tt: %1.6lf\tdt: %g\tMax Vort: %1.4lf \tL2 Err: %g\tLinf Err: %g\n", iters, t, dt, max_vort, norms[0], norms[1]);
+	// 		}
+	// 	}
+	// 	#else
+	// 	if( !(sys_vars->rank) ) {	
+	// 		if (iters % print_update == 0) {
+	// 			// If needed compute system measures for printing to screen
+	// 			if ( iters % SAVE_EVERY != 0) {
+	// 				RecordSystemMeasures(t, save_data_indx);
+	// 			}
+	// 			printf("Iter: %d/%ld\tt: %1.6lf/%1.3lf\tdt: %g\t ----------- \tKE: %1.5lf\tENS: %1.5lf\tPAL: %1.5lf\n", iters, sys_vars->num_t_steps, t, T, dt, run_data->tot_energy[save_data_indx], run_data->tot_enstr[save_data_indx], run_data->tot_palin[save_data_indx]);
+	// 		}
+	// 	}
+	// 	#endif	
+	// 	#endif
+	// }
 	//////////////////////////////
 	// End Integration
 	//////////////////////////////
