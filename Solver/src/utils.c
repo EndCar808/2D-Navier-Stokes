@@ -206,8 +206,9 @@ void PrintScalarFourier(fftw_complex* data, const long int* N, char* arr_name) {
 	if ( !(sys_vars->rank) ) {
 		for (int i = 0; i < Nx; ++i) {
 			for (int j = 0; j < Ny_Fourier; ++j) {
-				printf("%s[%ld]: %1.16lf %1.16lf I\n", arr_name, i * (Ny_Fourier) + j, creal(w_hat0[i * Ny_Fourier + j]), cimag(w_hat0[i * Ny_Fourier + j]));
+				printf("%s[%ld]: %1.16lf %1.16lf I ", arr_name, i * (Ny_Fourier) + j, creal(w_hat0[i * Ny_Fourier + j]), cimag(w_hat0[i * Ny_Fourier + j]));
 			}
+			printf("\n");
 		}
 		printf("\n\n");
 	}
@@ -241,8 +242,9 @@ void PrintScalarReal(double* data, const long int* N, char* arr_name) {
 	if ( !(sys_vars->rank) ) {
 		for (int i = 0; i < Nx; ++i) {
 			for (int j = 0; j < Ny; ++j) {
-				printf("%s[%ld]: %g\n", arr_name, i * (Ny) + j, w_hat0[i * (Ny + 2) + j]);
+				printf("%s[%ld]: %g ", arr_name, i * (Ny) + j, w_hat0[i * (Ny + 2) + j]);
 			}
+			printf("\n");
 		}
 		printf("\n\n");
 	}

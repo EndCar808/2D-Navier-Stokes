@@ -52,7 +52,7 @@ void SpectralSolve(void) {
 	// Initialize variables
 	int tmp;
 	int indx;
-	sys_vars->u0   = "TAYLOR_GREEN_VORT";
+	sys_vars->u0   = "TESTING";
 	sys_vars->N[0] = 8;
 	sys_vars->N[1] = 8;
 	herr_t status;
@@ -91,12 +91,13 @@ void SpectralSolve(void) {
 	// Get initial conditions
 	InitialConditions(run_data->w_hat, run_data->u, run_data->u_hat, N);
 	
-	PrintScalarReal(run_data->w, N, "w");
-	PrintScalarFourier(run_data->w_hat, N, "wh");
+	// PrintScalarReal(run_data->w, N, "w");
+	// PrintScalarFourier(run_data->w_hat, N, "wh");
 
 	
 	// NonlinearRHSBatch(run_data->w_hat, RK_data->RK1, RK_data->nabla_psi, RK_data->nabla_w);
-	// PrintScalarFourier(RK_data->RK1, N, "RHS");
+	// PrintScalarFourier(RK_data->RK1, N, "a_RHSh");
+
 	// -------------------------------
 	// Integration Variables
 	// -------------------------------
@@ -107,7 +108,7 @@ void SpectralSolve(void) {
 	// Get the timestep using a CFL like condition
 	double umax          = GetMaxData("VEL");
 	sys_vars->w_max_init = GetMaxData("VORT");
-	// sys_vars->dt         = (sys_vars->dx) / umax;
+	sys_vars->dt         = 0.0001; //(sys_vars->dx) / umax;
 	GetTimestep(&(sys_vars->dt));
 
 	// Compute integration time variables
@@ -154,95 +155,95 @@ void SpectralSolve(void) {
 	#endif
 	int iters          = 1;
 	int save_data_indx = 1;
-	// while (t < T) {
+	while (t < T) {
 
-	// 	// -------------------------------	
-	// 	// Integration Step
-	// 	// -------------------------------
-	// 	#ifdef __RK4
-	// 	RK4Step(dt, N, sys_vars->local_Nx, RK_data);
-	// 	#elif defined(__RK5)
-	// 	RK5DPStep(dt, N, sys_vars->local_Nx, RK_data);
-	// 	#elif defined(__DPRK5)
-	// 	while (try) {
-	// 		// Try a Dormand Prince step and compute the local error
-	// 		RK5DPStep(dt, N, sys_vars->local_Nx, RK_data);
+		// -------------------------------	
+		// Integration Step
+		// -------------------------------
+		#ifdef __RK4
+		RK4Step(dt, N, sys_vars->local_Nx, RK_data);
+		#elif defined(__RK5)
+		RK5DPStep(dt, N, sys_vars->local_Nx, RK_data);
+		#elif defined(__DPRK5)
+		while (try) {
+			// Try a Dormand Prince step and compute the local error
+			RK5DPStep(dt, N, sys_vars->local_Nx, RK_data);
 
-	// 		// Compute the new timestep
-	// 		dt_new = dt * DPMin(DP_DELTA_MAX, DPMax(DP_DELTA_MIN, DP_DELTA * pow(1.0 / RK_data->DP_errr, 0.2)))
+			// Compute the new timestep
+			dt_new = dt * DPMin(DP_DELTA_MAX, DPMax(DP_DELTA_MIN, DP_DELTA * pow(1.0 / RK_data->DP_errr, 0.2)))
 			
-	// 		// If error is bad repeat else move on
-	// 		if (RK_data->DP_err < 1.0) {
-	// 			RK->DP_fails++;
-	// 			dt = dt_new;
-	// 			continue;
-	// 		}
-	// 		else {
-	// 			dt = dt_new;
-	// 			break;
-	// 		}
-	// 	}
-	// 	#endif
+			// If error is bad repeat else move on
+			if (RK_data->DP_err < 1.0) {
+				RK->DP_fails++;
+				dt = dt_new;
+				continue;
+			}
+			else {
+				dt = dt_new;
+				break;
+			}
+		}
+		#endif
 
-	// 	// -------------------------------
-	// 	// Write To File
-	// 	// -------------------------------
-	// 	if (iters % SAVE_EVERY == 0) {
-	// 		#ifdef __TESTING
-	// 		TaylorGreenSoln(t, N);
-	// 		#endif
+		// -------------------------------
+		// Write To File
+		// -------------------------------
+		if (iters % SAVE_EVERY == 0) {
+			#ifdef __TESTING
+			TaylorGreenSoln(t, N);
+			#endif
 
-	// 		// Record System Measurables
-	// 		RecordSystemMeasures(t, save_data_indx);
+			// Record System Measurables
+			RecordSystemMeasures(t, save_data_indx);
 
-	// 		// Write the appropriate datasets to file
-	// 		WriteDataToFile(t, dt, save_data_indx);
+			// Write the appropriate datasets to file
+			WriteDataToFile(t, dt, save_data_indx);
 			
-	// 		// Update saving data index
-	// 		save_data_indx++;
-	// 	}
+			// Update saving data index
+			save_data_indx++;
+		}
 
-	// 	// -------------------------------
-	// 	// Update & System Check
-	// 	// -------------------------------
-	// 	// Update timestep & iteration counter
-	// 	#if defined(__ADAPTIVE_STEP) 
-	// 	GetTimestep(&dt);
-	// 	t += dt; 
-	// 	#elif !defined(__DPRK5) && !defined(__ADAPTIVE_STEP)
-	// 	t = iters * dt;
-	// 	#endif
-	// 	iters++;
+		// -------------------------------
+		// Update & System Check
+		// -------------------------------
+		// Update timestep & iteration counter
+		#if defined(__ADAPTIVE_STEP) 
+		GetTimestep(&dt);
+		t += dt; 
+		#elif !defined(__DPRK5) && !defined(__ADAPTIVE_STEP)
+		t = iters * dt;
+		#endif
+		iters++;
 
-	// 	// Check System: Determine if system has blown up or integration limits reached
-	// 	SystemCheck(dt, iters);
+		// Check System: Determine if system has blown up or integration limits reached
+		SystemCheck(dt, iters);
 
-	// 	// -------------------------------
-	// 	// Print Update To Screen
-	// 	// -------------------------------
-	// 	#ifdef __PRINT_SCREEN
-	// 	#ifdef __TESTING
-	// 	if (iters % TEST_PRINT == 0) {
-	// 		// Call testing 
-	// 		TestTaylorGreenVortex(t, N, norms);
-	// 		max_vort = GetMaxData("VORT");
-	// 		if( !(sys_vars->rank) ) {	
-	// 			printf("Iter: %d\tt: %1.6lf\tdt: %g\tMax Vort: %1.4lf \tL2 Err: %g\tLinf Err: %g\n", iters, t, dt, max_vort, norms[0], norms[1]);
-	// 		}
-	// 	}
-	// 	#else
-	// 	if( !(sys_vars->rank) ) {	
-	// 		if (iters % print_update == 0) {
-	// 			// If needed compute system measures for printing to screen
-	// 			if ( iters % SAVE_EVERY != 0) {
-	// 				RecordSystemMeasures(t, save_data_indx);
-	// 			}
-	// 			printf("Iter: %d/%ld\tt: %1.6lf/%1.3lf\tdt: %g\t ----------- \tKE: %1.5lf\tENS: %1.5lf\tPAL: %1.5lf\n", iters, sys_vars->num_t_steps, t, T, dt, run_data->tot_energy[save_data_indx], run_data->tot_enstr[save_data_indx], run_data->tot_palin[save_data_indx]);
-	// 		}
-	// 	}
-	// 	#endif	
-	// 	#endif
-	// }
+		// -------------------------------
+		// Print Update To Screen
+		// -------------------------------
+		#ifdef __PRINT_SCREEN
+		#ifdef __TESTING
+		if (iters % TEST_PRINT == 0) {
+			// Call testing 
+			TestTaylorGreenVortex(t, N, norms);
+			max_vort = GetMaxData("VORT");
+			if( !(sys_vars->rank) ) {	
+				printf("Iter: %d\tt: %1.6lf\tdt: %g\tMax Vort: %1.4lf \tL2 Err: %g\tLinf Err: %g\n", iters, t, dt, max_vort, norms[0], norms[1]);
+			}
+		}
+		#else
+		if( !(sys_vars->rank) ) {	
+			if (iters % print_update == 0) {
+				// If needed compute system measures for printing to screen
+				if ( iters % SAVE_EVERY != 0) {
+					RecordSystemMeasures(t, save_data_indx);
+				}
+				printf("Iter: %d/%ld\tt: %1.6lf/%1.3lf\tdt: %g\t ----------- \tKE: %1.5lf\tENS: %1.5lf\tPAL: %1.5lf\n", iters, sys_vars->num_t_steps, t, T, dt, run_data->tot_energy[save_data_indx], run_data->tot_enstr[save_data_indx], run_data->tot_palin[save_data_indx]);
+			}
+		}
+		#endif	
+		#endif
+	}
 	//////////////////////////////
 	// End Integration
 	//////////////////////////////
@@ -516,6 +517,8 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* u, 
 	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
 	const double norm_fac     = 1.0;
 	fftw_complex k_sqr;
+	double vel1;
+	double vel2;
 
 	// Allocate temporay memory for the nonlinear term in Real Space
 	double* nonlinterm = (double* )malloc(sizeof(double) * local_Nx * (Ny + 2));
@@ -572,7 +575,7 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* u, 
 		}
 	}
 	// printf("\n\n");
-	// PrintVectorFourier(dw_hat_dt, sys_vars->N, "wh_dx", "wh_dy");
+	// PrintVectorFourier(dw_hat_dt, sys_vars->N, "dwh_dx", "dwh_dy");
 
 	// ----------------------------------
 	// Transform to Real Space
@@ -581,7 +584,7 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* u, 
 	fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_batch_c2r), dw_hat_dt, nabla_w);
 	
 	// PrintVectorReal(u, sys_vars->N, "u", "v");
-	// PrintVectorReal(nabla_w, sys_vars->N, "w_dx", "w_dy");
+	// PrintVectorReal(nabla_w, sys_vars->N, "dw_dx", "dw_dy");
 
 	// -----------------------------------
 	// Perform Convolution in Real Space
@@ -593,12 +596,14 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* u, 
 			indx = tmp + j; 
  			
  			// Perform multiplication of the nonlinear term 
- 			nonlinterm[indx] = (u[SYS_DIM * indx + 0] * nabla_w[SYS_DIM * indx + 0] + u[SYS_DIM * indx + 1] * nabla_w[SYS_DIM * indx + 1]);
+ 			vel1 = u[SYS_DIM * indx + 0];
+ 			vel2 = u[SYS_DIM * indx + 1];
+ 			nonlinterm[indx] = 1.0 * (vel1 * nabla_w[SYS_DIM * indx + 0] + vel2 * nabla_w[SYS_DIM * indx + 1]);
  			nonlinterm[indx] *= 1.0 / pow((Nx * Ny), 2.0);
  		}
  	}
 
- 	// PrintScalarReal(nonlinterm, sys_vars->N, "rhs");
+ 	// PrintScalarReal(nonlinterm, sys_vars->N, "RHS");
 
 
 
@@ -608,9 +613,16 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* u, 
  	// Transform Fourier nonlinear term back to Fourier space
  	fftw_mpi_execute_dft_r2c((sys_vars->fftw_2d_dft_r2c), nonlinterm, dw_hat_dt);
 
- 	// PrintScalarFourier(dw_hat_dt, sys_vars->N, "rhs_h");
+ 	// PrintScalarFourier(dw_hat_dt, sys_vars->N, "b_RHSh");
 
+ 	// for (int i = 0; i < local_Nx; ++i) {
+ 	// 	tmp = i * (Ny_Fourier);
+ 	// 	for (int j = 0; j < Ny_Fourier; ++j) {
+ 	// 		indx = tmp + j;
 
+ 	// 		dw_hat_dt[indx] *= 1.0 / pow((Nx * Ny), 1.0);
+ 	// 	}
+ 	// }
  	// -------------------------------------
  	// Apply Dealiasing to Nonlinear Term
  	// -------------------------------------
@@ -646,13 +658,13 @@ void ApplyDealiasing(fftw_complex* w_hat, const long int* N) {
 			indx = tmp + j;
 
 			#ifdef __DEALIAS_23
-			if (sqrt(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]) < (int) ceil((double)Nx / 3.0)) {  // (abs(run_data->k[0][i]) < (int) ceil((double)Nx / 3.0)) || (abs(run_data->k[1][j]) < (int) ceil((double)Ny / 3.0))
-				// Apply DFT normaliztin to undealiased modes
-				w_hat[indx] = w_hat[indx];
-			}
-			else {
+			if (sqrt((double) run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]) > Nx / 3) {  // (abs(run_data->k[0][i]) < (int) ceil((double)Nx / 3.0)) || (abs(run_data->k[1][j]) < (int) ceil((double)Ny / 3.0))
 				// Set dealised modes to 0
 				w_hat[indx] = 0.0 + 0.0 * I;
+			}
+			else {
+				// Apply DFT normaliztin to undealiased modes
+				w_hat[indx] = w_hat[indx];
 			}
 			#elif __DEALIAS_HOU_LI
 			// Compute Hou-Li filter
@@ -695,14 +707,12 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 				// Fill the velocities
 				u[SYS_DIM * indx + 0] = cos(KAPPA * run_data->x[0][i]) * sin(KAPPA * run_data->x[1][j]);
 				u[SYS_DIM * indx + 1] = -sin(KAPPA * run_data->x[0][i]) * cos(KAPPA * run_data->x[1][j]);		
-
-				// // Fill real space vorticity
-				// run_data->w[indx] = 2.0 * sin(run_data->x[0][i]) * sin(run_data->x[1][j]);
 			}
 		}
 
 		// Transform velocities to Fourier space
-		fftw_mpi_execute_dft_r2c((sys_vars->fftw_2d_dft_batch_r2c), u, u_hat);
+		fftw_mpi_execute_dft_r2c(sys_vars->fftw_2d_dft_batch_r2c, u, u_hat);
+		ApplyDealiasing(u_hat, N); // NOTE: Needs updating for velocities
 
 		// -------------------------------------------------
 		// Taylor Green Initial Condition - Fourier Space
@@ -716,7 +726,9 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 				w_hat[indx] = I * (run_data->k[0][i] * u_hat[SYS_DIM * (indx) + 1] - run_data->k[1][j] * u_hat[SYS_DIM * (indx) + 0]);
 			}
 		}
-		// Transform what and normalize
+
+		// Apply dealiasing and transform what and normalize
+		ApplyDealiasing(w_hat, N);
 		fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_c2r), w_hat, run_data->w);
 		for (int i = 0; i < local_Nx; ++i) {
 			tmp = i * (Ny + 2);
@@ -780,20 +792,29 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 			for (int j = 0; j < Ny_Fourier; ++j) {
 				indx = tmp + j;
 
-				if ((run_data->k[0][i] == 0 || run_data->k[1][j] == 0) || (j == Ny / 2 || run_data->k[0][i] == Nx / 2)){
+				if ((run_data->k[0][i] == 0) && (run_data->k[1][j] == 0)){
 					// Fill zero modes
 					w_hat[indx] = 0.0 + 0.0 * I;
 				}
+				else if (j == 0 && run_data->k[0][i] < 0 ) {
+					// Amplitudes
+					k_sqr = 1.0 / (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
+
+					// Fill vorticity - this is for the kx axis - to enfore conjugate symmetry
+					w_hat[indx] = k_sqr * cexp(-I * M_PI / 4.0);
+				}
 				else {
 					// Amplitudes
-					k_sqr = 1.0 / (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j] + (double)1E-50);
+					k_sqr = 1.0 / (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 
-					// Fill vorticity
+					// Fill vorticity - fill the rest of the modes
 					w_hat[indx] = k_sqr * cexp(I * M_PI / 4.0);
 				}
 			}
 		}
-		// Transform to Real space to get omega	
+
+		// Apply dealiasing and transform to Real space to get omega	
+		ApplyDealiasing(w_hat, N);
 		fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_c2r), w_hat, run_data->w);
 		for (int i = 0; i < local_Nx; ++i) {
 			tmp = i * (Ny + 2);
@@ -816,23 +837,28 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 				w_hat[indx] = rand() * 2.0 * M_PI + rand() * 2.0 * M_PI * I;
 			}
 		}		
-		// // Transform what		
-		// fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_c2r), w_hat, run_data->w);
-		// for (int i = 0; i < local_Nx; ++i) {
-		// 	tmp = i * (Ny + 2);
-		// 	for (int j = 0; j < Ny; ++j) {
-		// 		indx = tmp + j;
 
-		// 		// Normalize
-		// 		run_data->w[indx] *= 1.0 / (double )(Nx * Ny);
-		// 	}
-		// }
+		// Apply deliasing and transform to real space 	
+		ApplyDealiasing(w_hat, N);
+		fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_c2r), w_hat, run_data->w);
+		for (int i = 0; i < local_Nx; ++i) {
+			tmp = i * (Ny + 2);
+			for (int j = 0; j < Ny; ++j) {
+				indx = tmp + j;
+
+				// Normalize
+				run_data->w[indx] *= 1.0 / (double )(Nx * Ny);
+			}
+		}
 	}
-	
+
+
 	// -------------------------------------------------
 	// Initialize the Dealiasing
 	// -------------------------------------------------
-	ApplyDealiasing(w_hat, N);
+	if (strcmp(sys_vars->u0, "TESTING") || strcmp(sys_vars->u0, "TAYLOR_GREEN_VEL"))
+		ApplyDealiasing(w_hat, N);
+	}
 }
 /**
  * Function to initialize the Real space collocation points arrays and Fourier wavenumber arrays
