@@ -279,15 +279,17 @@ void PrintVectorReal(double* data, const long int* N, char* arr_name1, char* arr
 	if ( !(sys_vars->rank) ) {
 		for (int i = 0; i < Nx; ++i) {
 			for (int j = 0; j < Ny; ++j) {
-				printf("%s[%ld]: %+5.16lf\n", arr_name1, i * (Ny) + j, u0[SYS_DIM * (i * (Ny + 2) + j) + 0]);
+				printf("%s[%ld]: %+5.16lf", arr_name1, i * (Ny) + j, u0[SYS_DIM * (i * (Ny + 2) + j) + 0]);
 			}
+			printf("\n");
 		}
 		printf("\n\n");
 
 		for (int i = 0; i < Nx; ++i) {
 			for (int j = 0; j < Ny; ++j) {
-				printf("%s[%ld]: %+5.16lf\n", arr_name2, i * (Ny) + j, u0[SYS_DIM * (i * (Ny + 2) + j) + 1]);
+				printf("%s[%ld]: %+5.16lf", arr_name2, i * (Ny) + j, u0[SYS_DIM * (i * (Ny + 2) + j) + 1]);
 			}
+			printf("\n");
 		}
 		printf("\n\n");
 	}
@@ -317,15 +319,17 @@ void PrintVectorFourier(fftw_complex* data, const long int* N, char* arr_name1, 
 	if ( !(sys_vars->rank) ) {
 		for (int i = 0; i < Nx; ++i) {
 			for (int j = 0; j < Ny_Fourier; ++j) {
-				printf("%s[%ld]: %5.16lf %5.16lf I\n", arr_name1, i * (Ny_Fourier) + j, creal(u_hat0[SYS_DIM * (i * (Ny_Fourier) + j) + 0]), cimag(u_hat0[SYS_DIM * (i * (Ny_Fourier) + j) + 0]));
+				printf("%s[%ld]: %5.16lf %5.16lf I", arr_name1, i * (Ny_Fourier) + j, creal(u_hat0[SYS_DIM * (i * (Ny_Fourier) + j) + 0]), cimag(u_hat0[SYS_DIM * (i * (Ny_Fourier) + j) + 0]));
 			}
+			printf("\n");
 		}
 		printf("\n\n");
 
 		for (int i = 0; i < Nx; ++i) {
 			for (int j = 0; j < Ny_Fourier; ++j) {
-				printf("%s[%ld]: %5.16lf %5.16lf I\n", arr_name2, i * (Ny_Fourier) + j, creal(u_hat0[SYS_DIM * (i * (Ny_Fourier) + j) + 1]), cimag(u_hat0[SYS_DIM * (i * (Ny_Fourier) + j) + 0]));
+				printf("%s[%ld]: %5.16lf %5.16lf I", arr_name2, i * (Ny_Fourier) + j, creal(u_hat0[SYS_DIM * (i * (Ny_Fourier) + j) + 1]), cimag(u_hat0[SYS_DIM * (i * (Ny_Fourier) + j) + 0]));
 			}
+			printf("\n");
 		}
 		printf("\n\n");
 	}

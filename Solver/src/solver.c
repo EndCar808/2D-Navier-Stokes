@@ -52,9 +52,9 @@ void SpectralSolve(void) {
 	// Initialize variables
 	int tmp;
 	int indx;
-	sys_vars->u0   = "TESTING";
-	sys_vars->N[0] = 8;
-	sys_vars->N[1] = 8;
+	sys_vars->u0   = "TAYLOR_GREEN_VORT";
+	sys_vars->N[0] = 128;
+	sys_vars->N[1] = 128;
 	herr_t status;
 	const long int N[SYS_DIM] = {sys_vars->N[0], sys_vars->N[1]};
 	const long int NBatch[SYS_DIM] = {sys_vars->N[0], sys_vars->N[1] / 2 + 1};
@@ -91,12 +91,12 @@ void SpectralSolve(void) {
 	// Get initial conditions
 	InitialConditions(run_data->w_hat, run_data->u, run_data->u_hat, N);
 	
-	// PrintScalarReal(run_data->w, N, "w");
-	// PrintScalarFourier(run_data->w_hat, N, "wh");
+	PrintScalarReal(run_data->w, N, "w");
+	PrintScalarFourier(run_data->w_hat, N, "wh");
 
 	
-	// NonlinearRHSBatch(run_data->w_hat, RK_data->RK1, RK_data->nabla_psi, RK_data->nabla_w);
-	// PrintScalarFourier(RK_data->RK1, N, "a_RHSh");
+	NonlinearRHSBatch(run_data->w_hat, RK_data->RK1, RK_data->nabla_psi, RK_data->nabla_w);
+	PrintScalarFourier(RK_data->RK1, N, "a_RHSh");
 
 	// -------------------------------
 	// Integration Variables
@@ -556,7 +556,8 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* u, 
 	// ----------------------------------
 	// Batch transform both fourier velocites to real space
 	fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_batch_c2r), dw_hat_dt, u);
-	
+	// PrintVectorReal(u, sys_vars->N, "u", "v");
+
 	// ---------------------------------------------
 	// Compute Fourier Space Vorticity Derivatives
 	// ---------------------------------------------
@@ -583,7 +584,6 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* u, 
 	// Batch transform both fourier vorticity derivatives to real space
 	fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_batch_c2r), dw_hat_dt, nabla_w);
 	
-	// PrintVectorReal(u, sys_vars->N, "u", "v");
 	// PrintVectorReal(nabla_w, sys_vars->N, "dw_dx", "dw_dy");
 
 	// -----------------------------------
@@ -599,7 +599,7 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* u, 
  			vel1 = u[SYS_DIM * indx + 0];
  			vel2 = u[SYS_DIM * indx + 1];
  			nonlinterm[indx] = 1.0 * (vel1 * nabla_w[SYS_DIM * indx + 0] + vel2 * nabla_w[SYS_DIM * indx + 1]);
- 			nonlinterm[indx] *= 1.0 / pow((Nx * Ny), 2.0);
+ 			// nonlinterm[indx] *= 1.0 / pow((Nx * Ny), 1.0);
  		}
  	}
 
@@ -615,29 +615,30 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* u, 
 
  	// PrintScalarFourier(dw_hat_dt, sys_vars->N, "b_RHSh");
 
- 	// for (int i = 0; i < local_Nx; ++i) {
- 	// 	tmp = i * (Ny_Fourier);
- 	// 	for (int j = 0; j < Ny_Fourier; ++j) {
- 	// 		indx = tmp + j;
+ 	for (int i = 0; i < local_Nx; ++i) {
+ 		tmp = i * (Ny_Fourier);
+ 		for (int j = 0; j < Ny_Fourier; ++j) {
+ 			indx = tmp + j;
 
- 	// 		dw_hat_dt[indx] *= 1.0 / pow((Nx * Ny), 1.0);
- 	// 	}
- 	// }
+ 			dw_hat_dt[indx] *= 1.0 / pow((Nx * Ny), 2.0);
+ 		}
+ 	}
  	// -------------------------------------
  	// Apply Dealiasing to Nonlinear Term
  	// -------------------------------------
  	// Apply dealiasing and DFT normalization to the new nonlinear term
- 	ApplyDealiasing(dw_hat_dt, sys_vars->N);
+ 	ApplyDealiasing(dw_hat_dt, 1, sys_vars->N);
 
  	// Free memory
  	free(nonlinterm);
 }
 /**
- * Function to apply the selected dealiasing filter and the DFT normalization factor
- * @param w_hat    The nonlinear term that is to be dealiased
- * @param N        Array containing the dimensions of the system
+ * Function to apply the selected dealiasing filter to the input array. Can be Fourier vorticity or 
+ * @param array    	The array containing the Fourier modes to dealiased
+ * @param array_dim The extra array dimension -> will be 1 for scalar or 2 for vector
+ * @param N        	Array containing the dimensions of the system
  */
-void ApplyDealiasing(fftw_complex* w_hat, const long int* N) {
+void ApplyDealiasing(fftw_complex* array, int array_dim, const long int* N) {
 
 	// Initialize variables
 	int tmp, indx;
@@ -655,23 +656,29 @@ void ApplyDealiasing(fftw_complex* w_hat, const long int* N) {
 	for (int i = 0; i < local_Nx; ++i) {
 		tmp = i * Ny_Fourier;
 		for (int j = 0; j < Ny_Fourier; ++j) {
-			indx = tmp + j;
+			indx = array_dim * (tmp + j);
 
 			#ifdef __DEALIAS_23
-			if (sqrt((double) run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]) > Nx / 3) {  // (abs(run_data->k[0][i]) < (int) ceil((double)Nx / 3.0)) || (abs(run_data->k[1][j]) < (int) ceil((double)Ny / 3.0))
-				// Set dealised modes to 0
-				w_hat[indx] = 0.0 + 0.0 * I;
+			if (sqrt((double) run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]) > Nx / 3) {
+				for (int l = 0; l < array_dim; ++l) {
+					// Set dealised modes to 0
+					array[indx + l] = 0.0 + 0.0 * I;	
+				}
 			}
 			else {
-				// Apply DFT normaliztin to undealiased modes
-				w_hat[indx] = w_hat[indx];
+				for (int l = 0; l < array_dim; ++l) {
+					// Apply DFT normaliztin to undealiased modes
+					array[indx + l] = array[indx];	
+				}				
 			}
 			#elif __DEALIAS_HOU_LI
 			// Compute Hou-Li filter
 			hou_li_filter = exp(-36.0 * pow((sqrt(pow(run_data->k[0][i] / (Nx / 2), 2.0) + pow(run_data->k[1][j] / (Ny / 2), 2.0))), 36.0));
 
-			// Apply filter and DFT normaliztion
-			w_hat[indx] *= hou_li_filter;
+			for (int l = 0; l < array_dim; ++l) {
+				// Apply filter and DFT normaliztion
+				array[indx + l] *= hou_li_filter;
+			}
 			#endif
 		}
 	}
@@ -710,9 +717,9 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 			}
 		}
 
-		// Transform velocities to Fourier space
+		// Transform velocities to Fourier space & dealias
 		fftw_mpi_execute_dft_r2c(sys_vars->fftw_2d_dft_batch_r2c, u, u_hat);
-		ApplyDealiasing(u_hat, N); // NOTE: Needs updating for velocities
+		ApplyDealiasing(u_hat, 2, N);
 
 		// -------------------------------------------------
 		// Taylor Green Initial Condition - Fourier Space
@@ -728,7 +735,7 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 		}
 
 		// Apply dealiasing and transform what and normalize
-		ApplyDealiasing(w_hat, N);
+		ApplyDealiasing(w_hat, 1, N);
 		fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_c2r), w_hat, run_data->w);
 		for (int i = 0; i < local_Nx; ++i) {
 			tmp = i * (Ny + 2);
@@ -787,6 +794,9 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 		// Initialize temp variables
 		double k_sqr;
 
+		// ---------------------------------------
+		// Powerlaw Amplitude & Fixed Phase
+		// ---------------------------------------
 		for (int i = 0; i < local_Nx; ++i) {	
 			tmp = i * (Ny_Fourier);
 			for (int j = 0; j < Ny_Fourier; ++j) {
@@ -813,8 +823,10 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 			}
 		}
 
-		// Apply dealiasing and transform to Real space to get omega	
-		ApplyDealiasing(w_hat, N);
+		// ---------------------------------------------
+		// Apply deliasing and transform to Real space 	
+		// ---------------------------------------------
+		ApplyDealiasing(w_hat, 1, N);
 		fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_c2r), w_hat, run_data->w);
 		for (int i = 0; i < local_Nx; ++i) {
 			tmp = i * (Ny + 2);
@@ -827,7 +839,9 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 		}
 	}
 	else {
-		// Use random initial conditions
+		// ---------------------------------------
+		// Random Initial Conditions
+		// ---------------------------------------
 		for (int i = 0; i < local_Nx; ++i) {	
 			tmp = i * (Ny_Fourier);
 			for (int j = 0; j < Ny_Fourier; ++j) {
@@ -838,8 +852,10 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 			}
 		}		
 
-		// Apply deliasing and transform to real space 	
-		ApplyDealiasing(w_hat, N);
+		// ---------------------------------------------
+		// Apply deliasing and transform to Real space 	
+		// ---------------------------------------------
+		ApplyDealiasing(w_hat, 1, N);
 		fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_c2r), w_hat, run_data->w);
 		for (int i = 0; i < local_Nx; ++i) {
 			tmp = i * (Ny + 2);
@@ -856,8 +872,8 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 	// -------------------------------------------------
 	// Initialize the Dealiasing
 	// -------------------------------------------------
-	if (strcmp(sys_vars->u0, "TESTING") || strcmp(sys_vars->u0, "TAYLOR_GREEN_VEL"))
-		ApplyDealiasing(w_hat, N);
+	if (strcmp(sys_vars->u0, "TESTING") || strcmp(sys_vars->u0, "TAYLOR_GREEN_VEL")) {
+		ApplyDealiasing(w_hat, 1, N);
 	}
 }
 /**

@@ -276,8 +276,8 @@ if __name__ == "__main__":
     PAD = 3./2.
 
     ## Space variables
-    Nx    = int(128)
-    Ny    = int(128)
+    Nx    = int(8)
+    Ny    = int(8)
     Nyf   = int(Ny / 2 + 1)
     Mx  = int(PAD * Nx)
     My  = int(PAD * Ny)
@@ -438,62 +438,72 @@ if __name__ == "__main__":
     #         print("RHS[{}]: {}".format(i * Nyf + j, RK1[i, j] ))
     # print()
 
-   
+    print(kx)
 
-    iters = 0
-    while t <= T:
+    print(ky)
+
+    print(np.meshgrid(kx, ky))
+
+    for i in range(len(kx)):
+        for j in range(len(ky)):
+            print("({}, {}) ".format(kx[i], ky[j]), end = "")
+        print()
 
 
-        # ## Stage 1
-        RK1 = NonlinearRHS(w_hat, Nx, Ny, Nyf, Mx, My, Myf, kx, ky, k_sqr_inv, padder, filt_mask)
+    # iters = 0
+    # while t <= T:
+
+
+    #     # ## Stage 1
+    #     RK1 = NonlinearRHS(w_hat, Nx, Ny, Nyf, Mx, My, Myf, kx, ky, k_sqr_inv, padder, filt_mask)
                 
-        ## Stage 2
-        RK2 = NonlinearRHS(w_hat + dt * 0.5 * RK1, Nx, Ny, Nyf, Mx, My, Myf, kx, ky, k_sqr_inv, padder, filt_mask)
+    #     ## Stage 2
+    #     RK2 = NonlinearRHS(w_hat + dt * 0.5 * RK1, Nx, Ny, Nyf, Mx, My, Myf, kx, ky, k_sqr_inv, padder, filt_mask)
         
-        ## Stage 3
-        RK3 = NonlinearRHS(w_hat + dt * 0.5 * RK2, Nx, Ny, Nyf, Mx, My, Myf, kx, ky, k_sqr_inv, padder, filt_mask)
+    #     ## Stage 3
+    #     RK3 = NonlinearRHS(w_hat + dt * 0.5 * RK2, Nx, Ny, Nyf, Mx, My, Myf, kx, ky, k_sqr_inv, padder, filt_mask)
 
-        ## Stage 4
-        RK4 = NonlinearRHS(w_hat + dt * RK3, Nx, Ny, Nyf, Mx, My, Myf, kx, ky, k_sqr_inv, padder, filt_mask)
+    #     ## Stage 4
+    #     RK4 = NonlinearRHS(w_hat + dt * RK3, Nx, Ny, Nyf, Mx, My, Myf, kx, ky, k_sqr_inv, padder, filt_mask)
         
 
-        ## Update Stage
-        if EULER_SOLVE:
-            w_hat[:, :] = w_hat[:, :] + 1./6.0 * dt * RK1 + 1./3. * dt * RK2 + 1./3. * dt * RK3 + 1./6. * dt * RK4
-        else:
-            D = dt * nu * k_sqr
-            w_hat[:, :] = w_hat[:, :] * ((2. - D) / (2. + D)) + (2 * dt / (2. + D)) * (1./6. * RK1 + 1./3. * RK2 + 1./3. * RK3 + 1./6. * RK4)
+    #     ## Update Stage
+    #     if EULER_SOLVE:
+    #         w_hat[:, :] = w_hat[:, :] + 1./6.0 * dt * RK1 + 1./3. * dt * RK2 + 1./3. * dt * RK3 + 1./6. * dt * RK4
+    #     else:
+    #         D = dt * nu * k_sqr
+    #         w_hat[:, :] = w_hat[:, :] * ((2. - D) / (2. + D)) + (2 * dt / (2. + D)) * (1./6. * RK1 + 1./3. * RK2 + 1./3. * RK3 + 1./6. * RK4)
 
-        ## Update for next iteration
-        t  += dt
-        dt = UpdateTimestep(w_hat, dx, dy, k_sqr_inv)
-        iters += 1
+    #     ## Update for next iteration
+    #     t  += dt
+    #     dt = UpdateTimestep(w_hat, dx, dy, k_sqr_inv)
+    #     iters += 1
 
-        ## Print Update to screen
-        if np.mod(iters, print_iters) == 0:
-            if TESTING:
-                wh = w_hat.copy()
-                ww = ifft(wh)
-                abs_err = np.absolute(ww - TestTaylorGreen(x, y, t))
-                print("Iter: {} \t t: {:0.5f} \t dt: {:0.5f} \t KE: {:0.5f} \t ENS: {:0.5f} \t L2: {:0.5g} \t Linf: {:0.5g}".format(iters, t, dt, TotalEnergy(w_hat, k_sqr, k_sqr_inv), TotalEnstrophy(w_hat, k_sqr, k_sqr_inv), L2_norm(abs_err, Nx, Ny), Linf_norm(abs_err)))
+    #     ## Print Update to screen
+    #     if np.mod(iters, print_iters) == 0:
+    #         if TESTING:
+    #             wh = w_hat.copy()
+    #             ww = ifft(wh)
+    #             abs_err = np.absolute(ww - TestTaylorGreen(x, y, t))
+    #             print("Iter: {} \t t: {:0.5f} \t dt: {:0.5f} \t KE: {:0.5f} \t ENS: {:0.5f} \t L2: {:0.5g} \t Linf: {:0.5g}".format(iters, t, dt, TotalEnergy(w_hat, k_sqr, k_sqr_inv), TotalEnstrophy(w_hat, k_sqr, k_sqr_inv), L2_norm(abs_err, Nx, Ny), Linf_norm(abs_err)))
 
-                plt.figure()
-                plt.imshow(w[:, :])
-                plt.colorbar()
-                plt.savefig("../Testing_Functions/wh.png[{}].png".format(iters))
+    #             plt.figure()
+    #             plt.imshow(w[:, :])
+    #             plt.colorbar()
+    #             plt.savefig("../Testing_Functions/wh.png[{}].png".format(iters))
 
-                for i in range(5):
-                    for j in range(5):
-                        print("Er[{}, {}]: {} ".format(i, j, abs_err[i, j]), end = "")
-                    print()
-                print()
-                print()
-                plt.figure()
-                plt.imshow(abs_err)
-                plt.colorbar()
-                plt.savefig("../Testing_Functions/wh_err[{}].png".format(iters))
-            else:
-                print("Iter: {} \t t: {:0.5f} \t dt: {:0.5f} \t KE: {:0.5f} \t ENS: {:0.5f}".format(iters, t, dt, TotalEnergy(w_hat, k_sqr_inv), TotalEnstrophy(w_hat)))
+    #             for i in range(5):
+    #                 for j in range(5):
+    #                     print("Er[{}, {}]: {} ".format(i, j, abs_err[i, j]), end = "")
+    #                 print()
+    #             print()
+    #             print()
+    #             plt.figure()
+    #             plt.imshow(abs_err)
+    #             plt.colorbar()
+    #             plt.savefig("../Testing_Functions/wh_err[{}].png".format(iters))
+    #         else:
+    #             print("Iter: {} \t t: {:0.5f} \t dt: {:0.5f} \t KE: {:0.5f} \t ENS: {:0.5f}".format(iters, t, dt, TotalEnergy(w_hat, k_sqr_inv), TotalEnstrophy(w_hat)))
 
 
 
