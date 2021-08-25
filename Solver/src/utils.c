@@ -148,6 +148,11 @@ int GetCMLArgs(int argc, char** argv) {
 					strncpy(sys_vars->u0, "TESTING", 64);
 					break;
 				}
+				else if (!(strcmp(optarg,"DECAY_TURB"))) {
+					// Decay Turbulence -> McWilliams initial conditions
+					strncpy(sys_vars->u0, "DECAY_TURB", 64);
+					break;
+				}
 				else if (!(strcmp(optarg,"RANDOM"))) {
 					// Random initial conditions
 					strncpy(sys_vars->u0, "RANDOM", 64);

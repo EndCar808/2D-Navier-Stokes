@@ -57,3 +57,4 @@ Thumbs.db
 
 # Misc
 /Solver/bin/main*
+/Solver/obj/*

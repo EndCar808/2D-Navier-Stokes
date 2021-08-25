@@ -45,7 +45,8 @@ endif
 SOLVER_FLAGS := -D__NAVIER -D__ADAPTIVE_STEP -D__CFL_STEP # -D__HYPER -D__EKMN_DRAG
 
 # Flags to be passed to the solver for testing
-TG_TEST := -D__NAVIER -D__TESTING -D__ADAPTIVE_STEP -D__CFL_STEP
+TG_TEST    := -D__NAVIER -D__TESTING -D__ADAPTIVE_STEP -D__CFL_STEP
+DT_TEST    := -D__NAVIER -D__TESTING -D__ADAPTIVE_STEP -D__CFL_STEP
 DB_SL_TEST := -D__EULER -D__TESTING -D__ADAPTIVE_STEP -D__CFL_STEP
 # ---------------------------------------------------------------------
 #  Directory creation
@@ -53,15 +54,18 @@ DB_SL_TEST := -D__EULER -D__TESTING -D__ADAPTIVE_STEP -D__CFL_STEP
 OBJBIN := obj
 OBJDIR := $(shell mkdir -p $(OBJBIN))
 
-BIN := bin
+BIN    := bin
 BINDIR := $(shell mkdir -p $(BIN))
 
-OUT := output
+OUT    := output
 OUTDIR := $(shell mkdir -p $(OUT))
 
-SRCDIR := src
-SRCFILE := $(wildcard $(SRCDIR)/*.c)
-SRCOBJ := $(patsubst $(SRCDIR)/%.c, $(OBJBIN)/%.o, $(SRCFILE))
+SRCDIR     := src
+SRCFILE    := $(wildcard $(SRCDIR)/*.c)
+SRCOBJ     := $(patsubst $(SRCDIR)/%.c, $(OBJBIN)/%.o, $(SRCFILE))
+SRCOBJ_TG  := $(patsubst $(SRCDIR)/%.c, $(OBJBIN)/%_TG_test.o, $(SRCFILE))
+SRCOBJ_DSL := $(patsubst $(SRCDIR)/%.c, $(OBJBIN)/%_DB_SL_test.o, $(SRCFILE))
+SRCOBJ_DT  := $(patsubst $(SRCDIR)/%.c, $(OBJBIN)/%_DT_test.o, $(SRCFILE))
 
 DEPS = $(wildcard *.h) 
 
@@ -73,7 +77,7 @@ DEPS = $(wildcard *.h)
 ############
 
 
-all: $(BIN)/main
+all: $(BIN)/main $(BIN)/main_TG_test $(BIN)/main_DB_SL_test $(BIN)/main_DT_test
 
 
 ####--------
@@ -91,24 +95,30 @@ $(OBJBIN)/%.o: $(SRCDIR)/%.c $(DEPS)
 ####--------
 #  Testing
 ####--------
-test: $(BIN)/main_TG_test #$(BIN)/main_DB_SL_test 
+test: $(BIN)/main_TG_test $(BIN)/main_DB_SL_test $(BIN)/main_DT_test
 
-test_run: $(BIN)/main_TG_test #$(BIN)/main_DB_SL_test 
+test_run: $(BIN)/main_TG_test $(BIN)/main_DB_SL_test $(BIN)/main_DT_test
 	mpirun -n 4 $(BIN)/main_TG_test -o "../Data/Test" -n 128 -n 128 -s 0.0 -e 1.0 -h 0.0001 -i "TG_VORT" -v 1.0
-# 	mpirun -n 4 $(BIN)/main_DB_SL_test -o "../Data/Test" -n 256 -n 256 -s 0.0 -e 5.0 -h 0.0001 -i "DOUBLE_SHEAR_LAYER" -v 0.0
-# 	mpirun -n 4 $(BIN)/main_TG_test -o "../Data/Test" -n 128 -n 128 -s 0.0 -e 1.0 -h 0.0001 -i "TG_VORT" -v 1.0
+	mpirun -n 4 $(BIN)/main_DB_SL_test -o "../Data/Test" -n 256 -n 256 -s 0.0 -e 2.0 -h 0.001 -i "DOUBLE_SHEAR_LAYER" -v 0.0
+	mpirun -n 4 $(BIN)/main_DT_test -o "../Data/Test" -n 256 -n 256 -s 0.0 -e 2.0 -h 0.001 -i "DECAY_TURB" -v 0.01
 
-$(BIN)/main_TG_test: $(SRCOBJ) $(DEPS)
+$(BIN)/main_TG_test: $(SRCOBJ_TG) $(DEPS)
 		$(GCC) $(CCFLAG) $(TG_TEST) -o $@ $^ ${INCDIR} ${LIBDIR} $(LIBFLAG) $(GSLFLAG)
 
-$(OBJBIN)/%.o: $(SRCDIR)/%.c $(DEPS)
+$(OBJBIN)/%_TG_test.o: $(SRCDIR)/%.c $(DEPS)
 	$(GCC) $(CCFLAG) $(TG_TEST) -c $^ -o $@ ${INCDIR} ${LIBDIR} $(LIBFLAG) $(GSLFLAG)
 
-# $(BIN)/main_DB_SL_test: $(SRCOBJ) $(DEPS)
-# 		$(GCC) $(CCFLAG) $(DB_SL_TEST) -o $@ $^ ${INCDIR} ${LIBDIR} $(LIBFLAG) $(GSLFLAG)
+$(BIN)/main_DB_SL_test: $(SRCOBJ_DSL) $(DEPS)
+		$(GCC) $(CCFLAG) $(DB_SL_TEST) -o $@ $^ ${INCDIR} ${LIBDIR} $(LIBFLAG) $(GSLFLAG)
 
-# $(OBJBIN)/%.o: $(SRCDIR)/%.c $(DEPS)
-# 	$(GCC) $(CCFLAG) $(DB_SL_TEST) -c $^ -o $@ ${INCDIR} ${LIBDIR} $(LIBFLAG) $(GSLFLAG)
+$(OBJBIN)/%_DB_SL_test.o: $(SRCDIR)/%.c $(DEPS)
+	$(GCC) $(CCFLAG) $(DB_SL_TEST) -c $^ -o $@ ${INCDIR} ${LIBDIR} $(LIBFLAG) $(GSLFLAG)
+
+$(BIN)/main_DT_test: $(SRCOBJ_DT) $(DEPS)
+		$(GCC) $(CCFLAG) $(DT_TEST) -o $@ $^ ${INCDIR} ${LIBDIR} $(LIBFLAG) $(GSLFLAG)
+
+$(OBJBIN)/%_DT_test.o: $(SRCDIR)/%.c $(DEPS)
+	$(GCC) $(CCFLAG) $(DT_TEST) -c $^ -o $@ ${INCDIR} ${LIBDIR} $(LIBFLAG) $(GSLFLAG)
 
 # ---------------------------------------------------------------------
 #  Clean up
