@@ -56,4 +56,4 @@ Thumbs.db
 *.h5
 
 # Misc
-/Solver/bin/.*
+/Solver/bin/main*

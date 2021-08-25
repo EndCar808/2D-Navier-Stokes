@@ -40,7 +40,6 @@ int main(int argc, char** argv) {
 	sys_vars  = &system_vars;
 	file_info = &HDF_file_info;
 
-
 	//////////////////////////////////
 	// Initialize MPI section
 	MPI_Init(&argc, &argv);
@@ -59,7 +58,13 @@ int main(int argc, char** argv) {
 	// Start timer
 	MPI_Barrier(MPI_COMM_WORLD);
 	clock_t begin = clock();
-
+	
+	// Read in Command Line Arguments
+	if (GetCMLArgs(argc, argv) != 0) {
+		fprintf(stderr, "\n["RED"ERROR"RED"]: Error in reading in command line aguments, check utils.c file for details\n");
+		exit(1);
+	}
+	
 	//////////////////////////////////
 	// Call Solver
 	//////////////////////////////////

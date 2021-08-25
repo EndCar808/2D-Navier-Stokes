@@ -242,7 +242,7 @@ void WriteDataToFile(double t, double dt, long int iters) {
 	// Write the real space vorticity
 	WriteDataFourier(t, (int)iters, group_id, "w_hat", file_info->COMPLEX_DTYPE, dset_dims, slab_dims, slab_dims, sys_vars->local_Nx_start, run_data->w_hat);
 	#endif
-	#ifdef __TESTING
+	#ifdef TESTING
 	// Create dimension arrays
 	slab_dims[0]      = sys_vars->local_Nx;
 	slab_dims[1]      = Ny;

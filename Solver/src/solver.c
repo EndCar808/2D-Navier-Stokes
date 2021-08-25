@@ -52,16 +52,16 @@ void SpectralSolve(void) {
 	// Initialize variables
 	int tmp;
 	int indx;
-	sys_vars->u0   = "TAYLOR_GREEN_VORT";
-	sys_vars->N[0] = 128;
-	sys_vars->N[1] = 128;
 	herr_t status;
+	// strncpy((sys_vars->u0), "TG_VORT", 64);
+	// sys_vars->N[0] = 8;
+	// sys_vars->N[1] = 8;
 	const long int N[SYS_DIM] = {sys_vars->N[0], sys_vars->N[1]};
 	const long int NBatch[SYS_DIM] = {sys_vars->N[0], sys_vars->N[1] / 2 + 1};
 	const long int Nx 		  = N[0];
 	const long int Ny 		  = N[1];
 	const long int Ny_Fourier = N[1] / 2 + 1;
-	#ifdef __TESTING
+	#ifdef TESTING
 	double max_vort;
 	double norms[2];
 	#endif
@@ -70,7 +70,6 @@ void SpectralSolve(void) {
 	struct RK_data_struct* RK_data;	// Initialize pointer to a RK_data_struct
 	struct RK_data_struct RK_data_tmp; // Initialize a RK_data_struct
 	RK_data = &RK_data_tmp;		// Point the ptr to this new RK_data_struct
-
 	// -------------------------------
 	// Allocate memory
 	// -------------------------------
@@ -87,16 +86,15 @@ void SpectralSolve(void) {
 	// Initialize the collocation points and wavenumber space 
 	InitializeSpaceVariables(run_data->x, run_data->k, N);
 
-
 	// Get initial conditions
 	InitialConditions(run_data->w_hat, run_data->u, run_data->u_hat, N);
 	
-	PrintScalarReal(run_data->w, N, "w");
-	PrintScalarFourier(run_data->w_hat, N, "wh");
+	// PrintScalarReal(run_data->w, N, "w");
+	// PrintScalarFourier(run_data->w_hat, N, "wh");
 
-	
-	NonlinearRHSBatch(run_data->w_hat, RK_data->RK1, RK_data->nabla_psi, RK_data->nabla_w);
-	PrintScalarFourier(RK_data->RK1, N, "a_RHSh");
+	// NonlinearRHSBatch(run_data->w_hat, RK_data->RK1, RK_data->nabla_psi, RK_data->nabla_w);
+	// PrintScalarFourier(RK_data->RK1, N, "a_RHSh");
+
 
 	// -------------------------------
 	// Integration Variables
@@ -108,12 +106,12 @@ void SpectralSolve(void) {
 	// Get the timestep using a CFL like condition
 	double umax          = GetMaxData("VEL");
 	sys_vars->w_max_init = GetMaxData("VORT");
-	sys_vars->dt         = 0.0001; //(sys_vars->dx) / umax;
+	// sys_vars->dt         = 0.0001; //(sys_vars->dx) / umax;
 	GetTimestep(&(sys_vars->dt));
 
 	// Compute integration time variables
-	sys_vars->t0 = 0.0;
-	sys_vars->T  = 1.0;
+	// sys_vars->t0 = 0.0;
+	// sys_vars->T  = 1.0;
 	double t0    = sys_vars->t0;
 	double t     = t0;
 	double dt    = sys_vars->dt;
@@ -139,13 +137,7 @@ void SpectralSolve(void) {
 	// Inialize system measurables
 	InitializeSystemMeasurables();
 
-	// If testing 
-	#ifdef __TESTING
-	TestTaylorGreenVortex(0.0, N, norms);
-	if (!(sys_vars->rank)) {
-		printf("Iter: %d\tt: %1.6lf\tdt: %g\tL2 Err: %g\tLinf Err: %g\n", 0, 0.0, dt, norms[0], norms[1]);
-	}
-	#endif
+	
 	//////////////////////////////
 	// Begin Integration
 	//////////////////////////////
@@ -189,7 +181,7 @@ void SpectralSolve(void) {
 		// Write To File
 		// -------------------------------
 		if (iters % SAVE_EVERY == 0) {
-			#ifdef __TESTING
+			#ifdef TESTING
 			TaylorGreenSoln(t, N);
 			#endif
 
@@ -222,7 +214,7 @@ void SpectralSolve(void) {
 		// Print Update To Screen
 		// -------------------------------
 		#ifdef __PRINT_SCREEN
-		#ifdef __TESTING
+		#ifdef TESTING
 		if (iters % TEST_PRINT == 0) {
 			// Call testing 
 			TestTaylorGreenVortex(t, N, norms);
@@ -373,7 +365,20 @@ void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdif
 			#elif defined(__NAVIER)
 			// Compute the pre factors for the RK4CN update step
 			k_sqr = (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
-			D_fac = dt * (NU * pow(k_sqr, VIS_POW) + EKMN_ALPHA * pow(k_sqr, EKMN_POW)); 
+			
+			#if defined(HYPER_VISC) && defined(EKMN_DRAG) 
+			// Both Hyperviscosity and Ekman drag
+			D_fac = dt * (sys_vars->NU * pow(k_sqr, VIS_POW) + sys_vars->EKMN_ALPHA * pow(k_sqr, EKMN_POW)); 
+			#elif !defined(HYPER_VISC) && defined(EKMN_DRAG) 
+			// No hyperviscosity but we have Ekman drag
+			D_fac = dt * (sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA * pow(k_sqr, EKMN_POW)); 
+			#elif defined(HYPER_VISC) && !defined(EKMN_DRAG) 
+			// Hyperviscosity only
+			D_fac = dt * (sys_vars->NU * pow(k_sqr, VIS_POW)); 
+			#else 
+			// No hyper viscosity or no ekman drag -> just normal viscosity
+			D_fac = dt * (sys_vars->NU * k_sqr); 
+			#endif
 
 			// Complete the update step
 			run_data->w_hat[indx] = run_data->w_hat[indx] * ((2.0 - D_fac) / (2.0 + D_fac)) + (2.0 * dt / (2.0 + D_fac)) * (RK5_B1 * RK_data->RK1[indx] + RK5_B3 * RK_data->RK3[indx] + RK5_B4 * RK_data->RK4[indx] + RK5_B5 * RK_data->RK5[indx] + RK5_B6 * RK_data->RK6[indx]);
@@ -412,6 +417,51 @@ void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdif
 		}
 	}
 	#endif
+}
+#endif
+#ifdef __DPRK5
+/**
+ * Function used to find the max between two numbers -> used in the Dormand Prince scheme
+ * @param  a Double that will be used to find the max
+ * @param  b Double that will be used to find the max
+ * @return   The max between the two inputs
+ */
+double DPMax(double a, double b) {
+
+	// Initailize max
+	double max;
+
+	// Check Max
+	if (a > b) {
+		max = a;
+	}
+	else {
+		max = b;
+	}
+
+	// Return max
+	return max;
+}
+/**
+ * Function used to find the min between two numbers
+ * @param  a Double that will be used to find the min
+ * @param  b Double that will be used to find the min
+ * @return   The minimum of the two inputs
+ */
+double DPMin(double a, double b) {
+
+	// Initialize min
+	double min;
+
+	if (a < b) {
+		min = a;
+	}
+	else {
+		min = b;
+	}
+
+	// return the result
+	return min;
 }
 #endif
 /**
@@ -489,7 +539,20 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Nx, RK_da
 			#elif defined(__NAVIER)
 			// Compute the pre factors for the RK4CN update step
 			k_sqr = (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
-			D_fac = dt * (NU * pow(k_sqr, VIS_POW) + EKMN_ALPHA * pow(k_sqr, EKMN_POW)); 
+			
+			#if defined(HYPER_VISC) && defined(EKMN_DRAG) 
+			// Both Hyperviscosity and Ekman drag
+			D_fac = dt * (sys_vars->NU * pow(k_sqr, VIS_POW) + sys_vars->EKMN_ALPHA * pow(k_sqr, EKMN_POW)); 
+			#elif !defined(HYPER_VISC) && defined(EKMN_DRAG) 
+			// No hyperviscosity but we have Ekman drag
+			D_fac = dt * (sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA * pow(k_sqr, EKMN_POW)); 
+			#elif defined(HYPER_VISC) && !defined(EKMN_DRAG) 
+			// Hyperviscosity only
+			D_fac = dt * (sys_vars->NU * pow(k_sqr, VIS_POW)); 
+			#else 
+			// No hyper viscosity or no ekman drag -> just normal viscosity
+			D_fac = dt * (sys_vars->NU * k_sqr); 
+			#endif
 
 			// Update temporary input for nonlinear term
 			run_data->w_hat[indx] = run_data->w_hat[indx] * ((2.0 - D_fac) / (2.0 + D_fac)) + (2.0 * dt / (2.0 + D_fac)) * (RK4_B1 * RK_data->RK1[indx] + RK4_B2 * RK_data->RK2[indx] + RK4_B3 * RK_data->RK3[indx] + RK4_B4 * RK_data->RK4[indx]);
@@ -702,7 +765,7 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 	ptrdiff_t local_Nx = sys_vars->local_Nx;
 	
 
-	if(!(strcmp(sys_vars->u0, "TAYLOR_GREEN_VEL"))) {
+	if(!(strcmp(sys_vars->u0, "TG_VEL"))) {
 		// ------------------------------------------------
 		// Taylor Green Initial Condition - Real Space
 		// ------------------------------------------------
@@ -747,7 +810,7 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 			}
 		}
 	}
-	else if(!(strcmp(sys_vars->u0, "TAYLOR_GREEN_VORT"))) {
+	else if(!(strcmp(sys_vars->u0, "TG_VORT"))) {
 		// ------------------------------------------------
 		// Taylor Green Initial Condition - Real Space
 		// ------------------------------------------------
@@ -838,7 +901,7 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 			}
 		}
 	}
-	else {
+	else if (!(strcmp(sys_vars->u0, "RANDOM"))) {
 		// ---------------------------------------
 		// Random Initial Conditions
 		// ---------------------------------------
@@ -867,12 +930,40 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 			}
 		}
 	}
+	else {
+		printf("\n["MAGENTA"WARNING"RESET"] --- No initial conditions specified ---> Using random initial conditions\n");
+		// ---------------------------------------
+		// Random Initial Conditions
+		// ---------------------------------------
+		for (int i = 0; i < local_Nx; ++i) {	
+			tmp = i * (Ny_Fourier);
+			for (int j = 0; j < Ny_Fourier; ++j) {
+				indx = tmp + j;
 
+				// Fill vorticity
+				w_hat[indx] = rand() * 2.0 * M_PI + rand() * 2.0 * M_PI * I;
+			}
+		}		
 
+		// ---------------------------------------------
+		// Apply deliasing and transform to Real space 	
+		// ---------------------------------------------
+		ApplyDealiasing(w_hat, 1, N);
+		fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_c2r), w_hat, run_data->w);
+		for (int i = 0; i < local_Nx; ++i) {
+			tmp = i * (Ny + 2);
+			for (int j = 0; j < Ny; ++j) {
+				indx = tmp + j;
+
+				// Normalize
+				run_data->w[indx] *= 1.0 / (double )(Nx * Ny);
+			}
+		}
+	}
 	// -------------------------------------------------
 	// Initialize the Dealiasing
 	// -------------------------------------------------
-	if (strcmp(sys_vars->u0, "TESTING") || strcmp(sys_vars->u0, "TAYLOR_GREEN_VEL")) {
+	if (strcmp(sys_vars->u0, "TESTING") || strcmp(sys_vars->u0, "TG_VEL")) {
 		ApplyDealiasing(w_hat, 1, N);
 	}
 }
@@ -1163,12 +1254,12 @@ void GetTimestep(double* dt) {
 	MPI_Allreduce(MPI_IN_PLACE, &scales_convect, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
 
 	// Find the diffusive scales
-	double scales_diff = pow(M_PI, 2.0) * (NU / pow(sys_vars->dx, 2.0) + NU / pow(sys_vars->dy, 2.0));
+	double scales_diff = pow(M_PI, 2.0) * (sys_vars->NU / pow(sys_vars->dx, 2.0) + sys_vars->NU / pow(sys_vars->dy, 2.0));
 
 	// -------------------------------
 	// Update Timestep
 	// -------------------------------
-	(* dt) = CFL_CONST / (scales_convect + scales_diff);
+	(* dt) = sys_vars->CFL_CONST / (scales_convect + scales_diff);
 	#else
 	// -------------------------------
 	// Get Current Max Vorticity 
@@ -1230,7 +1321,7 @@ void TestTaylorGreenVortex(const double t, const long int* N, double* norms) {
 			indx = tmp + j;
 
 			// Compute the exact solution
-			tg_exact = 2.0 * KAPPA * cos(KAPPA * run_data->x[0][i]) * cos(KAPPA * run_data->x[1][j]) * exp(-2.0 * pow(KAPPA, 2.0) * NU * t);
+			tg_exact = 2.0 * KAPPA * cos(KAPPA * run_data->x[0][i]) * cos(KAPPA * run_data->x[1][j]) * exp(-2.0 * pow(KAPPA, 2.0) * sys_vars->NU * t);
 
 			// Get the absolute error
 			abs_err = fabs(run_data->w[indx] * norm_const - tg_exact);
@@ -1284,7 +1375,7 @@ void TaylorGreenSoln(const double t, const long int* N) {
 		for (int j = 0; j < Ny; ++j) {
 			indx = tmp + j;
 
-			run_data->tg_soln[indx] = 2.0 * KAPPA * cos(KAPPA * run_data->x[0][i]) * cos(KAPPA * run_data->x[1][j]) * exp(-2.0 * pow(KAPPA, 2.0) * NU * t);
+			run_data->tg_soln[indx] = 2.0 * KAPPA * cos(KAPPA * run_data->x[0][i]) * cos(KAPPA * run_data->x[1][j]) * exp(-2.0 * pow(KAPPA, 2.0) * sys_vars->NU * t);
 		}
 	}
 
@@ -1595,7 +1686,7 @@ void AllocateMemory(const long int* NBatch, RK_data_struct* RK_data) {
 		fprintf(stderr, "\n[ERROR] --- Unable to allocate memory for Fourier Space Velocities \n-->> Exiting!!!\n");
 		exit(1);
 	}
-	#ifdef __TESTING
+	#ifdef TESTING
 	run_data->tg_soln = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->alloc_local);
 	if (run_data->tg_soln == NULL) {
 		fprintf(stderr, "\n[ERROR] --- Unable to allocate memory for Taylor Green vortex solution \n-->> Exiting!!!\n");
@@ -1686,7 +1777,7 @@ void AllocateMemory(const long int* NBatch, RK_data_struct* RK_data) {
 			RK_data->nabla_w[SYS_DIM * indx_real + 1] 	= 0.0;
 			RK_data->nabla_psi[SYS_DIM * indx_real + 0] = 0.0;
 			RK_data->nabla_psi[SYS_DIM * indx_real + 1] = 0.0;
-			#ifdef __TESTING
+			#ifdef TESTING
 			run_data->tg_soln[indx_real]                = 0.0;
 			#endif
 			run_data->w[indx_real]                      = 0.0;
@@ -1848,7 +1939,7 @@ void FreeMemory(RK_data_struct* RK_data) {
 	fftw_free(run_data->tot_enstr);
 	fftw_free(run_data->tot_palin);
 	fftw_free(run_data->tot_energy);
-	#ifdef __TESTING
+	#ifdef TESTING
 	fftw_free(run_data->tg_soln);
 	#endif
 	#ifdef __TIME

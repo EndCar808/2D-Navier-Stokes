@@ -25,8 +25,12 @@ void SpectralSolve(void);
 // Integration functions
 #ifdef __RK4
 void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Nx, RK_data_struct* RK_data);
-#elif defined(__RK5)
+#elif defined(__RK5) || defined(__DPRK5)
 void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdiff_t local_Nx, RK_data_struct* RK_data);
+#endif
+#ifdef __DPRK5
+double DPMax(double a, double b);
+double DPMin(double a, double b);
 #endif
 void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* u, double* w);
 void ApplyDealiasing(fftw_complex* array, int array_dim, const long int* N);

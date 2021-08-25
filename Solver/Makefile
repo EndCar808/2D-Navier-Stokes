@@ -38,8 +38,15 @@ else
 	$(error Unknown OS found, please check OS and add appropriate flags in Makefile)
 endif
 
+# ---------------------------------------------------------------------
+#  Executable flags
+# ---------------------------------------------------------------------
+# Flags to be passed to the solver for normal runs
+SOLVER_FLAGS := -D__NAVIER -D__ADAPTIVE_STEP -D__CFL_STEP # -D__HYPER -D__EKMN_DRAG
 
-DEPS = $(wildcard *.h) 
+# Flags to be passed to the solver for testing
+TG_TEST := -D__NAVIER -D__TESTING -D__ADAPTIVE_STEP -D__CFL_STEP
+DB_SL_TEST := -D__EULER -D__TESTING -D__ADAPTIVE_STEP -D__CFL_STEP
 # ---------------------------------------------------------------------
 #  Directory creation
 # ---------------------------------------------------------------------
@@ -56,6 +63,7 @@ SRCDIR := src
 SRCFILE := $(wildcard $(SRCDIR)/*.c)
 SRCOBJ := $(patsubst $(SRCDIR)/%.c, $(OBJBIN)/%.o, $(SRCFILE))
 
+DEPS = $(wildcard *.h) 
 
 # ---------------------------------------------------------------------
 #  Builds
@@ -68,18 +76,39 @@ SRCOBJ := $(patsubst $(SRCDIR)/%.c, $(OBJBIN)/%.o, $(SRCFILE))
 all: $(BIN)/main
 
 
-############
+####--------
 #  Solver
-############
+####--------
 solver: $(BIN)/main 
 
 $(BIN)/main: $(SRCOBJ) $(DEPS)
-		$(GCC) $(CCFLAG) -o $@ $^ ${INCDIR} ${LIBDIR} $(LIBFLAG) $(GSLFLAG)
+		$(GCC) $(CCFLAG) $(SOLVER_FLAGS) -o $@ $^ ${INCDIR} ${LIBDIR} $(LIBFLAG) $(GSLFLAG)
 
 $(OBJBIN)/%.o: $(SRCDIR)/%.c $(DEPS)
-	$(GCC) $(CCFLAG) -c $^ -o $@ ${INCDIR} ${LIBDIR} $(LIBFLAG) $(GSLFLAG)
+	$(GCC) $(CCFLAG) $(SOLVER_FLAGS) -c $^ -o $@ ${INCDIR} ${LIBDIR} $(LIBFLAG) $(GSLFLAG)
 
 
+####--------
+#  Testing
+####--------
+test: $(BIN)/main_TG_test #$(BIN)/main_DB_SL_test 
+
+test_run: $(BIN)/main_TG_test #$(BIN)/main_DB_SL_test 
+	mpirun -n 4 $(BIN)/main_TG_test -o "../Data/Test" -n 128 -n 128 -s 0.0 -e 1.0 -h 0.0001 -i "TG_VORT" -v 1.0
+# 	mpirun -n 4 $(BIN)/main_DB_SL_test -o "../Data/Test" -n 256 -n 256 -s 0.0 -e 5.0 -h 0.0001 -i "DOUBLE_SHEAR_LAYER" -v 0.0
+# 	mpirun -n 4 $(BIN)/main_TG_test -o "../Data/Test" -n 128 -n 128 -s 0.0 -e 1.0 -h 0.0001 -i "TG_VORT" -v 1.0
+
+$(BIN)/main_TG_test: $(SRCOBJ) $(DEPS)
+		$(GCC) $(CCFLAG) $(TG_TEST) -o $@ $^ ${INCDIR} ${LIBDIR} $(LIBFLAG) $(GSLFLAG)
+
+$(OBJBIN)/%.o: $(SRCDIR)/%.c $(DEPS)
+	$(GCC) $(CCFLAG) $(TG_TEST) -c $^ -o $@ ${INCDIR} ${LIBDIR} $(LIBFLAG) $(GSLFLAG)
+
+# $(BIN)/main_DB_SL_test: $(SRCOBJ) $(DEPS)
+# 		$(GCC) $(CCFLAG) $(DB_SL_TEST) -o $@ $^ ${INCDIR} ${LIBDIR} $(LIBFLAG) $(GSLFLAG)
+
+# $(OBJBIN)/%.o: $(SRCDIR)/%.c $(DEPS)
+# 	$(GCC) $(CCFLAG) $(DB_SL_TEST) -c $^ -o $@ ${INCDIR} ${LIBDIR} $(LIBFLAG) $(GSLFLAG)
 
 # ---------------------------------------------------------------------
 #  Clean up

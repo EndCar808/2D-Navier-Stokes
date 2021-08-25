@@ -9,6 +9,8 @@
 // ---------------------------------------------------------------------
 #include <stdlib.h>
 #include <stdio.h>
+#include <unistd.h>
+#include <string.h> 
 #include <math.h>
 #include <complex.h>
 
@@ -23,6 +25,174 @@
 // ---------------------------------------------------------------------
 //  Function Definitions
 // ---------------------------------------------------------------------
+/**
+ * Function to read in arguements given at the command line upon execution of the solver
+ * @param  argc The number of arguments given
+ * @param  argv Array containg the arguments specified
+ * @return      Returns 0 if the parsing of arguments has been successful
+ */
+int GetCMLArgs(int argc, char** argv) {
+
+	// Initialize Variables
+	int c;
+	int dim_flag = 0;
+
+	// -------------------------------
+	// Initialize Default Values
+	// -------------------------------
+	// Output file directory
+	strncpy(file_info->output_dir, "../Data/Tmp", 512);  // Set default output directory to the Tmp folder
+	strncpy(file_info->output_tag, "NO_TAG", 64);
+	// System dimensions
+	sys_vars->N[0] = 64;
+	sys_vars->N[1] = 64;
+	// Integration time 
+	sys_vars->t0 	   	= 0.0;
+	sys_vars->dt 	   	= 1e-4;
+	sys_vars->T  	   	= 1.0;
+	sys_vars->CFL_CONST = sqrt(3);
+	// Initial conditions
+	strncpy(sys_vars->u0, "TG_VORT", 64);
+	// System viscosity
+	sys_vars->NU = 1.0;
+
+
+
+	// -------------------------------
+	// Parse CML Arguments
+	// -------------------------------
+	while ((c = getopt(argc, argv, "o:h:n:s:e:t:v:i:c:p:f:z:")) != -1) {
+		switch(c) {
+			case 'o':
+				// Read in location of output directory
+				strncpy(file_info->output_dir, optarg, 512);	
+				break;
+			case 'n':
+				// Read in the dimensions of the system
+				sys_vars->N[dim_flag] = atoi(optarg);
+
+				// Check dimensions satisfy requirements
+				if (sys_vars->N[dim_flag] <= 2) {
+					fprintf(stderr, "\n["RED"ERROR"RESET"] Parsing of Command Line Arguements Failed: The minimum dimension size of [%ld] must be greater than 2\n-->> Exiting!\n\n", sys_vars->N[dim_flag]);		
+					exit(1);
+				}
+				else if (sys_vars->N[dim_flag] < sys_vars->rank) {
+					fprintf(stderr, "\n["RED"ERROR"RESET"] Parsing of Command Line Arguements Failed: The system dimension of [%ld] cannot be less than the number of MPI processes of [%d]\n-->> Exiting!\n\n", sys_vars->N[dim_flag], sys_vars->rank);		
+					exit(1);
+				}
+				else if (sys_vars->N[dim_flag] % 2 != 0) {
+					fprintf(stderr, "\n["RED"ERROR"RESET"] Parsing of Command Line Arguements Failed: The system dimension of [%ld] must be a multiple of 2\n-->> Exiting!\n", sys_vars->N[dim_flag]);		
+					exit(1);
+				}
+				dim_flag++;
+				break;
+			case 's':
+				// Read in intial time
+				sys_vars->t0 = atof(optarg);	
+				break;
+			case 'e':
+				// Read in final time
+				sys_vars->T = atof(optarg);	
+				if (sys_vars->T < sys_vars->t0) {
+					fprintf(stderr, "\n["RED"ERROR"RESET"] Parsing of Command Line Arguements Failed: The provided end time: [%lf] must be greater than the initial time: [%lf]\n-->> Exiting!\n\n", sys_vars->T, sys_vars->t0);		
+					exit(1);
+				}
+				break;
+			case 'h':
+				// Read in initial timestep
+				sys_vars->dt = atof(optarg);
+				if (sys_vars->dt <= 0) {
+					fprintf(stderr, "\n["RED"ERROR"RESET"] Parsing of Command Line Arguements Failed: The provided timestep: [%lf] must be strictly positive\n-->> Exiting!\n\n", sys_vars->dt);		
+					exit(1);
+				}
+				break;
+			case 'c':
+				// Read in value of the CFL -> this can be used to control the timestep
+				sys_vars->CFL_CONST = atof(optarg);
+				if (sys_vars->CFL_CONST <= 0) {
+					fprintf(stderr, "\n["RED"ERROR"RESET"] Parsing of Command Line Arguements Failed: The provided CFL Constant: [%lf] must be strictly positive\n-->> Exiting!\n\n", sys_vars->CFL_CONST);		
+					exit(1);
+				}
+				break;
+			case 'v':
+				// Read in the viscosity
+				sys_vars->NU = atof(optarg);
+				if (sys_vars->CFL_CONST <= 0) {
+					fprintf(stderr, "\n["RED"ERROR"RESET"] Parsing of Command Line Arguements Failed: The provided viscosity: [%lf] must be strictly positive\n-->> Exiting!\n\n", sys_vars->NU);		
+					exit(1);
+				}
+				break;
+			case 'd':
+				// Read in the Ekman drag coefficient
+				sys_vars->EKMN_ALPHA = atof(optarg);
+				break;
+			case 'i':
+				// Read in the initial conditions
+				if (!(strcmp(optarg,"TG_VEL"))) {
+					// The Taylor Green vortex - starting with the velocity
+					strncpy(sys_vars->u0, "TG_VEL", 64);
+					break;
+				}
+				else if (!(strcmp(optarg,"TG_VORT"))) {
+					// The Taylor Green vortex - starting with the vorticity
+					strncpy(sys_vars->u0, "TG_VORT", 64);
+					break;
+				}
+				else if (!(strcmp(optarg,"DOUBLE_SHEAR_LAYER"))) {
+					// Double Shear Layer - for testing the Euler solver
+					strncpy(sys_vars->u0, "DOUBLE_SHEAR_LAYER", 64);
+					break;
+				}
+				else if (!(strcmp(optarg,"TESTING"))) {
+					// Specific ICs for testing - powerlaw amps and phases = pi/4
+					strncpy(sys_vars->u0, "TESTING", 64);
+					break;
+				}
+				else if (!(strcmp(optarg,"RANDOM"))) {
+					// Random initial conditions
+					strncpy(sys_vars->u0, "RANDOM", 64);
+					break;
+				}
+				else {
+					// No initial conditions specified -> this will default to random initial conditions
+					strncpy(sys_vars->u0, "NONE", 64);
+					break;
+				}
+				break;
+			case 't':
+				// Read in output directory tag
+				strncpy(file_info->output_tag, optarg, 64);	
+				break;
+			case 'p':
+				// TODO: Read in how often to print to file -> may need to change this to let the programme figure this out based on how big final output files will be
+				break;
+			case 'f':
+				// TODO: Read in forcing indicator
+				break;
+			case 'z':
+				// TODO: Read in inputs from a given (.ini) file
+				break;
+			default:
+				fprintf(stderr, "\n["RED"ERROR"RESET"] Incorrect command line flag encountered\n");		
+				fprintf(stderr, "Use"YELLOW" -o"RESET" to specify the output directory\n");
+				fprintf(stderr, "Use"YELLOW" -n"RESET" to specify the size of each dimension in the system\n");
+				fprintf(stderr, "Use"YELLOW" -s"RESET" to specify the start time of the simulation\n");
+				fprintf(stderr, "Use"YELLOW" -e"RESET" to specify the end time of the simulation\n");
+				fprintf(stderr, "Use"YELLOW" -h"RESET" to specify the timestep\n");
+				fprintf(stderr, "Use"YELLOW" -c"RESET" to specify the CFL constant for the adaptive stepping\n");
+				fprintf(stderr, "Use"YELLOW" -v"RESET" to specify the system viscosity\n");
+				fprintf(stderr, "Use"YELLOW" -i"RESET" to specify the initial condition\n");
+				fprintf(stderr, "Use"YELLOW" -t"RESET" to specify the tag name to be used in the output file directory\n");
+				fprintf(stderr, "Use"YELLOW" -p"RESET" to specify how often to print to file\n");
+				fprintf(stderr, "Use"YELLOW" -z"RESET" to specify an input file to read parameters from\n");
+				fprintf(stderr, "\nExample usage:\n"CYAN"\tmpirun -n 4 ./bin/main -o \"../Data/Tmp\" -n 64 -n 64 -s 0.0 -e 1.0 -h 0.0001 -v 1.0 -i \"TG_VORT\" -t \"TEMP_RUN\" \n"RESET);
+				fprintf(stderr, "-->> Now Exiting!\n\n");
+				exit(1);
+		}
+	}
+
+	return 0;
+}
 /**
  * Utility function that gathers all the local real space vorticity arrays on the master process and prints to screen 
  * @param N Array containing the dimensions of the system
@@ -370,49 +540,6 @@ void PrintSpaceVariables(const long int* N) {
 	// Free up memory
 	fftw_free(x0);
 	fftw_free(k0);
-}
-/**
- * Function used to find the max between two numbers -> used in the Dormand Prince scheme
- * @param  a Double that will be used to find the max
- * @param  b Double that will be used to find the max
- * @return   The max between the two inputs
- */
-double DPMax(double a, double b) {
-
-	// Initailize max
-	double max;
-
-	// Check Max
-	if (a > b) {
-		max = a;
-	}
-	else {
-		max = b;
-	}
-
-	// Return max
-	return max;
-}
-/**
- * Function used to find the min between two numbers
- * @param  a Double that will be used to find the min
- * @param  b Double that will be used to find the min
- * @return   The minimum of the two inputs
- */
-double DPMin(double a, double b) {
-
-	// Initialize min
-	double min;
-
-	if (a < b) {
-		min = a;
-	}
-	else {
-		min = b;
-	}
-
-	// return the result
-	return min;
 }
 // ---------------------------------------------------------------------
 //  End of File
