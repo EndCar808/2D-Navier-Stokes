@@ -55,8 +55,8 @@ int GetCMLArgs(int argc, char** argv) {
 	strncpy(sys_vars->u0, "TG_VORT", 64);
 	// System viscosity
 	sys_vars->NU = 1.0;
-
-
+	// Write to file every 
+	sys_vars->SAVE_EVERY = 100;
 
 	// -------------------------------
 	// Parse CML Arguments
@@ -169,7 +169,8 @@ int GetCMLArgs(int argc, char** argv) {
 				strncpy(file_info->output_tag, optarg, 64);	
 				break;
 			case 'p':
-				// TODO: Read in how often to print to file -> may need to change this to let the programme figure this out based on how big final output files will be
+				// Read in how often to print to file
+				sys_vars->SAVE_EVERY = atoi(optarg);
 				break;
 			case 'f':
 				// TODO: Read in forcing indicator
@@ -188,6 +189,7 @@ int GetCMLArgs(int argc, char** argv) {
 				fprintf(stderr, "Use"YELLOW" -v"RESET" to specify the system viscosity\n");
 				fprintf(stderr, "Use"YELLOW" -i"RESET" to specify the initial condition\n");
 				fprintf(stderr, "Use"YELLOW" -t"RESET" to specify the tag name to be used in the output file directory\n");
+				fprintf(stderr, "Use"YELLOW" -f"RESET" to specify the forcing type\n");
 				fprintf(stderr, "Use"YELLOW" -p"RESET" to specify how often to print to file\n");
 				fprintf(stderr, "Use"YELLOW" -z"RESET" to specify an input file to read parameters from\n");
 				fprintf(stderr, "\nExample usage:\n"CYAN"\tmpirun -n 4 ./bin/main -o \"../Data/Tmp\" -n 64 -n 64 -s 0.0 -e 1.0 -h 0.0001 -v 1.0 -i \"TG_VORT\" -t \"TEMP_RUN\" \n"RESET);

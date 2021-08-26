@@ -58,7 +58,7 @@
 // #define __DEALIAS_HOU_LI
 // Choose whether to print updates to screen
 #define __PRINT_SCREEN
-#define SAVE_EVERY 100
+
 
 // Testing the solver will be decided at compilation
 #if defined(__TESTING)
@@ -74,7 +74,7 @@
 
 // Choose whether to save the Real Space or Fourier Space vorticity
 // #define __VORT_REAL
-// #define __VORT_FOUR
+#define __VORT_FOUR
 // Choose whether to save the Real or Fourier space velocitites
 // #define __MODES
 // #define __REALSPACE
@@ -141,6 +141,7 @@ typedef struct system_vars_struct {
 	double EKMN_ALPHA; 					// The value of the Ekman drag coefficient
 	double CFL_CONST;					// The CFL constant for the adaptive step
 	double NU;							// The viscosity
+	int SAVE_EVERY; 					// For specifying how often to print
 } system_vars_struct;
 
 // Runtime data struct

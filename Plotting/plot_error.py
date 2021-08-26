@@ -65,7 +65,7 @@ def plot_snaps(i, w, x, y, t, w_min, w_max, abs_err, err_max, err_min, time_t, t
     ## Plot Error   
     ##-------------------------
     ax2 = fig.add_subplot(gs[0:2, 1])
-    im2 = ax2.imshow(abs_err, extent = (y[0], y[-1], x[-1], x[0]), cmap = "jet", vmin = err_min, vmax = err_max) ##
+    im2 = ax2.imshow(abs_err, extent = (y[0], y[-1], x[-1], x[0]), cmap = "jet", vmin = err_min, vmax = err_max) 
     ax2.set_xlabel(r"$y$")
     ax2.set_ylabel(r"$x$")
     ax2.set_xlim(0.0, y[-1])
@@ -166,26 +166,26 @@ if __name__ == '__main__':
             else:
                 continue
 
-        # Define min and max for plotiting
-        w_min = np.amin(w)
-        w_max = np.amax(w)
-   
-        ## Read in the space arrays
-        if 'kx' in list(file.keys()):
-            kx = file["kx"][:]
-        if 'ky' in list(file.keys()):
-            ky = file["ky"][:]
-        if 'x' in list(file.keys()):
-            x  = file["x"][:]
-        if 'y' in list(file.keys()):
-            y  = file["y"][:]
-        ## Read system measures
-        if 'TotalEnergy' in list(file.keys()):
-            tot_energy = file['TotalEnergy'][:]
-        if 'TotalEnstrophy' in list(file.keys()):
-            tot_enstr = file['TotalEnstrophy'][:]
-        if 'TotalPalinstrophy' in list(file.keys()):
-            tot_palin = file['TotalPalinstrophy'][:]
+            # Define min and max for plotiting
+            w_min = np.amin(w)
+            w_max = np.amax(w)
+       
+            ## Read in the space arrays
+            if 'kx' in list(file.keys()):
+                kx = file["kx"][:]
+            if 'ky' in list(file.keys()):
+                ky = file["ky"][:]
+            if 'x' in list(file.keys()):
+                x  = file["x"][:]
+            if 'y' in list(file.keys()):
+                y  = file["y"][:]
+            ## Read system measures
+            if 'TotalEnergy' in list(file.keys()):
+                tot_energy = file['TotalEnergy'][:]
+            if 'TotalEnstrophy' in list(file.keys()):
+                tot_enstr = file['TotalEnstrophy'][:]
+            if 'TotalPalinstrophy' in list(file.keys()):
+                tot_palin = file['TotalPalinstrophy'][:]
 
     ## Precomute error for plotting later
     abs_err = np.zeros((num_saves, Nx, Ny))
@@ -197,16 +197,16 @@ if __name__ == '__main__':
     print(err_max)
     print(err_min)
 
-    # t = 10
-    # for i in range(5):
-    #     for j in range(5):
-    #         print("Er[{}, {}]: {} ".format(i, j, abs_err[t, i, j]), end ="")
-    #     print()
-    # print()
-    # for i in range(5):
-    #     for j in range(5):
-    #         print("CEr[{}, {}]: {} ".format(i, j, w[t, i, j] - tg_soln[t, i, j]), end ="")
-    #     print()
+    t = 30
+    for i in range(5):
+        for j in range(5):
+            print("Er[{}, {}]: {} ".format(i, j, abs_err[t, i, j]), end ="")
+        print()
+    print()
+    for i in range(5):
+        for j in range(5):
+            print("CEr[{}, {}]: {} ".format(i, j, w[t, i, j] - tg_soln[t, i, j]), end ="")
+        print()
 
     #-----------------------
     # ------ Plot Snaps
@@ -239,35 +239,35 @@ if __name__ == '__main__':
     # print("\n\nPlotting Time: {:5.8f}s\n\n".format(plot_time))
 
     
-    # for i in range(num_saves):
-    #     plot_snaps(i, w[i, :, :], x, y, time[i], w_min, w_max, abs_err[i, :, :], err_min, err_max, time[:i], tot_energy[:i], tot_enstr[:i], tot_palin[:i], time[0], time[-1])
+    for i in range(num_saves):
+        plot_snaps(i, w[i, :, :], x, y, time[i], w_min, w_max, abs_err[i, :, :], err_min, err_max, time[:i], tot_energy[:i], tot_enstr[:i], tot_palin[:i], time[0], time[-1])
 
 
     # #-----------------------
     # # ----- Make Video
     # #-----------------------
-    framesPerSec = 15
-    inputFile    = output_dir + "SNAP_%05d.png"
-    videoName    = output_dir + "2D_NavierStokes_N[{},{}]_ITERS[{}]_u0[{}].mp4".format(Nx, Ny, int_iters, u0)
-    cmd = "ffmpeg -y -r {} -f image2 -s 1920x1080 -i {} -vf 'pad=ceil(iw/2)*2:ceil(ih/2)*2' -vcodec libx264 -crf 25 -pix_fmt yuv420p {}".format(framesPerSec, inputFile, videoName)
-    # cmd = "ffmpeg -r {} -f image2 -s 1280×720 -i {} -vcodec libx264 -preset ultrafast -crf 35 -pix_fmt yuv420p {}".format(framesPerSec, inputFile, videoName)
+    # framesPerSec = 15
+    # inputFile    = output_dir + "SNAP_%05d.png"
+    # videoName    = output_dir + "2D_NavierStokes_N[{},{}]_ITERS[{}]_u0[{}].mp4".format(Nx, Ny, int_iters, u0)
+    # cmd = "ffmpeg -y -r {} -f image2 -s 1920x1080 -i {} -vf 'pad=ceil(iw/2)*2:ceil(ih/2)*2' -vcodec libx264 -crf 25 -pix_fmt yuv420p {}".format(framesPerSec, inputFile, videoName)
+    # # cmd = "ffmpeg -r {} -f image2 -s 1280×720 -i {} -vcodec libx264 -preset ultrafast -crf 35 -pix_fmt yuv420p {}".format(framesPerSec, inputFile, videoName)
 
-    ## Start timer
-    start = TIME.perf_counter()
+    # ## Start timer
+    # start = TIME.perf_counter()
 
-    process = Popen(cmd, shell = True, stdout = PIPE, stdin = PIPE, universal_newlines = True)
-    [runCodeOutput, runCodeErr] = process.communicate()
-    print(runCodeOutput)
-    print(runCodeErr)
-    process.wait()
+    # process = Popen(cmd, shell = True, stdout = PIPE, stdin = PIPE, universal_newlines = True)
+    # [runCodeOutput, runCodeErr] = process.communicate()
+    # print(runCodeOutput)
+    # print(runCodeErr)
+    # process.wait()
 
 
-    print("Finished making video...")
-    print("Video Location...")
-    print("\n" + videoName + "\n")
+    # print("Finished making video...")
+    # print("Video Location...")
+    # print("\n" + videoName + "\n")
 
-    ## Start timer
-    end = TIME.perf_counter()
+    # ## Start timer
+    # end = TIME.perf_counter()
 
-    print("\n\nPlotting Time: {:5.8f}s\n\n".format(plot_time))
-    print("Movie Time: {:5.8f}s\n\n".format(end - start))
+    # print("\n\nPlotting Time: {:5.8f}s\n\n".format(plot_time))
+    # print("Movie Time: {:5.8f}s\n\n".format(end - start))

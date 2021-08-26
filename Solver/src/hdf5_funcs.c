@@ -50,19 +50,19 @@ void CreateOutputFileWriteICs(const long int* N, double dt) {
 	plist_id = H5Pcreate(H5P_FILE_ACCESS);
 	status   = H5Pset_fapl_mpio(plist_id, MPI_COMM_WORLD, MPI_INFO_NULL);
 	if (status < 0) {
-		printf("\n[ERROR] --- Could not set parallel I/O access for HDF5 output file! \n-->>Exiting....\n");
+		printf("\n["RED"ERROR"RESET"] --- Could not set parallel I/O access for HDF5 output file! \n-->>Exiting....\n");
 		exit(1);
 	}
 
 	// -----------------------------------
 	// Create Output Directory and Path
 	// -----------------------------------
-	char file_data[512];
-	sprintf(file_data, "_N[%ld,%ld]_ITERS[%ld].h5", Nx, Ny, sys_vars->num_t_steps);
-	strcpy(file_info->output_file_name,"../Data/Test/Test"); // /work/projects/TurbPhase/Phase_Dynamics_Navier_Stokes/2D_NavierStokes
+	char file_data[512];    // TODO: Need to tidy this up and also add error checking to see if output directory exists!
+	sprintf(file_data, "HDF_N[%ld,%ld]_ITERS[%ld]_CFL[%lf].h5", Nx, Ny, sys_vars->num_t_steps, sys_vars->CFL_CONST);
+	strcpy(file_info->output_file_name, file_info->output_dir); 
 	strcat(file_info->output_file_name, file_data);
 	if ( !(sys_vars->rank) ) {
-		printf("\nOutput File: %s\n\n", file_info->output_file_name);
+		printf("\nOutput File: "CYAN"%s"RESET"\n\n", file_info->output_file_name);
 	}
 
 	// ---------------------------------
@@ -70,7 +70,7 @@ void CreateOutputFileWriteICs(const long int* N, double dt) {
 	// ---------------------------------
 	file_info->output_file_handle = H5Fcreate(file_info->output_file_name, H5F_ACC_TRUNC, H5P_DEFAULT, plist_id);
 	if (file_info->output_file_handle < 0) {
-		fprintf(stderr, "\n[ERROR] --- Could not create HDF5 output file at: %s \n-->>Exiting....\n", file_info->output_file_name);
+		fprintf(stderr, "\n["RED"ERROR"RESET"]  --- Could not create HDF5 output file at: "CYAN"%s"RESET" \n-->>Exiting....\n", file_info->output_file_name);
 		exit(1);
 	}
 
@@ -134,7 +134,18 @@ void CreateOutputFileWriteICs(const long int* N, double dt) {
 	// Write the real space vorticity
 	WriteDataFourier(0.0, 0, group_id, "w_hat", file_info->COMPLEX_DTYPE, dset_dims, slab_dims, mem_space_dims, sys_vars->local_Nx_start, run_data->w_hat);
 	#endif
-	
+	#ifdef TESTING
+	if (!(strcmp(sys_vars->u0, "TG_VEL")) || !(strcmp(sys_vars->u0, "TG_VORT"))) {
+		// Create dimension arrays
+		slab_dims[0]      = sys_vars->local_Nx;
+		slab_dims[1]      = Ny;
+		mem_space_dims[0] = sys_vars->local_Nx;
+		mem_space_dims[1] = Ny + 2;
+
+		// Write the real space vorticity
+		WriteDataReal(0.0, 0, group_id, "TGSoln", H5T_NATIVE_DOUBLE, (hsize_t* )sys_vars->N, slab_dims, mem_space_dims, sys_vars->local_Nx_start, run_data->tg_soln);	
+	}
+	#endif
 
 
 	// ------------------------------------
@@ -144,7 +155,7 @@ void CreateOutputFileWriteICs(const long int* N, double dt) {
 	status = H5Gclose(group_id);
 	status = H5Fclose(file_info->output_file_handle);
 	if (status < 0) {
-		fprintf(stderr, "\n[ERROR] --- Unable to close output file [%s] at: Iter = [%d] t = [%lf]\n-->> Exiting...\n", file_info->output_file_name, 0, 0.0);
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close output file ["CYAN"%s"RESET"] at: Iter = ["CYAN"%d"RESET"] t = ["CYAN"%lf"RESET"]\n-->> Exiting...\n", file_info->output_file_name, 0, 0.0);
 		exit(1);		
 	}
 }
@@ -182,7 +193,7 @@ void WriteDataToFile(double t, double dt, long int iters) {
 	if (access(file_info->output_file_name, F_OK) != 0) {
 		file_info->output_file_handle = H5Fcreate(file_info->output_file_name, H5F_ACC_TRUNC, H5P_DEFAULT, plist_id);
 		if (file_info->output_file_handle < 0) {
-			fprintf(stderr, "\n[ERROR] --- Unable to create output file [%s] at: Iter = [%ld] t = [%lf]\n-->> Exiting...\n", file_info->output_file_name, iters, t);
+			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to create output file ["CYAN"%s"RESET"] at: Iter = ["CYAN"%ld"RESET"] t = ["CYAN"%lf"RESET"]\n-->> Exiting...\n", file_info->output_file_name, iters, t);
 			exit(1);
 		}
 	}
@@ -190,7 +201,7 @@ void WriteDataToFile(double t, double dt, long int iters) {
 		// Open file with parallel I/O access properties
 		file_info->output_file_handle = H5Fopen(file_info->output_file_name, H5F_ACC_RDWR , plist_id);
 		if (file_info->output_file_handle < 0) {
-			fprintf(stderr, "\n[ERROR] --- Unable to open output file [%s] at: Iter = [%ld] t = [%lf]\n-->> Exiting...\n", file_info->output_file_name, iters, t);
+			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to open output file ["CYAN"%s"RESET"] at: Iter = ["CYAN"%ld"RESET"] t = ["CYAN"%lf"RESET"]\n-->> Exiting...\n", file_info->output_file_name, iters, t);
 			exit(1);
 		}
 	}
@@ -243,14 +254,16 @@ void WriteDataToFile(double t, double dt, long int iters) {
 	WriteDataFourier(t, (int)iters, group_id, "w_hat", file_info->COMPLEX_DTYPE, dset_dims, slab_dims, slab_dims, sys_vars->local_Nx_start, run_data->w_hat);
 	#endif
 	#ifdef TESTING
-	// Create dimension arrays
-	slab_dims[0]      = sys_vars->local_Nx;
-	slab_dims[1]      = Ny;
-	mem_space_dims[0] = sys_vars->local_Nx;
-	mem_space_dims[1] = Ny + 2;
+	if (!(strcmp(sys_vars->u0, "TG_VEL")) || !(strcmp(sys_vars->u0, "TG_VORT"))) {
+		// Create dimension arrays
+		slab_dims[0]      = sys_vars->local_Nx;
+		slab_dims[1]      = Ny;
+		mem_space_dims[0] = sys_vars->local_Nx;
+		mem_space_dims[1] = Ny + 2;
 
-	// Write the real space vorticity
-	WriteDataReal(t, (int)iters, group_id, "TGSoln", H5T_NATIVE_DOUBLE, (hsize_t* )sys_vars->N, slab_dims, mem_space_dims, sys_vars->local_Nx_start, run_data->tg_soln);	
+		// Write the real space vorticity
+		WriteDataReal(t, (int)iters, group_id, "TGSoln", H5T_NATIVE_DOUBLE, (hsize_t* )sys_vars->N, slab_dims, mem_space_dims, sys_vars->local_Nx_start, run_data->tg_soln);	
+	}
 	#endif
 
 	// -------------------------------
@@ -259,7 +272,7 @@ void WriteDataToFile(double t, double dt, long int iters) {
 	status = H5Gclose(group_id);
 	status = H5Fclose(file_info->output_file_handle);
 	if (status < 0) {
-		fprintf(stderr, "\n[ERROR] --- Unable to close output file [%s] at: Iter = [%ld] t = [%lf]\n-->> Exiting...\n", file_info->output_file_name, iters, t);
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close output file ["CYAN"%s"RESET"] at: Iter = ["CYAN"%ld"RESET"] t = ["CYAN"%lf"RESET"]\n-->> Exiting...\n", file_info->output_file_name, iters, t);
 		exit(1);
 	}
 }
@@ -303,18 +316,18 @@ hid_t CreateGroup(char* group_name, double t, double dt, long int iters) {
 		// Create attribute for current time in the integration
 		attr_id = H5Acreate(group_id, "TimeValue", H5T_NATIVE_DOUBLE, attr_space, H5P_DEFAULT, H5P_DEFAULT);
 		if ((H5Awrite(attr_id, H5T_NATIVE_DOUBLE, &t)) < 0) {
-			fprintf(stderr, "\n[ERROR] --- Could not write current time as attribute to group in file at: t = [%lf] Iter = [%ld]!!\n-->> Exiting...\n", t, iters);
+			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Could not write current time as attribute to group in file at: t = ["CYAN"%lf"RESET"] Iter = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", t, iters);
 			exit(1);
 		}
 		status = H5Aclose(attr_id);
 		if (status < 0 ) {
-			fprintf(stderr, "\n[ERROR] --- Unable to close attribute Idenfiers: t = [%lf] Iter = [%ld]!!\n-->> Exiting...\n", t, iters);
+			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close attribute Idenfiers: t = ["CYAN"%lf"RESET"] Iter = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", t, iters);
 			exit(1);
 		}
 		// Create attribute for the current timestep
 		attr_id = H5Acreate(group_id, "TimeStep", H5T_NATIVE_DOUBLE, attr_space, H5P_DEFAULT, H5P_DEFAULT);
 		if ((H5Awrite(attr_id, H5T_NATIVE_DOUBLE, &dt)) < 0) {
-			fprintf(stderr, "\n[ERROR] --- Could not write current timestep as attribute to group in file at: t = [%lf] Iter = [%ld]!!\n-->> Exiting...\n", t, iters);
+			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Could not write current timestep as attribute to group in file at: t = ["CYAN"%lf"RESET"] Iter = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", t, iters);
 			exit(1);
 		}
 
@@ -324,12 +337,12 @@ hid_t CreateGroup(char* group_name, double t, double dt, long int iters) {
 		// -------------------------------
 		status = H5Aclose(attr_id);
 		if (status < 0 ) {
-			fprintf(stderr, "\n[ERROR] --- Unable to close attribute Idenfiers: t = [%lf] Iter = [%ld]!!\n-->> Exiting...\n", t, iters);
+			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close attribute Idenfiers: t = ["CYAN"%lf"RESET"] Iter = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", t, iters);
 			exit(1);
 		}
 		status = H5Sclose(attr_space);
 		if (status < 0 ) {
-			fprintf(stderr, "\n[ERROR] --- Unable to close attribute Idenfiers: t = [%lf] Iter = [%ld]!!\n-->> Exiting...\n", t, iters);
+			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close attribute Idenfiers: t = ["CYAN"%lf"RESET"] Iter = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", t, iters);
 			exit(1);
 		}
 	}
@@ -370,7 +383,7 @@ void WriteDataFourier(double t, int iters, hid_t group_id, char* dset_name, hid_
 	dims2d[1] = dset_dims[1];
 	dset_space = H5Screate_simple(Dims2D, dims2d, NULL); 
 	if (dset_space < 0) {
-		fprintf(stderr, "\n[ERROR] --- Unable to set dataspace for dataset [%s] at: Iter = [%d] t = [%lf]\n-->> Exiting...\n", dset_name, iters, t);
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set dataspace for dataset ["CYAN"%s"RESET"] at: Iter = ["CYAN"%d"RESET"] t = ["CYAN"%lf"RESET"]\n-->> Exiting...\n", dset_name, iters, t);
 		exit(1);
 	}
 
@@ -397,7 +410,7 @@ void WriteDataFourier(double t, int iters, hid_t group_id, char* dset_name, hid_
 
 	// Select local hyperslab from the memoryspace (slab size adjusted to ignore 0 padding) - local to each process
 	if ((H5Sselect_hyperslab(mem_space, H5S_SELECT_SET, mem_offset, NULL, slabsize, NULL)) < 0 ) {
-		fprintf(stderr, "\n[ERROR] --- unable to select local hyperslab for datset [%s] at: Iter = [%d] t = [%lf]\n-->> Exiting...\n", dset_name, iters, t);
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- unable to select local hyperslab for datset ["CYAN"%s"RESET"] at: Iter = ["CYAN"%d"RESET"] t = ["CYAN"%lf"RESET"]\n-->> Exiting...\n", dset_name, iters, t);
 		exit(1);		
 	}
 
@@ -410,13 +423,13 @@ void WriteDataFourier(double t, int iters, hid_t group_id, char* dset_name, hid_
 
 	// Select the hyperslab in the dataset on file to write to
 	if ((H5Sselect_hyperslab(dset_space, H5S_SELECT_SET, dset_offset, NULL, dset_slabsize, NULL)) < 0 ) {
-		fprintf(stderr, "\n[ERROR] --- Unable to select hyperslab in file for datset [%s] at: Iter = [%d] t = [%lf]\n-->> Exiting...\n", dset_name, iters, t);
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to select hyperslab in file for datset ["CYAN"%s"RESET"] at: Iter = ["CYAN"%d"RESET"] t = ["CYAN"%lf"RESET"]\n-->> Exiting...\n", dset_name, iters, t);
 		exit(1);		
 	}
 
 	// Write data to file
 	if ((H5Dwrite(file_space, dtype, mem_space, dset_space, plist_id, data)) < 0 ) {
-		fprintf(stderr, "\n[ERROR] --- Unable to write data to datset [%s] at: Iter = [%d] t = [%lf]\n-->> Exiting...\n", dset_name, iters, t);
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write data to datset ["CYAN"%s"RESET"] at: Iter = ["CYAN"%d"RESET"] t = ["CYAN"%lf"RESET"]\n-->> Exiting...\n", dset_name, iters, t);
 		exit(1);		
 	}
 
@@ -462,7 +475,7 @@ void WriteDataReal(double t, int iters, hid_t group_id, char* dset_name, hid_t d
 	dims2d[1] = dset_dims[1];
 	dset_space = H5Screate_simple(Dims2D, dims2d, NULL); 
 	if (dset_space < 0) {
-		fprintf(stderr, "\n[ERROR] --- Unable to set dataspace for dataset: [%s] at: Iter = [%d] t = [%lf]\n-->> Exiting...\n", dset_name, iters, t);
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set dataspace for dataset: ["CYAN"%s"RESET"] at: Iter = ["CYAN"%d"RESET"] t = ["CYAN"%lf"RESET"]\n-->> Exiting...\n", dset_name, iters, t);
 		exit(1);
 	}
 
@@ -489,7 +502,7 @@ void WriteDataReal(double t, int iters, hid_t group_id, char* dset_name, hid_t d
 
 	// Select local hyperslab from the memoryspace (slab size adjusted to ignore 0 padding) - local to each process
 	if ((H5Sselect_hyperslab(mem_space, H5S_SELECT_SET, mem_offset, NULL, slabsize, NULL)) < 0 ) {
-		fprintf(stderr, "\n[ERROR] --- unable to select local hyperslab for datset [%s] at: Iter = [%d] t = [%lf]\n-->> Exiting...\n", dset_name, iters, t);
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- unable to select local hyperslab for datset ["CYAN"%s"RESET"] at: Iter = ["CYAN"%d"RESET"] t = ["CYAN"%lf"RESET"]\n-->> Exiting...\n", dset_name, iters, t);
 		exit(1);		
 	}
 
@@ -502,13 +515,13 @@ void WriteDataReal(double t, int iters, hid_t group_id, char* dset_name, hid_t d
 
 	// Select the hyperslab in the dataset on file to write to
 	if ((H5Sselect_hyperslab(dset_space, H5S_SELECT_SET, dset_offset, NULL, dset_slabsize, NULL)) < 0 ) {
-		fprintf(stderr, "\n[ERROR] --- Unable to select hyperslab in file for datset [%s] at: Iter = [%d] t = [%lf]\n-->> Exiting...\n", dset_name, iters, t);
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to select hyperslab in file for datset ["CYAN"%s"RESET"] at: Iter = ["CYAN"%d"RESET"] t = ["CYAN"%lf"RESET"]\n-->> Exiting...\n", dset_name, iters, t);
 		exit(1);		
 	}
 
 	// Write data to file
 	if ((H5Dwrite(file_space, dtype, mem_space, dset_space, plist_id, data)) < 0 ) {
-		fprintf(stderr, "\n[ERROR] --- Unable to write data to datset [%s] at: Iter = [%d] t = [%lf]\n-->> Exiting...\n", dset_name, iters, t);
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write data to datset ["CYAN"%s"RESET"] at: Iter = ["CYAN"%d"RESET"] t = ["CYAN"%lf"RESET"]\n-->> Exiting...\n", dset_name, iters, t);
 		exit(1);		
 	}
 
@@ -543,7 +556,7 @@ void FinalWriteAndCloseOutputFile(const long int* N) {
 	if (!(sys_vars->rank)) {
 		file_info->output_file_handle = H5Fopen(file_info->output_file_name, H5F_ACC_RDWR , H5P_DEFAULT);
 		if (file_info->output_file_handle < 0) {
-			fprintf(stderr, "\n[ERROR] --- Unable to reopen output file for writing non chunked/slabbed datasets! \n-->>Exiting....\n");
+			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to reopen output file for writing non chunked/slabbed datasets! \n-->>Exiting....\n");
 			exit(1);
 		}
 	}
@@ -560,11 +573,11 @@ void FinalWriteAndCloseOutputFile(const long int* N) {
 	if (!(sys_vars->rank)) {
 		dims1D[0] = Nx;
 		if ( (H5LTmake_dataset(file_info->output_file_handle, "kx", D1, dims1D, H5T_NATIVE_INT, k0)) < 0) {
-			printf("\n[WARNING] --- Failed to make dataset [%s]\n", "kx");
+			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "kx");
 		}
 		dims1D[0] = Ny_Fourier;
 		if ( (H5LTmake_dataset(file_info->output_file_handle, "ky", D1, dims1D, H5T_NATIVE_INT, run_data->k[1])) < 0) {
-			printf("\n[WARNING] --- Failed to make dataset [%s]\n", "ky");
+			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "ky");
 		}
 	}
 	fftw_free(k0);
@@ -582,11 +595,11 @@ void FinalWriteAndCloseOutputFile(const long int* N) {
 	if (!(sys_vars->rank)) {
 		dims1D[0] = Nx;
 		if ( (H5LTmake_dataset(file_info->output_file_handle, "x", D1, dims1D, H5T_NATIVE_DOUBLE, x0)) < 0) {
-			printf("\n[WARNING] --- Failed to make dataset [%s]\n", "x");
+			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "x");
 		}
 		dims1D[0] = Ny;
 		if ( (H5LTmake_dataset(file_info->output_file_handle, "y", D1, dims1D, H5T_NATIVE_DOUBLE, run_data->x[1]))< 0) {
-			printf("\n[WARNING] --- Failed to make dataset [%s]\n", "y");
+			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "y");
 		}
 	}
 	fftw_free(x0);
@@ -601,7 +614,7 @@ void FinalWriteAndCloseOutputFile(const long int* N) {
 	if (!(sys_vars->rank)) {
 		dims1D[0] = sys_vars->num_print_steps;
 		if ( (H5LTmake_dataset(file_info->output_file_handle, "Time", D1, dims1D, H5T_NATIVE_DOUBLE, run_data->time)) < 0) {
-			printf("\n[WARNING] --- Failed to make dataset [%s]\n", "Time");
+			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "Time");
 		}
 	}
 	#endif
@@ -619,15 +632,15 @@ void FinalWriteAndCloseOutputFile(const long int* N) {
 
 		// Energy
 		if ( (H5LTmake_dataset(file_info->output_file_handle, "TotalEnergy", D1, dims1D, H5T_NATIVE_DOUBLE, run_data->tot_energy)) < 0) {
-			printf("\n[WARNING] --- Failed to make dataset [%s]\n", "TotalEnergy");
+			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "TotalEnergy");
 		}
 		// Enstrophy
 		if ( (H5LTmake_dataset(file_info->output_file_handle, "TotalEnstrophy", D1, dims1D, H5T_NATIVE_DOUBLE, run_data->tot_enstr)) < 0) {
-			printf("\n[WARNING] --- Failed to make dataset [%s]\n", "TotalEnstrophy");
+			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "TotalEnstrophy");
 		}
 		// Palinstrophy
 		if ( (H5LTmake_dataset(file_info->output_file_handle, "TotalPalinstrophy", D1, dims1D, H5T_NATIVE_DOUBLE, run_data->tot_palin)) < 0) {
-			printf("\n[WARNING] --- Failed to make dataset [%s]\n", "TotalPalinstrophy");
+			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "TotalPalinstrophy");
 		}
 	}
 	else {
@@ -643,7 +656,7 @@ void FinalWriteAndCloseOutputFile(const long int* N) {
 	if (!(sys_vars->rank)) {
 		status = H5Fclose(file_info->output_file_handle);
 		if (status < 0) {
-			fprintf(stderr, "\n[ERROR] --- Unable to close output file! \n-->>Exiting....\n");
+			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close output file! \n-->>Exiting....\n");
 			exit(1);
 		}
 	}
@@ -670,14 +683,14 @@ hid_t CreateComplexDatatype(void) {
 	// Insert the real part of the datatype
   	status = H5Tinsert(dtype, "r", offsetof(complex_type_tmp,re), H5T_NATIVE_DOUBLE);
   	if (status < 0) {
-  		fprintf(stderr, "\n[ERROR] --- Could not insert real part for the Complex Compound Datatype!!\nExiting...\n");
+  		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Could not insert real part for the Complex Compound Datatype!!\nExiting...\n");
   		exit(1);
   	}
 
   	// Insert the imaginary part of the datatype
   	status = H5Tinsert(dtype, "i", offsetof(complex_type_tmp,im), H5T_NATIVE_DOUBLE);
   	if (status < 0) {
-  		fprintf(stderr, "\n[ERROR] --- Could not insert imaginary part for the Complex Compound Datatype! \n-->>Exiting...\n");
+  		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Could not insert imaginary part for the Complex Compound Datatype! \n-->>Exiting...\n");
   		exit(1);
   	}
 

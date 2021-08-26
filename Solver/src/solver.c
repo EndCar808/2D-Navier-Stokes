@@ -53,9 +53,6 @@ void SpectralSolve(void) {
 	int tmp;
 	int indx;
 	herr_t status;
-	// strncpy((sys_vars->u0), "TG_VORT", 64);
-	// sys_vars->N[0] = 8;
-	// sys_vars->N[1] = 8;
 	const long int N[SYS_DIM] = {sys_vars->N[0], sys_vars->N[1]};
 	const long int NBatch[SYS_DIM] = {sys_vars->N[0], sys_vars->N[1] / 2 + 1};
 	const long int Nx 		  = N[0];
@@ -67,9 +64,9 @@ void SpectralSolve(void) {
 	#endif
 
 	// Initialize the Runge-Kutta struct
-	struct RK_data_struct* RK_data;	// Initialize pointer to a RK_data_struct
+	struct RK_data_struct* RK_data;	   // Initialize pointer to a RK_data_struct
 	struct RK_data_struct RK_data_tmp; // Initialize a RK_data_struct
-	RK_data = &RK_data_tmp;		// Point the ptr to this new RK_data_struct
+	RK_data = &RK_data_tmp;		       // Point the ptr to this new RK_data_struct
 	// -------------------------------
 	// Allocate memory
 	// -------------------------------
@@ -95,7 +92,6 @@ void SpectralSolve(void) {
 	// NonlinearRHSBatch(run_data->w_hat, RK_data->RK1, RK_data->nabla_psi, RK_data->nabla_w);
 	// PrintScalarFourier(RK_data->RK1, N, "a_RHSh");
 
-
 	// -------------------------------
 	// Integration Variables
 	// -------------------------------
@@ -106,12 +102,11 @@ void SpectralSolve(void) {
 	// Get the timestep using a CFL like condition
 	double umax          = GetMaxData("VEL");
 	sys_vars->w_max_init = GetMaxData("VORT");
-	// sys_vars->dt         = 0.0001; //(sys_vars->dx) / umax;
+	#ifdef __ADAPTIVE_STEP
 	GetTimestep(&(sys_vars->dt));
+	#endif
 
 	// Compute integration time variables
-	// sys_vars->t0 = 0.0;
-	// sys_vars->T  = 1.0;
 	double t0    = sys_vars->t0;
 	double t     = t0;
 	double dt    = sys_vars->dt;
@@ -119,7 +114,7 @@ void SpectralSolve(void) {
 
 	// Number of iterations
 	sys_vars->num_t_steps     = (T - t0) / dt;
-	sys_vars->num_print_steps = sys_vars->num_t_steps / SAVE_EVERY + 1; // plus one to include initial condition
+	sys_vars->num_print_steps = sys_vars->num_t_steps / sys_vars->SAVE_EVERY + 1; // plus one to include initial condition
 	if (!(sys_vars->rank)){
 		printf("Total Iters: %ld\t Saving Iters: %ld\n", sys_vars->num_t_steps, sys_vars->num_print_steps);
 	}
@@ -127,6 +122,9 @@ void SpectralSolve(void) {
 	// Variable to control how ofter to print to screen -> 10% of num time steps
 	int print_update = (sys_vars->num_t_steps >= 10 ) ? (int)((double)sys_vars->num_t_steps * 0.1) : 1;
 
+	#ifdef TESTING
+	TaylorGreenSoln(t0, N);
+	#endif
 
 	// -------------------------------
 	// Create & Open Output File
@@ -180,7 +178,7 @@ void SpectralSolve(void) {
 		// -------------------------------
 		// Write To File
 		// -------------------------------
-		if (iters % SAVE_EVERY == 0) {
+		if (iters % sys_vars->SAVE_EVERY == 0) {
 			#ifdef TESTING
 			TaylorGreenSoln(t, N);
 			#endif
@@ -226,7 +224,7 @@ void SpectralSolve(void) {
 			}
 			else {
 				if( !(sys_vars->rank) ) {	
-					if ( iters % SAVE_EVERY != 0) {
+					if ( iters % sys_vars->SAVE_EVERY != 0) {
 						RecordSystemMeasures(t, save_data_indx);
 					}
 					printf("Iter: %d\tt: %1.6lf\tdt: %g\t Max Vort: %1.4lf \tKE: %1.5lf\tENS: %1.5lf\n", iters, t, dt, max_vort, run_data->tot_energy[save_data_indx], run_data->tot_enstr[save_data_indx]);
@@ -237,7 +235,7 @@ void SpectralSolve(void) {
 		if( !(sys_vars->rank) ) {	
 			if (iters % print_update == 0) {
 				// If needed compute system measures for printing to screen
-				if ( iters % SAVE_EVERY != 0) {
+				if ( iters % sys_vars->SAVE_EVERY != 0) {
 					RecordSystemMeasures(t, save_data_indx);
 				}
 				printf("Iter: %d/%ld\tt: %1.6lf/%1.3lf\tdt: %g\t ----------- \tKE: %1.5lf\tENS: %1.5lf\tPAL: %1.5lf\n", iters, sys_vars->num_t_steps, t, T, dt, run_data->tot_energy[save_data_indx], run_data->tot_enstr[save_data_indx], run_data->tot_palin[save_data_indx]);
@@ -1046,7 +1044,7 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 		#endif
 	}
 	else {
-		printf("\n["MAGENTA"WARNING"RESET"] --- No initial conditions specified ---> Using random initial conditions\n");
+		printf("\n["MAGENTA"WARNING"RESET"] --- No initial conditions specified\n---> Using random initial conditions...\n");
 		// ---------------------------------------
 		// Random Initial Conditions
 		// ---------------------------------------
@@ -1283,15 +1281,15 @@ void SystemCheck(double dt, int iters) {
 	// Check Stopping Criteria 
 	// -------------------------------
 	if (w_max >= MAX_VORT_LIM)	{
-		fprintf(stderr, MAGENTA"\n[SOVLER FAILURE]" RESET" --- System has reached maximum Vorticity limt at Iter: %d!\n-->> Exiting!!!n", iters);
+		fprintf(stderr, "\n["YELLOW"SOVLER FAILURE"RESET"] --- System has reached maximum Vorticity limt at Iter: ["CYAN"%d"RESET"]\n-->> Exiting!!!n", iters);
 		exit(1);
 	}
 	else if (dt <= MIN_STEP_SIZE) {
-		fprintf(stderr, MAGENTA"\n[SOVLER FAILURE]" RESET" --- Timestep has become too small to continue at Iter: %d!\n-->> Exiting!!!\n", iters);
+		fprintf(stderr, "\n["YELLOW"SOVLER FAILURE"RESET"]--- Timestep has become too small to continue at Iter: ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", iters);
 		exit(1);		
 	}
 	else if (iters >= MAX_ITERS) {
-		fprintf(stderr, MAGENTA"\n[SOVLER FAILURE]" RESET" --- The maximum number of iterations has been reached at Iter: %d!\n-->> Exiting!!!\n", iters);
+		fprintf(stderr, "\n["YELLOW"SOVLER FAILURE"RESET"]--- The maximum number of iterations has been reached at Iter: ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", iters);
 		exit(1);		
 	}
 }
@@ -1464,7 +1462,7 @@ void TestTaylorGreenVortex(const double t, const long int* N, double* norms) {
 	if (!sys_vars->rank) {
 		// Gather the norms from each process
 		MPI_Reduce(MPI_IN_PLACE, &l2_norm, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		MPI_Reduce(MPI_IN_PLACE, &linf_norm, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(MPI_IN_PLACE, &linf_norm, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
 
 		// Compute the L2-norm
 		l2_norm = sqrt(norm_const * l2_norm);
@@ -1476,7 +1474,7 @@ void TestTaylorGreenVortex(const double t, const long int* N, double* norms) {
 	else {
 		// Send and reduce the norms from each process to root
 		MPI_Reduce(&l2_norm, NULL, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		MPI_Reduce(&linf_norm, NULL, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(&linf_norm, NULL, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
 	}
 }
 /**
@@ -1770,7 +1768,7 @@ void AllocateMemory(const long int* NBatch, RK_data_struct* RK_data) {
 	sys_vars->alloc_local       = fftw_mpi_local_size_2d(Nx, Ny_Fourier, MPI_COMM_WORLD, &(sys_vars->local_Nx), &(sys_vars->local_Nx_start));
 	sys_vars->alloc_local_batch = fftw_mpi_local_size_many((int)SYS_DIM, NBatch, (ptrdiff_t) SYS_DIM, FFTW_MPI_DEFAULT_BLOCK, MPI_COMM_WORLD, &(sys_vars->local_Nx), &(sys_vars->local_Nx_start));
 	if (sys_vars->local_Nx == 0) {
-		printf("[WARNING] --- FFTW was unable to allocate local memory for each process -->> Code will run but will be slown\n");
+		printf("\n["MAGENTA"WARNING"RESET"] --- FFTW was unable to allocate local memory for each process -->> Code will run but will be slow\n");
 	}
 	
 	// -------------------------------
@@ -1780,7 +1778,7 @@ void AllocateMemory(const long int* NBatch, RK_data_struct* RK_data) {
 	run_data->k[0] = (int* )fftw_malloc(sizeof(int) * sys_vars->local_Nx);  // kx
 	run_data->k[1] = (int* )fftw_malloc(sizeof(int) * Ny_Fourier);     		// ky
 	if (run_data->k[0] == NULL || run_data->k[1] == NULL) {
-		fprintf(stderr, "\n[ERROR] --- Unable to allocate memory for wavenumber list \n-->> Exiting!!!\n");
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "wavenumber list");
 		exit(1);
 	}
 
@@ -1788,7 +1786,7 @@ void AllocateMemory(const long int* NBatch, RK_data_struct* RK_data) {
 	run_data->x[0] = (double* )fftw_malloc(sizeof(double) * sys_vars->local_Nx);  // x direction 
 	run_data->x[1] = (double* )fftw_malloc(sizeof(double) * Ny);     			  // y direction
 	if (run_data->x[0] == NULL || run_data->x[1] == NULL) {
-		fprintf(stderr, "\n[ERROR] --- Unable to allocate memory for collocation points \n-->> Exiting!!!\n");
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "collocation points");
 		exit(1);
 	}
 	// -------------------------------
@@ -1797,30 +1795,30 @@ void AllocateMemory(const long int* NBatch, RK_data_struct* RK_data) {
 	// Allocate the Real and Fourier space vorticity
 	run_data->w     = (double* )fftw_malloc(sizeof(double) * 2 * sys_vars->alloc_local);
 	if (run_data->w == NULL) {
-		fprintf(stderr, "\n[ERROR] --- Unable to allocate memory for Real Space Vorticity \n-->> Exiting!!!\n");
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Real Space Vorticity" );
 		exit(1);
 	}
 	run_data->w_hat = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->alloc_local);
 	if (run_data->w_hat == NULL) {
-		fprintf(stderr, "\n[ERROR] --- Unable to allocate memory for Fourier Space Vorticity \n-->> Exiting!!!\n");
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Fourier Space Vorticity");
 		exit(1);
 	}
 
 	// Allocate the Real and Fourier space velocities
 	run_data->u     = (double* )fftw_malloc(sizeof(double) * 2 * sys_vars->alloc_local_batch);
 	if (run_data->u == NULL) {
-		fprintf(stderr, "\n[ERROR] --- Unable to allocate memory for Real Space Velocities \n-->> Exiting!!!\n");
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Real Space Velocities");
 		exit(1);
 	}
 	run_data->u_hat = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->alloc_local_batch);
 	if (run_data->u_hat == NULL) {
-		fprintf(stderr, "\n[ERROR] --- Unable to allocate memory for Fourier Space Velocities \n-->> Exiting!!!\n");
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Fourier Space Velocities");
 		exit(1);
 	}
 	#ifdef TESTING
 	run_data->tg_soln = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->alloc_local);
 	if (run_data->tg_soln == NULL) {
-		fprintf(stderr, "\n[ERROR] --- Unable to allocate memory for Taylor Green vortex solution \n-->> Exiting!!!\n");
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Taylor Green vortex solution");
 		exit(1);
 	}
 	#endif
@@ -1831,60 +1829,60 @@ void AllocateMemory(const long int* NBatch, RK_data_struct* RK_data) {
 	// Runge-Kutta Integration arrays
 	RK_data->nabla_psi = (double* )fftw_malloc(sizeof(double) * 2 * sys_vars->alloc_local_batch);
 	if (RK_data->nabla_psi == NULL) {
-		fprintf(stderr, "\n[ERROR] --- Unable to allocate memory for Integration Array [%s] \n-->> Exiting!!!\n", "nabla_psi");
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for Integration Array ["CYAN"%s"RESET"] \n-->> Exiting!!!\n", "nabla_psi");
 		exit(1);
 	}
 	RK_data->nabla_w   = (double* )fftw_malloc(sizeof(double) * 2 * sys_vars->alloc_local_batch);
 	if (RK_data->nabla_w == NULL) {
-		fprintf(stderr, "\n[ERROR] --- Unable to allocate memory for Integration Array [%s] \n-->> Exiting!!!\n", "nabla_w");
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for Integration Array ["CYAN"%s"RESET"] \n-->> Exiting!!!\n", "nabla_w");
 		exit(1);
 	}
 	RK_data->RK1       = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->alloc_local_batch);
 	if (RK_data->RK1 == NULL) {
-		fprintf(stderr, "\n[ERROR] --- Unable to allocate memory for Integration Array [%s] \n-->> Exiting!!!\n", "RK1");
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for Integration Array ["CYAN"%s"RESET"] \n-->> Exiting!!!\n", "RK1");
 		exit(1);
 	}
 	RK_data->RK2       = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->alloc_local_batch);
 	if (RK_data->RK2 == NULL) {
-		fprintf(stderr, "\n[ERROR] --- Unable to allocate memory for Integration Array [%s] \n-->> Exiting!!!\n", "RK2");
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for Integration Array ["CYAN"%s"RESET"] \n-->> Exiting!!!\n", "RK2");
 		exit(1);
 	}
 	RK_data->RK3       = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->alloc_local_batch);
 	if (RK_data->RK3 == NULL) {
-		fprintf(stderr, "\n[ERROR] --- Unable to allocate memory for Integration Array [%s] \n-->> Exiting!!!\n", "RK3");
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for Integration Array ["CYAN"%s"RESET"] \n-->> Exiting!!!\n", "RK3");
 		exit(1);
 	}
 	RK_data->RK4       = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->alloc_local_batch);
 	if (RK_data->RK4 == NULL) {
-		fprintf(stderr, "\n[ERROR] --- Unable to allocate memory for Integration Array [%s] \n-->> Exiting!!!\n", "RK4");
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for Integration Array ["CYAN"%s"RESET"] \n-->> Exiting!!!\n", "RK4");
 		exit(1);
 	}
 	RK_data->RK_tmp    = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->alloc_local);
 	if (RK_data->RK_tmp == NULL) {
-		fprintf(stderr, "\n[ERROR] --- Unable to allocate memory for Integration Array [%s] \n-->> Exiting!!!\n", "RK_tmp");
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for Integration Array ["CYAN"%s"RESET"] \n-->> Exiting!!!\n", "RK_tmp");
 		exit(1);
 	}
 	#ifdef __RK5
 	RK_data->RK5       = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->alloc_local_batch);
 	if (RK_data->RK5 == NULL) {
-		fprintf(stderr, "\n[ERROR] --- Unable to allocate memory for Integration Array [%s] \n-->> Exiting!!!\n", "RK5");
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for Integration Array ["CYAN"%s"RESET"] \n-->> Exiting!!!\n", "RK5");
 		exit(1);
 	}
 	RK_data->RK6       = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->alloc_local_batch);
 	if (RK_data->RK6 == NULL) {
-		fprintf(stderr, "\n[ERROR] --- Unable to allocate memory for Integration Array [%s] \n-->> Exiting!!!\n", "RK6");
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for Integration Array ["CYAN"%s"RESET"] \n-->> Exiting!!!\n", "RK6");
 		exit(1);
 	}
 	#endif
 	#ifdef __DPRK5
 	RK_data->RK7       = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->alloc_local_batch);
 	if (RK_data->RK7 == NULL) {
-		fprintf(stderr, "\n[ERROR] --- Unable to allocate memory for Integration Array [%s] \n-->> Exiting!!!\n", "RK7");
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for Integration Array ["CYAN"%s"RESET"] \n-->> Exiting!!!\n", "RK7");
 		exit(1);
 	}
 	RK_data->w_hat_last = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->alloc_local);
 	if (RK_data->w_hat_last == NULL) {
-		fprintf(stderr, "\n[ERROR] --- Unable to allocate memory for Integration Array [%s] \n-->> Exiting!!!\n", "w_hat_last");
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for Integration Array ["CYAN"%s"RESET"] \n-->> Exiting!!!\n", "w_hat_last");
 		exit(1);
 	}
 	#endif
@@ -1965,7 +1963,7 @@ void InitializeFFTWPlans(const long int* N) {
 	sys_vars->fftw_2d_dft_r2c = fftw_mpi_plan_dft_r2c_2d(Nx, Ny, run_data->w, run_data->w_hat, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_PRESERVE_INPUT);
 	sys_vars->fftw_2d_dft_c2r = fftw_mpi_plan_dft_c2r_2d(Nx, Ny, run_data->w_hat, run_data->w, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_PRESERVE_INPUT);
 	if (sys_vars->fftw_2d_dft_r2c == NULL || sys_vars->fftw_2d_dft_c2r == NULL) {
-		fprintf(stderr, "\n[ERROR] --- Unable to initialize basic FFTW Plans \n-->> Exiting!!!\n");
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to initialize basic FFTW Plans \n-->> Exiting!!!\n");
 		exit(1);
 	}
 
@@ -1976,7 +1974,7 @@ void InitializeFFTWPlans(const long int* N) {
 	sys_vars->fftw_2d_dft_batch_r2c = fftw_mpi_plan_many_dft_r2c((int)SYS_DIM, N, (ptrdiff_t) SYS_DIM, FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK, run_data->u, run_data->u_hat, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_PRESERVE_INPUT);	
 	sys_vars->fftw_2d_dft_batch_c2r = fftw_mpi_plan_many_dft_c2r((int)SYS_DIM, N, (ptrdiff_t) SYS_DIM, FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK, run_data->u_hat, run_data->u, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_PRESERVE_INPUT);	
 	if (sys_vars->fftw_2d_dft_batch_r2c == NULL || sys_vars->fftw_2d_dft_batch_c2r == NULL) {
-		fprintf(stderr, "\n[ERROR] --- Unable to initialize batch FFTW Plans \n-->> Exiting!!!\n");
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to initialize batch FFTW Plans \n-->> Exiting!!!\n");
 		exit(1);
 	}
 }
@@ -1999,21 +1997,21 @@ void InitializeSystemMeasurables(void) {
 	// Total Energy in the system
 	run_data->tot_energy = (double* )fftw_malloc(sizeof(double) * print_steps);
 	if (run_data->tot_energy == NULL) {
-		fprintf(stderr, "\n[ERROR] --- Unable to allocate memory for the Total Energy \n-->> Exiting!!!\n");
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the Total Energy \n-->> Exiting!!!\n");
 		exit(1);
 	}	
 
 	// Total Enstrophy
 	run_data->tot_enstr = (double* )fftw_malloc(sizeof(double) * print_steps);
 	if (run_data->tot_enstr == NULL) {
-		fprintf(stderr, "\n[ERROR] --- Unable to allocate memory for the Total Enstrophy \n-->> Exiting!!!\n");
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the Total Enstrophy \n-->> Exiting!!!\n");
 		exit(1);
 	}	
 
 	// Total Palinstrophy
 	run_data->tot_palin = (double* )fftw_malloc(sizeof(double) * print_steps);
 	if (run_data->tot_palin == NULL) {
-		fprintf(stderr, "\n[ERROR] --- Unable to allocate memory for the Total Palinstrophy \n-->> Exiting!!!\n");
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the Total Palinstrophy \n-->> Exiting!!!\n");
 		exit(1);
 	}	
 
@@ -2022,7 +2020,7 @@ void InitializeSystemMeasurables(void) {
 	if (!(sys_vars->rank)){
 		run_data->time = (double* )fftw_malloc(sizeof(double) * print_steps);
 		if (run_data->time == NULL) {
-			fprintf(stderr, "\n[ERROR] --- Unable to allocate memory for the Time \n-->> Exiting!!!\n");
+			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the Time \n-->> Exiting!!!\n");
 			exit(1);
 		}	
 	}
