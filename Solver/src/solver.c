@@ -25,7 +25,7 @@
 //  Global Variables
 // ---------------------------------------------------------------------
 // Define RK4 variables
-#ifdef __RK4
+#if defined(__RK4)
 static const double RK4_C2 = 0.5, 	  RK4_A21 = 0.5, \
 				  	RK4_C3 = 0.5,           					RK4_A32 = 0.5, \
 				  	RK4_C4 = 1.0,                      									   RK4_A43 = 1.0, \
@@ -122,13 +122,16 @@ void SpectralSolve(void) {
 	// Variable to control how ofter to print to screen -> 10% of num time steps
 	int print_update = (sys_vars->num_t_steps >= 10 ) ? (int)((double)sys_vars->num_t_steps * 0.1) : 1;
 
-	#ifdef TESTING
-	TaylorGreenSoln(t0, N);
-	#endif
 
 	// -------------------------------
 	// Create & Open Output File
 	// -------------------------------
+	#ifdef TESTING
+	// If testing is enabled and TG initial condition selected -> computed TG solution for writing to file @ t = t0
+	if(!(strcmp(sys_vars->u0, "TG_VEL")) || !(strcmp(sys_vars->u0, "TG_VORT"))) {
+		TaylorGreenSoln(t0, N);
+	}
+	#endif
 	// Create and open the output file - also write initial conditions to file
 	CreateOutputFileWriteICs(N, dt);
 
@@ -851,10 +854,10 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 
 				// Compute the vorticity of the double shear layer
 				if (run_data->x[1][j] <= M_PI) {
-					run_data->w[indx] = DELTA * cos(run_data->x[0][i]) - SIGMA / pow(cosh(SIGMA * (run_data->x[1][j] - 0.5 * M_PI)), 2.0); 
+					run_data->w[indx] = DELTA * cos(run_data->x[1][j]) - SIGMA / pow(cosh(SIGMA * (run_data->x[0][i] - 0.5 * M_PI)), 2.0); 
 				}
 				else {
-					run_data->w[indx] = DELTA * cos(run_data->x[0][i]) + SIGMA / pow(cosh(SIGMA * (1.5 * M_PI - run_data->x[1][j])), 2.0); 
+					run_data->w[indx] = DELTA * cos(run_data->x[1][j]) + SIGMA / pow(cosh(SIGMA * (1.5 * M_PI - run_data->x[0][i])), 2.0); 
 				}
 			}
 		}

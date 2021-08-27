@@ -104,11 +104,11 @@
 #define MIN_STEP_SIZE 1e-10 	// The minimum allowed stepsize for the solver 
 #define MAX_ITERS 1e+6 			// The maximum iterations to perform
 #define MAX_VORT_LIM 1e+100     // The maximum allowed vorticity
-#ifdef __HYPER
+#if defined(__HYPER)
 #define HYPER_VISC				// Turned on hyperviscosity if called for at compilation time
 #define VIS_POW 2.0             // The power of the hyperviscosity -> 1.0 means no hyperviscosity
 #endif
-#ifdef __EKMN_DRAG
+#if defined(__EKMN_DRAG)
 #define EKMN_DRAG     			// Turn or Ekman drag if called for at compilation time
 #define EKMN_POW -2.0 			// The power of the Eckman drag term -> 0.0 means no drag
 #endif

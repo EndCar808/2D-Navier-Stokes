@@ -58,7 +58,7 @@ void CreateOutputFileWriteICs(const long int* N, double dt) {
 	// Create Output Directory and Path
 	// -----------------------------------
 	char file_data[512];    // TODO: Need to tidy this up and also add error checking to see if output directory exists!
-	sprintf(file_data, "HDF_N[%ld,%ld]_ITERS[%ld]_CFL[%lf].h5", Nx, Ny, sys_vars->num_t_steps, sys_vars->CFL_CONST);
+	sprintf(file_data, "HDF_N[%ld,%ld]_ITERS[%ld]_CFL[%1.2lf].h5", Nx, Ny, sys_vars->num_t_steps, sys_vars->CFL_CONST);
 	strcpy(file_info->output_file_name, file_info->output_dir); 
 	strcat(file_info->output_file_name, file_data);
 	if ( !(sys_vars->rank) ) {

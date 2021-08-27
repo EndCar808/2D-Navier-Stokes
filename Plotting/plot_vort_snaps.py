@@ -41,7 +41,7 @@ def plot_snaps(i, w, w_hat, x, y, t, w_min, w_max, kx, ky, kx_max, time_t, tot_e
     ## Plot vorticity   
     ##-------------------------
     ax1 = fig.add_subplot(gs[0:2, 0:1])
-    im1 = ax1.imshow(w, extent = (y[0], y[-1], x[-1], x[0]), cmap = "RdBu", vmin = w_min, vmax = w_max)
+    im1 = ax1.imshow(w, extent = (y[0], y[-1], x[-1], x[0]), cmap = "RdBu") #, vmin = w_min, vmax = w_max
     ax1.set_xlabel(r"$y$")
     ax1.set_ylabel(r"$x$")
     ax1.set_xlim(0.0, y[-1])
@@ -185,12 +185,14 @@ if __name__ == '__main__':
     #--------------------------------
     ## --------- System Parameters
     #--------------------------------
-    Nx = 64
-    Ny = 64
-    int_iters = 41721
-    u0 = "TAYLOR_GREEN"
+    Nx = 128
+    Ny = 128
+    int_iters = 934123
+    u0 = "DECAY_TURB"
     kymax = int(2 * Ny / 3)
     kxmax = int(2 * Nx / 3)
+
+    cfl = 1.73
 
     #-------------------------------
     ## --------- Directories
@@ -204,7 +206,7 @@ if __name__ == '__main__':
     #------------------------------------
     # -------- Open File & Read In data
     #------------------------------------
-    with h5py.File(input_dir + "Test_N[{},{}]_ITERS[{}].h5".format(Nx, Ny, int_iters), 'r') as file:
+    with h5py.File(input_dir + "HDF_N[{},{}]_ITERS[{}]_CFL[{}].h5".format(Nx, Ny, int_iters, cfl), 'r') as file:
         ## Get the number of data saves
         num_saves = len([g for g in list(file.keys()) if 'Iter' in g])
 
@@ -267,12 +269,19 @@ if __name__ == '__main__':
     # print(energy_spec)
 
 
-    i = 0
-    plot_snaps(i, w[i, :, :], w_hat[i, :, :], x, y, time[i], w_min, w_max, kx, ky, kxmax, time[:i], tot_energy[:i], tot_enstr[:i], tot_palin[:i], time[0], time[-1], Nx, Ny)
-    i = 1000
-    plot_snaps(i, w[i, :, :], w_hat[i, :, :], x, y, time[i], w_min, w_max, kx, ky, kxmax, time[:i], tot_energy[:i], tot_enstr[:i], tot_palin[:i], time[0], time[-1], Nx, Ny)
-    i = num_saves - 1
-    plot_snaps(i, w[i, :, :], w_hat[i, :, :], x, y, time[i], w_min, w_max, kx, ky, kxmax, time[:i], tot_energy[:i], tot_enstr[:i], tot_palin[:i], time[0], time[-1], Nx, Ny)
+    # i = 0
+    # plot_snaps(i, w[i, :, :], w_hat[i, :, :], x, y, time[i], w_min, w_max, kx, ky, kxmax, time[:i], tot_energy[:i], tot_enstr[:i], tot_palin[:i], time[0], time[-1], Nx, Ny)
+    # i = 1000
+    # plot_snaps(i, w[i, :, :], w_hat[i, :, :], x, y, time[i], w_min, w_max, kx, ky, kxmax, time[:i], tot_energy[:i], tot_enstr[:i], tot_palin[:i], time[0], time[-1], Nx, Ny)
+    # i = num_saves - 1
+    # plot_snaps(i, w[i, :, :], w_hat[i, :, :], x, y, time[i], w_min, w_max, kx, ky, kxmax, time[:i], tot_energy[:i], tot_enstr[:i], tot_palin[:i], time[0], time[-1], Nx, Ny)
+
+
+
+    for i in range(num_saves):
+        plot_snaps(i, w[i, :, :], w_hat[i, :, :], x, y, time[i], w_min, w_max, kx, ky, kxmax, time[:i], tot_energy[:i], tot_enstr[:i], tot_palin[:i], time[0], time[-1], Nx, Ny)
+
+
     # -----------------------
     ## ------ Plot Snaps
     # -----------------------
