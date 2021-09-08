@@ -132,12 +132,28 @@ void SpectralSolve(void) {
 		TaylorGreenSoln(t0, N);
 	}
 	#endif
+
 	// Create and open the output file - also write initial conditions to file
 	CreateOutputFileWriteICs(N, dt);
 
 	// Inialize system measurables
 	InitializeSystemMeasurables();
+	printf("ToT E: %1.18lf\n", run_data->tot_energy[0]);
+	if (!(sys_vars->rank)) {
+		// Reduce on to rank 0
+		MPI_Reduce(MPI_IN_PLACE, run_data->tot_energy, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(MPI_IN_PLACE, run_data->tot_enstr, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(MPI_IN_PLACE, run_data->tot_palin, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 
+		printf("Iter: %d\tt: %1.6lf\tdt: %g\t Max Vort: %1.4lf \tTKE: %1.8lf\tENS: %1.8lf\tPAL: %1.8lf\n", 0, 0.0, dt, sys_vars->w_max_init, run_data->tot_energy[0], run_data->tot_enstr[0], run_data->tot_palin[0]);
+	}
+	else {
+		// Reduce all other process to rank 0
+		MPI_Reduce(run_data->tot_energy, NULL,  sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(run_data->tot_enstr, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(run_data->tot_palin, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+	}
+	
 	
 	//////////////////////////////
 	// Begin Integration
@@ -221,8 +237,11 @@ void SpectralSolve(void) {
 			max_vort = GetMaxData("VORT");
 			if(!(strcmp(sys_vars->u0, "TG_VEL")) || !(strcmp(sys_vars->u0, "TG_VORT"))) {
 				TestTaylorGreenVortex(t, N, norms);
+				RecordSystemMeasures(t, save_data_indx);
+				printf("ToT E: %1.18lf\n", run_data->tot_energy[save_data_indx]);
 				if( !(sys_vars->rank) ) {	
-					printf("Iter: %d\tt: %1.6lf\tdt: %g\t Max Vort: %1.4lf \tL2 Err: %g\tLinf Err: %g\n", iters, t, dt, max_vort, norms[0], norms[1]);
+					// printf("Iter: %d\tt: %1.6lf\tdt: %g\t Max Vort: %1.4lf \tL2 Err: %g\tLinf Err: %g\n", iters, t, dt, max_vort, norms[0], norms[1]);
+					printf("Iter: %d\tt: %1.6lf\tdt: %g\t Max Vort: %1.4lf \tTKE: %1.8lf\tENS: %1.8lf\tPAL: %1.8lf\n\n", iters, t, dt, max_vort, run_data->tot_energy[save_data_indx], run_data->tot_enstr[save_data_indx], run_data->tot_palin[save_data_indx]);
 				}
 			}
 			else {
@@ -1624,11 +1643,11 @@ double TotalEnergy(void) {
 	// Initialize variables
 	int tmp;
 	int indx;
-	fftw_complex k_sqr;
-	double u_hat;
-	double v_hat;
+	double k_sqr;
 	double tot_energy = 0.0;
 	ptrdiff_t local_Nx 		  = sys_vars->local_Nx;
+	const long int Nx         = sys_vars->N[0];
+	const long int Ny         = sys_vars->N[1];
 	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
 
 	// ------------------------------------------
@@ -1640,25 +1659,26 @@ double TotalEnergy(void) {
 			indx = tmp + j;
 
 			if ((run_data->k[0][i] != 0) || (run_data->k[1][j] != 0)) {
-				// The prefactor
-				k_sqr = I / (double )(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
+				// The 1/k^2 prefactor
+				k_sqr = 1.0 / (double )(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 
-				// Compute the Foureir velocities
-				u_hat = k_sqr * ((double) run_data->k[1][j]) * run_data->w_hat[indx];
-				v_hat = -1.0 * k_sqr * ((double) run_data->k[0][i]) * run_data->w_hat[indx];
+				if ((j == 0) && (j == Ny_Fourier - 1)) {
+					// Update the sum for the total energy
+					tot_energy += cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * k_sqr;
+				}
+				else {
+					// Update the sum for the total energy
+					tot_energy += 2.0 * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * k_sqr;
+				}
 			}
 			else {
-				u_hat = 0.0 + 0.0 * I;
-				v_hat = 0.0 + 0.0 * I;
+				tot_energy += 0.0;
 			}
-
-			// Update the sum for the total energy
-			tot_energy += 0.5 * (cabs(u_hat * conj(u_hat)) + cabs(v_hat * conj(v_hat)));
 		}
 	}
 	
 	// Return result
-	return tot_energy;	
+	return 0.5 * tot_energy / pow(Nx * Ny, 2.0);
 }
 /**
  * Function to compute the total enstrophy in the system at the current timestep
@@ -1670,6 +1690,8 @@ double TotalEnstrophy(void) {
 	int tmp;
 	int indx;
 	ptrdiff_t local_Nx 		  = sys_vars->local_Nx;
+	const long int Nx         = sys_vars->N[0];
+	const long int Ny         = sys_vars->N[1];
 	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
 
 
@@ -1682,16 +1704,22 @@ double TotalEnstrophy(void) {
 	// Loop over Fourier vorticity
 	for (int i = 0; i < local_Nx; ++i) {
 		tmp = i * Ny_Fourier;
-		for (int j = 0; j < Ny_Fourier; ++j) {
+		for (int j = 1; j < Ny_Fourier; ++j) {
 			indx = tmp + j;
 
-			// Update the sum for the total enstrophy
-			tot_enstr += 0.5 * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+			if ((j == 0) && (j == Ny_Fourier - 1)) {
+				// Update the sum for the total enstrophy -> only count the 0 and N/2 modes once as they have no conjugate
+				tot_enstr += cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+			}	
+			else {
+				// Update the sum for the total enstrophy -> factor of two for Fourier conjugates
+				tot_enstr += cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+			}	
 		}
 	}
 
 	// Return result
-	return tot_enstr;
+	return 0.5 * tot_enstr / (Nx * Ny);
 }
 /**
  * Function to compute the total palinstrophy of the system at the current timestep

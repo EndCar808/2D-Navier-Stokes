@@ -115,7 +115,7 @@ def plot_snaps(i, w, w_hat, x, y, t, w_min, w_max, kx, ky, kx_max, time_t, tot_e
 def energy_spectrum(w_h, kx, ky, Nx, Ny):
 
     ## Spectrum size
-    spec_size = int(np.sqrt((Nx / 2) * (Nx / 2) + (Ny / 2) * (Ny / 2)))
+    spec_size = Nx / 2
 
     ## Velocity arrays
     energy_spec = np.zeros(spec_size)
@@ -123,12 +123,17 @@ def energy_spectrum(w_h, kx, ky, Nx, Ny):
     ## Find u_hat
     for i in range(w_h.shape[0]):
         for j in range(w_h.shape[1]):
-            ## Compute prefactor
-            k_sqr = np.complex(0.0, 1.0) / (kx[i] ** 2 + ky[j] ** 2 + 1e-50)
 
-            ## Compute Fourier velocities
-            u_hat = ky[j] * k_sqr * w_h[i, j]
-            v_hat = -kx[i] * k_sqr * w_h[i, j]
+            if kx[i] == 0.0 & ky[i] == 0.0:
+                u_hat = np.complex(0.0 + 0.0)
+                v_hat = np.complex(0.0 + 0.0)
+            else:
+                ## Compute prefactor
+                k_sqr = np.complex(0.0, 1.0) / (kx[i] ** 2 + ky[j] ** 2)
+
+                ## Compute Fourier velocities
+                u_hat = ky[j] * k_sqr * w_h[i, j]
+                v_hat = -kx[i] * k_sqr * w_h[i, j]
 
             ## Compute the mode
             spec_indx = int(np.sqrt(kx[i] * kx[i] + ky[j] * ky[j]))
