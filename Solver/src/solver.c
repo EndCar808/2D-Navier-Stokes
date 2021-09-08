@@ -138,14 +138,14 @@ void SpectralSolve(void) {
 
 	// Inialize system measurables
 	InitializeSystemMeasurables();
-	printf("ToT E: %1.18lf\n", run_data->tot_energy[0]);
+	printf("ToT E: %1.18lf\t ToT Enstr: %1.18lf\tToT Pal: %1.18lf\n", run_data->tot_energy[0], run_data->tot_enstr[0], run_data->tot_palin[0]);
 	if (!(sys_vars->rank)) {
 		// Reduce on to rank 0
 		MPI_Reduce(MPI_IN_PLACE, run_data->tot_energy, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		MPI_Reduce(MPI_IN_PLACE, run_data->tot_enstr, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		MPI_Reduce(MPI_IN_PLACE, run_data->tot_palin, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 
-		printf("Iter: %d\tt: %1.6lf\tdt: %g\t Max Vort: %1.4lf \tTKE: %1.8lf\tENS: %1.8lf\tPAL: %1.8lf\n", 0, 0.0, dt, sys_vars->w_max_init, run_data->tot_energy[0], run_data->tot_enstr[0], run_data->tot_palin[0]);
+		printf("Iter: %d\tt: %1.6lf\tdt: %g\t Max Vort: %1.4lf \tTKE: %1.8lf\tENS: %1.8lf\tPAL: %g\n", 0, 0.0, dt, sys_vars->w_max_init, run_data->tot_energy[0], run_data->tot_enstr[0], run_data->tot_palin[0]);
 	}
 	else {
 		// Reduce all other process to rank 0
@@ -238,10 +238,9 @@ void SpectralSolve(void) {
 			if(!(strcmp(sys_vars->u0, "TG_VEL")) || !(strcmp(sys_vars->u0, "TG_VORT"))) {
 				TestTaylorGreenVortex(t, N, norms);
 				RecordSystemMeasures(t, save_data_indx);
-				printf("ToT E: %1.18lf\n", run_data->tot_energy[save_data_indx]);
 				if( !(sys_vars->rank) ) {	
 					// printf("Iter: %d\tt: %1.6lf\tdt: %g\t Max Vort: %1.4lf \tL2 Err: %g\tLinf Err: %g\n", iters, t, dt, max_vort, norms[0], norms[1]);
-					printf("Iter: %d\tt: %1.6lf\tdt: %g\t Max Vort: %1.4lf \tTKE: %1.8lf\tENS: %1.8lf\tPAL: %1.8lf\n\n", iters, t, dt, max_vort, run_data->tot_energy[save_data_indx], run_data->tot_enstr[save_data_indx], run_data->tot_palin[save_data_indx]);
+					printf("Iter: %d\tt: %1.6lf\tdt: %g\t Max Vort: %1.4lf \tTKE: %1.8lf\tENS: %1.8lf\tPAL: %g\n", iters, t, dt, max_vort, run_data->tot_energy[save_data_indx], run_data->tot_enstr[save_data_indx], run_data->tot_palin[save_data_indx]);
 				}
 			}
 			else {
@@ -1713,13 +1712,13 @@ double TotalEnstrophy(void) {
 			}	
 			else {
 				// Update the sum for the total enstrophy -> factor of two for Fourier conjugates
-				tot_enstr += cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+				tot_enstr += 2.0 * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
 			}	
 		}
 	}
 
 	// Return result
-	return 0.5 * tot_enstr / (Nx * Ny);
+	return 0.5 * tot_enstr / pow(Nx * Ny, 2.0);
 }
 /**
  * Function to compute the total palinstrophy of the system at the current timestep
@@ -1733,6 +1732,8 @@ double TotalPalinstrophy(void) {
 	double w_hat_dx;
 	double w_hat_dy;
 	ptrdiff_t local_Nx 		  = sys_vars->local_Nx;
+	const long int Nx         = sys_vars->N[0];
+	const long int Ny         = sys_vars->N[1];
 	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
 
 
@@ -1751,12 +1752,18 @@ double TotalPalinstrophy(void) {
 			// Compute the sum for the total palinstrophy
 			w_hat_dx = I * ((double ) run_data->k[0][i]) * run_data->w_hat[indx];
 			w_hat_dy = I * ((double ) run_data->k[1][j]) * run_data->w_hat[indx];
-			tot_palin += 0.5 * (cabs(w_hat_dx * conj(w_hat_dx)) + cabs(w_hat_dy * conj(w_hat_dy)));
+
+			if((j == 0) && (j == Ny_Fourier - 1)) {
+				tot_palin += (cabs(w_hat_dx * conj(w_hat_dx)) + cabs(w_hat_dy * conj(w_hat_dy)));
+			}
+			else {
+				tot_palin += 2.0 * (cabs(w_hat_dx * conj(w_hat_dx)) + cabs(w_hat_dy * conj(w_hat_dy)));
+			}
 		}
 	}
 
 	// Return result
-	return tot_palin;
+	return 0.5 * tot_palin / pow(Nx * Ny, 2.0);
 }	
 /**
  * Function to record the system measures for the current timestep 
