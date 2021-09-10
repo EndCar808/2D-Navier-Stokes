@@ -154,7 +154,7 @@ while
 therefore
 
 \begin{align}
-	\left(\bfu \cdot \nabla \right) \bfu &= \left(u\pder{}{x} + v\pder{}{y} + w\pder{}{z}\right) \cdot \begin{pmatrix}
+	\left(\bfu \cdot \nabla \right) \bfu &= \left(u\pder{}{x} + v\pder{}{y} + w\pder{}{z}\right) \begin{pmatrix}
            u \\
            v \\
            w\\
@@ -225,7 +225,7 @@ Once the stream function is known the real space velocity can then be found usin
 In summary, we have the following system
 
 \begin{align}
-	\pder{\omega}{t} + \left(\bfu \cdot \nabla\right)\omega &= \nu \Delta\omega - \alpha \omega +  \curl{F}, \label{eq:vort_eq}\\
+	\pder{\omega}{t} + \left(\bfu \cdot \nabla\right)\omega &= -\nu (-\nabla^2)^n\omega - \alpha \omega +  \curl{F}, \label{eq:vort_eq}\\
 	\Delta\psi &= -\omega. \label{eq:laplace}
 \end{align}
 

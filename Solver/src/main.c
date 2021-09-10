@@ -64,7 +64,7 @@ int main(int argc, char** argv) {
 		fprintf(stderr, "\n["RED"ERROR"RED"]: Error in reading in command line aguments, check utils.c file for details\n");
 		exit(1);
 	}
-	
+
 
 	//////////////////////////////////
 	// Call Solver
@@ -74,6 +74,7 @@ int main(int argc, char** argv) {
 	// Call Solver
 	//////////////////////////////////
 	
+
 	MPI_Barrier(MPI_COMM_WORLD);
 	if (!(sys_vars->rank)) {
 		// Finish timing

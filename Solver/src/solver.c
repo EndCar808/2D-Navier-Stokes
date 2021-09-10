@@ -138,20 +138,24 @@ void SpectralSolve(void) {
 
 	// Inialize system measurables
 	InitializeSystemMeasurables();
-	printf("ToT E: %1.18lf\t ToT Enstr: %1.18lf\tToT Pal: %1.18lf\n", run_data->tot_energy[0], run_data->tot_enstr[0], run_data->tot_palin[0]);
+	printf("ToT E: %1.18lf\t ToT Enstr: %1.18lf\tToT Pal: %1.18lf\tEDiss: %1.18lf\tEnDiss: %1.18lf\n", run_data->tot_energy[0], run_data->tot_enstr[0], run_data->tot_palin[0], run_data->enrg_diss[0], run_data->enst_diss[0]);
 	if (!(sys_vars->rank)) {
 		// Reduce on to rank 0
 		MPI_Reduce(MPI_IN_PLACE, run_data->tot_energy, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		MPI_Reduce(MPI_IN_PLACE, run_data->tot_enstr, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		MPI_Reduce(MPI_IN_PLACE, run_data->tot_palin, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(MPI_IN_PLACE, run_data->enrg_diss, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(MPI_IN_PLACE, run_data->enst_diss, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 
-		printf("Iter: %d\tt: %1.6lf\tdt: %g\t Max Vort: %1.4lf \tTKE: %1.8lf\tENS: %1.8lf\tPAL: %g\n", 0, 0.0, dt, sys_vars->w_max_init, run_data->tot_energy[0], run_data->tot_enstr[0], run_data->tot_palin[0]);
+		printf("Iter: %d\tt: %1.6lf\tdt: %g\t Max Vort: %1.4lf \tTKE: %1.8lf\tENS: %1.8lf\tPAL: %g\tEDiss: %1.18lf\tEnDiss: %1.18lf\n", 0, 0.0, dt, sys_vars->w_max_init, run_data->tot_energy[0], run_data->tot_enstr[0], run_data->tot_palin[0], run_data->enrg_diss[0], run_data->enst_diss[0]);
 	}
 	else {
 		// Reduce all other process to rank 0
 		MPI_Reduce(run_data->tot_energy, NULL,  sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		MPI_Reduce(run_data->tot_enstr, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		MPI_Reduce(run_data->tot_palin, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(run_data->enrg_diss, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(run_data->enst_diss, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 	}
 	
 	
@@ -240,7 +244,7 @@ void SpectralSolve(void) {
 				RecordSystemMeasures(t, save_data_indx);
 				if( !(sys_vars->rank) ) {	
 					// printf("Iter: %d\tt: %1.6lf\tdt: %g\t Max Vort: %1.4lf \tL2 Err: %g\tLinf Err: %g\n", iters, t, dt, max_vort, norms[0], norms[1]);
-					printf("Iter: %d\tt: %1.6lf\tdt: %g\t Max Vort: %1.4lf \tTKE: %1.8lf\tENS: %1.8lf\tPAL: %g\n", iters, t, dt, max_vort, run_data->tot_energy[save_data_indx], run_data->tot_enstr[save_data_indx], run_data->tot_palin[save_data_indx]);
+					printf("Iter: %d\tt: %1.6lf\tdt: %g\t Max Vort: %1.4lf \tTKE: %1.8lf\tENS: %1.8lf\tPAL: %g\tEDiss: %1.18lf\tEnDiss: %1.18lf\n", iters, t, dt, max_vort, run_data->tot_energy[save_data_indx], run_data->tot_enstr[save_data_indx], run_data->tot_palin[save_data_indx], run_data->enrg_diss[save_data_indx], run_data->enst_diss[save_data_indx]);
 				}
 			}
 			else {
@@ -1721,7 +1725,8 @@ double TotalEnstrophy(void) {
 	return 0.5 * tot_enstr / pow(Nx * Ny, 2.0);
 }
 /**
- * Function to compute the total palinstrophy of the system at the current timestep
+ * Function to compute the total palinstrophy at the current timestep on the local process.
+ * Results are gathered on the master process at the end of the simulation run
  * @return  The total palinstrophy
  */
 double TotalPalinstrophy(void) {
@@ -1729,8 +1734,7 @@ double TotalPalinstrophy(void) {
 	// Initialize variables
 	int tmp;
 	int indx;
-	double w_hat_dx;
-	double w_hat_dy;
+	double k_sqr;
 	ptrdiff_t local_Nx 		  = sys_vars->local_Nx;
 	const long int Nx         = sys_vars->N[0];
 	const long int Ny         = sys_vars->N[1];
@@ -1738,7 +1742,7 @@ double TotalPalinstrophy(void) {
 
 
 	// -------------------------------
-	// Compute The Total Energy 
+	// Compute The Total Palinstrophy 
 	// -------------------------------
 	// Initialize total enstrophy
 	double tot_palin = 0.0;
@@ -1749,21 +1753,148 @@ double TotalPalinstrophy(void) {
 		for (int j = 0; j < Ny_Fourier; ++j) {
 			indx = tmp + j;
 
-			// Compute the sum for the total palinstrophy
-			w_hat_dx = I * ((double ) run_data->k[0][i]) * run_data->w_hat[indx];
-			w_hat_dy = I * ((double ) run_data->k[1][j]) * run_data->w_hat[indx];
+			if((run_data->k[0][i] != 0) || (run_data->k[1][j] != 0)) {
+				// Get the |k|^2 prefactor
+				k_sqr = 1.0 * (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 
-			if((j == 0) && (j == Ny_Fourier - 1)) {
-				tot_palin += (cabs(w_hat_dx * conj(w_hat_dx)) + cabs(w_hat_dy * conj(w_hat_dy)));
+				// Update the running sum for the palinstrophy
+				if((j == 0) && (j == Ny_Fourier - 1)) {
+					tot_palin += k_sqr * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+				}
+				else {
+					tot_palin += 2.0 * k_sqr * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+				}
 			}
 			else {
-				tot_palin += 2.0 * (cabs(w_hat_dx * conj(w_hat_dx)) + cabs(w_hat_dy * conj(w_hat_dy)));
+				tot_palin += 0.0;
 			}
 		}
 	}
 
 	// Return result
 	return 0.5 * tot_palin / pow(Nx * Ny, 2.0);
+}
+/**
+ * Function to compute the energy dissipation rate \epsilon for the current iteration on the local processes
+ * The results are gathered on the master process at the end of the simulation
+ * @return  Returns the energy dissipation rate
+ */
+double EnergyDissipationRate(void) {
+
+	// Initialize variables
+	int tmp;
+	int indx;
+	double pre_fac;
+	ptrdiff_t local_Nx 		  = sys_vars->local_Nx;
+	const long int Nx         = sys_vars->N[0];
+	const long int Ny         = sys_vars->N[1];
+	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
+
+	// -------------------------------
+	// Compute The Energy Diss Rate
+	// -------------------------------
+	// Initialize total enstrophy
+	double enrgy = 0.0;
+
+	// Loop over Fourier vorticity
+	for (int i = 0; i < local_Nx; ++i) {
+		tmp = i * Ny_Fourier;
+		for (int j = 0; j < Ny_Fourier; ++j) {
+			indx = tmp + j;
+
+			// Get the appropriate prefactor
+			#if defined(HYPER_VISC) && defined(EKMN_DRAG) 
+			// Both Hyperviscosity and Ekman drag
+			pre_fac = sys_vars->NU * pow(k_sqr, VIS_POW) + sys_vars->EKMN_ALPHA * pow(k_sqr, EKMN_POW);
+			#elif !defined(HYPER_VISC) && defined(EKMN_DRAG) 
+			// No hyperviscosity but we have Ekman drag
+			pre_fac = sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA * pow(k_sqr, EKMN_POW);
+			#elif defined(HYPER_VISC) && !defined(EKMN_DRAG) 
+			// Hyperviscosity only
+			pre_fac = sys_vars->NU * pow(k_sqr, VIS_POW);
+			#else 
+			// No hyper viscosity or no ekman drag -> just normal viscosity
+			pre_fac = sys_vars->NU; 
+			#endif
+
+			// Update the running sum for the palinstrophy -> first and last modes have no conjugate so only count once
+			if((j == 0) && (j == Ny_Fourier - 1)) {
+				enrgy += pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+			}
+			else {
+				enrgy += 2.0 * pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+			}
+		}
+	}
+
+	// Return result -> 2 (nu * 0.5 *<|w|^2>)
+	return enrgy / pow(Nx * Ny, 2.0);
+}
+/**
+ * Function to compute the enstrophy dissipation rate \eta which is equal to 2 * Palinstrophy for the current iteration on the local process
+ * Results are gathered on the master process at the end of the simulation run
+ * @return  The enstrophy dissipation rate on the local process
+ */
+double EnstrophyDissipationRate(void) {
+
+	// Initialize variables
+	int tmp;
+	int indx;
+	double k_sqr;
+	double pre_fac;
+	ptrdiff_t local_Nx 		  = sys_vars->local_Nx;
+	const long int Nx         = sys_vars->N[0];
+	const long int Ny         = sys_vars->N[1];
+	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
+
+	// -------------------------------
+	// Compute The Enstrophy Diss Rate 
+	// -------------------------------
+	// Initialize total enstrophy
+	double tot_palin = 0.0;
+
+	// Loop over Fourier vorticity
+	for (int i = 0; i < local_Nx; ++i) {
+		tmp = i * Ny_Fourier;
+		for (int j = 0; j < Ny_Fourier; ++j) {
+			indx = tmp + j;
+
+			if((run_data->k[0][i] != 0) || (run_data->k[1][j] != 0)) {
+				// Compute |k|^2
+				k_sqr = 1.0 * (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
+
+				// Get the appropriate prefactor
+				#if defined(HYPER_VISC) && defined(EKMN_DRAG) 
+				// Both Hyperviscosity and Ekman drag
+				pre_fac = sys_vars->NU * pow(k_sqr, VIS_POW) + sys_vars->EKMN_ALPHA * pow(k_sqr, EKMN_POW);
+				#elif !defined(HYPER_VISC) && defined(EKMN_DRAG) 
+				// No hyperviscosity but we have Ekman drag
+				pre_fac = sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA * pow(k_sqr, EKMN_POW);
+				#elif defined(HYPER_VISC) && !defined(EKMN_DRAG) 
+				// Hyperviscosity only
+				pre_fac = sys_vars->NU * pow(k_sqr, VIS_POW);
+				#else 
+				// No hyper viscosity or no ekman drag -> just normal viscosity
+				pre_fac = sys_vars->NU * k_sqr; 
+				#endif
+
+				// Update the running sum for the palinstrophy -> first and last modes have no conjugate so only count once
+				if((j == 0) && (j == Ny_Fourier - 1)) {
+					tot_palin += pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+				}
+				else {
+					tot_palin += 2.0 * pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+				}
+			}
+			else {
+				tot_palin += 0.0;
+			}
+		}
+	}
+
+
+	// Return result -> 2(palin) = 2(0.5 * <|grad \omega|^2>)
+	return tot_palin / pow(Nx * Ny, 2.0);
 }	
 /**
  * Function to record the system measures for the current timestep 
@@ -1782,10 +1913,20 @@ void RecordSystemMeasures(double t, int print_indx) {
 	}
 	#endif
 
-	// Total Energy, enstrophy and palinstrophy
-	run_data->tot_enstr[print_indx] = TotalEnstrophy();
-	run_data->tot_energy[print_indx] = TotalEnergy();
-	run_data->tot_palin[print_indx] = TotalPalinstrophy();
+	// Check if within memory limits
+	if (print_indx < sys_vars->num_print_steps) {
+		// Total Energy, enstrophy and palinstrophy
+		run_data->tot_enstr[print_indx]  = TotalEnstrophy();
+		run_data->tot_energy[print_indx] = TotalEnergy();
+		run_data->tot_palin[print_indx]  = TotalPalinstrophy();
+		// Energy and enstrophy dissipation rates
+		run_data->enrg_diss[print_indx] = EnergyDissipationRate();
+		run_data->enst_diss[print_indx] = EnstrophyDissipationRate();
+	}
+	else {
+		printf("\n["MAGENTA"WARNING"RESET"] --- Unable to write system measures at Indx: [%d] t: [%lf] ---- Number of intergration steps is now greater then memory allocated\n", print_indx, t);
+	}
+	
 }
 /**
  * Wrapper function used to allocate memory all the nessecary local and global system and integration arrays
@@ -2035,30 +2176,44 @@ void InitializeSystemMeasurables(void) {
 	// Total Energy in the system
 	run_data->tot_energy = (double* )fftw_malloc(sizeof(double) * print_steps);
 	if (run_data->tot_energy == NULL) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the Total Energy \n-->> Exiting!!!\n");
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Total Energy");
 		exit(1);
 	}	
 
 	// Total Enstrophy
 	run_data->tot_enstr = (double* )fftw_malloc(sizeof(double) * print_steps);
 	if (run_data->tot_enstr == NULL) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the Total Enstrophy \n-->> Exiting!!!\n");
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Total Enstrophy");
 		exit(1);
 	}	
 
 	// Total Palinstrophy
 	run_data->tot_palin = (double* )fftw_malloc(sizeof(double) * print_steps);
 	if (run_data->tot_palin == NULL) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the Total Palinstrophy \n-->> Exiting!!!\n");
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Total Palinstrophy");
 		exit(1);
 	}	
 
+	// Energy Dissipation Rate
+	run_data->enrg_diss = (double* )fftw_malloc(sizeof(double) * print_steps);
+	if (run_data->enrg_diss == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Energy Dissipation Rate");
+		exit(1);
+	}	
+
+	// Enstrophy Dissipation Rate
+	run_data->enst_diss = (double* )fftw_malloc(sizeof(double) * print_steps);
+	if (run_data->enst_diss == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Enstrophy Dissipation Rate");
+		exit(1);
+	}	
+	
 	// Time
 	#ifdef __TIME
 	if (!(sys_vars->rank)){
 		run_data->time = (double* )fftw_malloc(sizeof(double) * print_steps);
 		if (run_data->time == NULL) {
-			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the Time \n-->> Exiting!!!\n");
+			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Time");
 			exit(1);
 		}	
 	}
@@ -2075,6 +2230,12 @@ void InitializeSystemMeasurables(void) {
 
 	// Total Palinstrophy
 	run_data->tot_palin[0] = TotalPalinstrophy();
+
+	// Energy dissipation rate
+	run_data->enrg_diss[0] = EnergyDissipationRate();
+
+	// Enstrophy dissipation rate
+	run_data->enst_diss[0] = EnstrophyDissipationRate();
 
 	// Time
 	#ifdef __TIME
@@ -2103,9 +2264,11 @@ void FreeMemory(RK_data_struct* RK_data) {
 	fftw_free(run_data->u_hat);
 	fftw_free(run_data->w);
 	fftw_free(run_data->w_hat);
+	fftw_free(run_data->tot_energy);
 	fftw_free(run_data->tot_enstr);
 	fftw_free(run_data->tot_palin);
-	fftw_free(run_data->tot_energy);
+	fftw_free(run_data->enrg_diss);
+	fftw_free(run_data->enst_diss);
 	#ifdef TESTING
 	fftw_free(run_data->tg_soln);
 	#endif

@@ -47,6 +47,8 @@ void SystemCheck(double dt, int iters);
 double TotalEnergy(void);
 double TotalEnstrophy(void);
 double TotalPalinstrophy(void);
+double EnergyDissipationRate(void);
+double EnstrophyDissipationRate(void);
 double* EnergySpectrum(int spectrum_size);
 double* EnstrophySpectrum(int spectrum_size);
 void RecordSystemMeasures(double t, int print_indx);

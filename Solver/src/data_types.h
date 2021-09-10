@@ -58,14 +58,11 @@
 // #define __DEALIAS_HOU_LI
 // Choose whether to print updates to screen
 #define __PRINT_SCREEN
-
-
 // Testing the solver will be decided at compilation
 #if defined(__TESTING)
 #define TESTING
 #define TEST_PRINT 10
 #endif
-
 // ---------------------------------------------------------------------
 //  Datasets to Write to File
 // ---------------------------------------------------------------------
@@ -155,8 +152,10 @@ typedef struct runtime_data_struct {
 	double* tot_energy;      // Array to hold the total energy over the simulation
 	double* tot_enstr;		 // Array to hold the total entrophy over the simulation
 	double* tot_palin;		 // Array to hold the total palinstrophy over the simulaiotns
+	double* enrg_diss; 		 // Array to hold the energy dissipation rate 
+	double* enst_diss;		 // Array to hold the enstrophy dissipation rate
 	double* time;			 // Array to hold the simulation times
-	double* tg_soln;			 // Array for computing the Taylor Green vortex solution
+	double* tg_soln;	  	 // Array for computing the Taylor Green vortex solution
 } runtime_data_struct;
 
 // Runge-Kutta Integration struct
