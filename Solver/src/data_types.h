@@ -101,6 +101,9 @@
 #define MIN_STEP_SIZE 1e-10 	// The minimum allowed stepsize for the solver 
 #define MAX_ITERS 1e+6 			// The maximum iterations to perform
 #define MAX_VORT_LIM 1e+100     // The maximum allowed vorticity
+// Dynamic Modes
+#define UPR_SBST_LIM 10         // The upper mode limit of the energy/enstrophy flux
+#define LWR_SBST_LIM 0  		// The lower mode limit of the energy/enstrophy flux
 #if defined(__HYPER)
 #define HYPER_VISC				// Turned on hyperviscosity if called for at compilation time
 #define VIS_POW 2.0             // The power of the hyperviscosity -> 1.0 means no hyperviscosity
@@ -155,6 +158,8 @@ typedef struct runtime_data_struct {
 	double* enrg_diss; 		 // Array to hold the energy dissipation rate 
 	double* enst_diss;		 // Array to hold the enstrophy dissipation rate
 	double* time;			 // Array to hold the simulation times
+	double* enst_flux_sbst;  // Array to hold the enstrophy flux in/out of a subset of modes
+	double* enst_diss_sbst;  // Array to hold the enstrophy dissipation for a subset of modes
 	double* tg_soln;	  	 // Array for computing the Taylor Green vortex solution
 } runtime_data_struct;
 

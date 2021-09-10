@@ -1897,6 +1897,95 @@ double EnstrophyDissipationRate(void) {
 	return tot_palin / pow(Nx * Ny, 2.0);
 }	
 /**
+ * Function to compute the enstrophy flux and enstrophy dissipation from a subset of modes on the local process for the current iteration 
+ * The results will be gathered on the master process at the end of the simulation	
+ * @param enst_flux The enstrophy flux 
+ * @param enst_diss The enstrophy dissipation
+ */
+void EnstrophyFlux(double* enst_flux, double* enst_diss) {
+
+	// Initialize variables
+	int tmp;
+	int indx;
+	double k_sqr;
+	double pre_fac;
+	ptrdiff_t local_Nx 		  = sys_vars->local_Nx;
+	const long int Nx         = sys_vars->N[0];
+	const long int Ny         = sys_vars->N[1];
+	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
+
+	// -----------------------------------
+	// Compute the Derivative
+	// -----------------------------------
+	// Allocate memory
+	fftw_complex* dwhat_dt = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->alloc_local_batch);
+	if (dwhat_dt == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for Integration Array ["CYAN"%s"RESET"] \n-->> Exiting!!!\n", "RK1");
+		exit(1);
+	}
+
+	// ---------------------------------------------
+	// Compute the Enstrophy Rate of Change & Diss 
+	// ---------------------------------------------
+	// Initialize sums
+	(*enst_flux) = 0.0;
+	(*enst_diss) = 0.0;
+
+	// Loop over Fourier vorticity
+	for (int i = 0; i < local_Nx; ++i) {
+		tmp = i * Ny_Fourier;
+		for (int j = 0; j < Ny_Fourier; ++j) {
+			indx = tmp + j;
+
+			// Consider only a subset of modes
+			if ((abs(run_data->k[0][i]) <= UPR_SBST_LIM) && ((run_data->k[1][j] <= UPR_SBST_LIM) && (run_data->k[1][j] >= LWR_SBST_LIM) && (run_data->k[1][j] <= -LWR_SBST_LIM) && (run_data->k[1][j] >= -UPR_SBST_LIM))) {
+				// Compute |k|^2
+				k_sqr = (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
+
+				// Get the appropriate prefactor
+				#if defined(HYPER_VISC) && defined(EKMN_DRAG) 
+				// Both Hyperviscosity and Ekman drag
+				pre_fac = sys_vars->NU * pow(k_sqr, VIS_POW) + sys_vars->EKMN_ALPHA * pow(k_sqr, EKMN_POW);
+				#elif !defined(HYPER_VISC) && defined(EKMN_DRAG) 
+				// No hyperviscosity but we have Ekman drag
+				pre_fac = sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA * pow(k_sqr, EKMN_POW);
+				#elif defined(HYPER_VISC) && !defined(EKMN_DRAG) 
+				// Hyperviscosity only
+				pre_fac = sys_vars->NU * pow(k_sqr, VIS_POW);
+				#else 
+				// No hyper viscosity or no ekman drag -> just normal viscosity
+				pre_fac = sys_vars->NU * k_sqr; 
+				#endif
+
+				// Update sums
+				if ((j == 0) && (Ny_Fourier - 1)) {
+					// Update the running sum for the rate of change of enstrophy
+					(*enst_flux) += (run_data->w_hat[indx] * conj(dwhat_dt[indx]) + conj(run_data->w_hat[indx]) * dwhat_dt[indx]);
+
+					// Update the running sum for the enstrophy dissipation 
+					(*enst_diss) += cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+				}
+				else {
+					// Update the running sum for the rate of change of enstrophy
+					(*enst_flux) += 2.0 * (run_data->w_hat[indx] * conj(dwhat_dt[indx]) + conj(run_data->w_hat[indx]) * dwhat_dt[indx]);
+
+					// Update the running sum for the enstrophy dissipation 
+					(*enst_diss) += 2.0 * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+				}
+			}
+		}
+	}
+
+	// -----------------------------------
+	// Compute the Enstrophy Flux & Diss 
+	// -----------------------------------
+	// Compue the enstrophy dissipation
+	(*enst_diss) = 0.5 * (*enst_diss) / pow(Nx * Ny, 2.0);
+
+	// Compute the enstrophy flux
+	(*enst_flux) = 0.5 * (*enst_flux) / pow(Nx * Ny, 2.0)  - (*enst_diss);
+}
+/**
  * Function to record the system measures for the current timestep 
  * @param t          The current time in the simulation
  * @param print_indx The current index of the measurables arrays
@@ -1922,6 +2011,8 @@ void RecordSystemMeasures(double t, int print_indx) {
 		// Energy and enstrophy dissipation rates
 		run_data->enrg_diss[print_indx] = EnergyDissipationRate();
 		run_data->enst_diss[print_indx] = EnstrophyDissipationRate();
+		// Enstrophy flux in/out and dissipation of a subset of modes
+		EnstrophyFlux(&(run_data->enst_flux_sbst[print_indx]), &(run_data->enst_diss_sbst[print_indx]));
 	}
 	else {
 		printf("\n["MAGENTA"WARNING"RESET"] --- Unable to write system measures at Indx: [%d] t: [%lf] ---- Number of intergration steps is now greater then memory allocated\n", print_indx, t);
@@ -2207,6 +2298,20 @@ void InitializeSystemMeasurables(void) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Enstrophy Dissipation Rate");
 		exit(1);
 	}	
+
+	// Energy Dissipation Rate
+	run_data->enst_flux_sbst = (double* )fftw_malloc(sizeof(double) * print_steps);
+	if (run_data->enst_flux_sbst == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Enstrophy Flux Subset");
+		exit(1);
+	}	
+
+	// Enstrophy Dissipation Rate
+	run_data->enst_diss_sbst = (double* )fftw_malloc(sizeof(double) * print_steps);
+	if (run_data->enst_diss_sbst == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Enstrophy Dissipation Rate Subset");
+		exit(1);
+	}	
 	
 	// Time
 	#ifdef __TIME
@@ -2236,6 +2341,9 @@ void InitializeSystemMeasurables(void) {
 
 	// Enstrophy dissipation rate
 	run_data->enst_diss[0] = EnstrophyDissipationRate();
+
+	// Enstrophy Flux and dissipation from/to Subset of modes
+	EnstrophyFlux(&(run_data->enst_flux_sbst), &(run_data->enst_diss_sbst));
 
 	// Time
 	#ifdef __TIME
@@ -2269,6 +2377,8 @@ void FreeMemory(RK_data_struct* RK_data) {
 	fftw_free(run_data->tot_palin);
 	fftw_free(run_data->enrg_diss);
 	fftw_free(run_data->enst_diss);
+	fftw_free(run_data->enst_flux_sbst);
+	fftw_free(run_data->enst_diss_sbst);
 	#ifdef TESTING
 	fftw_free(run_data->tg_soln);
 	#endif
