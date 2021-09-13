@@ -58,6 +58,15 @@
 // #define __DEALIAS_HOU_LI
 // Choose whether to print updates to screen
 #define __PRINT_SCREEN
+// Solver Types
+#if defined(__HYPER)
+#define HYPER_VISC				// Turned on hyperviscosity if called for at compilation time
+#define VIS_POW 2.0             // The power of the hyperviscosity -> 1.0 means no hyperviscosity
+#endif
+#if defined(__EKMN_DRAG)
+#define EKMN_DRAG     			// Turn or Ekman drag if called for at compilation time
+#define EKMN_POW -2.0 			// The power of the Eckman drag term -> 0.0 means no drag
+#endif
 // Testing the solver will be decided at compilation
 #if defined(__TESTING)
 #define TESTING
@@ -102,16 +111,8 @@
 #define MAX_ITERS 1e+6 			// The maximum iterations to perform
 #define MAX_VORT_LIM 1e+100     // The maximum allowed vorticity
 // Dynamic Modes
-#define UPR_SBST_LIM 10         // The upper mode limit of the energy/enstrophy flux
+#define UPR_SBST_LIM 30         // The upper mode limit of the energy/enstrophy flux
 #define LWR_SBST_LIM 0  		// The lower mode limit of the energy/enstrophy flux
-#if defined(__HYPER)
-#define HYPER_VISC				// Turned on hyperviscosity if called for at compilation time
-#define VIS_POW 2.0             // The power of the hyperviscosity -> 1.0 means no hyperviscosity
-#endif
-#if defined(__EKMN_DRAG)
-#define EKMN_DRAG     			// Turn or Ekman drag if called for at compilation time
-#define EKMN_POW -2.0 			// The power of the Eckman drag term -> 0.0 means no drag
-#endif
 // ---------------------------------------------------------------------
 //  Global Struct Definitions
 // ---------------------------------------------------------------------

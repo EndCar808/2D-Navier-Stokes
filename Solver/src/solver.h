@@ -38,7 +38,7 @@ void ApplyDealiasing(fftw_complex* array, int array_dim, const long int* N);
 void InitializeSpaceVariables(double** x, int** k, const long int* N);
 void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, const long int* N);
 double GetMaxData(char* dtype);
-void InitializeSystemMeasurables(void);
+void InitializeSystemMeasurables(RK_data_struct* RK_data);
 // Timestep
 void GetTimestep(double* dt);
 // Check System
@@ -51,8 +51,8 @@ double EnergyDissipationRate(void);
 double EnstrophyDissipationRate(void);
 double* EnergySpectrum(int spectrum_size);
 double* EnstrophySpectrum(int spectrum_size);
-void RecordSystemMeasures(double t, int print_indx);
-void EnstrophyFlux(double* enst_flux, double* enst_diss);
+void RecordSystemMeasures(double t, int print_indx,  RK_data_struct* RK_data);
+void EnstrophyFlux(double* enst_flux, double* enst_diss, RK_data_struct* RK_data);
 // Testing
 void TestTaylorGreenVortex(const double t, const long int* N, double* norms);
 void TaylorGreenSoln(const double t, const long int* N);

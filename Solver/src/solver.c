@@ -137,8 +137,8 @@ void SpectralSolve(void) {
 	CreateOutputFileWriteICs(N, dt);
 
 	// Inialize system measurables
-	InitializeSystemMeasurables();
-	printf("ToT E: %1.18lf\t ToT Enstr: %1.18lf\tToT Pal: %1.18lf\tEDiss: %1.18lf\tEnDiss: %1.18lf\n", run_data->tot_energy[0], run_data->tot_enstr[0], run_data->tot_palin[0], run_data->enrg_diss[0], run_data->enst_diss[0]);
+	InitializeSystemMeasurables(RK_data);
+	printf("ToT E: %1.18lf\t ToT Enstr: %1.18lf\tToT Pal: %1.18lf\tEDiss: %g\tEnDiss: %g\n", run_data->tot_energy[0], run_data->tot_enstr[0], run_data->tot_palin[0], run_data->enst_flux_sbst[0], run_data->enst_diss_sbst[0]);
 	if (!(sys_vars->rank)) {
 		// Reduce on to rank 0
 		MPI_Reduce(MPI_IN_PLACE, run_data->tot_energy, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
@@ -147,7 +147,7 @@ void SpectralSolve(void) {
 		MPI_Reduce(MPI_IN_PLACE, run_data->enrg_diss, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		MPI_Reduce(MPI_IN_PLACE, run_data->enst_diss, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 
-		printf("Iter: %d\tt: %1.6lf\tdt: %g\t Max Vort: %1.4lf \tTKE: %1.8lf\tENS: %1.8lf\tPAL: %g\tEDiss: %1.18lf\tEnDiss: %1.18lf\n", 0, 0.0, dt, sys_vars->w_max_init, run_data->tot_energy[0], run_data->tot_enstr[0], run_data->tot_palin[0], run_data->enrg_diss[0], run_data->enst_diss[0]);
+		printf("Iter: %d\tt: %1.6lf\tdt: %g\t Max Vort: %1.4lf \tTKE: %1.8lf\tENS: %1.8lf\tPAL: %g\tEDiss: %g\tEnDiss: %g\n", 0, 0.0, dt, sys_vars->w_max_init, run_data->tot_energy[0], run_data->tot_enstr[0], run_data->tot_palin[0], run_data->enst_flux_sbst[0], run_data->enst_diss_sbst[0]);
 	}
 	else {
 		// Reduce all other process to rank 0
@@ -207,7 +207,7 @@ void SpectralSolve(void) {
 			#endif
 
 			// Record System Measurables
-			RecordSystemMeasures(t, save_data_indx);
+			RecordSystemMeasures(t, save_data_indx, RK_data);
 
 			// Write the appropriate datasets to file
 			WriteDataToFile(t, dt, save_data_indx);
@@ -241,16 +241,16 @@ void SpectralSolve(void) {
 			max_vort = GetMaxData("VORT");
 			if(!(strcmp(sys_vars->u0, "TG_VEL")) || !(strcmp(sys_vars->u0, "TG_VORT"))) {
 				TestTaylorGreenVortex(t, N, norms);
-				RecordSystemMeasures(t, save_data_indx);
+				RecordSystemMeasures(t, save_data_indx, RK_data);
 				if( !(sys_vars->rank) ) {	
 					// printf("Iter: %d\tt: %1.6lf\tdt: %g\t Max Vort: %1.4lf \tL2 Err: %g\tLinf Err: %g\n", iters, t, dt, max_vort, norms[0], norms[1]);
-					printf("Iter: %d\tt: %1.6lf\tdt: %g\t Max Vort: %1.4lf \tTKE: %1.8lf\tENS: %1.8lf\tPAL: %g\tEDiss: %1.18lf\tEnDiss: %1.18lf\n", iters, t, dt, max_vort, run_data->tot_energy[save_data_indx], run_data->tot_enstr[save_data_indx], run_data->tot_palin[save_data_indx], run_data->enrg_diss[save_data_indx], run_data->enst_diss[save_data_indx]);
+					printf("Iter: %d\tt: %1.6lf\tdt: %g\t Max Vort: %1.4lf \tTKE: %1.8lf\tENS: %1.8lf\tPAL: %g\tEDiss: %g\tEnDiss: %g\n", iters, t, dt, max_vort, run_data->tot_energy[save_data_indx], run_data->tot_enstr[save_data_indx], run_data->tot_palin[save_data_indx], run_data->enst_flux_sbst[save_data_indx], run_data->enst_diss_sbst[save_data_indx]);
 				}
 			}
 			else {
 				if( !(sys_vars->rank) ) {	
 					if ( iters % sys_vars->SAVE_EVERY != 0) {
-						RecordSystemMeasures(t, save_data_indx);
+						RecordSystemMeasures(t, save_data_indx, RK_data);
 					}
 					printf("Iter: %d\tt: %1.6lf\tdt: %g\t Max Vort: %1.4lf \tKE: %1.5lf\tENS: %1.5lf\n", iters, t, dt, max_vort, run_data->tot_energy[save_data_indx], run_data->tot_enstr[save_data_indx]);
 				}
@@ -261,7 +261,7 @@ void SpectralSolve(void) {
 			if (iters % print_update == 0) {
 				// If needed compute system measures for printing to screen
 				if ( iters % sys_vars->SAVE_EVERY != 0) {
-					RecordSystemMeasures(t, save_data_indx);
+					RecordSystemMeasures(t, save_data_indx, RK_data);
 				}
 				printf("Iter: %d/%ld\tt: %1.6lf/%1.3lf\tdt: %g\t ----------- \tKE: %1.5lf\tENS: %1.5lf\tPAL: %1.5lf\n", iters, sys_vars->num_t_steps, t, T, dt, run_data->tot_energy[save_data_indx], run_data->tot_enstr[save_data_indx], run_data->tot_palin[save_data_indx]);
 			}
@@ -1901,8 +1901,9 @@ double EnstrophyDissipationRate(void) {
  * The results will be gathered on the master process at the end of the simulation	
  * @param enst_flux The enstrophy flux 
  * @param enst_diss The enstrophy dissipation
+ * @param RK_data   The Runge-Kutta struct containing the arrays for computing the nonlinear term
  */
-void EnstrophyFlux(double* enst_flux, double* enst_diss) {
+void EnstrophyFlux(double* enst_flux, double* enst_diss, RK_data_struct* RK_data) {
 
 	// Initialize variables
 	int tmp;
@@ -1924,9 +1925,12 @@ void EnstrophyFlux(double* enst_flux, double* enst_diss) {
 		exit(1);
 	}
 
-	// ---------------------------------------------
-	// Compute the Enstrophy Rate of Change & Diss 
-	// ---------------------------------------------
+	// Compute the nonlinear term
+	NonlinearRHSBatch(run_data->w_hat, dwhat_dt, RK_data->nabla_psi, RK_data->nabla_w);
+
+	// -------------------------------------
+	// Compute the Enstrophy Flux & Diss
+	// -------------------------------------
 	// Initialize sums
 	(*enst_flux) = 0.0;
 	(*enst_diss) = 0.0;
@@ -1959,18 +1963,18 @@ void EnstrophyFlux(double* enst_flux, double* enst_diss) {
 
 				// Update sums
 				if ((j == 0) && (Ny_Fourier - 1)) {
-					// Update the running sum for the rate of change of enstrophy
+					// Update the running sum for the flux of enstrophy
 					(*enst_flux) += (run_data->w_hat[indx] * conj(dwhat_dt[indx]) + conj(run_data->w_hat[indx]) * dwhat_dt[indx]);
 
 					// Update the running sum for the enstrophy dissipation 
-					(*enst_diss) += cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+					(*enst_diss) += pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
 				}
 				else {
-					// Update the running sum for the rate of change of enstrophy
+					// Update the running sum for the flux of enstrophy
 					(*enst_flux) += 2.0 * (run_data->w_hat[indx] * conj(dwhat_dt[indx]) + conj(run_data->w_hat[indx]) * dwhat_dt[indx]);
 
 					// Update the running sum for the enstrophy dissipation 
-					(*enst_diss) += 2.0 * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+					(*enst_diss) += 2.0 * pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
 				}
 			}
 		}
@@ -1983,14 +1987,21 @@ void EnstrophyFlux(double* enst_flux, double* enst_diss) {
 	(*enst_diss) = 0.5 * (*enst_diss) / pow(Nx * Ny, 2.0);
 
 	// Compute the enstrophy flux
-	(*enst_flux) = 0.5 * (*enst_flux) / pow(Nx * Ny, 2.0)  - (*enst_diss);
+	(*enst_flux) = 0.5 * (*enst_flux) / pow(Nx * Ny, 2.0);
+
+
+	// -----------------------------------
+	// Free memory
+	// -----------------------------------
+	fftw_free(dwhat_dt);
 }
 /**
  * Function to record the system measures for the current timestep 
  * @param t          The current time in the simulation
  * @param print_indx The current index of the measurables arrays
+ * @param RK_data 	 The Runge-Kutta struct containing the arrays to compute the nonlinear term for the fluxes
  */
-void RecordSystemMeasures(double t, int print_indx) {
+void RecordSystemMeasures(double t, int print_indx, RK_data_struct* RK_data) {
 
 	// -------------------------------
 	// Record the System Measures 
@@ -2012,7 +2023,7 @@ void RecordSystemMeasures(double t, int print_indx) {
 		run_data->enrg_diss[print_indx] = EnergyDissipationRate();
 		run_data->enst_diss[print_indx] = EnstrophyDissipationRate();
 		// Enstrophy flux in/out and dissipation of a subset of modes
-		EnstrophyFlux(&(run_data->enst_flux_sbst[print_indx]), &(run_data->enst_diss_sbst[print_indx]));
+		EnstrophyFlux(&(run_data->enst_flux_sbst[print_indx]), &(run_data->enst_diss_sbst[print_indx]), RK_data);
 	}
 	else {
 		printf("\n["MAGENTA"WARNING"RESET"] --- Unable to write system measures at Indx: [%d] t: [%lf] ---- Number of intergration steps is now greater then memory allocated\n", print_indx, t);
@@ -2250,8 +2261,9 @@ void InitializeFFTWPlans(const long int* N) {
 }
 /**
  * Function to initialize the system measurables and compute the measurables of the initial conditions
+ * @param RK_data The struct containing the Runge-Kutta arrays to compute the nonlinear term for the fluxes
  */
-void InitializeSystemMeasurables(void) {
+void InitializeSystemMeasurables(RK_data_struct* RK_data) {
 
 	// Set the size of the arrays to twice the number of printing steps to account for extra steps due to adaptive stepping
 	#ifdef __ADAPTIVE_STEP
@@ -2343,7 +2355,7 @@ void InitializeSystemMeasurables(void) {
 	run_data->enst_diss[0] = EnstrophyDissipationRate();
 
 	// Enstrophy Flux and dissipation from/to Subset of modes
-	EnstrophyFlux(&(run_data->enst_flux_sbst), &(run_data->enst_diss_sbst));
+	EnstrophyFlux(&(run_data->enst_flux_sbst[0]), &(run_data->enst_diss_sbst[0]), RK_data);
 
 	// Time
 	#ifdef __TIME
