@@ -192,8 +192,8 @@ if __name__ == '__main__':
     #--------------------------------
     Nx = 128
     Ny = 128
-    int_iters = 934123
-    u0 = "DECAY_TURB"
+    int_iters = 4767
+    u0 = "TAYLOR_GREEN"
     kymax = int(2 * Ny / 3)
     kxmax = int(2 * Nx / 3)
 

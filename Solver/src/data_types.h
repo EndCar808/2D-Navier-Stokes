@@ -111,7 +111,7 @@
 #define MAX_ITERS 1e+6 			// The maximum iterations to perform
 #define MAX_VORT_LIM 1e+100     // The maximum allowed vorticity
 // Dynamic Modes
-#define UPR_SBST_LIM 30         // The upper mode limit of the energy/enstrophy flux
+#define UPR_SBST_LIM 64         // The upper mode limit of the energy/enstrophy flux
 #define LWR_SBST_LIM 0  		// The lower mode limit of the energy/enstrophy flux
 // ---------------------------------------------------------------------
 //  Global Struct Definitions
@@ -161,6 +161,8 @@ typedef struct runtime_data_struct {
 	double* time;			 // Array to hold the simulation times
 	double* enst_flux_sbst;  // Array to hold the enstrophy flux in/out of a subset of modes
 	double* enst_diss_sbst;  // Array to hold the enstrophy dissipation for a subset of modes
+	double* enrg_flux_sbst;  // Array to hold the energy flux in/out of a subset of modes
+	double* enrg_diss_sbst;  // Array to hold the energy dissipation for a subset of modes
 	double* tg_soln;	  	 // Array for computing the Taylor Green vortex solution
 } runtime_data_struct;
 
