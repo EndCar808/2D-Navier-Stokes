@@ -84,8 +84,8 @@
 // Choose whether to save the Real or Fourier space velocitites
 // #define __MODES
 // #define __REALSPACE
-// Choose whether to compute the Energy and Enstrophy spectra
-// #define __SPECT
+// Choose whether to compute the Energy and Enstrophy spectra and flux spectra
+#define __SPECT
 // Choose whether to save the time, collocation points and wavenumbers
 #define __TIME
 #define __COLLOC_PTS
@@ -139,6 +139,7 @@ typedef struct system_vars_struct {
 	double dx;							// Collocation point spaceing in the x direction
 	double dy;							// Collocation point spacing in the y direction
 	double w_max_init;					// Max vorticity of the initial condition
+	int n_spect;                        // Size of the spectra arrays
 	double EKMN_ALPHA; 					// The value of the Ekman drag coefficient
 	double CFL_CONST;					// The CFL constant for the adaptive step
 	double NU;							// The viscosity
@@ -155,15 +156,19 @@ typedef struct runtime_data_struct {
 	double* u;				 // Real space velocity
 	double* tot_energy;      // Array to hold the total energy over the simulation
 	double* tot_enstr;		 // Array to hold the total entrophy over the simulation
-	double* tot_palin;		 // Array to hold the total palinstrophy over the simulaiotns
-	double* enrg_diss; 		 // Array to hold the energy dissipation rate 
-	double* enst_diss;		 // Array to hold the enstrophy dissipation rate
-	double* time;			 // Array to hold the simulation times
-	double* enst_flux_sbst;  // Array to hold the enstrophy flux in/out of a subset of modes
-	double* enst_diss_sbst;  // Array to hold the enstrophy dissipation for a subset of modes
-	double* enrg_flux_sbst;  // Array to hold the energy flux in/out of a subset of modes
-	double* enrg_diss_sbst;  // Array to hold the energy dissipation for a subset of modes
-	double* tg_soln;	  	 // Array for computing the Taylor Green vortex solution
+	double* tot_palin;		  // Array to hold the total palinstrophy over the simulaiotns
+	double* enrg_diss; 		  // Array to hold the energy dissipation rate 
+	double* enst_diss;		  // Array to hold the enstrophy dissipation rate
+	double* time;			  // Array to hold the simulation times
+	double* enst_flux_sbst;   // Array to hold the enstrophy flux in/out of a subset of modes
+	double* enst_diss_sbst;   // Array to hold the enstrophy dissipation for a subset of modes
+	double* enrg_flux_sbst;   // Array to hold the energy flux in/out of a subset of modes
+	double* enrg_diss_sbst;   // Array to hold the energy dissipation for a subset of modes
+	double* enrg_spect;		  // Array to hold the energy spectrum of the system 
+	double* enst_spect;       // Array to hold the enstrophy spectrum of the system
+	double* enst_flux_spect;  // Array to hold the enstrophy flux of the system
+	double* enrg_flux_spect;  // Array to hold the energy flux spectrum
+	double* tg_soln;	  	  // Array for computing the Taylor Green vortex solution
 } runtime_data_struct;
 
 // Runge-Kutta Integration struct
@@ -187,9 +192,11 @@ typedef struct RK_data_struct {
 typedef struct HDF_file_info_struct {
 	char input_file_name[512];		// Array holding input file name
 	char output_file_name[512];     // Output file name array
+	char spectra_file_name[512];    // Spectra file name array
 	char output_dir[512];			// Output directory
 	char output_tag[64]; 			// Tag to be added to the output directory
-	hid_t output_file_handle;		// File handle for the output file 
+	hid_t output_file_handle;		// Main file handle for the output file 
+	hid_t spectra_file_handle;      // Spectra file handle
 	hid_t COMPLEX_DTYPE;			// Complex datatype handle
 } HDF_file_info_struct;
 
