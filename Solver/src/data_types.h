@@ -46,6 +46,8 @@
 // Choose which system to solver 
 // #define __EULER
 // #define __NAVIER
+// Indicate whether to do full or phase-only system
+// define __PHASE_ONLY
 // Choose which integrator to use
 #define __RK4
 // #define __RK5
@@ -198,6 +200,7 @@ typedef struct HDF_file_info_struct {
 	hid_t output_file_handle;		// Main file handle for the output file 
 	hid_t spectra_file_handle;      // Spectra file handle
 	hid_t COMPLEX_DTYPE;			// Complex datatype handle
+	int file_only;					// Indicates if output should be file only with no output folder created
 } HDF_file_info_struct;
 
 // Complex datatype struct for HDF5

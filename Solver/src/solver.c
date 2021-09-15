@@ -161,28 +161,28 @@ void SpectralSolve(void) {
 
 
 
-	int spectrum_size = (int) sqrt((double) ((sys_vars->N[0] / 2) * (sys_vars->N[0] / 2) + (sys_vars->N[1] / 2) * (sys_vars->N[1] / 2))) + 1; // plus 1 for the 0 mode
-	int spec_indx;
+	// int spectrum_size = (int) sqrt((double) ((sys_vars->N[0] / 2) * (sys_vars->N[0] / 2) + (sys_vars->N[1] / 2) * (sys_vars->N[1] / 2))) + 1; // plus 1 for the 0 mode
+	// int spec_indx;
 
 
-	// ------------------------------------
-	// Compute Spectrum
-	// ------------------------------------
-	if (!sys_vars->rank) {
-		printf("\nspecsize: %d \t kmax: %d", spectrum_size, Ny_Fourier - 1);
-		printf("\n");
-		for (int i = 0; i < sys_vars->local_Nx; ++i) {
-			tmp = i * Ny_Fourier;
-			for (int j = 0; j < Ny_Fourier; ++j) {
-				indx = tmp + j;
+	// // ------------------------------------
+	// // Compute Spectrum
+	// // ------------------------------------
+	// if (!sys_vars->rank) {
+	// 	printf("\nspecsize: %d \t kmax: %d", spectrum_size, Ny_Fourier - 1);
+	// 	printf("\n");
+	// 	for (int i = 0; i < sys_vars->local_Nx; ++i) {
+	// 		tmp = i * Ny_Fourier;
+	// 		for (int j = 0; j < Ny_Fourier; ++j) {
+	// 			indx = tmp + j;
 
-				// Get spectrum index -> spectrum is computed by summing over the energy contained in concentric annuli in wavenumber space
-				spec_indx = (int) sqrt((double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]));
-				printf("(%d, %d): %d - %1.4lf  ||  ", run_data->k[0][i], run_data->k[1][j], spec_indx, sqrt((double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j])));
-			}
-			printf("\n");
-		}	
-	}
+	// 			// Get spectrum index -> spectrum is computed by summing over the energy contained in concentric annuli in wavenumber space
+	// 			spec_indx = (int) sqrt((double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]));
+	// 			printf("(%d, %d): %d - %1.4lf  ||  ", run_data->k[0][i], run_data->k[1][j], spec_indx, sqrt((double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j])));
+	// 		}
+	// 		printf("\n");
+	// 	}	
+	// }
 	
 
 
@@ -197,107 +197,107 @@ void SpectralSolve(void) {
 	#endif
 	int iters          = 1;
 	int save_data_indx = 1;
-	while (t < T) {
+	// while (t < T) {
 
-		// -------------------------------	
-		// Integration Step
-		// -------------------------------
-		#ifdef __RK4
-		RK4Step(dt, N, sys_vars->local_Nx, RK_data);
-		#elif defined(__RK5)
-		RK5DPStep(dt, N, sys_vars->local_Nx, RK_data);
-		#elif defined(__DPRK5)
-		while (try) {
-			// Try a Dormand Prince step and compute the local error
-			RK5DPStep(dt, N, sys_vars->local_Nx, RK_data);
+	// 	// -------------------------------	
+	// 	// Integration Step
+	// 	// -------------------------------
+	// 	#ifdef __RK4
+	// 	RK4Step(dt, N, sys_vars->local_Nx, RK_data);
+	// 	#elif defined(__RK5)
+	// 	RK5DPStep(dt, N, sys_vars->local_Nx, RK_data);
+	// 	#elif defined(__DPRK5)
+	// 	while (try) {
+	// 		// Try a Dormand Prince step and compute the local error
+	// 		RK5DPStep(dt, N, sys_vars->local_Nx, RK_data);
 
-			// Compute the new timestep
-			dt_new = dt * DPMin(DP_DELTA_MAX, DPMax(DP_DELTA_MIN, DP_DELTA * pow(1.0 / RK_data->DP_errr, 0.2)))
+	// 		// Compute the new timestep
+	// 		dt_new = dt * DPMin(DP_DELTA_MAX, DPMax(DP_DELTA_MIN, DP_DELTA * pow(1.0 / RK_data->DP_errr, 0.2)))
 			
-			// If error is bad repeat else move on
-			if (RK_data->DP_err < 1.0) {
-				RK->DP_fails++;
-				dt = dt_new;
-				continue;
-			}
-			else {
-				dt = dt_new;
-				break;
-			}
-		}
-		#endif
+	// 		// If error is bad repeat else move on
+	// 		if (RK_data->DP_err < 1.0) {
+	// 			RK->DP_fails++;
+	// 			dt = dt_new;
+	// 			continue;
+	// 		}
+	// 		else {
+	// 			dt = dt_new;
+	// 			break;
+	// 		}
+	// 	}
+	// 	#endif
 
-		// -------------------------------
-		// Write To File
-		// -------------------------------
-		if (iters % sys_vars->SAVE_EVERY == 0) {
-			#ifdef TESTING
-			TaylorGreenSoln(t, N);
-			#endif
+	// 	// -------------------------------
+	// 	// Write To File
+	// 	// -------------------------------
+	// 	if (iters % sys_vars->SAVE_EVERY == 0) {
+	// 		#ifdef TESTING
+	// 		TaylorGreenSoln(t, N);
+	// 		#endif
 
-			// Record System Measurables
-			RecordSystemMeasures(t, save_data_indx, RK_data);
+	// 		// Record System Measurables
+	// 		RecordSystemMeasures(t, save_data_indx, RK_data);
 
-			// Write the appropriate datasets to file
-			WriteDataToFile(t, dt, save_data_indx);
+	// 		// Write the appropriate datasets to file
+	// 		WriteDataToFile(t, dt, save_data_indx);
 			
-			// Update saving data index
-			save_data_indx++;
-		}
+	// 		// Update saving data index
+	// 		save_data_indx++;
+	// 	}
 
-		// -------------------------------
-		// Update & System Check
-		// -------------------------------
-		// Update timestep & iteration counter
-		#if defined(__ADAPTIVE_STEP) 
-		GetTimestep(&dt);
-		t += dt; 
-		#elif !defined(__DPRK5) && !defined(__ADAPTIVE_STEP)
-		t = iters * dt;
-		#endif
-		iters++;
+	// 	// -------------------------------
+	// 	// Update & System Check
+	// 	// -------------------------------
+	// 	// Update timestep & iteration counter
+	// 	#if defined(__ADAPTIVE_STEP) 
+	// 	GetTimestep(&dt);
+	// 	t += dt; 
+	// 	#elif !defined(__DPRK5) && !defined(__ADAPTIVE_STEP)
+	// 	t = iters * dt;
+	// 	#endif
+	// 	iters++;
 
-		// Check System: Determine if system has blown up or integration limits reached
-		SystemCheck(dt, iters);
+	// 	// Check System: Determine if system has blown up or integration limits reached
+	// 	SystemCheck(dt, iters);
 
-		// -------------------------------
-		// Print Update To Screen
-		// -------------------------------
-		#ifdef __PRINT_SCREEN
-		#ifdef TESTING
-		if (iters % TEST_PRINT == 0) {
-			// Call testing 
-			max_vort = GetMaxData("VORT");
-			if(!(strcmp(sys_vars->u0, "TG_VEL")) || !(strcmp(sys_vars->u0, "TG_VORT"))) {
-				TestTaylorGreenVortex(t, N, norms);
-				RecordSystemMeasures(t, save_data_indx, RK_data);
-				if( !(sys_vars->rank) ) {	
-					// printf("Iter: %d\tt: %1.6lf\tdt: %g\t Max Vort: %1.4lf \tL2 Err: %g\tLinf Err: %g\n", iters, t, dt, max_vort, norms[0], norms[1]);
-					printf("Iter: %d\tt: %1.6lf\tdt: %g\t Max Vort: %1.4lf \tTKE: %1.8lf\tENS: %1.8lf\tPAL: %g\tEDiss: %g\tEnDiss: %g\n", iters, t, dt, max_vort, run_data->tot_energy[save_data_indx], run_data->tot_enstr[save_data_indx], run_data->tot_palin[save_data_indx], run_data->enst_flux_sbst[save_data_indx], run_data->enst_diss_sbst[save_data_indx]);
-				}
-			}
-			else {
-				if ( iters % sys_vars->SAVE_EVERY != 0) {
-					RecordSystemMeasures(t, save_data_indx, RK_data);
-				}
-				if( !(sys_vars->rank) ) {	
-					printf("Iter: %d\tt: %1.6lf\tdt: %g\t Max Vort: %1.4lf \tKE: %1.5lf\tENS: %1.5lf\n", iters, t, dt, max_vort, run_data->tot_energy[save_data_indx], run_data->tot_enstr[save_data_indx]);
-				}
-			}
-		}
-		#else
-		if (iters % print_update == 0) {
-			// If needed compute system measures for printing to screen
-			if ( iters % sys_vars->SAVE_EVERY != 0) {
-				RecordSystemMeasures(t, save_data_indx, RK_data);
-			}
-			if( !(sys_vars->rank) ) {	
-				printf("Iter: %d/%ld\tt: %1.6lf/%1.3lf\tdt: %g\t ----------- \tKE: %1.5lf\tENS: %1.5lf\tPAL: %1.5lf\n", iters, sys_vars->num_t_steps, t, T, dt, run_data->tot_energy[save_data_indx], run_data->tot_enstr[save_data_indx], run_data->tot_palin[save_data_indx]);
-			}
-		}
-		#endif	
-		#endif
-	}
+	// 	// -------------------------------
+	// 	// Print Update To Screen
+	// 	// -------------------------------
+	// 	#ifdef __PRINT_SCREEN
+	// 	#ifdef TESTING
+	// 	if (iters % TEST_PRINT == 0) {
+	// 		// Call testing 
+	// 		max_vort = GetMaxData("VORT");
+	// 		if(!(strcmp(sys_vars->u0, "TG_VEL")) || !(strcmp(sys_vars->u0, "TG_VORT"))) {
+	// 			TestTaylorGreenVortex(t, N, norms);
+	// 			RecordSystemMeasures(t, save_data_indx, RK_data);
+	// 			if( !(sys_vars->rank) ) {	
+	// 				// printf("Iter: %d\tt: %1.6lf\tdt: %g\t Max Vort: %1.4lf \tL2 Err: %g\tLinf Err: %g\n", iters, t, dt, max_vort, norms[0], norms[1]);
+	// 				printf("Iter: %d\tt: %1.6lf\tdt: %g\t Max Vort: %1.4lf \tTKE: %1.8lf\tENS: %1.8lf\tPAL: %g\tEDiss: %g\tEnDiss: %g\n", iters, t, dt, max_vort, run_data->tot_energy[save_data_indx], run_data->tot_enstr[save_data_indx], run_data->tot_palin[save_data_indx], run_data->enst_flux_sbst[save_data_indx], run_data->enst_diss_sbst[save_data_indx]);
+	// 			}
+	// 		}
+	// 		else {
+	// 			if ( iters % sys_vars->SAVE_EVERY != 0) {
+	// 				RecordSystemMeasures(t, save_data_indx, RK_data);
+	// 			}
+	// 			if( !(sys_vars->rank) ) {	
+	// 				printf("Iter: %d\tt: %1.6lf\tdt: %g\t Max Vort: %1.4lf \tKE: %1.5lf\tENS: %1.5lf\n", iters, t, dt, max_vort, run_data->tot_energy[save_data_indx], run_data->tot_enstr[save_data_indx]);
+	// 			}
+	// 		}
+	// 	}
+	// 	#else
+	// 	if (iters % print_update == 0) {
+	// 		// If needed compute system measures for printing to screen
+	// 		if ( iters % sys_vars->SAVE_EVERY != 0) {
+	// 			RecordSystemMeasures(t, save_data_indx, RK_data);
+	// 		}
+	// 		if( !(sys_vars->rank) ) {	
+	// 			printf("Iter: %d/%ld\tt: %1.6lf/%1.3lf\tdt: %g\t ----------- \tKE: %1.5lf\tENS: %1.5lf\tPAL: %1.5lf\n", iters, sys_vars->num_t_steps, t, T, dt, run_data->tot_energy[save_data_indx], run_data->tot_enstr[save_data_indx], run_data->tot_palin[save_data_indx]);
+	// 		}
+	// 	}
+	// 	#endif	
+	// 	#endif
+	// }
 	//////////////////////////////
 	// End Integration
 	//////////////////////////////

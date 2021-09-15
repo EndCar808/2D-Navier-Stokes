@@ -16,6 +16,7 @@
 //  Function Prototpyes
 // ---------------------------------------------------------------------
 void CreateOutputFilesWriteICs(const long int* N, double dt);
+void GetOutputDirPath(void);
 hid_t CreateComplexDatatype(void);
 void FinalWriteAndCloseOutputFile(const long int* N);
 void WriteDataFourier(double t, int iters, hid_t group_id, char* dset_name, hid_t dtype, hsize_t* dset_dims, hsize_t* slab_dims, hsize_t* mem_space_dims, int offset_Nx, fftw_complex* data);

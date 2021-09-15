@@ -13,6 +13,8 @@
 #include <math.h>
 #include <complex.h>
 #include <unistd.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 // ---------------------------------------------------------------------
 //  User Libraries and Headers
 // ---------------------------------------------------------------------
@@ -46,10 +48,15 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 	
 	///////////////////////////
 	/// Create & Open Files
-	/// ///////////////////////
-	// -------------------------------
-	// Create Parallel File PList
-	// -------------------------------
+	///////////////////////////
+	// -----------------------------------
+	// Create Output Directory and Path
+	// -----------------------------------
+	GetOutputDirPath();
+		
+	// ------------------------------------------
+	// Create Parallel File PList for Main File
+	// ------------------------------------------
 	// Create proptery list for main file access and set to parallel I/O
 	plist_id = H5Pcreate(H5P_FILE_ACCESS);
 	status   = H5Pset_fapl_mpio(plist_id, MPI_COMM_WORLD, MPI_INFO_NULL);
@@ -57,30 +64,6 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 		printf("\n["RED"ERROR"RESET"] --- Could not set parallel I/O access for HDF5 output file! \n-->>Exiting....\n");
 		exit(1);
 	}
-
-	// -----------------------------------
-	// Create Output Directory and Path
-	// -----------------------------------
-	// TODO: Need to tidy this up and also add error checking to see if output directory exists!
-	// Construct main file data
-	char file_data[512];    
-	sprintf(file_data, "HDF_N[%ld,%ld]_ITERS[%ld]_CFL[%1.2lf].h5", Nx, Ny, sys_vars->num_t_steps, sys_vars->CFL_CONST);
-
-	// Construct main file path
-	strcpy(file_info->output_file_name, file_info->output_dir); 
-	strcat(file_info->output_file_name, file_data);
-	if ( !(sys_vars->rank) ) {
-		printf("\nMain Output File: "CYAN"%s"RESET"\n\n", file_info->output_file_name);
-	}
-
-	#ifdef __SPECT
-	// Construct Spectra file path
-	strcpy(file_info->spectra_file_name, file_info->output_dir); 
-	strcat(file_info->spectra_file_name, "Spectra_Data.h5");
-	if ( !(sys_vars->rank) ) {
-		printf("Spectra Output File: "CYAN"%s"RESET"\n\n", file_info->spectra_file_name);
-	}	
-	#endif
 
 	// ---------------------------------
 	// Create the output files
@@ -104,7 +87,7 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 
 	////////////////////////////////
 	/// Write Initial Condtions
-	/// ////////////////////////////
+	////////////////////////////////
 	// --------------------------------------
 	// Create Group for Initial Conditions
 	// --------------------------------------
@@ -219,6 +202,165 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 		exit(1);		
 	}
 	#endif
+}
+/**
+ * Function that creates the output file paths and directories
+ */
+void GetOutputDirPath(void) {
+
+	// Initialize variables
+	char sys_type[64];
+	char solv_type[64];
+	char model_type[64];
+	char tmp_path[512];
+	char file_data[512];  
+	struct stat st = {0};	// this is used to check whether the output directories exist or not.
+
+	// ----------------------------------
+	// Check if Provided Directory Exists
+	// ----------------------------------
+	if (!sys_vars->rank) {
+		// Check if output directory exists
+		if (stat(file_info->output_dir, &st) == -1) {
+			printf("\n["MAGENTA"WARNING"RESET"] --- Provided Output directory doesn't exist, now creating it...\n");
+			// If not then create it
+			if ((mkdir(file_info->output_dir, 0700)) == -1) {
+				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to create provided output directory ["CYAN"%s"RESET"]\n-->> Exiting...\n", file_info->output_dir);
+				exit(1);
+			}
+		}
+	}
+
+	////////////////////////////////////////////
+	// Check if Output File Only is Requested
+	////////////////////////////////////////////
+	if (file_info->file_only) {
+		// Update to screen that file only output option is selected
+		printf("\n["MAGENTA"WARNING"RESET"] --- File only output option selected...\n");
+		
+		// ----------------------------------
+		// Get Simulation Details
+		// ----------------------------------
+		#if defined(__NAVIER)
+		sprintf(sys_type, "%s", "NAV");
+		#elif defined(__EULER)
+		sprintf(sys_type, "%s", "EUL");
+		#else
+		sprintf(sys_type, "%s", "UKN");
+		#endif
+		#if defined(__RK4)
+		sprintf(solv_type, "%s", "RK4");
+		#elif defined(__RK5)
+		sprintf(solv_type, "%s", "RK5");
+		#elif defined(__DPRK5)
+		sprintf(solv_type, "%s", "DP5");
+		#else 
+		sprintf(solv_type, "%s", "UKN");
+		#endif
+		#if defined(__PHASE_ONLY)
+		sprintf(model_type, "%s", "PO");
+		#else
+		sprintf(model_type, "%s", "FULL");
+		#endif
+
+		// -------------------------------------
+		// Get File Label from Simulation Data
+		// -------------------------------------
+		// Construct file label from simulation data
+		sprintf(file_data, "_SIM[%s-%s-%s]_N[%ld,%ld]_T[%d-%d]_CFL[%1.2lf]_u0[%s].h5", sys_type, solv_type, model_type, sys_vars->N[0], sys_vars->N[1], (int )sys_vars->t0, (int )sys_vars->T, sys_vars->CFL_CONST, sys_vars->u0);
+
+		// ----------------------------------
+		// Construct File Paths
+		// ---------------------------------- 
+		// Construct main file path
+		strcpy(tmp_path, file_info->output_dir);
+		strcat(tmp_path, "Main_HDF_Data"); 
+		strcpy(file_info->output_file_name, tmp_path); 
+		strcat(file_info->output_file_name, file_data);
+		if ( !(sys_vars->rank) ) {
+			printf("\nMain Output File: "CYAN"%s"RESET"\n\n", file_info->output_file_name);
+		}
+
+		#ifdef __SPECT
+		// Construct Spectra file path
+		strcpy(tmp_path, file_info->output_dir);
+		strcat(tmp_path, "Spectra_HDF_Data"); 
+		strcpy(file_info->spectra_file_name, tmp_path); 
+		strcat(file_info->spectra_file_name, file_data);
+		if ( !(sys_vars->rank) ) {
+			printf("Spectra Output File: "CYAN"%s"RESET"\n\n", file_info->spectra_file_name);
+		}	
+		#endif
+	}
+	else {
+		// ----------------------------------
+		// Get Simulation Details
+		// ----------------------------------
+		#if defined(__NAVIER)
+		sprintf(sys_type, "%s", "NAVIER");
+		#elif defined(__EULER)
+		sprintf(sys_type, "%s", "EULER");
+		#else
+		sprintf(sys_type, "%s", "SYS_UNKN");
+		#endif
+		#if defined(__RK4)
+		sprintf(solv_type, "%s", "RK4");
+		#elif defined(__RK5)
+		sprintf(solv_type, "%s", "RK5");
+		#elif defined(__DPRK5)
+		sprintf(solv_type, "%s", "DP5");
+		#else 
+		sprintf(solv_type, "%s", "SOLV_UKN");
+		#endif
+		#if defined(__PHASE_ONLY)
+		sprintf(model_type, "%s", "PHAEONLY");
+		#else
+		sprintf(model_type, "%s", "FULL");
+		#endif
+
+		// ----------------------------------
+		// Construct Output folder
+		// ----------------------------------
+		// Construct file label from simulation data
+		sprintf(file_data, "SIM_DATA_%s_%s_%s_TAG[%s]/", sys_type, solv_type, model_type, file_info->output_tag);
+
+		// ----------------------------------
+		// Check Existence of Output Folder
+		// ----------------------------------
+		strcat(file_info->output_dir, file_data);
+		if (!sys_vars->rank) {
+			// Check if folder exists
+			if (stat(file_info->output_dir, &st) == -1) {
+				// If not create it
+				if ((mkdir(file_info->output_dir, 0700)) == -1) {
+					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to create folder for output files ["CYAN"%s"RESET"]\n-->> Exiting...\n", file_info->output_dir);
+					exit(1);
+				}
+			}
+		}
+
+		// ----------------------------------
+		// Construct File Paths
+		// ---------------------------------- 
+		// Construct main file path
+		strcpy(file_info->output_file_name, file_info->output_dir); 
+		strcat(file_info->output_file_name, "Main_HDF_Data.h5");
+		if ( !(sys_vars->rank) ) {
+			printf("\nMain Output File: "CYAN"%s"RESET"\n\n", file_info->output_file_name);
+		}
+
+		#ifdef __SPECT
+		// Construct spectra file path
+		strcpy(file_info->spectra_file_name, file_info->output_dir); 
+		strcat(file_info->spectra_file_name, "Spectra_HDF_Data.h5");
+		if ( !(sys_vars->rank) ) {
+			printf("Spectra Output File: "CYAN"%s"RESET"\n\n", file_info->spectra_file_name);
+		}	
+		#endif
+	}
+
+	// Make All process wait before opening output files later
+	MPI_Barrier(MPI_COMM_WORLD);
 }
 /**
  * Wrapper function that writes the data to file by openining it, creating a group for the current iteration and writing the data under this group. The file is then closed again 

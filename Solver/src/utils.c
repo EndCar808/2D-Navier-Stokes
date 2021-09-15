@@ -36,6 +36,7 @@ int GetCMLArgs(int argc, char** argv) {
 	// Initialize Variables
 	int c;
 	int dim_flag = 0;
+	int output_dir_flag = 0;
 
 	// -------------------------------
 	// Initialize Default Values
@@ -43,6 +44,7 @@ int GetCMLArgs(int argc, char** argv) {
 	// Output file directory
 	strncpy(file_info->output_dir, "../Data/Tmp", 512);  // Set default output directory to the Tmp folder
 	strncpy(file_info->output_tag, "NO_TAG", 64);
+	file_info->file_only = 0; // used to indicate if output file should be file only i.e., not output folder
 	// System dimensions
 	sys_vars->N[0] = 64;
 	sys_vars->N[1] = 64;
@@ -64,8 +66,15 @@ int GetCMLArgs(int argc, char** argv) {
 	while ((c = getopt(argc, argv, "o:h:n:s:e:t:v:i:c:p:f:z:")) != -1) {
 		switch(c) {
 			case 'o':
-				// Read in location of output directory
-				strncpy(file_info->output_dir, optarg, 512);	
+				if (output_dir_flag == 0) {
+					// Read in location of output directory
+					strncpy(file_info->output_dir, optarg, 512);
+					output_dir_flag++;
+				}
+				else if (output_dir_flag == 1) {
+					// Output file only indicated
+					file_info->file_only = 1;
+				}
 				break;
 			case 'n':
 				// Read in the dimensions of the system
