@@ -2,7 +2,7 @@
 
 Author:       Enda Carroll \
 Date:         June 2021 \
-Intstitution: School of Mathematics and Statistics, University College Dublin \
+Intstitution: School of Mathematics and Statistics, University College Dublin 
 
 
 
