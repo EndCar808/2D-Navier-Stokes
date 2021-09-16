@@ -105,6 +105,8 @@ void SpectralSolve(void) {
 	#ifdef __ADAPTIVE_STEP
 	GetTimestep(&(sys_vars->dt));
 	#endif
+	sys_vars->min_dt = 10;
+	sys_vars->max_dt = MIN_STEP_SIZE;
 
 	// Compute integration time variables
 	double t0 = sys_vars->t0;
@@ -121,6 +123,7 @@ void SpectralSolve(void) {
 
 	// Variable to control how ofter to print to screen -> 10% of num time steps
 	int print_update = (sys_vars->num_t_steps >= 10 ) ? (int)((double)sys_vars->num_t_steps * 0.1) : 1;
+	sys_vars->print_every = print_update;
 
 
 	// -------------------------------
@@ -298,6 +301,9 @@ void SpectralSolve(void) {
 	// 	#endif	
 	// 	#endif
 	// }
+	// Record total iterations
+	sys_vars->tot_iters      = (long int)iters - 1;
+	sys_vars->tot_save_steps = (long int)save_data_indx - 1;
 	//////////////////////////////
 	// End Integration
 	//////////////////////////////
@@ -1454,6 +1460,16 @@ void GetTimestep(double* dt) {
 		// Update with new timestep - new timestep is checked for criteria in SystemsCheck() function 
 		(*dt) = dt_new;
 	}
+	#endif
+
+	// -------------------------------
+	// Record Min/Max Timestep
+	// -------------------------------
+	#ifndef __DPRK5
+	// Get min timestep
+	sys_vars->min_dt = fmin((*dt), sys_vars->min_dt);
+	// Get max timestep
+	sys_vars->max_dt = fmax((*dt), sys_vars->max_dt);
 	#endif
 }
 /**

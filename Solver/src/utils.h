@@ -20,6 +20,8 @@
 // ---------------------------------------------------------------------
 // Command  Line Arguments
 int GetCMLArgs(int argc, char** argv);
+// Simulation Details
+void PrintSimulationDetails(int argc, char** argv, double sim_time);
 // Printing Functions
 void PrintVorticityReal(const long int* N);
 void PrintVorticityFourier(const long int* N);

@@ -121,6 +121,7 @@
 // System variables struct
 typedef struct system_vars_struct {
 	char u0[64];						// String to indicate the initial condition to use
+	char forcing[64];					// String to indicate what type of forcing is selected
 	long int N[SYS_DIM];				// Array holding the no. of collocation pts in each dim
 	fftw_plan fftw_2d_dft_r2c;			// FFTW plan to perform transform from Real to Fourier
 	fftw_plan fftw_2d_dft_c2r;			// FFTW plan to perform transform from Fourier to Real
@@ -134,14 +135,19 @@ typedef struct system_vars_struct {
 	int rank;							// Rank of the active processes
 	long int num_t_steps;				// Number of iteration steps to perform
 	long int num_print_steps;           // Number of times system was saved to file
+	long int tot_iters;					// Records the total executed iterations
+	long int tot_save_steps;			// Records the total saving iterations
 	double t0;							// Intial time
 	double T;							// Final time
 	double t;							// Time variable
 	double dt;							// Timestep
+	double min_dt;						// Smallest timestep achieved when adaptive stepping is on
+	double max_dt;						// Largest timestep achieved when adaptive stepping is on
 	double dx;							// Collocation point spaceing in the x direction
 	double dy;							// Collocation point spacing in the y direction
 	double w_max_init;					// Max vorticity of the initial condition
 	int n_spect;                        // Size of the spectra arrays
+	int print_every;                     // Records how many iterations are performed before printing to file
 	double EKMN_ALPHA; 					// The value of the Ekman drag coefficient
 	double CFL_CONST;					// The CFL constant for the adaptive step
 	double NU;							// The viscosity

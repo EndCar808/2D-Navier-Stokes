@@ -61,7 +61,7 @@ int main(int argc, char** argv) {
 	
 	// Read in Command Line Arguments
 	if (GetCMLArgs(argc, argv) != 0) {
-		fprintf(stderr, "\n["RED"ERROR"RED"]: Error in reading in command line aguments, check utils.c file for details\n");
+		fprintf(stderr, "\n["RED"ERROR"RESET"]: Error in reading in command line aguments, check utils.c file for details\n");
 		exit(1);
 	}
 
@@ -85,8 +85,14 @@ int main(int argc, char** argv) {
 		int hh = (int) time_spent / 3600;
 		int mm = ((int )time_spent - hh * 3600) / 60;
 		int ss = time_spent - hh * 3600 - mm * 60;
-		printf("\n\nTotal Execution Time: %5.10lf --> %d hrs : %d mins : %d secs\n\n", time_spent, hh, mm, ss);
+		printf("\n\nTotal Execution Time: ["CYAN"%5.10lf"RESET"] --> "CYAN"%d"RESET" hrs : "CYAN"%d"RESET" mins : "CYAN"%d"RESET" secs\n\n", time_spent, hh, mm, ss);
+
+		// Print simulation details to .txt file in default output mode
+		if (!file_info->file_only) {
+			PrintSimulationDetails(argc, argv, time_spent);
+		}
 	}
+
 	
 	// Cleanup FFTW MPI interface - Calls the serial fftw_cleanup function also
 	fftw_mpi_cleanup();    
