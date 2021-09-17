@@ -226,7 +226,7 @@ void GetOutputDirPath(void) {
 	if (!sys_vars->rank) {
 		// Check if output directory exists
 		if (stat(file_info->output_dir, &st) == -1) {
-			printf("\n["MAGENTA"WARNING"RESET"] --- Provided Output directory doesn't exist, now creating it...\n");
+			printf("\n["YELLOW"NOTE"RESET"] --- Provided Output directory doesn't exist, now creating it...\n");
 			// If not then create it
 			if ((mkdir(file_info->output_dir, 0700)) == -1) {
 				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to create provided output directory ["CYAN"%s"RESET"]\n-->> Exiting...\n", file_info->output_dir);
@@ -240,7 +240,7 @@ void GetOutputDirPath(void) {
 	////////////////////////////////////////////
 	if (file_info->file_only) {
 		// Update to screen that file only output option is selected
-		printf("\n["MAGENTA"WARNING"RESET"] --- File only output option selected...\n");
+		printf("\n["YELLOW"NOTE"RESET"] --- File only output option selected...\n");
 		
 		// ----------------------------------
 		// Get Simulation Details

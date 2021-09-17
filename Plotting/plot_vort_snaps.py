@@ -25,10 +25,27 @@ from numba import njit
 import pyfftw as fftw
 
 
+from functions import SimData, ImportData, ImportSpectraData
+
+#################################
+## Colour Printing to Terminal ##
+#################################
+class tc:
+    H    = '\033[95m'
+    B    = '\033[94m'
+    C    = '\033[96m'
+    G    = '\033[92m'
+    Y    = '\033[93m'
+    R    = '\033[91m'
+    Rst  = '\033[0m'
+    Bold = '\033[1m'
+    Underline = '\033[4m'
+
+
 ###############################
 ##       FUNCTION DEFS       ##
 ###############################
-def plot_snaps(i, w, w_hat, x, y, t, w_min, w_max, kx, ky, kx_max, time_t, tot_en, tot_ens, tot_pal, t_0, t_end, Nx, Ny):
+def plot_snaps(i, w, w_hat, x, y, w_min, w_max, kx, ky, kx_max, tot_en, tot_ens, tot_pal, enrg_spec, enst_spec, time, Nx, Ny):
     
     ## Print Update
     print("SNAP: {}".format(i))
@@ -50,7 +67,7 @@ def plot_snaps(i, w, w_hat, x, y, t, w_min, w_max, kx, ky, kx_max, time_t, tot_e
     ax1.set_xticklabels([r"$0$", r"$\frac{\pi}{2}$", r"$\pi$", r"$\frac{3\pi}{2}$", r"$2 \pi$"])
     ax1.set_yticks([0.0, np.pi/2.0, np.pi, 1.5*np.pi, x[-1]])
     ax1.set_yticklabels([r"$0$", r"$\frac{\pi}{2}$", r"$\pi$", r"$\frac{3\pi}{2}$", r"$2 \pi$"])
-    ax1.set_title(r"$t = {:0.5f}$".format(t))
+    ax1.set_title(r"$t = {:0.5f}$".format(time[i]))
     
     ## Plot colourbar
     div1  = make_axes_locatable(ax1)
@@ -62,11 +79,12 @@ def plot_snaps(i, w, w_hat, x, y, t, w_min, w_max, kx, ky, kx_max, time_t, tot_e
     # Plot Energy Spectrum   
     #-------------------------
     ax2 = fig.add_subplot(gs[0, 1])
-    engy_spec, engy_spec_sum = energy_spectrum(w_hat, kx, ky, Nx, Ny)
-    krange = np.arange(0, engy_spec.shape[0])
-    ax2.plot(engy_spec[1:kx_max] / engy_spec_sum)  # kx[1:kx_max],
+    # engy_spec, engy_spec_sum = energy_spectrum(w_hat, kx, ky, Nx, Ny)
+    # krange = np.arange(0, engy_spec.shape[0])
+    # ax2.plot(engy_spec[1:kx_max] / engy_spec_sum)  # kx[1:kx_max],
     # kpower = (1 / (kx[11:61] ** 4))
     # ax2.plot(kx[11:61], kpower , linestyle = ':', linewidth = 0.5, color = 'black')
+    ax2.plot(enrg_spec)
     ax2.set_xlabel(r"$k$")
     ax2.set_ylabel(r"$E(k) / \sum E(k)$")
     ax2.set_title(r"Energy Spectrum")
@@ -79,11 +97,12 @@ def plot_snaps(i, w, w_hat, x, y, t, w_min, w_max, kx, ky, kx_max, time_t, tot_e
     # Plot Enstrophy Spectrum   
     #--------------------------
     ax3 = fig.add_subplot(gs[1, 1])
-    enstr_spec, enstr_spec_sum = enstrophy_spectrum(w_hat, Nx, Ny)
-    krange = np.arange(0, enstr_spec.shape[0])
+    # enstr_spec, enstr_spec_sum = enstrophy_spectrum(w_hat, Nx, Ny)
+    # krange = np.arange(0, enstr_spec.shape[0])
     # ax3.plot(enstr_spec[1:kx_max] / enstr_spec_sum)  # kx[1:kx_max], 
     # kpower = (1 / (np.power(kx[11:61], 5 / 3)))
     # ax3.plot(kx[11:61], kpower, linestyle = ':', linewidth = 0.5, color = 'black')
+    ax3.plot(enst_spec)
     ax3.set_xlabel(r"$k$")
     ax3.set_ylabel(r"$S(k) / \sum S(k)$")
     ax3.set_title(r"Enstrophy Spectrum")
@@ -97,11 +116,11 @@ def plot_snaps(i, w, w_hat, x, y, t, w_min, w_max, kx, ky, kx_max, time_t, tot_e
     # Plot System Measures   
     #--------------------------
     ax4 = fig.add_subplot(gs[2, 0:])
-    ax4.plot(time_t, tot_en)
-    ax4.plot(time_t, tot_ens)
-    ax4.plot(time_t, tot_pal)
+    ax4.plot(time[:i], tot_en)
+    ax4.plot(time[:i], tot_ens)
+    ax4.plot(time[:i], tot_pal)
     ax4.set_xlabel(r"$t$")
-    ax4.set_xlim(t_0, t_end)
+    ax4.set_xlim(time[0], time[-1])
     ax4.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
     ax4.set_yscale("log")
     ax4.legend([r"Total Energy", r"Total Enstrophy", r"Total Palinstrophy"])
@@ -186,118 +205,64 @@ def transform_w(w):
 ######################
 if __name__ == '__main__':
 
-
-    #--------------------------------
-    ## --------- System Parameters
-    #--------------------------------
-    Nx = 128
-    Ny = 128
-    int_iters = 4767
-    u0 = "TAYLOR_GREEN"
-    kymax = int(2 * Ny / 3)
-    kxmax = int(2 * Nx / 3)
-
-    cfl = 1.73
-
     #-------------------------------
     ## --------- Directories
     #-------------------------------
-    input_dir  = "../Data/Test/" # /work/projects/TurbPhase/Phase_Dynamics_Navier_Stokes/2D_NavierStokes/
-    output_dir = "../Data/Test/SNAPS_N[{},{}]_ITERS[{}]_u0[{}]/".format(Nx, Ny, int_iters, u0) # /work/projects/TurbPhase/Phase_Dynamics_Navier_Stokes/2D_NavierStokes/
+    ## Read in the data directory provided at CML
+    if len(sys.argv) != 2:
+        print("[" + tc.R + "ERROR" + tc.Rst + "] ---> You must provide directory to data.")
+        sys.exit()
+    else:
+        input_dir  = sys.argv[1]
+    print("Input Folder: " + tc.C + "{}".format(input_dir) + tc.Rst)
 
+    ## Check if output folder exists -> if not make it
+    output_dir = input_dir + "SNAPS/"
     if os.path.isdir(output_dir) != True:
-        print("Making folder: SNAPS_N[{},{}]_ITERS[{}]_u0[{}]/".format(Nx, Ny, int_iters, u0))
+        print("Making folder:" + tc.C + " SNAPS/" + tc.Rst)
         os.mkdir(output_dir)
+    print("Output Folder: "+ tc.C + "{}".format(output_dir) + tc.Rst)
+
+
     #------------------------------------
-    # -------- Open File & Read In data
+    # --------  Read In data
     #------------------------------------
-    with h5py.File(input_dir + "HDF_N[{},{}]_ITERS[{}]_CFL[{}].h5".format(Nx, Ny, int_iters, cfl), 'r') as file:
-        ## Get the number of data saves
-        num_saves = len([g for g in list(file.keys()) if 'Iter' in g])
+    ## Read in simulation parameters
+    sys_params = SimData(input_dir)
 
-        ## Allocate arrays
-        w       = np.zeros((num_saves, Nx, Ny))
-        w_hat   = np.ones((num_saves, Nx, int(Ny / 2 + 1))) * np.complex(0.0, 0.0)
-        time    = np.zeros((num_saves, ))
-        Real    = 0
-        Fourier = 0
+    ## Read in solver data
+    run_data = ImportData(input_dir, sys_params)
 
-        # Read in the vorticity
-        for i, group in enumerate(file.keys()):
-            if "Iter" in group:
-                if 'w' in list(file[group].keys()):
-                    w[i, :, :] = file[group]["w"][:, :]
-                    Real = 1
-                if 'w_hat' in list(file[group].keys()):
-                    w_hat[i, :, :] = file[group]["w_hat"][:, :]
-                    Fourier = 1
-                time[i] = file[group].attrs["TimeValue"]
-            else:
-                continue
+    ## Read in spectra data
+    spectra_data = ImportSpectraData(input_dir, sys_params)
+    
 
-        # Define min and max for plotiting
-        w_min = np.amin(w)
-        w_max = np.amax(w)
-   
-        ## Read in the space arrays
-        if 'kx' in list(file.keys()):
-            kx = file["kx"][:]
-        if 'ky' in list(file.keys()):
-            ky = file["ky"][:]
-        if 'x' in list(file.keys()):
-            x  = file["x"][:]
-        if 'y' in list(file.keys()):
-            y  = file["y"][:]
-        ## Read system measures
-        if 'TotalEnergy' in list(file.keys()):
-            tot_energy = file['TotalEnergy'][:]
-        if 'TotalEnstrophy' in list(file.keys()):
-            tot_enstr = file['TotalEnstrophy'][:]
-        if 'TotalPalinstrophy' in list(file.keys()):
-            tot_palin = file['TotalPalinstrophy'][:]
-
-    #-----------------------
-    ## ------ Transform w
-    #-----------------------
-    if Real == 1 and Fourier == 0:
-        w_hat = transform_w(w)
-
-    # w_hat_py = transform_w(w)
-    # for i in range(5):
-    #     for j in range(5):
-    #         print("wh[{}]: {} {}I \twhpy[{}]: {} {}I".format(i * w_hat.shape[0] + j, np.real(w_hat[10, i, j]), np.imag(w_hat[10, i, j]),  i * w_hat.shape[0] + j, np.real(w_hat_py[10, i, j]), np.imag(w_hat_py[10, i, j])))
-    # print(np.allclose(w_hat, w_hat_py))
-    # print(w[0, :, :])
-    # print(w_hat[0, :, :])
-    # enstr_spec, enstr_spec_sum = enstrophy_spectrum(w_hat[0, :], kx_max)
-    # energy_spec, energy_spec_sum = energy_spectrum(w_hat[0, :, :], kx, ky, kxmax)
-    # print(energy_spec)
-
-
-    # i = 0
-    # plot_snaps(i, w[i, :, :], w_hat[i, :, :], x, y, time[i], w_min, w_max, kx, ky, kxmax, time[:i], tot_energy[:i], tot_enstr[:i], tot_palin[:i], time[0], time[-1], Nx, Ny)
-    # i = 1000
-    # plot_snaps(i, w[i, :, :], w_hat[i, :, :], x, y, time[i], w_min, w_max, kx, ky, kxmax, time[:i], tot_energy[:i], tot_enstr[:i], tot_palin[:i], time[0], time[-1], Nx, Ny)
-    # i = num_saves - 1
-    # plot_snaps(i, w[i, :, :], w_hat[i, :, :], x, y, time[i], w_min, w_max, kx, ky, kxmax, time[:i], tot_energy[:i], tot_enstr[:i], tot_palin[:i], time[0], time[-1], Nx, Ny)
-
-
-
-    for i in range(num_saves):
-        plot_snaps(i, w[i, :, :], w_hat[i, :, :], x, y, time[i], w_min, w_max, kx, ky, kxmax, time[:i], tot_energy[:i], tot_enstr[:i], tot_palin[:i], time[0], time[-1], Nx, Ny)
 
 
     # -----------------------
     ## ------ Plot Snaps
     # -----------------------
     ## Start timer
-    # start = TIME.perf_counter()
+    start = TIME.perf_counter()
+    print("\n" + tc.Y + "Printing Snaps..." + tc.Rst)
+    
+    # i = 0
+    # plot_snaps(i, run_data.w[i, :, :], run_data.w_hat[i, :, :], run_data.x, run_data.y, np.amin(run_data.w), np.amax(run_data.w), run_data.kx, run_data.ky, int(sys_params.Nx / 3), run_data.tot_enrg[:i], run_data.tot_enst[:i], run_data.tot_palin[:i], spectra_data.enrg_spectrum[i, :], spectra_data.enst_spectrum[i, :], run_data.time, sys_params.Nx, sys_params.Ny)
+    # i = 1000
+    # plot_snaps(i, run_data.w[i, :, :], run_data.w_hat[i, :, :], run_data.x, run_data.y, np.amin(run_data.w), np.amax(run_data.w), run_data.kx, run_data.ky, int(sys_params.Nx / 3), run_data.tot_enrg[:i], run_data.tot_enst[:i], run_data.tot_palin[:i], spectra_data.enrg_spectrum[i, :], spectra_data.enst_spectrum[i, :], run_data.time, sys_params.Nx, sys_params.Ny)
+    # i = num_saves - 1
+    # plot_snaps(i, run_data.w[i, :, :], run_data.w_hat[i, :, :], run_data.x, run_data.y, np.amin(run_data.w), np.amax(run_data.w), run_data.kx, run_data.ky, int(sys_params.Nx / 3), run_data.tot_enrg[:i], run_data.tot_enst[:i], run_data.tot_palin[:i], spectra_data.enrg_spectrum[i, :], spectra_data.enst_spectrum[i, :], run_data.time, sys_params.Nx, sys_params.Ny)
+
+
+
+    for i in range(sys_params.ndata):
+        plot_snaps(i, run_data.w[i, :, :], run_data.w_hat[i, :, :], run_data.x, run_data.y, np.amin(run_data.w), np.amax(run_data.w), run_data.kx, run_data.ky, int(sys_params.Nx / 3), run_data.tot_enrg[:i], run_data.tot_enst[:i], run_data.tot_palin[:i], spectra_data.enrg_spectrum[i, :], spectra_data.enst_spectrum[i, :], run_data.time, sys_params.Nx, sys_params.Ny)
 
     # ## No. of processes
     # proc_lim = 1
 
     # ## Create tasks for the process pool
-    # groups_args = [(mprocs.Process(target = plot_snaps, args = (i, w[i, :, :], w_hat[i, :, :], x, y, time[i], w_min, w_max, kx, ky, kxmax, time[:i], tot_energy[:i], tot_enstr[:i], tot_palin[:i], time[0], time[-1], Nx, Ny)) for i in range(w.shape[0]))] * proc_lim
+    # groups_args = [(mprocs.Process(target = plot_snaps, args = (i, run_data.w[i, :, :], run_data.w_hat[i, :, :], run_data.x, run_data.y, np.amin(run_data.w), np.amax(run_data.w), run_data.kx, run_data.ky, int(sys_params.Nx / 3), run_data.tot_enrg[:i], run_data.tot_enst[:i], run_data.tot_palin[:i], spectra_data.enrg_spectrum[i, :], spectra_data.enst_spectrum[i, :], run_data.time, sys_params.Nx, sys_params.Ny)) for i in range(run_data.w.shape[0]))] * proc_lim
 
     # ## Loop of grouped iterable
     # for procs in zip_longest(*groups_args): 
@@ -312,10 +277,10 @@ if __name__ == '__main__':
     #     for process in processes:
     #         process.join()
 
-    # ## End timer
-    # end = TIME.perf_counter()
-    # plot_time = end - start
-    # print("\n\nPlotting Time: {:5.8f}s\n\n".format(plot_time))
+    ## End timer
+    end = TIME.perf_counter()
+    plot_time = end - start
+    print("\n\nPlotting Time: {:5.8f}s\n\n".format(plot_time))
         
 
 
