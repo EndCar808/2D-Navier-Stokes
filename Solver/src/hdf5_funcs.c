@@ -53,7 +53,7 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 	// Create Output Directory and Path
 	// -----------------------------------
 	GetOutputDirPath();
-		
+
 	// ------------------------------------------
 	// Create Parallel File PList for Main File
 	// ------------------------------------------
@@ -76,11 +76,13 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 	}
 
 	#ifdef __SPECT
-	// Create the spectra output file
-	file_info->spectra_file_handle = H5Fcreate(file_info->spectra_file_name, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
-	if (file_info->output_file_handle < 0) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"]  --- Could not create HDF5 spectra output file at: "CYAN"%s"RESET" \n-->>Exiting....\n", file_info->spectra_file_name);
-		exit(1);
+	if (!sys_vars->rank){
+		// Create the spectra output file
+		file_info->spectra_file_handle = H5Fcreate(file_info->spectra_file_name, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+		if (file_info->output_file_handle < 0) {
+			fprintf(stderr, "\n["RED"ERROR"RESET"]  --- Could not create HDF5 spectra output file at: "CYAN"%s"RESET" \n-->>Exiting....\n", file_info->spectra_file_name);
+			exit(1);
+		}
 	}
 	#endif
 
@@ -97,7 +99,9 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 	// Create group for the current iteration data
 	main_group_id = CreateGroup(file_info->output_file_handle, file_info->output_file_name, group_name, 0.0, dt, 0);
 	#ifdef __SPECT
-	spectra_group_id = CreateGroup(file_info->spectra_file_handle, file_info->spectra_file_name, group_name, 0.0, dt, 0);
+	if (!sys_vars->rank) {
+		spectra_group_id = CreateGroup(file_info->spectra_file_handle, file_info->spectra_file_name, group_name, 0.0, dt, 0);
+	}
 	#endif
 
 	// --------------------------------------
@@ -187,21 +191,21 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 	// ------------------------------------
 	status = H5Pclose(plist_id);
 	status = H5Gclose(main_group_id);
-	#ifdef __SPECT
-	status = H5Gclose(spectra_group_id);
-	#endif
 	status = H5Fclose(file_info->output_file_handle);
 	if (status < 0) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close output file ["CYAN"%s"RESET"] at: Iter = ["CYAN"%d"RESET"] t = ["CYAN"%lf"RESET"]\n-->> Exiting...\n", file_info->output_file_name, 0, 0.0);
 		exit(1);		
 	}
 	#ifdef __SPECT
-	status = H5Fclose(file_info->spectra_file_handle);
-	if (status < 0) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close output file ["CYAN"%s"RESET"] at: Iter = ["CYAN"%d"RESET"] t = ["CYAN"%lf"RESET"]\n-->> Exiting...\n", file_info->spectra_file_name, 0, 0.0);
-		exit(1);		
+	if (!sys_vars->rank) {
+		status = H5Gclose(spectra_group_id);
+		status = H5Fclose(file_info->spectra_file_handle);
+		if (status < 0) {
+			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close output file ["CYAN"%s"RESET"] at: Iter = ["CYAN"%d"RESET"] t = ["CYAN"%lf"RESET"]\n-->> Exiting...\n", file_info->spectra_file_name, 0, 0.0);
+			exit(1);		
+		}
+		#endif
 	}
-	#endif
 }
 /**
  * Function that creates the output file paths and directories
@@ -282,12 +286,12 @@ void GetOutputDirPath(void) {
 		}
 
 		#ifdef __SPECT
-		// Construct Spectra file path
-		strcpy(tmp_path, file_info->output_dir);
-		strcat(tmp_path, "Spectra_HDF_Data"); 
-		strcpy(file_info->spectra_file_name, tmp_path); 
-		strcat(file_info->spectra_file_name, file_data);
 		if ( !(sys_vars->rank) ) {
+			// Construct Spectra file path
+			strcpy(tmp_path, file_info->output_dir);
+			strcat(tmp_path, "Spectra_HDF_Data"); 
+			strcpy(file_info->spectra_file_name, tmp_path); 
+			strcat(file_info->spectra_file_name, file_data);
 			printf("Spectra Output File: "CYAN"%s"RESET"\n\n", file_info->spectra_file_name);
 		}	
 		#endif
@@ -350,10 +354,10 @@ void GetOutputDirPath(void) {
 		}
 
 		#ifdef __SPECT
-		// Construct spectra file path
-		strcpy(file_info->spectra_file_name, file_info->output_dir); 
-		strcat(file_info->spectra_file_name, "Spectra_HDF_Data.h5");
 		if ( !(sys_vars->rank) ) {
+			// Construct spectra file path
+			strcpy(file_info->spectra_file_name, file_info->output_dir); 
+			strcat(file_info->spectra_file_name, "Spectra_HDF_Data.h5");
 			printf("Spectra Output File: "CYAN"%s"RESET"\n\n", file_info->spectra_file_name);
 		}	
 		#endif
@@ -414,20 +418,22 @@ void WriteDataToFile(double t, double dt, long int iters) {
 	H5Pclose(plist_id);
 
 	#ifdef __SPECT
-	// Check if spectra file exists - open it if it does if not create it
-	if (access(file_info->output_file_name, F_OK) != 0) {
-		file_info->spectra_file_handle = H5Fcreate(file_info->spectra_file_name, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
-		if (file_info->spectra_file_handle < 0) {
-			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to create spectra file ["CYAN"%s"RESET"] at: Iter = ["CYAN"%ld"RESET"] t = ["CYAN"%lf"RESET"]\n-->> Exiting...\n", file_info->spectra_file_name, iters, t);
-			exit(1);
+	if (!sys_vars->rank) {
+		// Check if spectra file exists - open it if it does if not create it
+		if (access(file_info->output_file_name, F_OK) != 0) {
+			file_info->spectra_file_handle = H5Fcreate(file_info->spectra_file_name, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+			if (file_info->spectra_file_handle < 0) {
+				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to create spectra file ["CYAN"%s"RESET"] at: Iter = ["CYAN"%ld"RESET"] t = ["CYAN"%lf"RESET"]\n-->> Exiting...\n", file_info->spectra_file_name, iters, t);
+				exit(1);
+			}
 		}
-	}
-	else {
-		// Open file with parallel I/O access properties
-		file_info->spectra_file_handle = H5Fopen(file_info->spectra_file_name, H5F_ACC_RDWR, H5P_DEFAULT);
-		if (file_info->spectra_file_handle < 0) {
-			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to open spectra file ["CYAN"%s"RESET"] at: Iter = ["CYAN"%ld"RESET"] t = ["CYAN"%lf"RESET"]\n-->> Exiting...\n", file_info->spectra_file_name, iters, t);
-			exit(1);
+		else {
+			// Open file with parallel I/O access properties
+			file_info->spectra_file_handle = H5Fopen(file_info->spectra_file_name, H5F_ACC_RDWR, H5P_DEFAULT);
+			if (file_info->spectra_file_handle < 0) {
+				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to open spectra file ["CYAN"%s"RESET"] at: Iter = ["CYAN"%ld"RESET"] t = ["CYAN"%lf"RESET"]\n-->> Exiting...\n", file_info->spectra_file_name, iters, t);
+				exit(1);
+			}
 		}
 	}
 	#endif
@@ -442,7 +448,9 @@ void WriteDataToFile(double t, double dt, long int iters) {
 	// Create group for the current iteration data
 	main_group_id = CreateGroup(file_info->output_file_handle, file_info->output_file_name, group_name, t, dt, iters);
 	#ifdef __SPECT
-	spectra_group_id = CreateGroup(file_info->spectra_file_handle, file_info->spectra_file_name, group_name, t, dt, iters);
+	if (!sys_vars->rank) {
+		spectra_group_id = CreateGroup(file_info->spectra_file_handle, file_info->spectra_file_name, group_name, t, dt, iters);
+	}
 	#endif
 	
 	// -------------------------------
@@ -520,19 +528,19 @@ void WriteDataToFile(double t, double dt, long int iters) {
 	// Close identifiers and File
 	// -------------------------------
 	status = H5Gclose(main_group_id);
-	#ifdef __SPECT
-	status = H5Gclose(spectra_group_id);
-	#endif
 	status = H5Fclose(file_info->output_file_handle);
 	if (status < 0) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close output file ["CYAN"%s"RESET"] at: Iter = ["CYAN"%ld"RESET"] t = ["CYAN"%lf"RESET"]\n-->> Exiting...\n", file_info->output_file_name, iters, t);
 		exit(1);
 	}
 	#ifdef __SPECT
-	status = H5Fclose(file_info->spectra_file_handle);
-	if (status < 0) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close output file ["CYAN"%s"RESET"] at: Iter = ["CYAN"%ld"RESET"] t = ["CYAN"%lf"RESET"]\n-->> Exiting...\n", file_info->spectra_file_name, iters, t);
-		exit(1);		
+	if (!sys_vars->rank) {
+		status = H5Gclose(spectra_group_id);
+		status = H5Fclose(file_info->spectra_file_handle);
+		if (status < 0) {
+			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close output file ["CYAN"%s"RESET"] at: Iter = ["CYAN"%ld"RESET"] t = ["CYAN"%lf"RESET"]\n-->> Exiting...\n", file_info->spectra_file_name, iters, t);
+			exit(1);		
+		}
 	}
 	#endif
 }

@@ -141,8 +141,7 @@ void SpectralSolve(void) {
 
 	// Create and open the output file - also write initial conditions to file
 	CreateOutputFilesWriteICs(N, dt);
-
-	printf("ToT E: %1.18lf\t ToT Enstr: %1.18lf\tToT Pal: %1.18lf\tEDiss: %g\tEnDiss: %g\n", run_data->tot_energy[0], run_data->tot_enstr[0], run_data->tot_palin[0], run_data->enst_flux_sbst[0], run_data->enst_diss_sbst[0]);
+	printf("Enrgy: %1.5lf\tEns: %1.5lf\tPalin: %1.5lf---Enrgy Diss: %1.5lf Enst Diss: %1.5lf\n", run_data->tot_energy[0], run_data->tot_enstr[0], run_data->tot_palin[0], run_data->enrg_diss[0], run_data->enst_diss[0]);
 	if (!(sys_vars->rank)) {
 		// Reduce on to rank 0
 		MPI_Reduce(MPI_IN_PLACE, run_data->tot_energy, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
@@ -1642,12 +1641,12 @@ double* EnergySpectrum(int* spectrum_size) {
 			spec_indx = (int) sqrt((double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]));
 
 			if ((j == 0) && (j = Ny_Fourier - 1)) {
-				// Update the energy sum for the current mode
-				spectrum[spec_indx] += cabs(u_hat * conj(u_hat)) + cabs(v_hat * conj(v_hat)) * norm_fac;
+				// Update the current bin for  mode
+				spectrum[spec_indx] += 4.0 * M_PI * M_PI cabs(u_hat * conj(u_hat)) + cabs(v_hat * conj(v_hat)) * norm_fac;
 			}
 			else {
 				// Update the energy sum for the current mode
-				spectrum[spec_indx] += 2.0 * cabs(u_hat * conj(u_hat)) + cabs(v_hat * conj(v_hat)) * norm_fac;
+				spectrum[spec_indx] += 2.0 * 4.0 * M_PI * M_PI * cabs(u_hat * conj(u_hat)) + cabs(v_hat * conj(v_hat)) * norm_fac;
 			}
 
 		}
@@ -1703,11 +1702,11 @@ double* EnstrophySpectrum(int* spectrum_size) {
 
 			if ((j == 0) && (j == Ny_Fourier - 1)) {
 				// Update the sum of the enstrophy in the current mode
-				spectrum[spec_indx] += cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * norm_fac;
+				spectrum[spec_indx] += 4.0 * M_PI * M_PI * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * norm_fac;
 			}
 			else {
 				// Update the sum of the enstrophy in the current mode
-				spectrum[spec_indx] += 2.0 * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * norm_fac;
+				spectrum[spec_indx] += 2.0 * 4.0 * M_PI * M_PI * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * norm_fac;
 			}
 		}
 	}
@@ -1730,6 +1729,7 @@ double TotalEnergy(void) {
 	const long int Nx         = sys_vars->N[0];
 	const long int Ny         = sys_vars->N[1];
 	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
+	double norm_fac = 0.5 / pow(Nx * Ny, 2.0);
 
 	// ------------------------------------------
 	// Compute Fourier Space Velocity & Energy
@@ -1759,7 +1759,7 @@ double TotalEnergy(void) {
 	}
 	
 	// Return result
-	return 0.5 * tot_energy / pow(Nx * Ny, 2.0);
+	return 4.0 * M_PI * M_PI * tot_energy * norm_fac;
 }
 /**
  * Function to compute the total enstrophy in the system at the current timestep
@@ -1774,7 +1774,7 @@ double TotalEnstrophy(void) {
 	const long int Nx         = sys_vars->N[0];
 	const long int Ny         = sys_vars->N[1];
 	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
-
+	double norm_fac = 0.5 / pow(Nx * Ny, 2.0);
 
 	// -------------------------------
 	// Compute The Total Energy 
@@ -1800,7 +1800,7 @@ double TotalEnstrophy(void) {
 	}
 
 	// Return result
-	return 0.5 * tot_enstr / pow(Nx * Ny, 2.0);
+	return 4.0 * M_PI * M_PI * tot_enstr * norm_fac;
 }
 /**
  * Function to compute the total palinstrophy at the current timestep on the local process.
@@ -1817,7 +1817,7 @@ double TotalPalinstrophy(void) {
 	const long int Nx         = sys_vars->N[0];
 	const long int Ny         = sys_vars->N[1];
 	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
-
+	double norm_fac = 0.5 / pow(Nx * Ny, 2.0);
 
 	// -------------------------------
 	// Compute The Total Palinstrophy 
@@ -1850,7 +1850,7 @@ double TotalPalinstrophy(void) {
 	}
 
 	// Return result
-	return 0.5 * tot_palin / pow(Nx * Ny, 2.0);
+	return 4.0 * M_PI * M_PI * tot_palin * norm_fac;
 }
 /**
  * Function to compute the energy dissipation rate \epsilon for the current iteration on the local processes
@@ -1867,6 +1867,7 @@ double EnergyDissipationRate(void) {
 	const long int Nx         = sys_vars->N[0];
 	const long int Ny         = sys_vars->N[1];
 	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
+	double norm_fac = 0.5 / pow(Nx * Ny, 2.0);
 
 	// -------------------------------
 	// Compute The Energy Diss Rate
@@ -1906,7 +1907,7 @@ double EnergyDissipationRate(void) {
 	}
 
 	// Return result -> 2 (nu * 0.5 *<|w|^2>)
-	return enrgy / pow(Nx * Ny, 2.0);
+	return 2.0 * (4.0 * M_PI * M_PI * enrgy * norm_fac);
 }
 /**
  * Function to compute the enstrophy dissipation rate \eta which is equal to 2 * Palinstrophy for the current iteration on the local process
@@ -1924,6 +1925,7 @@ double EnstrophyDissipationRate(void) {
 	const long int Nx         = sys_vars->N[0];
 	const long int Ny         = sys_vars->N[1];
 	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
+	double norm_fac = 0.5 / pow(Nx * Ny, 2.0);
 
 	// -------------------------------
 	// Compute The Enstrophy Diss Rate 
@@ -1972,7 +1974,7 @@ double EnstrophyDissipationRate(void) {
 
 
 	// Return result -> 2(palin) = 2(0.5 * <|grad \omega|^2>)
-	return tot_palin / pow(Nx * Ny, 2.0);
+	return 2.0 * (4.0 * M_PI * M_PI * tot_palin * norm_fac);
 }	
 /**
  * Function to compute the enstrophy flux and enstrophy dissipation from a subset of modes on the local process for the current iteration 
@@ -1994,6 +1996,7 @@ void EnstrophyFlux(double* enst_flux, double* enst_diss, RK_data_struct* RK_data
 	const long int Nx         = sys_vars->N[0];
 	const long int Ny         = sys_vars->N[1];
 	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
+	double norm_fac = 0.5 / pow(Nx * Ny, 2.0);
 
 	// -----------------------------------
 	// Compute the Derivative
@@ -2014,8 +2017,6 @@ void EnstrophyFlux(double* enst_flux, double* enst_diss, RK_data_struct* RK_data
 	// Initialize sums
 	tmp_enst_flux = 0.0;
 	tmp_enst_diss = 0.0;
-
-	double tmp_flux = 0.0;
 
 	// Loop over Fourier vorticity
 	for (int i = 0; i < local_Nx; ++i) {
@@ -2060,16 +2061,16 @@ void EnstrophyFlux(double* enst_flux, double* enst_diss, RK_data_struct* RK_data
 				}
 			}
 		}
-	}
+	}	
 
 	// -----------------------------------
 	// Compute the Enstrophy Flux & Diss 
 	// -----------------------------------
 	// Compue the enstrophy dissipation
-	(*enst_diss) = 0.5 * tmp_enst_diss / pow(Nx * Ny, 2.0);
+	(*enst_diss) = 4.0 * M_PI * M_PI * tmp_enst_diss * norm_fac;
 
 	// Compute the enstrophy flux
-	(*enst_flux) = 0.5 * tmp_enst_flux / pow(Nx * Ny, 2.0);
+	(*enst_flux) = 8.0 * M_PI * M_PI * tmp_enst_flux * norm_fac;
 
 	// -----------------------------------
 	// Free memory
@@ -2096,6 +2097,7 @@ void EnergyFlux(double* enrg_flux, double* enrg_diss, RK_data_struct* RK_data) {
 	const long int Nx         = sys_vars->N[0];
 	const long int Ny         = sys_vars->N[1];
 	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
+	double norm_fac = 0.5 / pow(Nx * Ny, 2.0);
 
 	// -----------------------------------
 	// Compute the Derivative
@@ -2172,10 +2174,10 @@ void EnergyFlux(double* enrg_flux, double* enrg_diss, RK_data_struct* RK_data) {
 	// Compute the Energy Flux & Diss 
 	// -----------------------------------
 	// Compue the energy dissipation
-	(*enrg_diss) = 0.5 * tmp_enrgy_diss / pow(Nx * Ny, 2.0);
+	(*enrg_diss) = 4.0 * M_PI * M_PI * tmp_enrgy_diss * norm_fac;
 
 	// Compute the energy flux
-	(*enrg_flux) = 0.5 * tmp_enrgy_flux / pow(Nx * Ny, 2.0);
+	(*enrg_flux) = 8.0 * M_PI * M_PI * tmp_enrgy_flux * norm_fac;
 
 
 	// -----------------------------------
@@ -2267,11 +2269,11 @@ double* EnergyFluxSpectrum(int* n_spect, RK_data_struct* RK_data) {
 				// Update spectrum bin
 				if ((j == 0) && (Ny_Fourier - 1)) {
 					// Update the running sum for the flux of energy
-					spectrum[spec_indx] += norm_fac * creal(run_data->w_hat[indx] * conj(dwhat_dt[indx]) + conj(run_data->w_hat[indx]) * dwhat_dt[indx]) / k_sqr;
+					spectrum[spec_indx] += 4.0 * M_PI * M_PI * norm_fac * creal(run_data->w_hat[indx] * conj(dwhat_dt[indx]) + conj(run_data->w_hat[indx]) * dwhat_dt[indx]) / k_sqr;
 				}
 				else {
 					// Update the running sum for the flux of energy
-					spectrum[spec_indx] += 2.0 * norm_fac * creal(run_data->w_hat[indx] * conj(dwhat_dt[indx]) + conj(run_data->w_hat[indx]) * dwhat_dt[indx]) / k_sqr;
+					spectrum[spec_indx] += 2.0 * 4.0 * M_PI * M_PI * norm_fac * creal(run_data->w_hat[indx] * conj(dwhat_dt[indx]) + conj(run_data->w_hat[indx]) * dwhat_dt[indx]) / k_sqr;
 				}
 			}
 		}
@@ -2370,12 +2372,12 @@ double* EnstrophyFluxSpectrum(int* n_spect, RK_data_struct* RK_data) {
 
 				// Update spectrum bin
 				if ((j == 0) && (Ny_Fourier - 1)) {
-					// Update the running sum for the flux of energy
-					spectrum[spec_indx] += norm_fac * creal(run_data->w_hat[indx] * conj(dwhat_dt[indx]) + conj(run_data->w_hat[indx]) * dwhat_dt[indx]);
+					// Update the current bin sum 
+					spectrum[spec_indx] += 4.0 * M_PI * M_PI * norm_fac * creal(run_data->w_hat[indx] * conj(dwhat_dt[indx]) + conj(run_data->w_hat[indx]) * dwhat_dt[indx]);
 				}
 				else {
 					// Update the running sum for the flux of energy
-					spectrum[spec_indx] += 2.0 * norm_fac * creal(run_data->w_hat[indx] * conj(dwhat_dt[indx]) + conj(run_data->w_hat[indx]) * dwhat_dt[indx]);
+					spectrum[spec_indx] += 2.0 * 4.0 * M_PI * M_PI * norm_fac * creal(run_data->w_hat[indx] * conj(dwhat_dt[indx]) + conj(run_data->w_hat[indx]) * dwhat_dt[indx]);
 				}
 			}
 		}

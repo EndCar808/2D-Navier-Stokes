@@ -283,13 +283,13 @@ the system in Fourier space becomes
 Using (\ref{eq:enstrophy_fourier}) we can find the rate of change of enstrophy as the following
 
 \begin{align}
-\der{\mathcal{E}}{t} = 4\pi^2 \sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}} \der{a_{\bfk}^2}{t}  = 4\pi^2 \sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}} 2 a_{\bfk} \dot{a}_{\bfk} = 8\pi^2 \sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}} a_{\bfk} \dot{a}_{\bfk}
+\der{\mathcal{E}}{t} = 2\pi^2 \sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}} \der{a_{\bfk}^2}{t}  = 2\pi^2 \sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}} 2 a_{\bfk} \dot{a}_{\bfk} = 4\pi^2 \sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}} a_{\bfk} \dot{a}_{\bfk}
 \end{align}
 or, noting that $a_{\bfk}^2 = |\hat{\omega}_{\bfk}|^2 = \hat{\omega}_{\bfk}\hat{\omega}_{\bfk}^{*}$, the rate of change of the enstrohpyh can be written in terms of the Fourier vorticity
 
 
 \begin{align}
-	\der{\mathcal{E}}{t} = 4\pi^2 \sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}} \der{a_{\bfk}^2}{t} = 4\pi^2 \sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}}\der{|\hat{\omega}_{\bfk}|^2}{t} = 4\pi^2 \sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}} (\hat{\omega}_{\bfk} \dot{\hat{\omega}}^{*}_{\bfk} + \dot{\hat{\omega}}_{\bfk} \hat{\omega}^{*}_{\bfk})
+	\der{\mathcal{E}}{t} = 2\pi^2 \sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}} \der{a_{\bfk}^2}{t} = 2\pi^2 \sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}}\der{|\hat{\omega}_{\bfk}|^2}{t} = 2\pi^2 \sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}} (\hat{\omega}_{\bfk} \dot{\hat{\omega}}^{*}_{\bfk} + \dot{\hat{\omega}}_{\bfk} \hat{\omega}^{*}_{\bfk})
 \end{align}
 
 Similarly, using the equation of motion for the Fourier vorticity in (\ref{eq:vort_eqn_fourier_space}) we can find an expression for the rate of change of enstrophy by multipling across by $\omegahat{k}^*$, adding the complex conjugate, averaging over $\bfk$ and taking the real part of both sides
@@ -297,9 +297,9 @@ Similarly, using the equation of motion for the Fourier vorticity in (\ref{eq:vo
 \begin{align}
 	\omegahat{k}^*\der{\omegahat{k}}{t} &= \frac{1}{2}	\sum_{\mathbf{k}_1, \mathbf{k}_2\in \mathbb{Z}^2\setminus \mathbf{0}}\left(k_{1x}k_{2y} - k_{1y}k_{2x}\right) \left(\frac{1}{|\bfkn{1}|^2} - \frac{1}{|\bfkn{2}|^2}\right) \omegahat{\bfkn{1}}\omegahat{\bfkn{2}}\omegahat{k}^* \delta_{\bfkn{1}, \bfkn{2}}^{\bfk} - \nu |\bfk|^{2n}\omegahat{k}\omegahat{k}^* - \alpha\omegahat{k}\omegahat{k}^* + \hat{f}_{\bfk} \omegahat{k}^* + c. c. \notag \\
 	\sum_{\bfk}\left(\omegahat{k}^*\dot{\hat{\omega}}_\bfk + \omegahat{k}\dot{\hat{\omega}}^*_\bfk\right)&= \frac{1}{2}	\sum_{\bfk, \mathbf{k}_1, \mathbf{k}_2\in \mathbb{Z}^2\setminus \mathbf{0}}\left(k_{1x}k_{2y} - k_{1y}k_{2x}\right) \left(\frac{1}{|\bfkn{1}|^2} - \frac{1}{|\bfkn{2}|^2}\right) \omegahat{\bfkn{1}}\omegahat{\bfkn{2}}\omegahat{k}^* \delta_{\bfkn{1}, \bfkn{2}}^{\bfk} - \nu \sum_{\bfk}|\bfk|^{2n} a_{\bfk}^2 - \alpha\sum_{\bfk} a_{\bfk}^2 + \sum_{\bfk}\hat{f}_{\bfk} \omegahat{k}^* + c. c. \notag \\
-	\frac{1}{4\pi^2}\der{\mathcal{E}}{t} &= \frac{1}{2}	\sum_{\bfk, \mathbf{k}_1, \mathbf{k}_2\in \mathbb{Z}^2\setminus \mathbf{0}}\left(k_{1x}k_{2y} - k_{1y}k_{2x}\right) \left(\frac{1}{|\bfkn{1}|^2} - \frac{1}{|\bfkn{2}|^2}\right) (\omegahat{\bfkn{1}}\omegahat{\bfkn{2}}\omegahat{k}^* \delta_{\bfkn{1}, \bfkn{2}}^{\bfk} + c.c.) - 2\nu \sum_{\bfk}|\bfk|^{2n} a_{\bfk}^2 - 2\alpha\sum_{\bfk} a_{\bfk}^2 \notag \\
+	\frac{1}{2\pi^2}\der{\mathcal{E}}{t} &= \frac{1}{2}	\sum_{\bfk, \mathbf{k}_1, \mathbf{k}_2\in \mathbb{Z}^2\setminus \mathbf{0}}\left(k_{1x}k_{2y} - k_{1y}k_{2x}\right) \left(\frac{1}{|\bfkn{1}|^2} - \frac{1}{|\bfkn{2}|^2}\right) (\omegahat{\bfkn{1}}\omegahat{\bfkn{2}}\omegahat{k}^* \delta_{\bfkn{1}, \bfkn{2}}^{\bfk} + c.c.) - 2\nu \sum_{\bfk}|\bfk|^{2n} a_{\bfk}^2 - 2\alpha\sum_{\bfk} a_{\bfk}^2 \notag \\
 	&\qquad \qquad \qquad \qquad+ \sum_{\bfk}(\hat{f}_{\bfk} \omegahat{k}^* + c. c.)\notag \\
-	\der{\mathcal{E}}{t} &= 4\pi^2	\sum_{\bfk, \mathbf{k}_1, \mathbf{k}_2\in \mathbb{Z}^2\setminus \mathbf{0}}\left(k_{1x}k_{2y} - k_{1y}k_{2x}\right) \left(\frac{1}{|\bfkn{1}|^2} - \frac{1}{|\bfkn{2}|^2}\right) a_{\bfkn{1}} a_{\bfkn{2}} a_{\bfk} \cos(\phi_{\bfkn{1}} + \phi_{\bfkn{2}} - \phi_{\bfk}) \delta_{\bfkn{1}, \bfkn{2}}^{\bfk} \notag \\ & \qquad \qquad \qquad \qquad- 8\pi^2\nu \sum_{\bfk}|\bfk|^{2n} a_{\bfk}^2 - 8\pi^2\alpha\sum_{\bfk} a_{\bfk}^2 + 8\pi^2\sum_{\bfk}a_\bfk\Re\left\{\hat{f}_{\bfk} \e^{-\ii\phi_\bfk}\right\} \notag \\
+	\der{\mathcal{E}}{t} &= 2\pi^2	\sum_{\bfk, \mathbf{k}_1, \mathbf{k}_2\in \mathbb{Z}^2\setminus \mathbf{0}}\left(k_{1x}k_{2y} - k_{1y}k_{2x}\right) \left(\frac{1}{|\bfkn{1}|^2} - \frac{1}{|\bfkn{2}|^2}\right) a_{\bfkn{1}} a_{\bfkn{2}} a_{\bfk} \cos(\phi_{\bfkn{1}} + \phi_{\bfkn{2}} - \phi_{\bfk}) \delta_{\bfkn{1}, \bfkn{2}}^{\bfk} \notag \\ & \qquad \qquad \qquad \qquad- 4\pi^2\nu \sum_{\bfk}|\bfk|^{2n} a_{\bfk}^2 - 4\pi^2\alpha\sum_{\bfk} a_{\bfk}^2 + 4\pi^2\sum_{\bfk}a_\bfk\Re\left\{\hat{f}_{\bfk} \e^{-\ii\phi_\bfk}\right\} \notag \\
 	&= \Pi - \epsilon + \mathcal{I}
 \end{align}
 where $\Pi, \epsilon$ and $\mathcal{I}$ are the enstrophy flux in/out of the domain enstrophy dissipation and forcing input.
@@ -310,13 +310,13 @@ where $\Pi, \epsilon$ and $\mathcal{I}$ are the enstrophy flux in/out of the dom
 Using the Fourier vorticity version of the total kinetic energy the rate of change of energy follows in a similar fashion
 
 \begin{align}
-	\der{\mathcal{K}}{t} = 4\pi^2\sum_{\bfk}  \frac{1}{|\bfk|^2}\der{a_\bfk^2}{t} =8\pi^2\sum_{\bfk} a_\bfk \frac{\dot{a}_\bfk}{|\bfk|^2}
+	\der{\mathcal{K}}{t} = 2\pi^2\sum_{\bfk}  \frac{1}{|\bfk|^2}\der{a_\bfk^2}{t} =4\pi^2\sum_{\bfk} a_\bfk \frac{\dot{a}_\bfk}{|\bfk|^2}
 \end{align}
 
 and 
 
 \begin{align}
-	\der{\mathcal{K}}{t} &= 4\pi^2	\sum_{\bfk, \mathbf{k}_1, \mathbf{k}_2\in \mathbb{Z}^2\setminus \mathbf{0}}\left(k_{1x}k_{2y} - k_{1y}k_{2x}\right) \left(\frac{1}{|\bfkn{1}|^2} - \frac{1}{|\bfkn{2}|^2}\right) \left( \frac{1}{|\bfk|^2}\right)a_{\bfkn{1}} a_{\bfkn{2}} a_{\bfk} \cos(\phi_{\bfkn{1}} + \phi_{\bfkn{2}} - \phi_{\bfk})\delta_{\bfkn{1}, \bfkn{2}}^{\bfk} \notag \\ & \qquad \qquad \qquad \qquad- 8\pi^2\nu \sum_{\bfk}|\bfk|^{2n - 1} a_{\bfk}^2 - 8\pi^2\alpha\sum_{\bfk} \frac{a_\bfk^2}{|\bfk|^2} + 8\pi^2\sum_{\bfk}\frac{a_\bfk}{|\bfk|^2}\Re\left\{\hat{f}_{\bfk} \e^{-\ii\phi_\bfk}\right\}
+	\der{\mathcal{K}}{t} &= 2\pi^2	\sum_{\bfk, \mathbf{k}_1, \mathbf{k}_2\in \mathbb{Z}^2\setminus \mathbf{0}}\left(k_{1x}k_{2y} - k_{1y}k_{2x}\right) \left(\frac{1}{|\bfkn{1}|^2} - \frac{1}{|\bfkn{2}|^2}\right) \left( \frac{1}{|\bfk|^2}\right)a_{\bfkn{1}} a_{\bfkn{2}} a_{\bfk} \cos(\phi_{\bfkn{1}} + \phi_{\bfkn{2}} - \phi_{\bfk})\delta_{\bfkn{1}, \bfkn{2}}^{\bfk} \notag \\ & \qquad \qquad \qquad \qquad- 4\pi^2\nu \sum_{\bfk}|\bfk|^{2n - 1} a_{\bfk}^2 - 4\pi^2\alpha\sum_{\bfk} \frac{a_\bfk^2}{|\bfk|^2} + 4\pi^2\sum_{\bfk}\frac{a_\bfk}{|\bfk|^2}\Re\left\{\hat{f}_{\bfk} \e^{-\ii\phi_\bfk}\right\}
 \end{align}
 
 \section{System Quantities}
@@ -326,19 +326,19 @@ and
 The total Enstrophy for incompressible flows is defined as 
 
 \begin{align}
-	\mathcal{E}(\bfu) = \int_{0}^{2\pi} |\curl{\bfu}|^2 \mathrm{d}\bfx \Rightarrow \int_{0}^{2\pi} |\bm{\omega}|^2 \mathrm{d}\bfx = \int_{0}^{2\pi} \omega^2 \mathrm{d}\bfx .
+	\mathcal{E}(\bfu) = \frac{1}{2}\int_{0}^{2\pi} |\curl{\bfu}|^2 \mathrm{d}\bfx \Rightarrow \frac{1}{2}\int_{0}^{2\pi} |\bm{\omega}|^2 \mathrm{d}\bfx = \frac{1}{2}\int_{0}^{2\pi} \omega^2 \mathrm{d}\bfx .
 	\label{eq:enstrophy_def}
 \end{align}
 
 Using (\ref{eq:fourier_decomp}) the enstrophy in Fourier space is given as 
 
 \begin{align}
-	\mathcal{E}(\omegahat{k}) &= \int_{0}^{2\pi} \left(\sum_{\mathbf{k}_1\in \mathbb{Z}^2\setminus \mathbf{0}}\hat{\omega}_{\mathbf{k}_1}\e^{\ii \mathbf{k}_1\cdot \mathbf{x}}\right)\left(\sum_{\mathbf{k}_2\in \mathbb{Z}^2\setminus \mathbf{0}}\hat{\omega}_{\mathbf{k}_2}\e^{\ii \mathbf{k}_2\cdot \mathbf{x}}\right)  \mathrm{d}\bfx, \notag \\
-	&= \int_{0}^{2\pi}\sum_{\mathbf{k}_1, \bfkn{2}\in \mathbb{Z}^2\setminus \mathbf{0}}\hat{\omega}_{\mathbf{k}_1}\hat{\omega}_{\mathbf{k}_2} \e^{\ii \left(\mathbf{k}_1 + \bfkn{2}\right)\cdot \mathbf{x}}\mathrm{d}\bfx \notag \\
-	&=\sum_{\mathbf{k}_1, \bfkn{2}\in \mathbb{Z}^2\setminus \mathbf{0}}\hat{\omega}_{\mathbf{k}_1}\hat{\omega}_{\mathbf{k}_2} \int_{0}^{2\pi} \e^{\ii \left(\mathbf{k}_1 + \bfkn{2}\right)\cdot \mathbf{x}}\mathrm{d}\bfx \notag \\
-	&= \sum_{\mathbf{k}_1, \bfkn{2}\in \mathbb{Z}^2\setminus \mathbf{0}}\hat{\omega}_{\mathbf{k}_1}\hat{\omega}_{\mathbf{k}_2} \delta_{\bfkn{1}, \bfkn{2}} 4 \pi^2 \notag \\
-	&= 4 \pi^2 \sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}}|\hat{\omega}_{\mathbf{k}} |^2 \notag \\
-	&= 4 \pi^2 \sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}} a_{\bfk}^2
+	\mathcal{E}(\omegahat{k}) &= \frac{1}{2}\int_{0}^{2\pi} \left(\sum_{\mathbf{k}_1\in \mathbb{Z}^2\setminus \mathbf{0}}\hat{\omega}_{\mathbf{k}_1}\e^{\ii \mathbf{k}_1\cdot \mathbf{x}}\right)\left(\sum_{\mathbf{k}_2\in \mathbb{Z}^2\setminus \mathbf{0}}\hat{\omega}_{\mathbf{k}_2}\e^{\ii \mathbf{k}_2\cdot \mathbf{x}}\right)  \mathrm{d}\bfx, \notag \\
+	&= \frac{1}{2}\int_{0}^{2\pi}\sum_{\mathbf{k}_1, \bfkn{2}\in \mathbb{Z}^2\setminus \mathbf{0}}\hat{\omega}_{\mathbf{k}_1}\hat{\omega}_{\mathbf{k}_2} \e^{\ii \left(\mathbf{k}_1 + \bfkn{2}\right)\cdot \mathbf{x}}\mathrm{d}\bfx \notag \\
+	&=\frac{1}{2}\sum_{\mathbf{k}_1, \bfkn{2}\in \mathbb{Z}^2\setminus \mathbf{0}}\hat{\omega}_{\mathbf{k}_1}\hat{\omega}_{\mathbf{k}_2} \int_{0}^{2\pi} \e^{\ii \left(\mathbf{k}_1 + \bfkn{2}\right)\cdot \mathbf{x}}\mathrm{d}\bfx \notag \\
+	&= \frac{1}{2}\sum_{\mathbf{k}_1, \bfkn{2}\in \mathbb{Z}^2\setminus \mathbf{0}}\hat{\omega}_{\mathbf{k}_1}\hat{\omega}_{\mathbf{k}_2} \delta_{\bfkn{1}, \bfkn{2}} 4 \pi^2 \notag \\
+	&= 2 \pi^2 \sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}}|\hat{\omega}_{\mathbf{k}} |^2 \notag \\
+	&= 2 \pi^2 \sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}} a_{\bfk}^2
 	\label{eq:enstrophy_fourier}
 \end{align}
 where we have let $\bfkn{2} = - \bfkn{1}$ (and relabled as $\bfk$)
@@ -349,18 +349,18 @@ where we have let $\bfkn{2} = - \bfkn{1}$ (and relabled as $\bfk$)
 The total system energy is defined as
 
 \begin{align}
-	\mathcal{K}(\bfu) = \int_0^{2 \pi}|\bfu|^2\mathrm{d}\bfx = \int_0^{2\pi} |(u, v)^{T}|^2 \mathrm{d}\bfx 
+	\mathcal{K}(\bfu) = \frac{1}{2}\int_0^{2 \pi}|\bfu|^2\mathrm{d}\bfx = \frac{1}{2}\int_0^{2\pi} |(u, v)^{T}|^2 \mathrm{d}\bfx 
 \end{align}
 
 Using (\ref{eq:fourier_decomp}) again the total energy in Fourier space becomes
 
 \begin{align}
-\mathcal{K}(\hat{u}_{\bfk})	&= \int_0^{2\pi} \left(\sum_{\mathbf{k}_1\in \mathbb{Z}^2\setminus \mathbf{0}}\hat{u}_{\mathbf{k}_1}\e^{\ii \mathbf{k}_1\cdot \mathbf{x}}\right)\left(\sum_{\mathbf{k}_2\in \mathbb{Z}^2\setminus \mathbf{0}}\hat{u}_{\mathbf{k}_2}\e^{\ii \mathbf{k}_2\cdot \mathbf{x}}\right) + \left(\sum_{\mathbf{k}_1\in \mathbb{Z}^2\setminus \mathbf{0}}\hat{v}_{\mathbf{k}_1}\e^{\ii \mathbf{k}_1\cdot \mathbf{x}}\right)\left(\sum_{\mathbf{k}_2\in \mathbb{Z}^2\setminus \mathbf{0}}\hat{v}_{\mathbf{k}_2}\e^{\ii \mathbf{k}_2\cdot \mathbf{x}}\right) \mathrm{d}\bfx \notag\\
-	&= \int_0^{2\pi} \sum_{\mathbf{k}_1, \mathbf{k}_2\in \mathbb{Z}^2\setminus \mathbf{0}} (\hat{u}_{\mathbf{k}_1}\hat{u}_{\mathbf{k}_2} + \hat{v}_{\mathbf{k}_1}\hat{v}_{\mathbf{k}_2}) \e^{\ii (\mathbf{k}_1 + \mathbf{k}_2)\cdot \mathbf{x}} \mathrm{d}\bfx \notag \\
-	&= \sum_{\mathbf{k}_1, \mathbf{k}_2\in \mathbb{Z}^2\setminus \mathbf{0}} (\hat{u}_{\mathbf{k}_1}\hat{u}_{\mathbf{k}_2} + \hat{v}_{\mathbf{k}_1}\hat{v}_{\mathbf{k}_2}) \int_0^{2\pi} \e^{\ii (\mathbf{k}_1 + \mathbf{k}_2)\cdot \mathbf{x}} \mathrm{d}\bfx \notag \\
-	&= \sum_{\mathbf{k}_1, \mathbf{k}_2\in \mathbb{Z}^2\setminus \mathbf{0}} (\hat{u}_{\mathbf{k}_1}\hat{u}_{\mathbf{k}_2} + \hat{v}_{\mathbf{k}_1}\hat{v}_{\mathbf{k}_2}) (2\pi)^2 \delta_{\bfkn{1}, \bfkn{2}} \notag \\
-	&= 4\pi^2 \sum_{\mathbf{k}_1\in \mathbb{Z}^2\setminus \mathbf{0}} (\hat{u}_{\mathbf{k}_1}\hat{u}_{-\mathbf{k}_1} + \hat{v}_{\mathbf{k}_1}\hat{v}_{-\mathbf{k}_{1}}) \notag \\
-	&= 4\pi^2 \sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}} (|\hat{u}_{\mathbf{k}}|^2 + |\hat{v}_{\mathbf{k}}|^2)
+\mathcal{K}(\hat{u}_{\bfk})	&= \frac{1}{2}\int_0^{2\pi} \left(\sum_{\mathbf{k}_1\in \mathbb{Z}^2\setminus \mathbf{0}}\hat{u}_{\mathbf{k}_1}\e^{\ii \mathbf{k}_1\cdot \mathbf{x}}\right)\left(\sum_{\mathbf{k}_2\in \mathbb{Z}^2\setminus \mathbf{0}}\hat{u}_{\mathbf{k}_2}\e^{\ii \mathbf{k}_2\cdot \mathbf{x}}\right) + \left(\sum_{\mathbf{k}_1\in \mathbb{Z}^2\setminus \mathbf{0}}\hat{v}_{\mathbf{k}_1}\e^{\ii \mathbf{k}_1\cdot \mathbf{x}}\right)\left(\sum_{\mathbf{k}_2\in \mathbb{Z}^2\setminus \mathbf{0}}\hat{v}_{\mathbf{k}_2}\e^{\ii \mathbf{k}_2\cdot \mathbf{x}}\right) \mathrm{d}\bfx \notag\\
+	&= \frac{1}{2}\int_0^{2\pi} \sum_{\mathbf{k}_1, \mathbf{k}_2\in \mathbb{Z}^2\setminus \mathbf{0}} (\hat{u}_{\mathbf{k}_1}\hat{u}_{\mathbf{k}_2} + \hat{v}_{\mathbf{k}_1}\hat{v}_{\mathbf{k}_2}) \e^{\ii (\mathbf{k}_1 + \mathbf{k}_2)\cdot \mathbf{x}} \mathrm{d}\bfx \notag \\
+	&= \frac{1}{2}\sum_{\mathbf{k}_1, \mathbf{k}_2\in \mathbb{Z}^2\setminus \mathbf{0}} (\hat{u}_{\mathbf{k}_1}\hat{u}_{\mathbf{k}_2} + \hat{v}_{\mathbf{k}_1}\hat{v}_{\mathbf{k}_2}) \int_0^{2\pi} \e^{\ii (\mathbf{k}_1 + \mathbf{k}_2)\cdot \mathbf{x}} \mathrm{d}\bfx \notag \\
+	&= \frac{1}{2}\sum_{\mathbf{k}_1, \mathbf{k}_2\in \mathbb{Z}^2\setminus \mathbf{0}} (\hat{u}_{\mathbf{k}_1}\hat{u}_{\mathbf{k}_2} + \hat{v}_{\mathbf{k}_1}\hat{v}_{\mathbf{k}_2}) (2\pi)^2 \delta_{\bfkn{1}, \bfkn{2}} \notag \\
+	&= 2\pi^2 \sum_{\mathbf{k}_1\in \mathbb{Z}^2\setminus \mathbf{0}} (\hat{u}_{\mathbf{k}_1}\hat{u}_{-\mathbf{k}_1} + \hat{v}_{\mathbf{k}_1}\hat{v}_{-\mathbf{k}_{1}}) \notag \\
+	&= 2\pi^2 \sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}} (|\hat{u}_{\mathbf{k}}|^2 + |\hat{v}_{\mathbf{k}}|^2)
 	\label{eq:energy_u_fourier}
 \end{align}
 where we have let $\bfkn{2} = - \bfkn{1}$ (and relabled as $\bfk$).
@@ -368,40 +368,87 @@ where we have let $\bfkn{2} = - \bfkn{1}$ (and relabled as $\bfk$).
 From here we can express the total energy in terms of the vorticity 
 
 \begin{align}
-E(\hat{\omega}_{\bfk}) &=  4\pi^2 \sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}} \left(\left|\mathcal{F}\left[\pder{\psi}{y}\right]_k\right|^2 + \left|\mathcal{F}\left[-\pder{\psi}{x}\right]_k\right|^2 \right) \notag \\
-&= 4\pi^2 \sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}} (|\ii k_{y}\hat{\psi}_{\mathbf{k}}|^2 + |\ii k_x \hat{\psi}_{\mathbf{k}}|^2) \notag \\
-&= 4\pi^2 \sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}} (|\ii k_{y}|^2 + |\ii k_x|^2)|\hat{\psi}_{\mathbf{k}}|^2 \notag \\
-&= 4\pi^2 \sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}} |\bfk|^2\frac{|\hat{\omega}_{\mathbf{k}}|^2}{|\bfk|^4} \notag \\
-&= 4\pi^2 \sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}} \frac{|\hat{\omega}_{\mathbf{k}}|^2}{|\bfk|^2} \notag \\
-&= 4\pi^2 \sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}} \frac{a_{\mathbf{k}}^2}{|\bfk|^2}
+E(\hat{\omega}_{\bfk}) &=  2\pi^2 \sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}} \left(\left|\mathcal{F}\left[\pder{\psi}{y}\right]_k\right|^2 + \left|\mathcal{F}\left[-\pder{\psi}{x}\right]_k\right|^2 \right) \notag \\
+&= 2\pi^2 \sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}} (|\ii k_{y}\hat{\psi}_{\mathbf{k}}|^2 + |\ii k_x \hat{\psi}_{\mathbf{k}}|^2) \notag \\
+&= 2\pi^2 \sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}} (|\ii k_{y}|^2 + |\ii k_x|^2)|\hat{\psi}_{\mathbf{k}}|^2 \notag \\
+&= 2\pi^2 \sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}} |\bfk|^2\frac{|\hat{\omega}_{\mathbf{k}}|^2}{|\bfk|^4} \notag \\
+&= 2\pi^2 \sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}} \frac{|\hat{\omega}_{\mathbf{k}}|^2}{|\bfk|^2} \notag \\
+&= 2\pi^2 \sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}} \frac{a_{\mathbf{k}}^2}{|\bfk|^2}
 \label{eq:energy_w_fourier}
 \end{align}
 
-\section{Palinstrophy}
+\subsection{Palinstrophy}
 
  The total palinstrophy is defined as 
 
  \begin{align}
- \mathcal{P}(\bfu) = \int_0^{2\pi} |\curl{\bm{\omega}}|^2\mathrm{d}\bfx
+ \mathcal{P}(\bfu) = \frac{1}{2}\int_0^{2\pi} |\curl{\bm{\omega}}|^2\mathrm{d}\bfx
  \end{align}	
 but $\curl{\bm{\omega}} = \grad{\omega}$ in 2D so the palinstrophy is given by
 
 \begin{align}
-\mathcal{P}(\bfu) = \int_0^{2\pi} |\grad{\omega}|^2\mathrm{d}\bfx
+\mathcal{P}(\bfu) = \frac{1}{2}\int_0^{2\pi} |\grad{\omega}|^2\mathrm{d}\bfx
 \end{align}
 
 Using (\ref{eq:fourier_decomp}) again the total palinstrophy in Fourier space becomes
 
 \begin{align}
-\mathcal{P}(\omegahat{k}) &= \int_0^{2\pi} \left|\left(\mathcal{F}\left[\pder{\omega}{x}\right]_k, \mathcal{F}\left[\pder{\omega}{y}\right]_k \right)^{T} \right|^2\mathrm{d}\bfx \notag \\
-&=  \int_0^{2\pi} \left(\sum_{\mathbf{k}_1\in \mathbb{Z}^2\setminus \mathbf{0}}\ii k_{1x}\hat{\omega}_{\mathbf{k}_1}\e^{\ii \mathbf{k}_1\cdot \mathbf{x}}\right)\left(\sum_{\mathbf{k}_2\in \mathbb{Z}^2\setminus \mathbf{0}}\ii k_{2x}\hat{\omega}_{\mathbf{k}_2}\e^{\ii \mathbf{k}_2\cdot \mathbf{x}}\right) + \left(\sum_{\mathbf{k}_1\in \mathbb{Z}^2\setminus \mathbf{0}}\ii k_{1y}\hat{\omega}_{\mathbf{k}_1}\e^{\ii \mathbf{k}_1\cdot \mathbf{x}}\right)\left(\sum_{\mathbf{k}_2\in \mathbb{Z}^2\setminus \mathbf{0}}\ii k_{2y}\hat{\omega}_{\mathbf{k}_2}\e^{\ii \mathbf{k}_2\cdot \mathbf{x}}\right) \mathrm{d}\bfx \notag\\
-&= \int_0^{2\pi} \sum_{\mathbf{k}_1, \mathbf{k}_2\in \mathbb{Z}^2\setminus \mathbf{0}} -(k_{1x}k_{2x} + k_{1y}k_{2y})\hat{\omega}_{\bfkn{1}}\hat{\omega}_{\bfkn{2}}\e^{\ii (\bfkn{1} + \bfkn{2}) \cdot \bfx}\mathrm{d}\bfx \notag\\
-&=  \sum_{\mathbf{k}_1, \mathbf{k}_2\in \mathbb{Z}^2\setminus \mathbf{0}} -(k_{1x}k_{2x} + k_{1y}k_{2y})\hat{\omega}_{\bfkn{1}}\hat{\omega}_{\bfkn{2}}\int_0^{2\pi}\e^{\ii (\bfkn{1} + \bfkn{2}) \cdot \bfx}\mathrm{d}\bfx \notag\\
-&=  \sum_{\mathbf{k}_1, \mathbf{k}_2\in \mathbb{Z}^2\setminus \mathbf{0}} -(k_{1x}k_{2x} + k_{1y}k_{2y})\hat{\omega}_{\bfkn{1}}\hat{\omega}_{\bfkn{2}} 4\pi^2 \delta_{\bfkn{1}, \bfkn{2}}\mathrm{d}\bfx \notag\\
-&=  4\pi^2 \sum_{\mathbf{k}_1, \in \mathbb{Z}^2\setminus \mathbf{0}} -(k_{1x}-k_{1x} + k_{1y}-k_{1y})\hat{\omega}_{\bfkn{1}}\hat{\omega}_{-\bfkn{1}} \mathrm{d}\bfx \notag\\
-&=  4\pi^2 \sum_{\mathbf{k}, \in \mathbb{Z}^2\setminus \mathbf{0}} |\bfk|^2 |\hat{\omega}_{\bfk}|^2 \mathrm{d}\bfx \notag\\
-&=  4\pi^2 \sum_{\mathbf{k}, \in \mathbb{Z}^2\setminus \mathbf{0}} |\bfk|^2 a_{\bfk}^2 \mathrm{d}\bfx \notag\\
+\mathcal{P}(\omegahat{k}) &= \frac{1}{2}\int_0^{2\pi} \left|\left(\mathcal{F}\left[\pder{\omega}{x}\right]_k, \mathcal{F}\left[\pder{\omega}{y}\right]_k \right)^{T} \right|^2\mathrm{d}\bfx \notag \\
+&=  \frac{1}{2}\int_0^{2\pi} \left(\sum_{\mathbf{k}_1\in \mathbb{Z}^2\setminus \mathbf{0}}\ii k_{1x}\hat{\omega}_{\mathbf{k}_1}\e^{\ii \mathbf{k}_1\cdot \mathbf{x}}\right)\left(\sum_{\mathbf{k}_2\in \mathbb{Z}^2\setminus \mathbf{0}}\ii k_{2x}\hat{\omega}_{\mathbf{k}_2}\e^{\ii \mathbf{k}_2\cdot \mathbf{x}}\right) + \left(\sum_{\mathbf{k}_1\in \mathbb{Z}^2\setminus \mathbf{0}}\ii k_{1y}\hat{\omega}_{\mathbf{k}_1}\e^{\ii \mathbf{k}_1\cdot \mathbf{x}}\right)\left(\sum_{\mathbf{k}_2\in \mathbb{Z}^2\setminus \mathbf{0}}\ii k_{2y}\hat{\omega}_{\mathbf{k}_2}\e^{\ii \mathbf{k}_2\cdot \mathbf{x}}\right) \mathrm{d}\bfx \notag\\
+&= \frac{1}{2}\int_0^{2\pi} \sum_{\mathbf{k}_1, \mathbf{k}_2\in \mathbb{Z}^2\setminus \mathbf{0}} -(k_{1x}k_{2x} + k_{1y}k_{2y})\hat{\omega}_{\bfkn{1}}\hat{\omega}_{\bfkn{2}}\e^{\ii (\bfkn{1} + \bfkn{2}) \cdot \bfx}\mathrm{d}\bfx \notag\\
+&=  \frac{1}{2}\sum_{\mathbf{k}_1, \mathbf{k}_2\in \mathbb{Z}^2\setminus \mathbf{0}} -(k_{1x}k_{2x} + k_{1y}k_{2y})\hat{\omega}_{\bfkn{1}}\hat{\omega}_{\bfkn{2}}\int_0^{2\pi}\e^{\ii (\bfkn{1} + \bfkn{2}) \cdot \bfx}\mathrm{d}\bfx \notag\\
+&=  \frac{1}{2}\sum_{\mathbf{k}_1, \mathbf{k}_2\in \mathbb{Z}^2\setminus \mathbf{0}} -(k_{1x}k_{2x} + k_{1y}k_{2y})\hat{\omega}_{\bfkn{1}}\hat{\omega}_{\bfkn{2}} 4\pi^2 \delta_{\bfkn{1}, \bfkn{2}}\mathrm{d}\bfx \notag\\
+&=  2\pi^2 \sum_{\mathbf{k}_1, \in \mathbb{Z}^2\setminus \mathbf{0}} -(k_{1x}-k_{1x} + k_{1y}-k_{1y})\hat{\omega}_{\bfkn{1}}\hat{\omega}_{-\bfkn{1}} \mathrm{d}\bfx \notag\\
+&=  2\pi^2 \sum_{\mathbf{k}, \in \mathbb{Z}^2\setminus \mathbf{0}} |\bfk|^2 |\hat{\omega}_{\bfk}|^2 \mathrm{d}\bfx \notag\\
+&=  2\pi^2 \sum_{\mathbf{k}, \in \mathbb{Z}^2\setminus \mathbf{0}} |\bfk|^2 a_{\bfk}^2 \mathrm{d}\bfx \notag\\
 \label{eq:palinstrophy_fourier}
+\end{align}
+
+
+\subsection{Validate System Quantities}
+
+To validate the computation of the system quantities we will compute the various measures for the Taylor Green vortex initial condition which is given by
+
+\begin{align}
+u(x, y) &= \kappa\cos(\kappa x)\sin(\kappa y) \notag \\
+v(x, y) &= -\kappa\sin(\kappa x)\cos(\kappa y)
+\label{eq:taylor_green}
+\end{align}
+where $\kappa = 1$ 
+
+The total kinetic energy
+
+\begin{align}
+\mathcal{K}(\bfu) &= \frac{1}{2}\int_0^{2\pi}|\bfu |^2 \mathrm{d}\bfx \notag \\
+									&= \frac{1}{2}\int_0^{2\pi}\left(\cos^2(x)\sin^2(y) + \sin^2(x)\cos^2(y)\right) \mathrm{d}\bfx \notag \\
+									&= \frac{1}{2}\int_0^{2\pi}\cos^2(x)\mathrm{d}x\int_0^{2\pi}\sin^2(y)\mathrm{d}y + \frac{1}{2}\int_0^{2\pi}\sin^2(x)\mathrm{d}x\int_0^{2\pi}\cos^2(y)\mathrm{d}y \notag \\
+									&= \frac{1}{2}\int_0^{2\pi}\cos^2(x)\mathrm{d}x\int_0^{2\pi}\sin^2(y)\mathrm{d}y + \frac{1}{2}\int_0^{2\pi}\sin^2(x)\mathrm{d}x\int_0^{2\pi}\cos^2(y)\mathrm{d}y \notag \\
+									&= \frac{1}{2}\int_0^{2\pi}\frac{\cos(2x) + 1}{2}\mathrm{d}x\int_0^{2\pi}\frac{1 - \cos^2(2x)}{2}\mathrm{d}y + \ldots \notag \\
+									&= \frac{1}{2}\left[\frac{\frac{\sin(2x)}{2} + x}{2}\right]_0^{2\pi} \left[\frac{x - \frac{\sin(2x)}{2}}{2}\right]_0^{2\pi} + \ldots  \notag \\
+									&= \frac{1}{2}\pi^2 + \frac{1}{2}\pi^2 \notag \\
+									&= \pi^2.
+\end{align}
+
+The total enstrophy
+
+\begin{align}
+\mathcal{E}(\bfu) &= \frac{1}{2}\int_0^{2\pi} |\omega|^2\mathrm{d}\bfx \notag \\
+									&= \frac{1}{2}\int_0^{2\pi} \left|\pder{v}{x} - \pder{u}{y}\right|^2 \mathrm{d}\bfx \notag \\
+									&= \frac{1}{2}\int_0^{2\pi} |-2 \cos(x)\cos(y)|^2 \mathrm{d}\bfx \notag \\
+									&= 2\int_0^{2\pi} \cos^2(x)\cos^2(y) \mathrm{d}\bfx \notag \\
+									&= 2\int_0^{2\pi} \cos^2(x)\mathrm{d}x\int_0^{2\pi}\cos^2(y) \mathrm{d}y \notag \\
+									&= 2 \pi^2
+\end{align}
+
+The total palinstrophy
+
+\begin{align}
+\mathcal{P}(\bfu) &= \frac{1}{2}\int_0^{2\pi} |\grad{\omega}|^2 \mathrm{d}\bfx \notag \\
+									&= \frac{1}{2}\int_0^{2\pi} |\grad{-2\cos(x)\cos(y)}|^2 \mathrm{d}\bfx \notag \\
+									&= \frac{1}{2}\int_0^{2\pi} 4\sin^2(x)\cos^2(y) + 4\cos^2(x)\sin^2(y) \mathrm{d}\bfx \notag \\
+									&= 2\int_0^{2\pi} \sin^2(x)\mathrm{d}x\int_0^{2\pi}\cos^2(y)\mathrm{d}y + 2\int_0^{2\pi}\cos^2(x)\mathrm{d}x\int_0^{2\pi}\sin^2(y) \mathrm{d}y \notag \\
+									&= 2\pi^2 + 2\pi^2 \notag \\
+									&= 4\pi^2
 \end{align}
 
 \end{document}
