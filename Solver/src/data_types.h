@@ -110,7 +110,7 @@
 #define K0 6.0					// The peak wavenumber for the McWilliams decaying vortex turblence initial condition
 // System checking parameters
 #define MIN_STEP_SIZE 1e-10 	// The minimum allowed stepsize for the solver 
-#define MAX_ITERS 1e+6 			// The maximum iterations to perform
+#define MAX_ITERS 1e+12			// The maximum iterations to perform
 #define MAX_VORT_LIM 1e+100     // The maximum allowed vorticity
 // Dynamic Modes
 #define UPR_SBST_LIM 64         // The upper mode limit of the energy/enstrophy flux
