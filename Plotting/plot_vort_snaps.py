@@ -25,7 +25,7 @@ from numba import njit
 import pyfftw as fftw
 
 
-from functions import tc, SimData, ImportData, ImportSpectraData
+from functions import tc, sim_data, import_data, import_spectra_data
 
 
 # ------------------------------------
@@ -54,7 +54,7 @@ def plot_summary_snaps(i, w, w_hat, x, y, w_min, w_max, kx, ky, kx_max, tot_en, 
 
     ## Create Figure
     fig = plt.figure(figsize = (16, 8))
-    gs  = GridSpec(3, 2, hspace = 0.4, wspace = 0.4)
+    gs  = GridSpec(3, 2, hspace = 0.4, wspace = 0.3)
 
     ##-------------------------
     ## Plot vorticity   
@@ -80,15 +80,13 @@ def plot_summary_snaps(i, w, w_hat, x, y, w_min, w_max, kx, ky, kx_max, tot_en, 
     #-------------------------
     # Plot Energy Spectrum   
     #-------------------------
+    kindx = int(Nx / 3 + 1)
     ax2 = fig.add_subplot(gs[0, 1])
-    # engy_spec, engy_spec_sum = energy_spectrum(w_hat, kx, ky, Nx, Ny)
-    # krange = np.arange(0, engy_spec.shape[0])
-    # ax2.plot(engy_spec[1:kx_max] / engy_spec_sum)  # kx[1:kx_max],
     # kpower = (1 / (kx[11:61] ** 4))
     # ax2.plot(kx[11:61], kpower , linestyle = ':', linewidth = 0.5, color = 'black')
-    ax2.plot(enrg_spec)
-    ax2.set_xlabel(r"$k$")
-    ax2.set_ylabel(r"$E(k) / \sum E(k)$")
+    ax2.plot(enrg_spec[:kindx] / np.sum(enrg_spec[:kindx]))
+    ax2.set_xlabel(r"$|k|$")
+    ax2.set_ylabel(r"$\mathcal{K}(|k|) / \sum \mathcal{K}(|k|)$")
     ax2.set_title(r"Energy Spectrum")
     # ax2.set_ylim(1e-8, 1)
     ax2.set_yscale('log')
@@ -98,15 +96,12 @@ def plot_summary_snaps(i, w, w_hat, x, y, w_min, w_max, kx, ky, kx_max, tot_en, 
     #--------------------------
     # Plot Enstrophy Spectrum   
     #--------------------------
-    ax3 = fig.add_subplot(gs[1, 1])
-    # enstr_spec, enstr_spec_sum = enstrophy_spectrum(w_hat, Nx, Ny)
-    # krange = np.arange(0, enstr_spec.shape[0])
-    # ax3.plot(enstr_spec[1:kx_max] / enstr_spec_sum)  # kx[1:kx_max], 
+    ax3 = fig.add_subplot(gs[1, 1]) 
     # kpower = (1 / (np.power(kx[11:61], 5 / 3)))
     # ax3.plot(kx[11:61], kpower, linestyle = ':', linewidth = 0.5, color = 'black')
-    ax3.plot(enst_spec)
-    ax3.set_xlabel(r"$k$")
-    ax3.set_ylabel(r"$S(k) / \sum S(k)$")
+    ax3.plot(enst_spec[:kindx] / np.sum(enst_spec[:kindx]))
+    ax3.set_xlabel(r"$|k|$")
+    ax3.set_ylabel(r"$\mathcal{E}(|k|) / \sum \mathcal{E}(|k|)$")
     ax3.set_title(r"Enstrophy Spectrum")
     # ax3.set_ylim(1e-5, 1)
     ax3.set_yscale('log')
@@ -223,7 +218,7 @@ def plot_phase_snaps(i, w, w_h, x, y, time, Nx, Ny, k2Inv):
 
 
     ## Save figure
-    plt.savefig(output_dir + "Phase_SNAP_{:05d}.png".format(i), bbox_inches='tight') 
+    plt.savefig(phases_output_dir + "Phase_SNAP_{:05d}.png".format(i), bbox_inches='tight') 
     plt.close()
 
 
@@ -249,59 +244,6 @@ def ZeroCentredField(w_h):
     return np.concatenate((tmp1, tmp2), axis = 0)
 
 
-@njit
-def energy_spectrum(w_h, kx, ky, Nx, Ny):
-
-    ## Spectrum size
-    spec_size = Nx / 2
-
-    ## Velocity arrays
-    energy_spec = np.zeros(spec_size)
-
-    ## Find u_hat
-    for i in range(w_h.shape[0]):
-        for j in range(w_h.shape[1]):
-
-            if kx[i] == 0.0 & ky[i] == 0.0:
-                u_hat = np.complex(0.0 + 0.0)
-                v_hat = np.complex(0.0 + 0.0)
-            else:
-                ## Compute prefactor
-                k_sqr = np.complex(0.0, 1.0) / (kx[i] ** 2 + ky[j] ** 2)
-
-                ## Compute Fourier velocities
-                u_hat = ky[j] * k_sqr * w_h[i, j]
-                v_hat = -kx[i] * k_sqr * w_h[i, j]
-
-            ## Compute the mode
-            spec_indx = int(np.sqrt(kx[i] * kx[i] + ky[j] * ky[j]))
-
-            ## Update spectrum sum for current mode
-            energy_spec[spec_indx] += np.absolute(u_hat * np.conjugate(u_hat)) + np.absolute(v_hat * np.conjugate(v_hat))
-
-
-    return energy_spec, np.sum(energy_spec)
-
-@njit
-def enstrophy_spectrum(w_h, Nx, Ny):
-
-      ## Spectrum size
-    spec_size = int(np.sqrt((Nx / 2) * (Nx / 2) + (Ny / 2) * (Ny / 2)) + 1)
-
-    ## Velocity arrays
-    enstrophy_spec = np.zeros(spec_size)
-
-    # Find u_hat
-    for i in range(w_h.shape[0]):
-        for j in range(w_h.shape[1]):
-            ## Compute the mode
-            spec_indx = int(np.sqrt(kx[i] * kx[i] + ky[j] * ky[j]))
-            
-            ## Update the spectrum sum for the current mode
-            enstrophy_spec[spec_indx] = np.absolute(w_h[i, j] * np.conjugate(w_h[i, j]))
-
-
-    return enstrophy_spec, np.sum(enstrophy_spec)
 
 def transform_w(w):
 
@@ -356,22 +298,27 @@ if __name__ == '__main__':
             print("Making folder:" + tc.C + " SNAPS/" + tc.Rst)
             os.mkdir(output_dir)
         print("Output Folder: "+ tc.C + "{}".format(output_dir) + tc.Rst)
+        phases_output_dir = input_dir + "PHASE_SNAPS/"
+        if os.path.isdir(phases_output_dir) != True:
+            print("Making folder:" + tc.C + " PHASE_SNAPS/" + tc.Rst)
+            os.mkdir(phases_output_dir)
+        print("Phases Output Folder: "+ tc.C + "{}".format(phases_output_dir) + tc.Rst)
 
 
     # ------------------------------------
     ## --------  Read In data
     # ------------------------------------
     ## Read in simulation parameters
-    sys_params = SimData(input_dir, method)
+    sys_params = sim_data(input_dir, method)
 
     ## Read in solver data
-    run_data = ImportData(input_dir, sys_params, method)
+    run_data = import_data(input_dir, sys_params, method)
 
     ## Read in spectra data
     if method == "file":
-        spectra_data = ImportSpectraData(spectra_dir, sys_params, method)
+        spectra_data = import_spectra_data(spectra_dir, sys_params, method)
     else:
-        spectra_data = ImportSpectraData(input_dir, sys_params, method)
+        spectra_data = import_spectra_data(input_dir, sys_params, method)
 
     # -----------------------
     ## ------ Plot Snaps
@@ -380,10 +327,10 @@ if __name__ == '__main__':
     start = TIME.perf_counter()
     print("\n" + tc.Y + "Printing Snaps..." + tc.Rst)
     
-    # i = 0
-    # plot_summary_snaps(i, run_data.w[i, :, :], run_data.w_hat[i, :, :], run_data.x, run_data.y, np.amin(run_data.w), np.amax(run_data.w), run_data.kx, run_data.ky, int(sys_params.Nx / 3), run_data.tot_enrg[:i], run_data.tot_enst[:i], run_data.tot_palin[:i], spectra_data.enrg_spectrum[i, :], spectra_data.enst_spectrum[i, :], run_data.time, sys_params.Nx, sys_params.Ny)
-    # i = 1000
-    # plot_summary_snaps(i, run_data.w[i, :, :], run_data.w_hat[i, :, :], run_data.x, run_data.y, np.amin(run_data.w), np.amax(run_data.w), run_data.kx, run_data.ky, int(sys_params.Nx / 3), run_data.tot_enrg[:i], run_data.tot_enst[:i], run_data.tot_palin[:i], spectra_data.enrg_spectrum[i, :], spectra_data.enst_spectrum[i, :], run_data.time, sys_params.Nx, sys_params.Ny)
+    i = 1
+    plot_summary_snaps(i, run_data.w[i, :, :], run_data.w_hat[i, :, :], run_data.x, run_data.y, np.amin(run_data.w), np.amax(run_data.w), run_data.kx, run_data.ky, int(sys_params.Nx / 3), run_data.tot_enrg[:i], run_data.tot_enst[:i], run_data.tot_palin[:i], spectra_data.enrg_spectrum[i, :], spectra_data.enst_spectrum[i, :], run_data.time, sys_params.Nx, sys_params.Ny)
+    i = sys_params.ndata - 1
+    plot_summary_snaps(i, run_data.w[i, :, :], run_data.w_hat[i, :, :], run_data.x, run_data.y, np.amin(run_data.w), np.amax(run_data.w), run_data.kx, run_data.ky, int(sys_params.Nx / 3), run_data.tot_enrg[:i], run_data.tot_enst[:i], run_data.tot_palin[:i], spectra_data.enrg_spectrum[i, :], spectra_data.enst_spectrum[i, :], run_data.time, sys_params.Nx, sys_params.Ny)
     # i = num_saves - 1
     # plot_summary_snaps(i, run_data.w[i, :, :], run_data.w_hat[i, :, :], run_data.x, run_data.y, np.amin(run_data.w), np.amax(run_data.w), run_data.kx, run_data.ky, int(sys_params.Nx / 3), run_data.tot_enrg[:i], run_data.tot_enst[:i], run_data.tot_palin[:i], spectra_data.enrg_spectrum[i, :], spectra_data.enst_spectrum[i, :], run_data.time, sys_params.Nx, sys_params.Ny)
 
@@ -393,8 +340,8 @@ if __name__ == '__main__':
 
 
 
-    for i in range(sys_params.ndata):
-        plot_phase_snaps(i, run_data.w[i, :, :], run_data.w_hat[i, :, :], run_data.x, run_data.y, run_data.time, sys_params.Nx, sys_params.Nx, run_data.k2Inv)
+    # for i in range(sys_params.ndata):
+    #     plot_phase_snaps(i, run_data.w[i, :, :], run_data.w_hat[i, :, :], run_data.x, run_data.y, run_data.time, sys_params.Nx, sys_params.Nx, run_data.k2Inv)
 
     # i = 6
     # plot_phase_snaps(i, run_data.w[i, :, :], run_data.w_hat[i, :, :], run_data.x, run_data.y, run_data.time, sys_params.Nx, sys_params.Nx, run_data.k2Inv)

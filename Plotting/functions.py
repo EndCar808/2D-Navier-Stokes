@@ -7,7 +7,7 @@ import numpy as np
 import h5py
 import sys
 import os
-
+from numba import njit
 
 
 #################################
@@ -24,10 +24,10 @@ class tc:
     Bold = '\033[1m'
     Underline = '\033[4m'
 
-###############################
-##       FUNCTION DEFS       ##
-###############################
-def SimData(input_dir, method = "default"):
+#####################################
+##       DATA FILE FUNCTIONS       ##
+#####################################
+def sim_data(input_dir, method = "default"):
 
     """
     Reads in the system parameters from the simulation provided in SimulationDetails.txt.
@@ -136,7 +136,7 @@ def SimData(input_dir, method = "default"):
 
 
 
-def ImportData(input_file, sim_data, method = "default"):
+def import_data(input_file, sim_data, method = "default"):
 
     """
     Reads in run data from main HDF5 file.
@@ -248,7 +248,7 @@ def ImportData(input_file, sim_data, method = "default"):
     return data
 
 
-def ImportSpectraData(input_file, sim_data, method = "default"):
+def import_spectra_data(input_file, sim_data, method = "default"):
 
     """
     Reads in run data from main HDF5 file.
@@ -308,3 +308,210 @@ def ImportSpectraData(input_file, sim_data, method = "default"):
                 continue
 
     return data
+
+
+
+
+
+###################################
+##       SPECTRA FUNCTIONS       ##
+###################################
+@njit
+def energy_spectrum(w_h, kx, ky, Nx, Ny):
+
+    """
+    Computes the energy spectrum from the Fourier vorticity
+
+    w_h : 2d complex array
+          - Contains the Fourier vorticity
+    kx  : int array 
+          - The wavenumbers in the first dimension
+    ky  : int array 
+          - The wavenumbers in the second dimension
+    Nx  : int
+          - Number of collocations in the first dimension 
+    Ny  : int
+          - Number of collocations in the second dimension
+    """
+
+    ## Spectrum size
+    spec_size = int(np.sqrt((Nx / 2) * (Nx / 2) + (Ny / 2) * (Ny / 2)) + 1)
+
+    ## Velocity arrays
+    energy_spec = np.zeros(spec_size)
+
+    ## Find u_hat
+    for i in range(w_h.shape[0]):
+        for j in range(w_h.shape[1]):
+
+            if kx[i] == 0.0 & ky[i] == 0.0:
+                u_hat = np.complex(0.0 + 0.0)
+                v_hat = np.complex(0.0 + 0.0)
+            else:
+                ## Compute prefactor
+                k_sqr = np.complex(0.0, 1.0) / (kx[i] ** 2 + ky[j] ** 2)
+
+                ## Compute Fourier velocities
+                u_hat = ky[j] * k_sqr * w_h[i, j]
+                v_hat = -kx[i] * k_sqr * w_h[i, j]
+
+            ## Compute the mode
+            spec_indx = int(np.sqrt(kx[i] * kx[i] + ky[j] * ky[j]))
+
+            if j == 0 or j == w_h.shape[0] - 1:
+                ## Update spectrum sum for current mode
+                energy_spec[spec_indx] += np.absolute(u_hat * np.conjugate(u_hat)) + np.absolute(v_hat * np.conjugate(v_hat))
+            else: 
+                ## Update spectrum sum for current mode
+                energy_spec[spec_indx] += 2. * np.absolute(u_hat * np.conjugate(u_hat)) + np.absolute(v_hat * np.conjugate(v_hat))
+
+    return 4. * np.pi * np.pi * energy_spec * 0.5 / (Nx * Ny ** 2), np.sum(4. * np.pi * np.pi * energy_spec * 0.5 / (Nx * Ny ** 2))
+
+@njit
+def enstrophy_spectrum(w_h, kx, ky, Nx, Ny):
+
+    """
+    Computes the enstrophy spectrum from the Fourier vorticity
+
+    w_h : 2d complex array
+          - Contains the Fourier vorticity
+    kx  : int array 
+          - The wavenumbers in the first dimension
+    ky  : int array 
+          - The wavenumbers in the second dimension
+    Nx  : int
+          - Number of collocations in the first dimension 
+    Ny  : int
+          - Number of collocations in the second dimension
+    """
+
+    ## Spectrum size
+    spec_size = int(np.sqrt((Nx / 2) * (Nx / 2) + (Ny / 2) * (Ny / 2)) + 1)
+
+    ## Velocity arrays
+    enstrophy_spec = np.zeros(spec_size)
+
+    for i in range(w_h.shape[0]):
+        for j in range(w_h.shape[1]):
+
+            ## Compute the indx
+            spec_indx = int(np.sqrt(kx[i] * kx[i] + ky[j] * ky[j]))
+            
+            if j == 0 or j == w_h.shape[0] - 1:
+                ## Update the spectrum sum for the current mode
+                enstrophy_spec[spec_indx] += np.absolute(w_h[i, j] * np.conjugate(w_h[i, j]))
+            else:
+                ## Update the spectrum sum for the current mode
+                enstrophy_spec[spec_indx] += 2. * np.absolute(w_h[i, j] * np.conjugate(w_h[i, j]))
+
+    return 4. * np.pi * np.pi * enstrophy_spec * 0.5 / (Nx * Ny)**2, np.sum(4. * np.pi * np.pi * enstrophy_spec * 0.5 / (Nx * Ny)**2)
+
+
+
+#####################################
+##       SYSTEM MEASUREABLES       ##
+#####################################
+@njit
+def total_energy(w_h, kx, ky, Nx, Ny):
+
+    """
+    Computes the total energy from the Fourier vorticity
+
+    w_h : 2d complex array
+          - Contains the Fourier vorticity
+    kx  : int array 
+          - The wavenumbers in the first dimension
+    ky  : int array 
+          - The wavenumbers in the second dimension
+    Nx  : int
+          - Number of collocations in the first dimension 
+    Ny  : int
+          - Number of collocations in the second dimension
+    """
+
+    ## The running sum var for the total energy
+    tot_enrg = 0.
+
+    for i in range(w_h.shape[0]):
+        for j in range(w_h.shape[1]):
+
+            ## Get |k|^2
+            k_sqr = kx[i] ** 2 + ky[j] ** 2
+
+            ## Update running sum
+            if k_sqr != 0:
+                if j == 0 or j == w_h.shape[1] - 1:
+                    tot_enrg += np.absolute(w_h[i, j] * np.conjugate(w_h[i, j])) / k_sqr
+                else:
+                    tot_enrg += 2. * np.absolute(w_h[i, j] * np.conjugate(w_h[i, j])) / k_sqr
+
+    return 4. * np.pi * np.pi * tot_enrg * (0.5 / (Nx * Ny)**2)
+
+@njit
+def total_enstrophy(w_h, Nx, Ny):
+
+    """
+    Computes the total enstrophy from the Fourier vorticity
+
+    w_h : 2d complex array
+          - Contains the Fourier vorticity
+    Nx  : int
+          - Number of collocations in the first dimension 
+    Ny  : int
+          - Number of collocations in the second dimension
+    """
+
+    ## The running sum var for the total energy
+    tot_enst = 0.
+
+    for i in range(w_h.shape[0]):
+        for j in range(w_h.shape[1]):
+
+            ## Update running sum
+            if k_sqr != 0:
+                if j == 0 or j == w_h.shape[1] - 1:
+                    tot_enst += np.absolute(w_h[i, j] * np.conjugate(w_h[i, j])) 
+                else:
+                    tot_enst += 2. * np.absolute(w_h[i, j] * np.conjugate(w_h[i, j]))
+
+    return 4. * np.pi * np.pi * tot_enst * (0.5 / (Nx * Ny)**2)
+
+
+@njit
+def total_palinstrophy(w_h, kx, ky, Nx, Ny):
+
+    """
+    Computes the total palinstrophy from the Fourier vorticity
+
+    w_h : 2d complex array
+          - Contains the Fourier vorticity
+    kx  : int array 
+          - The wavenumbers in the first dimension
+    ky  : int array 
+          - The wavenumbers in the second dimension
+    Nx  : int
+          - Number of collocations in the first dimension 
+    Ny  : int
+          - Number of collocations in the second dimension
+    """
+
+    ## The running sum var for the total energy
+    tot_palin = 0.
+
+    for i in range(w_h.shape[0]):
+        for j in range(w_h.shape[1]):
+
+            ## Get |k|^2
+            k_sqr = kx[i] ** 2 + ky[j] ** 2
+
+            ## Update running sum
+            if k_sqr != 0:
+                if j == 0 or j == w_h.shape[1] - 1:
+                    tot_palin += np.absolute(w_h[i, j] * np.conjugate(w_h[i, j])) * k_sqr
+                else:
+                    tot_palin += 2. * np.absolute(w_h[i, j] * np.conjugate(w_h[i, j])) * k_sqr
+
+    return 4. * np.pi * np.pi * tot_palin * (0.5 / (Nx * Ny)**2)
+
+
+
