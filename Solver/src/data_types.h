@@ -107,6 +107,8 @@
 #define KAPPA 1.0 				// The wavenumber of the Taylor Green initial condition 
 #define SIGMA 15.0 / M_PI 		// The sigma term for the Double Shear Layer initial condition
 #define DELTA 0.005	 			// The delta term for the Double Shear Layer initial condition
+#define BETA 1.0                // The aspect ratio for the Gaussian blob initial condition
+#define S 6.0                   // The scale parameter for the Gaussian Blob initial condition 
 #define K0 6.0					// The peak wavenumber for the McWilliams decaying vortex turblence initial condition
 // System checking parameters
 #define MIN_STEP_SIZE 1e-10 	// The minimum allowed stepsize for the solver 
@@ -147,7 +149,8 @@ typedef struct system_vars_struct {
 	double dy;							// Collocation point spacing in the y direction
 	double w_max_init;					// Max vorticity of the initial condition
 	int n_spect;                        // Size of the spectra arrays
-	int print_every;                     // Records how many iterations are performed before printing to file
+	int force_k; 						// The forcing wavenumber 
+	int print_every;                    // Records how many iterations are performed before printing to file
 	double EKMN_ALPHA; 					// The value of the Ekman drag coefficient
 	double CFL_CONST;					// The CFL constant for the adaptive step
 	double NU;							// The viscosity

@@ -753,16 +753,19 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* u, 
  		}
  	}
  	// -------------------------------------
- 	// Apply Dealiasing to Nonlinear Term
+ 	// Apply Dealiasing & Forcing
  	// -------------------------------------
- 	// Apply dealiasing and DFT normalization to the new nonlinear term
+ 	// Apply dealiasing 
  	ApplyDealiasing(dw_hat_dt, 1, sys_vars->N);
+
+ 	// Forcing 
+ 	ApplyForcing(dw_hat_dt, sys_vars->N);
 
  	// Free memory
  	free(nonlinterm);
 }
 /**
- * Function to apply the selected dealiasing filter to the input array. Can be Fourier vorticity or 
+ * Function to apply the selected dealiasing filter to the input array. Can be Fourier vorticity or velocity
  * @param array    	The array containing the Fourier modes to dealiased
  * @param array_dim The extra array dimension -> will be 1 for scalar or 2 for vector
  * @param N        	Array containing the dimensions of the system
@@ -780,7 +783,7 @@ void ApplyDealiasing(fftw_complex* array, int array_dim, const long int* N) {
 	#endif
 
 	// --------------------------------------------
-	// Apply Appropriate Filter and Normalization
+	// Apply Appropriate Filter 
 	// --------------------------------------------
 	for (int i = 0; i < local_Nx; ++i) {
 		tmp = i * Ny_Fourier;
@@ -812,6 +815,42 @@ void ApplyDealiasing(fftw_complex* array, int array_dim, const long int* N) {
 		}
 	}
 }	
+/**
+ * Function that applies forcing to the Fourier vorticity
+ * @param w_hat The Fourier vorticity
+ * @param N     Dimensions of the system
+ */
+void ApplyForcing(fftw_complex* w_hat, const long int* N) {
+
+	// Initialize variables
+	int tmp, indx;
+	ptrdiff_t local_Nx        = sys_vars->local_Nx;
+	const long int Nx         = N[0];
+	const long int Ny         = N[1];
+	const long int Ny_Fourier = N[1] / 2 + 1;
+
+	// --------------------------------------------
+	// Apply Appropriate Forcing
+	// --------------------------------------------
+	if(!(strcmp(sys_vars->forcing, "ZERO"))) {
+		// Apply Zero forcing -> specified modes are killed/set to 0
+		for (int i = 0; i < local_Nx; ++i) {
+			tmp = i * Ny_Fourier;
+			for (int j = 0; j < Ny_Fourier; ++j) {
+				indx = tmp + j;
+				
+				// Kill the first few modes
+				if ((abs(run_data->k[0][i]) <= sys_vars->force_k) && (abs(run_data->k[1][j]) <= sys_vars->force_k)) {
+					w_hat[indx] = 0.0 + 0.0 * I;
+				}
+			}
+		}
+	}
+	else if(!(strcmp(sys_vars->forcing, "KOLM"))) {
+		// Apply Kolmogorov forcing
+
+	}
+}
 /**
  * Function to compute the initial condition for the integration
  * @param w_hat Fourier space vorticity
@@ -908,13 +947,11 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 			for (int j = 0; j < Ny; ++j) {
 				indx = (tmp + j);
 
-				// Compute the vorticity of the double shear layer
-				if (run_data->x[1][j] <= M_PI) {
-					run_data->w[indx] = DELTA * cos(run_data->x[1][j]) - SIGMA / pow(cosh(SIGMA * (run_data->x[0][i] - 0.5 * M_PI)), 2.0); 
-				}
-				else {
-					run_data->w[indx] = DELTA * cos(run_data->x[1][j]) + SIGMA / pow(cosh(SIGMA * (1.5 * M_PI - run_data->x[0][i])), 2.0); 
-				}
+				// Top Layer
+				run_data->w[indx] = DELTA * cos(run_data->x[1][j]) - SIGMA / pow(cosh(SIGMA * (run_data->x[0][i] - 0.5 * M_PI)), 2.0); 
+
+				// Bottom Layer
+				run_data->w[indx] += DELTA * cos(run_data->x[1][j]) + SIGMA / pow(cosh(SIGMA * (1.5 * M_PI - run_data->x[0][i])), 2.0); 
 			}
 		}
 
@@ -1032,7 +1069,7 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 				indx = tmp + j;
 
 				// Fill vorticity
-				run_data->w[indx] = exp((pow(run_data->kx[i] - M_PI, 2.0) + BETA * pow(run_data->ky[j] - M_PI, 2.0)) / pow(2.0 * M_PI / S, 2.0))
+				run_data->w[indx] = exp((pow(run_data->k[0][i] - M_PI, 2.0) + BETA * pow(run_data->k[1][j] - M_PI, 2.0)) / pow(2.0 * M_PI / S, 2.0));
 			}
 		}		
 
@@ -1164,6 +1201,11 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 	if (strcmp(sys_vars->u0, "TESTING") || strcmp(sys_vars->u0, "TG_VEL")) {
 		ApplyDealiasing(w_hat, 1, N);
 	}
+
+	// -------------------------------------------------
+	// Initialize the Forcing
+	// -------------------------------------------------
+	ApplyForcing(w_hat, N);
 }
 /**
  * Function to initialize the Real space collocation points arrays and Fourier wavenumber arrays

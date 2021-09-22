@@ -47,14 +47,14 @@ my_m    = mpl.colors.LinearSegmentedColormap.from_list('my_map', colours)       
 ###############################
 ##       FUNCTION DEFS       ##
 ###############################
-def plot_summary_snaps(i, w, w_hat, x, y, w_min, w_max, kx, ky, kx_max, tot_en, tot_ens, tot_pal, enrg_spec, enst_spec, time, Nx, Ny):
+def plot_summary_snaps(i, w, w_hat, x, y, w_min, w_max, kx, ky, kx_max, tot_en, tot_ens, tot_pal, enrg_spec, enst_spec, enrg_diss, enst_diss, enrg_flux_sb, enrg_diss_sb, enst_flux_sb, enst_diss_sb, time, Nx, Ny):
     
     ## Print Update
     print("SNAP: {}".format(i))
 
     ## Create Figure
     fig = plt.figure(figsize = (16, 8))
-    gs  = GridSpec(3, 2, hspace = 0.4, wspace = 0.3)
+    gs  = GridSpec(4, 2, hspace = 0.4, wspace = 0.3)
 
     ##-------------------------
     ## Plot vorticity   
@@ -111,16 +111,40 @@ def plot_summary_snaps(i, w, w_hat, x, y, w_min, w_max, kx, ky, kx_max, tot_en, 
 
     #--------------------------
     # Plot System Measures   
-    #--------------------------
+    #-------------------------- 
     ax4 = fig.add_subplot(gs[2, 0:])
     ax4.plot(time[:i], tot_en)
     ax4.plot(time[:i], tot_ens)
     ax4.plot(time[:i], tot_pal)
+    ax4.plot(time[:i], enrg_diss)
+    ax4.plot(time[:i], enst_diss)
     ax4.set_xlabel(r"$t$")
     ax4.set_xlim(time[0], time[-1])
     ax4.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
     ax4.set_yscale("log")
-    ax4.legend([r"Total Energy", r"Total Enstrophy", r"Total Palinstrophy"])
+    ax4.legend([r"Total Energy", r"Total Enstrophy", r"Total Palinstrophy", "Energy Diss", "Enstrophy Diss"])
+
+    #--------------------------
+    # Plot Energy Flux 
+    #-------------------------- 
+    ax5 = fig.add_subplot(gs[3, 0])
+    ax5.plot(time[:i], enrg_flux_sb)
+    ax5.plot(time[:i], enrg_diss_sb)
+    ax5.set_xlabel(r"$t$")
+    ax5.set_xlim(time[0], time[-1])
+    ax5.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+    ax5.legend([r"Energy Flux", r"Energy Diss"])
+
+    #--------------------------
+    # Plot Energy Flux 
+    #-------------------------- 
+    ax6 = fig.add_subplot(gs[3, 1])
+    ax6.plot(time[:i], enst_flux_sb)
+    ax6.plot(time[:i], enst_diss_sb)
+    ax6.set_xlabel(r"$t$")
+    ax6.set_xlim(time[0], time[-1])
+    ax6.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+    ax6.legend([r"Enstrophy Flux", r"Enstrophy Diss"])
 
     ## Save figure
     plt.savefig(output_dir + "SNAP_{:05d}.png".format(i), bbox_inches='tight') 
@@ -327,21 +351,21 @@ if __name__ == '__main__':
     start = TIME.perf_counter()
     print("\n" + tc.Y + "Printing Snaps..." + tc.Rst)
     
-    i = 1
-    plot_summary_snaps(i, run_data.w[i, :, :], run_data.w_hat[i, :, :], run_data.x, run_data.y, np.amin(run_data.w), np.amax(run_data.w), run_data.kx, run_data.ky, int(sys_params.Nx / 3), run_data.tot_enrg[:i], run_data.tot_enst[:i], run_data.tot_palin[:i], spectra_data.enrg_spectrum[i, :], spectra_data.enst_spectrum[i, :], run_data.time, sys_params.Nx, sys_params.Ny)
-    i = sys_params.ndata - 1
-    plot_summary_snaps(i, run_data.w[i, :, :], run_data.w_hat[i, :, :], run_data.x, run_data.y, np.amin(run_data.w), np.amax(run_data.w), run_data.kx, run_data.ky, int(sys_params.Nx / 3), run_data.tot_enrg[:i], run_data.tot_enst[:i], run_data.tot_palin[:i], spectra_data.enrg_spectrum[i, :], spectra_data.enst_spectrum[i, :], run_data.time, sys_params.Nx, sys_params.Ny)
+    # i = 1
+    # plot_summary_snaps(i, run_data.w[i, :, :], run_data.w_hat[i, :, :], run_data.x, run_data.y, np.amin(run_data.w), np.amax(run_data.w), run_data.kx, run_data.ky, int(sys_params.Nx / 3), run_data.tot_enrg[:i], run_data.tot_enst[:i], run_data.tot_palin[:i], spectra_data.enrg_spectrum[i, :], spectra_data.enst_spectrum[i, :], run_data.enrg_diss[:i], run_data.enst_diss[:i], run_data.enrg_flux_sbst[:i], run_data.enrg_diss_sbst[:i], run_data.enst_flux_sbst[:i], run_data.enst_diss_sbst[:i], run_data.time, sys_params.Nx, sys_params.Ny)
+    # i = sys_params.ndata - 1
+    # plot_summary_snaps(i, run_data.w[i, :, :], run_data.w_hat[i, :, :], run_data.x, run_data.y, np.amin(run_data.w), np.amax(run_data.w), run_data.kx, run_data.ky, int(sys_params.Nx / 3), run_data.tot_enrg[:i], run_data.tot_enst[:i], run_data.tot_palin[:i], spectra_data.enrg_spectrum[i, :], spectra_data.enst_spectrum[i, :], run_data.enrg_diss[:i], run_data.enst_diss[:i], run_data.enrg_flux_sbst[:i], run_data.enrg_diss_sbst[:i], run_data.enst_flux_sbst[:i], run_data.enst_diss_sbst[:i], run_data.time, sys_params.Nx, sys_params.Ny)
     # i = num_saves - 1
-    # plot_summary_snaps(i, run_data.w[i, :, :], run_data.w_hat[i, :, :], run_data.x, run_data.y, np.amin(run_data.w), np.amax(run_data.w), run_data.kx, run_data.ky, int(sys_params.Nx / 3), run_data.tot_enrg[:i], run_data.tot_enst[:i], run_data.tot_palin[:i], spectra_data.enrg_spectrum[i, :], spectra_data.enst_spectrum[i, :], run_data.time, sys_params.Nx, sys_params.Ny)
+    # plot_summary_snaps(i, run_data.w[i, :, :], run_data.w_hat[i, :, :], run_data.x, run_data.y, np.amin(run_data.w), np.amax(run_data.w), run_data.kx, run_data.ky, int(sys_params.Nx / 3), run_data.tot_enrg[:i], run_data.tot_enst[:i], run_data.tot_palin[:i], spectra_data.enrg_spectrum[i, :], spectra_data.enst_spectrum[i, :], run_data.enrg_diss[:i], run_data.enst_diss[:i], run_data.enrg_flux_sbst[:i], run_data.enrg_diss_sbst[:i], run_data.enst_flux_sbst[:i], run_data.enst_diss_sbst[:i], run_data.time, sys_params.Nx, sys_params.Ny)
 
-    # for i in range(sys_params.ndata):
-    #     plot_summary_snaps(i, run_data.w[i, :, :], run_data.w_hat[i, :, :], run_data.x, run_data.y, np.amin(run_data.w), np.amax(run_data.w), run_data.kx, run_data.ky, int(sys_params.Nx / 3), run_data.tot_enrg[:i], run_data.tot_enst[:i], run_data.tot_palin[:i], spectra_data.enrg_spectrum[i, :], spectra_data.enst_spectrum[i, :], run_data.time, sys_params.Nx, sys_params.Ny)
-
-
+    for i in range(sys_params.ndata):
+        plot_summary_snaps(i, run_data.w[i, :, :], run_data.w_hat[i, :, :], run_data.x, run_data.y, np.amin(run_data.w), np.amax(run_data.w), run_data.kx, run_data.ky, int(sys_params.Nx / 3), run_data.tot_enrg[:i], run_data.tot_enst[:i], run_data.tot_palin[:i], spectra_data.enrg_spectrum[i, :], spectra_data.enst_spectrum[i, :], run_data.enrg_diss[:i], run_data.enst_diss[:i], run_data.enrg_flux_sbst[:i], run_data.enrg_diss_sbst[:i], run_data.enst_flux_sbst[:i], run_data.enst_diss_sbst[:i], run_data.time, sys_params.Nx, sys_params.Ny)
 
 
-    # for i in range(sys_params.ndata):
-    #     plot_phase_snaps(i, run_data.w[i, :, :], run_data.w_hat[i, :, :], run_data.x, run_data.y, run_data.time, sys_params.Nx, sys_params.Nx, run_data.k2Inv)
+
+
+    for i in range(sys_params.ndata):
+        plot_phase_snaps(i, run_data.w[i, :, :], run_data.w_hat[i, :, :], run_data.x, run_data.y, run_data.time, sys_params.Nx, sys_params.Nx, run_data.k2Inv)
 
     # i = 6
     # plot_phase_snaps(i, run_data.w[i, :, :], run_data.w_hat[i, :, :], run_data.x, run_data.y, run_data.time, sys_params.Nx, sys_params.Nx, run_data.k2Inv)
@@ -352,7 +376,7 @@ if __name__ == '__main__':
     # proc_lim = 1
 
     # ## Create tasks for the process pool
-    # groups_args = [(mprocs.Process(target = plot_summary_snaps, args = (i, run_data.w[i, :, :], run_data.w_hat[i, :, :], run_data.x, run_data.y, np.amin(run_data.w), np.amax(run_data.w), run_data.kx, run_data.ky, int(sys_params.Nx / 3), run_data.tot_enrg[:i], run_data.tot_enst[:i], run_data.tot_palin[:i], spectra_data.enrg_spectrum[i, :], spectra_data.enst_spectrum[i, :], run_data.time, sys_params.Nx, sys_params.Ny)) for i in range(run_data.w.shape[0]))] * proc_lim
+    # groups_args = [(mprocs.Process(target = plot_summary_snaps, args = (i, run_data.w[i, :, :], run_data.w_hat[i, :, :], run_data.x, run_data.y, np.amin(run_data.w), np.amax(run_data.w), run_data.kx, run_data.ky, int(sys_params.Nx / 3), run_data.tot_enrg[:i], run_data.tot_enst[:i], run_data.tot_palin[:i], spectra_data.enrg_spectrum[i, :], spectra_data.enst_spectrum[i, :], run_data.enrg_diss[:i], run_data.enst_diss[:i], run_data.enrg_flux_sbst[:i], run_data.enrg_diss_sbst[:i], run_data.enst_flux_sbst[:i], run_data.enst_diss_sbst[:i], run_data.time, sys_params.Nx, sys_params.Ny)) for i in range(run_data.w.shape[0]))] * proc_lim
 
     # ## Loop of grouped iterable
     # for procs in zip_longest(*groups_args): 

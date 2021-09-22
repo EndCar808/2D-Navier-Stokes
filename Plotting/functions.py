@@ -231,14 +231,14 @@ def import_data(input_file, sim_data, method = "default"):
             data.enrg_diss = file['EnergyDissipation'][:]
         if 'EnstrophyDissipation' in list(file.keys()):
             data.enst_diss = file['EnstrophyDissipation'][:]
-        if 'EnergyDissSubst' in list(file.keys()):
-            data.enrg_diss_sbst = file['EnergyDissSubst'][:]
-        if 'EnstrophyDissSubst' in list(file.keys()):
-            data.enst_diss_sbst = file['EnstrophyDissSubst'][:]
-        if 'EnergyFluxSubst' in list(file.keys()):
-            data.enrg_flux_sbst = file['EnergyFluxSubst'][:]
-        if 'EnstrophyFluxSubst' in list(file.keys()):
-            data.enst_flux_sbst = file['EnstrophyFluxSubst'][:]
+        if 'EnergyDissSubset' in list(file.keys()):
+            data.enrg_diss_sbst = file['EnergyDissSubset'][:]
+        if 'EnstrophyDissSubset' in list(file.keys()):
+            data.enst_diss_sbst = file['EnstrophyDissSubset'][:]
+        if 'EnergyFluxSubset' in list(file.keys()):
+            data.enrg_flux_sbst = file['EnergyFluxSubset'][:]
+        if 'EnstrophyFluxSubset' in list(file.keys()):
+            data.enst_flux_sbst = file['EnstrophyFluxSubset'][:]
 
     ## Get inv wavenumbers
     data.k2 = data.ky**2 + data.kx[:, np.newaxis]**2

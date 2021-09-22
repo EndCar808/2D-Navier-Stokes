@@ -58,6 +58,7 @@ int GetCMLArgs(int argc, char** argv) {
 	strncpy(sys_vars->u0, "TG_VORT", 64);
 	// Forcing
 	strncpy(sys_vars->forcing, "NONE", 64);	
+	sys_vars->force_k = 0;
 	// System viscosity
 	sys_vars->NU = 1.0;
 	// Write to file every 
@@ -200,6 +201,10 @@ int GetCMLArgs(int argc, char** argv) {
 					// Kolmogorov forcing
 					strncpy(sys_vars->forcing, "TG_VORT", 64);
 					break;
+				}
+				else if ((force_flag == 1)) {
+					// Get the forcing wavenumber
+					sys_vars->force_k = atoi(optarg);
 				}
 				else {
 					// Set default forcing to None

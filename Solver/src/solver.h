@@ -34,6 +34,7 @@ double DPMin(double a, double b);
 #endif
 void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* u, double* w);
 void ApplyDealiasing(fftw_complex* array, int array_dim, const long int* N);
+void ApplyForcing(fftw_complex* w_hat, const long int* N);
 // Initialize the system functions
 void InitializeSpaceVariables(double** x, int** k, const long int* N);
 void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, const long int* N);

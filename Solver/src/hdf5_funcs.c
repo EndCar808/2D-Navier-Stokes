@@ -974,16 +974,16 @@ void FinalWriteAndCloseOutputFile(const long int* N) {
 			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "EnstrophyFluxSubset");
 		}
 		// Enstrophy dissipation of a subset of modes
-		if ( (H5LTmake_dataset(file_info->output_file_handle, "EnstrophyDissSubst", D1, dims1D, H5T_NATIVE_DOUBLE, run_data->enst_diss_sbst)) < 0) {
-			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "EnstrophyDissSubst");
+		if ( (H5LTmake_dataset(file_info->output_file_handle, "EnstrophyDissSubset", D1, dims1D, H5T_NATIVE_DOUBLE, run_data->enst_diss_sbst)) < 0) {
+			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "EnstrophyDissSubset");
 		}
 		// Energy flux in/out of a subset of modes
 		if ( (H5LTmake_dataset(file_info->output_file_handle, "EnergyFluxSubset", D1, dims1D, H5T_NATIVE_DOUBLE, run_data->enrg_flux_sbst)) < 0) {
 			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "EnergyFluxSubset");
 		}
 		// Energy dissipation of a subset of modes
-		if ( (H5LTmake_dataset(file_info->output_file_handle, "EnergyDissSubst", D1, dims1D, H5T_NATIVE_DOUBLE, run_data->enrg_diss_sbst)) < 0) {
-			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "EnergyDissSubst");
+		if ( (H5LTmake_dataset(file_info->output_file_handle, "EnergyDissSubset", D1, dims1D, H5T_NATIVE_DOUBLE, run_data->enrg_diss_sbst)) < 0) {
+			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "EnergyDissSubset");
 		}
 	}
 	else {
