@@ -36,6 +36,7 @@ int GetCMLArgs(int argc, char** argv) {
 	// Initialize Variables
 	int c;
 	int dim_flag = 0;
+	int force_flag = 0;
 	int output_dir_flag = 0;
 
 	// -------------------------------
@@ -169,6 +170,11 @@ int GetCMLArgs(int argc, char** argv) {
 					strncpy(sys_vars->u0, "RANDOM", 64);
 					break;
 				}
+				else if (!(strcmp(optarg,"GAUSS_BLOB"))) {
+					// Gaussian Blob conditions
+					strncpy(sys_vars->u0, "GAUSS_BLOB", 64);
+					break;
+				}
 				else {
 					// No initial conditions specified -> this will default to random initial conditions
 					strncpy(sys_vars->u0, "NONE", 64);
@@ -184,7 +190,22 @@ int GetCMLArgs(int argc, char** argv) {
 				sys_vars->SAVE_EVERY = atoi(optarg);
 				break;
 			case 'f':
-				// TODO: Read in forcing indicator
+				// Read in the forcing type
+				if (!(strcmp(optarg,"ZERO")) && (force_flag == 0)) {
+					// Killing certain modes
+					strncpy(sys_vars->forcing, "ZERO", 64);
+					break;
+				}
+				else if (!(strcmp(optarg,"KOLM"))  && (force_flag == 0)) {
+					// Kolmogorov forcing
+					strncpy(sys_vars->forcing, "TG_VORT", 64);
+					break;
+				}
+				else {
+					// Set default forcing to None
+					strncpy(sys_vars->forcing, "NONE", 64);
+					break;
+				}
 				break;
 			case 'z':
 				// TODO: Read in inputs from a given (.ini) file

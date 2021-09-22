@@ -1021,6 +1021,30 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 		}
 		#endif
 	}
+	else if (!(strcmp(sys_vars->u0, "GAUSS_BLOB"))) {
+	
+		// ---------------------------------------
+		// Define the Gaussian Blob
+		// ---------------------------------------
+		for (int i = 0; i < local_Nx; ++i) {	
+			tmp = i * (Ny + 2);
+			for (int j = 0; j < Ny; ++j) {
+				indx = tmp + j;
+
+				// Fill vorticity
+				run_data->w[indx] = exp((pow(run_data->kx[i] - M_PI, 2.0) + BETA * pow(run_data->ky[j] - M_PI, 2.0)) / pow(2.0 * M_PI / S, 2.0))
+			}
+		}		
+
+		// ---------------------------------------------
+		// Transform to Fourier Space & Dealias
+		// ---------------------------------------------
+		// Transform
+		fftw_mpi_execute_dft_r2c((sys_vars->fftw_2d_dft_r2c), run_data->w, w_hat);
+		
+		// Dealias
+		ApplyDealiasing(w_hat, 1, N);
+	}
 	else if (!(strcmp(sys_vars->u0, "RANDOM"))) {
 		// ---------------------------------------
 		// Random Initial Conditions
