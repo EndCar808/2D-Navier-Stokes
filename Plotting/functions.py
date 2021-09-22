@@ -9,6 +9,21 @@ import sys
 import os
 
 
+
+#################################
+## Colour Printing to Terminal ##
+#################################
+class tc:
+    H    = '\033[95m'
+    B    = '\033[94m'
+    C    = '\033[96m'
+    G    = '\033[92m'
+    Y    = '\033[93m'
+    R    = '\033[91m'
+    Rst  = '\033[0m'
+    Bold = '\033[1m'
+    Underline = '\033[4m'
+
 ###############################
 ##       FUNCTION DEFS       ##
 ###############################
@@ -34,14 +49,18 @@ def SimData(input_dir, method = "default"):
         """
 
         ## Initialize class
-        def __init__(self, Nx = 0, Ny = 0, Nk = 0, nu = 0.0, t0 = 0.0, T = 0.0, ndata = 0, u0 = "TG_VORT", cfl = 0.0):
+        def __init__(self, Nx = 0, Ny = 0, Nk = 0, nu = 0.0, t0 = 0.0, T = 0.0, ndata = 0, u0 = "TG_VORT", cfl = 0.0, spec_size = 0):
             self.Nx     = int(Nx)
             self.Ny     = int(Ny)
             self.Nk     = int(Nk)
             self.nu     = float(nu)
             self.t0     = float(t0)
             self.T      = float(T)
-            self.ndata = int(ndata)
+            self.ndata  = int(ndata)
+            self.u0     = str(u0)
+            self.cfl    = float(cfl)
+            self.spec_size = int(spec_size)
+            
 
     ## Create instance of class
     data = SimulationData()
@@ -76,10 +95,42 @@ def SimData(input_dir, method = "default"):
                     data.ndata = int(line.split()[-1]) + 1 # plus 1 to include initial condition
 
             ## Get spectrum size
-            data.spec_size = int(np.sqrt((data.Nx / 2)**2 + (data.Ny / 2)**2) + 1)
+            data.spec_size = int(np.sqrt((data.Nx / 2)**2 + (data.Ny / 2)**2) + 1)            
     else:
-        ## Split input file name
-        file_parts = input_file.split('_')
+    
+        for term in input_dir.split('_'):
+    
+            ## Parse Viscosity
+            if term.startswith("NU"):
+                data.nu = float(term.split('[')[-1].rstrip(']'))
+
+            ## Parse Number of collocation points & Fourier modes
+            if term.startswith("N["):
+                data.Nx = int(term.split('[')[-1].split(',')[0])
+                data.Ny = int(term.split('[')[-1].split(',')[-1].rstrip(']'))
+                data.Nk = int(data.Nx / 2 + 1)
+
+            ## Parse Time range
+            if term.startswith('T['):
+                data.t0 = float(term.split('-')[0].lstrip('T['))
+                data.T  = float(term.split('-')[-1].rstrip(']'))
+
+            ## Parse CFL number
+            if term.startswith('CFL'):
+                data.cfl = float(term.split('[')[-1].rstrip(']'))
+
+            ## Parse initial condition
+            if term.startswith('u0'):
+                data.u0 = str(term.split('[')[-1])
+            if not term.startswith('u0') and term.endswith('].h5'):
+                data.u0 = data.u0 + '_' + str(term.split(']')[0])
+
+        ## Get the number of data saves
+        with h5py.File(input_dir, 'r') as file:
+            data.ndata = len([g for g in file.keys() if 'Iter' in g])
+
+        ## Get spectrum size
+        data.spec_size = int(np.sqrt((data.Nx / 2)**2 + (data.Ny / 2)**2) + 1)
 
     return data
 
@@ -125,22 +176,24 @@ def ImportData(input_file, sim_data, method = "default"):
             self.enrg_flux_sbst = np.zeros((int(sim_data.ndata * 2), ))
             self.enst_flux_sbst = np.zeros((int(sim_data.ndata * 2), ))
             ## Allocate spatial arrays
-            self.kx = np.zeros((sim_data.Nx, ))
-            self.ky = np.zeros((sim_data.Nk, ))
-            self.x  = np.zeros((sim_data.Nx, ))
-            self.y  = np.zeros((sim_data.Ny, ))
+            self.kx    = np.zeros((sim_data.Nx, ))
+            self.ky    = np.zeros((sim_data.Nk, ))
+            self.x     = np.zeros((sim_data.Nx, ))
+            self.y     = np.zeros((sim_data.Ny, ))
+            self.k2    = np.zeros((sim_data.Nx, sim_data.Nk))
+            self.k2Inv = np.zeros((sim_data.Nx, sim_data.Nk))
 
     ## Create instance of data class
     data = SolverData()
 
     ## Depending on the output mmode of the solver the input files will be named differently
     if method == "default":
-        file = input_file + "Main_HDF_Data.h5"
+        in_file = input_file + "Main_HDF_Data.h5"
     else: 
-        file = input_file
+        in_file = input_file
 
     ## Open file and read in the data
-    with h5py.File(file, 'r') as file:
+    with h5py.File(in_file, 'r') as file:
 
         nn = 0
         # Read in the vorticity
@@ -186,6 +239,11 @@ def ImportData(input_file, sim_data, method = "default"):
             data.enrg_flux_sbst = file['EnergyFluxSubst'][:]
         if 'EnstrophyFluxSubst' in list(file.keys()):
             data.enst_flux_sbst = file['EnstrophyFluxSubst'][:]
+
+    ## Get inv wavenumbers
+    data.k2 = data.ky**2 + data.kx[:, np.newaxis]**2
+    index   = data.k2 != 0.0
+    data.k2Inv[index] = 1. / data.k2[index]
 
     return data
 

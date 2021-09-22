@@ -271,7 +271,7 @@ void GetOutputDirPath(void) {
 		// Get File Label from Simulation Data
 		// -------------------------------------
 		// Construct file label from simulation data
-		sprintf(file_data, "_SIM[%s-%s-%s]_N[%ld,%ld]_T[%d-%d]_CFL[%1.2lf]_u0[%s].h5", sys_type, solv_type, model_type, sys_vars->N[0], sys_vars->N[1], (int )sys_vars->t0, (int )sys_vars->T, sys_vars->CFL_CONST, sys_vars->u0);
+		sprintf(file_data, "_SIM[%s-%s-%s]_N[%ld,%ld]_T[%d-%d]_NU[%1.6lf]_CFL[%1.2lf]_u0[%s].h5", sys_type, solv_type, model_type, sys_vars->N[0], sys_vars->N[1], (int )sys_vars->t0, (int )sys_vars->T, sys_vars->NU, sys_vars->CFL_CONST, sys_vars->u0);
 
 		// ----------------------------------
 		// Construct File Paths
