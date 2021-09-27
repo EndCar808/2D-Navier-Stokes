@@ -252,6 +252,23 @@ def FullField(w_h):
 
     return np.concatenate((w_h, np.conjugate(w_h[:, -2:0:-1])), axis = 1)
 
+@njit
+def FullFieldShifted(w_h, kx, ky):
+
+    ## Allocate memory
+    kmax     = int(w_h.shape[0] / 3)
+    w_h_full = np.zeros((int(2 * kmax - 1), int(2 * kmax - 1)))
+
+    for i in range(w_h.shape[0]):
+        for j in range(w_h.shape[1]):
+            if np.sqrt(kx[i]**2 + ky[j]**2):
+                if ky[j] == 0: 
+                    w_h_full[kmax - 1 + kx[i], kmax - 1 + ky[j]] = w_h[i, j]
+                else:
+                    w_h_full[kmax - 1 + kx[i], kmax - 1 + ky[j]] = w_h[i, j]
+                    w_h_full[kmax - 1 - kx[i], kmax - 1 - ky[j]] = np.conjugate(w_h[i, j])
+
+    return w_h_full
 
 @njit
 def ZeroCentredField(w_h):
@@ -266,7 +283,6 @@ def ZeroCentredField(w_h):
     tmp2 = np.concatenate((np.flipud(np.conjugate(w_h[Nk:, -2:0:-1])), np.flipud(w_h[Nk:, :])), axis = 1)
 
     return np.concatenate((tmp1, tmp2), axis = 0)
-
 
 
 def transform_w(w):

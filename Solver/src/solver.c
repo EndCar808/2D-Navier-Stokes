@@ -1069,7 +1069,7 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 				indx = tmp + j;
 
 				// Fill vorticity
-				run_data->w[indx] = exp((pow(run_data->k[0][i] - M_PI, 2.0) + BETA * pow(run_data->k[1][j] - M_PI, 2.0)) / pow(2.0 * M_PI / S, 2.0));
+				run_data->w[indx] = -exp(-(pow(run_data->k[0][i] - M_PI, 2.0) + BETA * pow(run_data->k[1][j] - M_PI, 2.0)) / pow(2.0 * M_PI / S, 2.0));
 			}
 		}		
 
