@@ -15,7 +15,7 @@
 #define __HDF5_HDR
 #endif
 #ifndef __FFTW3
-#include <fftw3-mpi.h>
+#include <fftw3.h>
 #define __FFTW3
 #endif
 
@@ -73,12 +73,8 @@ typedef struct system_vars_struct {
 	ptrdiff_t alloc_local_batch;		// Variable to hold size of memory to allocate for local (on process) arrays for batch transform
 	ptrdiff_t local_Nx;					// Size of the first dimension for the local arrays
 	ptrdiff_t local_Nx_start;			// Position where the local arrays start in the undistributed array
-	int num_procs;						// Variable to hold the number of active provcesses
-	int rank;							// Rank of the active processes
-	long int num_t_steps;				// Number of iteration steps to perform
-	long int num_print_steps;           // Number of times system was saved to file
-	long int tot_iters;					// Records the total executed iterations
-	long int tot_save_steps;			// Records the total saving iterations
+	long int num_snaps;					// Number of snapshots in the input data file
+	long int kmax; 						// The largest dealiased wavenumber
 	double t0;							// Intial time
 	double T;							// Final time
 	double t;							// Time variable
@@ -108,16 +104,25 @@ typedef struct runtime_data_struct {
 	double* time;			  // Array to hold the simulation times
 } runtime_data_struct;
 
+// Post processing data struct
+typedef struct postprocess_data_struct {
+	double* phases;
+	double* enrg;
+	double* enst;
+} postprocess_data_struct;
+
 // HDF5 file info struct
 typedef struct HDF_file_info_struct {
 	char input_file_name[512];		// Array holding input file name
 	char output_file_name[512];     // Output file name array
 	char output_dir[512];			// Output directory
+	char input_dir[512];			// Input directory
 	char output_tag[64]; 			// Tag to be added to the output directory
-	hid_t output_file_handle;		// Main file handle for the output file 
-	hid_t spectra_file_handle;      // Spectra file handle
+	hid_t output_file_handle;		// File handle for the output file 
+	hid_t input_file_handle;		// File handle for the input file 
 	hid_t COMPLEX_DTYPE;			// Complex datatype handle
-	int file_only;					// Indicates if output should be file only with no output folder created
+	int output_file_only;			// Indicates if output should be file only with no output folder created
+	int input_file_only;			// Indicates if input is file only or input folder
 } HDF_file_info_struct;
 
 // Complex datatype struct for HDF5
@@ -131,6 +136,7 @@ typedef struct complex_type_tmp {
 extern system_vars_struct *sys_vars; 		    // Global pointer to system parameters struct
 extern runtime_data_struct *run_data; 			// Global pointer to system runtime variables struct 
 extern HDF_file_info_struct *file_info; 		// Global pointer to system forcing variables struct 
+extern postprocess_data_struct *proc_data;      // Global pointer to the post processing data struct
 
 #define __DATA_TYPES
 #endif

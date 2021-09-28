@@ -32,8 +32,8 @@ else ifeq ($(OS), CentOS)
 	GCC := gcc
 	CCFLAG := -O3 -W -Wall -g
 	LIBFLAG := -lfftw3 -lfftw3 -lm -lhdf5 -lhdf5_hl #-fopenmp -lpthread -lfftw3_omp
-	INCDIR = -I/ichec/packages/hdf5/gcc_mpi/1.12.0/include
-	LIBDIR = -L/ichec/packages/hdf5/gcc_mpi/1.12.0/lib 
+	INCDIR = -I/ichec/packages/hdf5/gcc/1.12.0/include -I/ichec/packages/fftw/3.3.8/gcc/double/include
+	LIBDIR = -L/ichec/packages/hdf5/gcc/1.12.0/lib -L/ichec/packages/fftw/3.3.8/gcc/double/lib
 else
 	$(error Unknown OS found, please check OS and add appropriate flags in Makefile)
 endif
