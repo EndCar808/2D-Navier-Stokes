@@ -337,7 +337,10 @@ void WriteDataToFile(double t, long int snap) {
 
 	// Create group for the current snapshot
 	group_id = CreateGroup(file_info->output_file_handle, file_info->output_file_name, group_name, t, snap);
-
+	if (group_id < 0 ) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to create group in file ["CYAN"%s"RESET"] at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", file_info->output_file_name, t, snap);
+		exit(1);
+	}
 
 	// -------------------------------
 	// Write Datasets
@@ -389,7 +392,7 @@ hid_t CreateGroup(hid_t file_handle, char* filename, char* group_name, double t,
 	// Create the group
 	// -------------------------------
 	// Check if group exists
-	if (H5Lexists(file_handle, group_name, H5P_DEFAULT)) {		
+	if(H5Lexists(file_handle, group_name, H5P_DEFAULT)) {		
 		// Open group if it already exists
 		group_id = H5Gopen(file_handle, group_name, H5P_DEFAULT);
 		if (group_id < 0 ) {
@@ -430,11 +433,6 @@ hid_t CreateGroup(hid_t file_handle, char* filename, char* group_name, double t,
 		// -------------------------------
 		// Close the attribute identifiers
 		// -------------------------------
-		status = H5Aclose(attr_id);
-		if (status < 0 ) {
-			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close attribute Idenfiers for ["CYAN"%s"RESET"] at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", filename, t, snap);
-			exit(1);
-		}
 		status = H5Sclose(attr_space);
 		if (status < 0 ) {
 			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close attribute Idenfiers for file ["CYAN"%s"RESET"] at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", filename, t, snap);

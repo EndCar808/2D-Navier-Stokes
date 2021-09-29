@@ -137,40 +137,40 @@ int main(int argc, char** argv) {
 						phase = carg(run_data->w_hat[indx]);
 						amp   = cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
 
-						// // fill the full field phases and spectra
-		 			// 	if (sqrt(k_sqr) < sys_vars->kmax) {
-		 			// 		// No conjugate for ky = 0
-		 			// 		if (run_data->k[1][j] == 0) {
-		 			// 			proc_data->phases[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]] = fmod(phase, 2.0 * M_PI);
-		 			// 			proc_data->enrg[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = amp / k_sqr + 1e-50;
-		 			// 			proc_data->enst[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = amp;
-		 			// 		}
-		 			// 		else {
-		 			// 			// Fill data and its conjugate
-		 			// 			proc_data->phases[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]] = fmod(phase, 2.0 * M_PI);
-		 			// 			proc_data->phases[tmp2 + sys_vars->kmax - 1 - run_data->k[1][j]] = fmod(-phase, 2.0 * M_PI);
-		 			// 			proc_data->enrg[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = amp / k_sqr + 1e-50;
-		 			// 			proc_data->enrg[tmp2 + sys_vars->kmax - 1 - run_data->k[1][j]]   = amp / k_sqr + 1e-50;
-		 			// 			proc_data->enst[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = amp;
-		 			// 			proc_data->enst[tmp2 + sys_vars->kmax - 1 - run_data->k[1][j]]   = amp;
-		 			// 		}
-		 			// 	}
-		 			// 	else {
-		 			// 		// All dealiased modes set to zero
-						// 	if (run_data->k[1][j] == 0) {
-		 			// 			proc_data->phases[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]] = 0.0;
-		 			// 			proc_data->enrg[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = 0.0;
-		 			// 			proc_data->enst[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = 0.0;
-		 			// 		}
-		 			// 		else {	
-		 			// 			proc_data->phases[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]] = 0.0;
-		 			// 			proc_data->phases[tmp2 + sys_vars->kmax - 1 - run_data->k[1][j]] = 0.0;
-		 			// 			proc_data->enrg[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = 0.0;
-		 			// 			proc_data->enrg[tmp2 + sys_vars->kmax - 1 - run_data->k[1][j]]   = 0.0;
-		 			// 			proc_data->enst[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = 0.0;
-		 			// 			proc_data->enst[tmp2 + sys_vars->kmax - 1 - run_data->k[1][j]]   = 0.0;
-		 			// 		}
-		 			// 	}
+						// fill the full field phases and spectra
+		 				if (sqrt(k_sqr) < sys_vars->kmax) {
+		 					// No conjugate for ky = 0
+		 					if (run_data->k[1][j] == 0) {
+		 						proc_data->phases[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]] = fmod(phase, 2.0 * M_PI);
+		 						proc_data->enrg[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = amp / k_sqr + 1e-50;
+		 						proc_data->enst[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = amp;
+		 					}
+		 					else {
+		 						// Fill data and its conjugate
+		 						proc_data->phases[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]] = fmod(phase, 2.0 * M_PI);
+		 						proc_data->phases[tmp2 + sys_vars->kmax - 1 - run_data->k[1][j]] = fmod(-phase, 2.0 * M_PI);
+		 						proc_data->enrg[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = amp / k_sqr + 1e-50;
+		 						proc_data->enrg[tmp2 + sys_vars->kmax - 1 - run_data->k[1][j]]   = amp / k_sqr + 1e-50;
+		 						proc_data->enst[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = amp;
+		 						proc_data->enst[tmp2 + sys_vars->kmax - 1 - run_data->k[1][j]]   = amp;
+		 					}
+		 				}
+		 				else {
+		 					// All dealiased modes set to zero
+							if (run_data->k[1][j] == 0) {
+		 						proc_data->phases[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]] = 0.0;
+		 						proc_data->enrg[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = 0.0;
+		 						proc_data->enst[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = 0.0;
+		 					}
+		 					else {	
+		 						proc_data->phases[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]] = 0.0;
+		 						proc_data->phases[tmp2 + sys_vars->kmax - 1 - run_data->k[1][j]] = 0.0;
+		 						proc_data->enrg[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = 0.0;
+		 						proc_data->enrg[tmp2 + sys_vars->kmax - 1 - run_data->k[1][j]]   = 0.0;
+		 						proc_data->enst[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = 0.0;
+		 						proc_data->enst[tmp2 + sys_vars->kmax - 1 - run_data->k[1][j]]   = 0.0;
+		 					}
+		 				}
 					}			
 				}						
 			}
@@ -179,7 +179,7 @@ int main(int argc, char** argv) {
 		// --------------------------------
 		//  Write Data to File
 		// --------------------------------
-		// WriteDataToFile(run_data->time[s], s);
+		WriteDataToFile(run_data->time[s], s);
 	}
 	//////////////////////////////
 	// End Integration
@@ -199,8 +199,10 @@ int main(int argc, char** argv) {
 		fftw_free(run_data->k[i]);
 	}
 
-	return 0;
 
+
+
+	return 0;
 }
 // ---------------------------------------------------------------------
 //  End of File
