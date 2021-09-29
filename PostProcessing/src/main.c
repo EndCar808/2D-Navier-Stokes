@@ -124,8 +124,8 @@ int main(int argc, char** argv) {
 		for (int i = 0; i < Nx; ++i) {
 			if (abs(run_data->k[0][i]) < sys_vars->kmax) {
 				tmp  = i * Ny_Fourier;
-				tmp1 = (sys_vars->kmax - 1 + run_data->k[0][i]) * Ny_Fourier;
-				tmp2 = (sys_vars->kmax - 1 - run_data->k[0][i]) * Ny_Fourier;
+				tmp1 = (sys_vars->kmax - 1 + run_data->k[0][i]) * (2 * sys_vars->kmax - 1);
+				tmp2 = (sys_vars->kmax - 1 - run_data->k[0][i]) * (2 * sys_vars->kmax - 1);
 				for (int j = 0; j < Ny_Fourier; ++j) {
 					if (abs(run_data->k[1][j] < sys_vars->kmax)) {
 						indx = tmp + j;
