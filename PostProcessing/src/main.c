@@ -35,10 +35,7 @@ int main(int argc, char** argv) {
 	int tmp, tmp1, tmp2;
 	int indx, indx1, indx2;
 	double k_sqr, phase, amp;
-	const long int Nx 		  = sys_vars->N[0];
-	const long int Ny 		  = sys_vars->N[1];
-	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
-
+	
 	// --------------------------------
 	//  Create Global Stucts
 	// --------------------------------
@@ -66,43 +63,46 @@ int main(int argc, char** argv) {
 	//  Open Input File and Get Data
 	// --------------------------------
 	OpenInputAndInitialize(); 
+	const long int Nx 		  = sys_vars->N[0];
+	const long int Ny 		  = sys_vars->N[1];
+	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
 
 	// --------------------------------
 	//  Open Output File
 	// --------------------------------
-	// OpenOutputFile();
+	OpenOutputFile();
 
 	// --------------------------------
 	//  Allocate Processing Memmory
 	// --------------------------------
 	// Allocate current Fourier vorticity
-	// run_data->w_hat = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * Nx * Ny_Fourier);
-	// if (run_data->w_hat == NULL) {
-	// 	fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Fourier Vorticity");
-	// 	exit(1);
-	// }
+	run_data->w_hat = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * Nx * Ny_Fourier);
+	if (run_data->w_hat == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Fourier Vorticity");
+		exit(1);
+	}
 
-	// // Allocate memory for the full field phases
-	// sys_vars->kmax    = (int) (Nx / 3);
-	// proc_data->phases = (double* )fftw_malloc(sizeof(double) * (2 * sys_vars->kmax - 1));
-	// if (proc_data->phases == NULL) {
-	// 	fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Full Field Phases");
-	// 	exit(1);
-	// }
+	// Allocate memory for the full field phases
+	sys_vars->kmax    = (int) (Nx / 3);
+	proc_data->phases = (double* )fftw_malloc(sizeof(double) * (2 * sys_vars->kmax - 1));
+	if (proc_data->phases == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Full Field Phases");
+		exit(1);
+	}
 
-	// // Allocate memory for the full field enstrophy spectrum
-	// proc_data->enst = (double* )fftw_malloc(sizeof(double) * (2 * sys_vars->kmax - 1));
-	// if (proc_data->enst == NULL) {
-	// 	fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Full Field Enstrophy");
-	// 	exit(1);
-	// }	
+	// Allocate memory for the full field enstrophy spectrum
+	proc_data->enst = (double* )fftw_malloc(sizeof(double) * (2 * sys_vars->kmax - 1));
+	if (proc_data->enst == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Full Field Enstrophy");
+		exit(1);
+	}	
 
-	// // Allocate memory for the full field enrgy spectrum
-	// proc_data->enrg = (double* )fftw_malloc(sizeof(double) * (2 * sys_vars->kmax - 1));
-	// if (proc_data->enrg == NULL) {
-	// 	fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Full Field Energy");
-	// 	exit(1);
-	// }	
+	// Allocate memory for the full field enrgy spectrum
+	proc_data->enrg = (double* )fftw_malloc(sizeof(double) * (2 * sys_vars->kmax - 1));
+	if (proc_data->enrg == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Full Field Energy");
+		exit(1);
+	}	
 
 
 	//////////////////////////////
@@ -116,66 +116,65 @@ int main(int argc, char** argv) {
 		// --------------------------------
 		//  Read in Data
 		// --------------------------------
-		// ReadInData(s);
+		ReadInData(s);
 
 		// --------------------------------
 		//  Process Data
 		// --------------------------------
-		// for (int i = 0; i < Nx; ++i) {
-		// 	if (abs(run_data->k[0][i]) < sys_vars->kmax) {
-		// 		tmp  = i * Ny_Fourier;
-		// 		tmp1 = (sys_vars->kmax - 1 + run_data->k[0][i]) * Ny_Fourier;
-		// 		tmp2 = (sys_vars->kmax - 1 - run_data->k[0][i]) * Ny_Fourier;
-		// 		for (int j = 0; j < Ny_Fourier; ++j) {
-		// 			if (abs(run_data->k[1][j] < sys_vars->kmax)) {
-		// 				indx = tmp + j;
+		for (int i = 0; i < Nx; ++i) {
+			if (abs(run_data->k[0][i]) < sys_vars->kmax) {
+				tmp  = i * Ny_Fourier;
+				tmp1 = (sys_vars->kmax - 1 + run_data->k[0][i]) * Ny_Fourier;
+				tmp2 = (sys_vars->kmax - 1 - run_data->k[0][i]) * Ny_Fourier;
+				for (int j = 0; j < Ny_Fourier; ++j) {
+					if (abs(run_data->k[1][j] < sys_vars->kmax)) {
+						indx = tmp + j;
 
-		// 				// Compute |k|^2
-		// 				k_sqr = (double)run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]; 
+						// Compute |k|^2
+						k_sqr = (double)run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]; 
 
-		// 				// // Compute data
-		// 				// phase = carg(run_data->w_hat[indx]);
-		// 				// amp   = cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+						// Compute data
+						phase = carg(run_data->w_hat[indx]);
+						amp   = cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
 
-		// 				// // fill the full field phases and spectra
-		//  			// 	if (sqrt(k_sqr) < sys_vars->kmax) {
-		//  			// 		// No conjugate for ky = 0
-		//  			// 		if (run_data->k[1][j] == 0) {
-		//  			// 			proc_data->phases[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]] = fmod(phase, 2.0 * M_PI);
-		//  			// 			proc_data->enrg[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = amp / k_sqr + 1e-50;
-		//  			// 			proc_data->enst[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = amp;
-		//  			// 		}
-		//  			// 		else {
-		//  			// 			// Fill data and its conjugate
-		//  			// 			proc_data->phases[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]] = fmod(phase, 2.0 * M_PI);
-		//  			// 			proc_data->phases[tmp2 + sys_vars->kmax - 1 - run_data->k[1][j]] = fmod(-phase, 2.0 * M_PI);
-		//  			// 			proc_data->enrg[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = amp / k_sqr + 1e-50;
-		//  			// 			proc_data->enrg[tmp2 + sys_vars->kmax - 1 - run_data->k[1][j]]   = amp / k_sqr + 1e-50;
-		//  			// 			proc_data->enst[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = amp;
-		//  			// 			proc_data->enst[tmp2 + sys_vars->kmax - 1 - run_data->k[1][j]]   = amp;
-		//  			// 		}
-		 					
-		//  			// 	}
-		//  			// 	else {
-		//  			// 		// All dealiased modes set to zero
-		// 				// 	if (run_data->k[1][j] == 0) {
-		//  			// 			proc_data->phases[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]] = 0.0;
-		//  			// 			proc_data->enrg[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = 0.0;
-		//  			// 			proc_data->enst[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = 0.0;
-		//  			// 		}
-		//  			// 		else {	
-		//  			// 			proc_data->phases[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]] = 0.0;
-		//  			// 			proc_data->phases[tmp2 + sys_vars->kmax - 1 - run_data->k[1][j]] = 0.0;
-		//  			// 			proc_data->enrg[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = 0.0;
-		//  			// 			proc_data->enrg[tmp2 + sys_vars->kmax - 1 - run_data->k[1][j]]   = 0.0;
-		//  			// 			proc_data->enst[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = 0.0;
-		//  			// 			proc_data->enst[tmp2 + sys_vars->kmax - 1 - run_data->k[1][j]]   = 0.0;
-		//  			// 		}
-		//  			// 	}
-		// 			}			
-		// 		}						
-		// 	}
-		// }
+						// // fill the full field phases and spectra
+		 			// 	if (sqrt(k_sqr) < sys_vars->kmax) {
+		 			// 		// No conjugate for ky = 0
+		 			// 		if (run_data->k[1][j] == 0) {
+		 			// 			proc_data->phases[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]] = fmod(phase, 2.0 * M_PI);
+		 			// 			proc_data->enrg[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = amp / k_sqr + 1e-50;
+		 			// 			proc_data->enst[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = amp;
+		 			// 		}
+		 			// 		else {
+		 			// 			// Fill data and its conjugate
+		 			// 			proc_data->phases[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]] = fmod(phase, 2.0 * M_PI);
+		 			// 			proc_data->phases[tmp2 + sys_vars->kmax - 1 - run_data->k[1][j]] = fmod(-phase, 2.0 * M_PI);
+		 			// 			proc_data->enrg[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = amp / k_sqr + 1e-50;
+		 			// 			proc_data->enrg[tmp2 + sys_vars->kmax - 1 - run_data->k[1][j]]   = amp / k_sqr + 1e-50;
+		 			// 			proc_data->enst[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = amp;
+		 			// 			proc_data->enst[tmp2 + sys_vars->kmax - 1 - run_data->k[1][j]]   = amp;
+		 			// 		}
+		 			// 	}
+		 			// 	else {
+		 			// 		// All dealiased modes set to zero
+						// 	if (run_data->k[1][j] == 0) {
+		 			// 			proc_data->phases[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]] = 0.0;
+		 			// 			proc_data->enrg[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = 0.0;
+		 			// 			proc_data->enst[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = 0.0;
+		 			// 		}
+		 			// 		else {	
+		 			// 			proc_data->phases[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]] = 0.0;
+		 			// 			proc_data->phases[tmp2 + sys_vars->kmax - 1 - run_data->k[1][j]] = 0.0;
+		 			// 			proc_data->enrg[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = 0.0;
+		 			// 			proc_data->enrg[tmp2 + sys_vars->kmax - 1 - run_data->k[1][j]]   = 0.0;
+		 			// 			proc_data->enst[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = 0.0;
+		 			// 			proc_data->enst[tmp2 + sys_vars->kmax - 1 - run_data->k[1][j]]   = 0.0;
+		 			// 		}
+		 			// 	}
+					}			
+				}						
+			}
+		}
 
 		// --------------------------------
 		//  Write Data to File
@@ -191,14 +190,14 @@ int main(int argc, char** argv) {
 	// --------------------------------
 	//  Clean Up
 	// --------------------------------
-	// fftw_free(run_data->w_hat);
-	// fftw_free(proc_data->phases);
-	// fftw_free(proc_data->enrg);
-	// fftw_free(proc_data->enst);
-	// for (int i = 0; i < SYS_DIM; ++i) {
-	// 	fftw_free(run_data->x[i]);
-	// 	fftw_free(run_data->k[i]);
-	// }
+	fftw_free(run_data->w_hat);
+	fftw_free(proc_data->phases);
+	fftw_free(proc_data->enrg);
+	fftw_free(proc_data->enst);
+	for (int i = 0; i < SYS_DIM; ++i) {
+		fftw_free(run_data->x[i]);
+		fftw_free(run_data->k[i]);
+	}
 
 	return 0;
 

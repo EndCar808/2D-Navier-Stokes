@@ -26,6 +26,9 @@
 // ---------------------------------------------------------------------
 //  Function Definitions
 // ---------------------------------------------------------------------
+/**
+ * Function to open the input file, read in simulation data and initialize some of the system parameters
+ */
 void OpenInputAndInitialize(void) {
 
 	// Initialize variables
@@ -35,6 +38,7 @@ void OpenInputAndInitialize(void) {
 	hsize_t Dims[SYS_DIM];
 	int snaps = 0;
 	char group_string[64];
+	double tmp_time;
 
 	// --------------------------------
 	//  Create Complex Datatype
@@ -93,6 +97,26 @@ void OpenInputAndInitialize(void) {
 	sys_vars->num_snaps = snaps;
 
 	// --------------------------------
+	//  Get Time series
+	// --------------------------------
+	// Allocate memory
+	run_data->time = (double* )fftw_malloc(sizeof(double) * sys_vars->num_snaps);
+	if(run_data->time == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "time");
+		exit(1);
+	}
+
+	// Loop through group snapshots and read in time value
+	for (int i = 0; i < sys_vars->num_snaps; ++i) {
+		sprintf(group_string, "/Iter_%05d", i);	
+		if(H5Lexists(file_info->input_file_handle, group_string, H5P_DEFAULT) > 0 ) {
+			// Read in the time attribute
+			H5LTget_attribute_double(file_info->input_file_handle, group_string, "TimeValue", &tmp_time);	
+			run_data->time[i] = tmp_time;
+		}
+	}
+
+	// --------------------------------
 	//  Get System Dimensions
 	// --------------------------------
 	// Open dataset
@@ -119,6 +143,10 @@ void OpenInputAndInitialize(void) {
 	sys_vars->N[0] = (long int)Dims[0];
 	sys_vars->N[1] = ((long int)Dims[1] - 1) * 2;
 
+	// Close identifiers
+	status = H5Dclose(dset);
+	status = H5Sclose(dspace);
+	
 	// --------------------------------
 	//  Read In/Initialize Space Arrays
 	// --------------------------------
@@ -167,11 +195,9 @@ void OpenInputAndInitialize(void) {
 	// --------------------------------
 	//  Close HDF5 Identifiers
 	// --------------------------------
-	status = H5Dclose(dset);
-	status = H5Sclose(dspace);
 	status = H5Fclose(file_info->input_file_handle);
 	if (status < 0) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close input file ["CYAN"%s"RESET"] at: Snap = ["CYAN"%d"RESET"]\n-->> Exiting...\n", file_info->input_file_name, 0);
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close input file ["CYAN"%s"RESET"] at: Snap = ["CYAN"%s"RESET"]\n-->> Exiting...\n", file_info->input_file_name, "initial");
 		exit(1);		
 	}
 }
@@ -183,6 +209,8 @@ void ReadInData(int snap_indx) {
 
 	// Initialize variables
 	char group_string[64];
+	hid_t dset;
+	herr_t status;
 
 	// --------------------------------
 	//  Open File
@@ -202,9 +230,18 @@ void ReadInData(int snap_indx) {
 	}
 
 	// --------------------------------
-	//  Read in Vorticity
+	//  Open Group Dataset
 	// --------------------------------
 	sprintf(group_string, "/Iter_%05d/w_hat", snap_indx);	
+	dset = H5Dopen (file_info->input_file_handle, group_string, H5P_DEFAULT);
+	if (dset < 0 ) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to open dataset for ["CYAN"%s"RESET"] at Snap = ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", "w_hat", snap_indx);
+		exit(1);		
+	} 
+	
+	// --------------------------------
+	//  Read in Vorticity
+	// --------------------------------
 	if(H5LTread_dataset(file_info->input_file_handle, group_string, file_info->COMPLEX_DTYPE, run_data->w_hat) < 0) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to read in data for ["CYAN"%s"RESET"] at Snap = ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", "w_hat", snap_indx);
 		exit(1);	
@@ -213,7 +250,12 @@ void ReadInData(int snap_indx) {
 	// --------------------------------
 	//  Close HDF5 Identifiers
 	// --------------------------------
-	H5Fclose(file_info->input_file_handle);
+	status = H5Dclose(dset);
+	status = H5Fclose(file_info->input_file_handle);
+	if (status < 0) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close input file ["CYAN"%s"RESET"] at: Snap = ["CYAN"%d"RESET"]\n-->> Exiting...\n", file_info->input_file_name, snap_indx);
+		exit(1);		
+	}
 }
 /**
  * Function to create and open the output file
@@ -247,7 +289,7 @@ void OpenOutputFile(void) {
 	// --------------------------------
 	status = H5Fclose(file_info->output_file_handle);
 	if (status < 0) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close output file ["CYAN"%s"RESET"] at: Snap = ["CYAN"%d"RESET"]\n-->> Exiting...\n", file_info->output_file_name, 0);
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close output file ["CYAN"%s"RESET"] at: Snap = ["CYAN"%s"RESET"]\n-->> Exiting...\n", file_info->output_file_name, "initial");
 		exit(1);		
 	}
 }
@@ -350,10 +392,20 @@ hid_t CreateGroup(hid_t file_handle, char* filename, char* group_name, double t,
 	if (H5Lexists(file_handle, group_name, H5P_DEFAULT)) {		
 		// Open group if it already exists
 		group_id = H5Gopen(file_handle, group_name, H5P_DEFAULT);
+		if (group_id < 0 ) {
+			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to create group in file ["CYAN"%s"RESET"] at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", filename, t, snap);
+			exit(1);
+		}
+
 	}
 	else {
 		// If not create new group and add time data as attribute to Group
 		group_id = H5Gcreate(file_handle, group_name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);	
+		if (group_id < 0 ) {
+			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to create group in file ["CYAN"%s"RESET"] at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", filename, t, snap);
+			exit(1);
+		}
+
 
 		// -------------------------------
 		// Write Timedata as Attribute
