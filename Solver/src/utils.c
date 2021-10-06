@@ -199,7 +199,7 @@ int GetCMLArgs(int argc, char** argv) {
 				}
 				else if (!(strcmp(optarg,"KOLM"))  && (force_flag == 0)) {
 					// Kolmogorov forcing
-					strncpy(sys_vars->forcing, "TG_VORT", 64);
+					strncpy(sys_vars->forcing, "KOLM", 64);
 					break;
 				}
 				else if ((force_flag == 1)) {

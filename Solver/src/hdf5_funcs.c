@@ -37,7 +37,7 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 	const long int Ny 		  = N[1];
 	const long int Ny_Fourier = N[1] / 2 + 1;
 	hid_t main_group_id;
-	#ifdef __SPECT
+	#if defined(__ENST_SPECT) || defined(__ENRG_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__ENRG_FLUX_SPECT)
 	hid_t spectra_group_id;
 	#endif
 	char group_name[128];
@@ -75,7 +75,7 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 		exit(1);
 	}
 
-	#ifdef __SPECT
+	#if defined(__ENST_SPECT) || defined(__ENRG_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__ENRG_FLUX_SPECT)
 	if (!sys_vars->rank){
 		// Create the spectra output file
 		file_info->spectra_file_handle = H5Fcreate(file_info->spectra_file_name, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
@@ -98,7 +98,7 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 	
 	// Create group for the current iteration data
 	main_group_id = CreateGroup(file_info->output_file_handle, file_info->output_file_name, group_name, 0.0, dt, 0);
-	#ifdef __SPECT
+	#if defined(__ENST_SPECT) || defined(__ENRG_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__ENRG_FLUX_SPECT)
 	if (!sys_vars->rank) {
 		spectra_group_id = CreateGroup(file_info->spectra_file_handle, file_info->spectra_file_name, group_name, 0.0, dt, 0);
 	}
@@ -162,29 +162,46 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 		WriteDataReal(0.0, 0, main_group_id, "TGSoln", H5T_NATIVE_DOUBLE, (hsize_t* )sys_vars->N, slab_dims, mem_space_dims, sys_vars->local_Nx_start, run_data->tg_soln);	
 	}
 	#endif
-	#ifdef __SPECT	
+	#if defined(__ENST_SPECT) || defined(__ENRG_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__ENRG_FLUX_SPECT)
 	// Gather Spectra data and write to file
 	if (!sys_vars->rank) {
-		// Gather spectra data on master process
+		// Gather spectra data on master process & write to file
+		#ifdef __ENST_SPECT
 		MPI_Reduce(MPI_IN_PLACE, run_data->enst_spect, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		MPI_Reduce(MPI_IN_PLACE, run_data->enrg_spect, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		MPI_Reduce(MPI_IN_PLACE, run_data->enst_flux_spect, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		MPI_Reduce(MPI_IN_PLACE, run_data->enrg_flux_spect, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-
-		// Write the data to file
-		WriteDataSpect(0.0, 0, spectra_group_id, sys_vars->n_spect, "EnergySpectrum", run_data->enrg_spect);
 		WriteDataSpect(0.0, 0, spectra_group_id, sys_vars->n_spect, "EnstrophySpectrum", run_data->enst_spect);
-		WriteDataSpect(0.0, 0, spectra_group_id, sys_vars->n_spect, "EnergyFluxSpectrum", run_data->enrg_flux_spect);
+		#endif 
+		#ifdef __ENRG_SPECT
+		MPI_Reduce(MPI_IN_PLACE, run_data->enrg_spect, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		WriteDataSpect(0.0, 0, spectra_group_id, sys_vars->n_spect, "EnergySpectrum", run_data->enrg_spect);
+		#endif
+		#ifdef __ENST_FLUX_SPECT
+		MPI_Reduce(MPI_IN_PLACE, run_data->enst_flux_spect, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		WriteDataSpect(0.0, 0, spectra_group_id, sys_vars->n_spect, "EnstrophyFluxSpectrum", run_data->enst_flux_spect);
+		#endif
+		#ifdef __ENRG_FLUX_SPECT
+		MPI_Reduce(MPI_IN_PLACE, run_data->enrg_flux_spect, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		WriteDataSpect(0.0, 0, spectra_group_id, sys_vars->n_spect, "EnergyFluxSpectrum", run_data->enrg_flux_spect);
+		#endif
 	}
 	else {
 		// Reduce all other process to master rank
+		#ifdef __ENST_SPECT
 		MPI_Reduce(run_data->enst_spect, NULL,  sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		#endif
+		#ifdef __ENRG_SPECT
 		MPI_Reduce(run_data->enrg_spect, NULL,  sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		#endif
+		#ifdef __ENST_FLUX_SPECT
 		MPI_Reduce(run_data->enst_flux_spect, NULL,  sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		#endif
+		#ifdef __ENRG_FLUX_SPECT
 		MPI_Reduce(run_data->enrg_flux_spect, NULL,  sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		#endif
 	}
 	#endif
+
+	
+
 
 	// ------------------------------------
 	// Close Identifiers - also close file
@@ -196,7 +213,7 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close output file ["CYAN"%s"RESET"] at: Iter = ["CYAN"%d"RESET"] t = ["CYAN"%lf"RESET"]\n-->> Exiting...\n", file_info->output_file_name, 0, 0.0);
 		exit(1);		
 	}
-	#ifdef __SPECT
+	#if defined(__ENST_SPECT) || defined(__ENRG_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__ENRG_FLUX_SPECT)
 	if (!sys_vars->rank) {
 		status = H5Gclose(spectra_group_id);
 		status = H5Fclose(file_info->spectra_file_handle);
@@ -204,8 +221,8 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close output file ["CYAN"%s"RESET"] at: Iter = ["CYAN"%d"RESET"] t = ["CYAN"%lf"RESET"]\n-->> Exiting...\n", file_info->spectra_file_name, 0, 0.0);
 			exit(1);		
 		}
-		#endif
 	}
+	#endif
 }
 /**
  * Function that creates the output file paths and directories
@@ -285,7 +302,7 @@ void GetOutputDirPath(void) {
 			printf("\nMain Output File: "CYAN"%s"RESET"\n\n", file_info->output_file_name);
 		}
 
-		#ifdef __SPECT
+		#if defined(__ENST_SPECT) || defined(__ENRG_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__ENRG_FLUX_SPECT)
 		if ( !(sys_vars->rank) ) {
 			// Construct Spectra file path
 			strcpy(tmp_path, file_info->output_dir);
@@ -353,7 +370,7 @@ void GetOutputDirPath(void) {
 			printf("\nMain Output File: "CYAN"%s"RESET"\n\n", file_info->output_file_name);
 		}
 
-		#ifdef __SPECT
+		#if defined(__ENST_SPECT) || defined(__ENRG_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__ENRG_FLUX_SPECT)
 		if ( !(sys_vars->rank) ) {
 			// Construct spectra file path
 			strcpy(file_info->spectra_file_name, file_info->output_dir); 
@@ -383,7 +400,7 @@ void WriteDataToFile(double t, double dt, long int iters) {
 	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
 	herr_t status;
 	hid_t main_group_id;
-	#ifdef __SPECT
+	#if defined(__ENST_SPECT) || defined(__ENRG_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__ENRG_FLUX_SPECT)
 	hid_t spectra_group_id;
 	#endif
 	hid_t plist_id;
@@ -417,7 +434,7 @@ void WriteDataToFile(double t, double dt, long int iters) {
 	}
 	H5Pclose(plist_id);
 
-	#ifdef __SPECT
+	#if defined(__ENST_SPECT) || defined(__ENRG_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__ENRG_FLUX_SPECT)
 	if (!sys_vars->rank) {
 		// Check if spectra file exists - open it if it does if not create it
 		if (access(file_info->output_file_name, F_OK) != 0) {
@@ -447,7 +464,7 @@ void WriteDataToFile(double t, double dt, long int iters) {
 	
 	// Create group for the current iteration data
 	main_group_id = CreateGroup(file_info->output_file_handle, file_info->output_file_name, group_name, t, dt, iters);
-	#ifdef __SPECT
+	#if defined(__ENST_SPECT) || defined(__ENRG_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__ENRG_FLUX_SPECT)
 	if (!sys_vars->rank) {
 		spectra_group_id = CreateGroup(file_info->spectra_file_handle, file_info->spectra_file_name, group_name, t, dt, iters);
 	}
@@ -500,29 +517,43 @@ void WriteDataToFile(double t, double dt, long int iters) {
 		WriteDataReal(t, (int)iters, main_group_id, "TGSoln", H5T_NATIVE_DOUBLE, (hsize_t* )sys_vars->N, slab_dims, mem_space_dims, sys_vars->local_Nx_start, run_data->tg_soln);	
 	}
 	#endif
-	#ifdef __SPECT	
+	#if defined(__ENST_SPECT) || defined(__ENRG_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__ENRG_FLUX_SPECT)
 	// Gather Spectra data and write to file
 	if (!sys_vars->rank) {
-		// Gather spectra data on master process
+		// Gather spectra data on master process & write to file
+		#ifdef __ENST_SPECT
 		MPI_Reduce(MPI_IN_PLACE, run_data->enst_spect, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		MPI_Reduce(MPI_IN_PLACE, run_data->enrg_spect, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		MPI_Reduce(MPI_IN_PLACE, run_data->enst_flux_spect, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		MPI_Reduce(MPI_IN_PLACE, run_data->enrg_flux_spect, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-
-		// Write the data to file
-		WriteDataSpect(t, iters, spectra_group_id, sys_vars->n_spect, "EnergySpectrum", run_data->enrg_spect);
 		WriteDataSpect(t, iters, spectra_group_id, sys_vars->n_spect, "EnstrophySpectrum", run_data->enst_spect);
-		WriteDataSpect(t, iters, spectra_group_id, sys_vars->n_spect, "EnergyFluxSpectrum", run_data->enrg_flux_spect);
+		#endif 
+		#ifdef __ENRG_SPECT
+		MPI_Reduce(MPI_IN_PLACE, run_data->enrg_spect, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		WriteDataSpect(t, iters, spectra_group_id, sys_vars->n_spect, "EnergySpectrum", run_data->enrg_spect);
+		#endif
+		#ifdef __ENST_FLUX_SPECT
+		MPI_Reduce(MPI_IN_PLACE, run_data->enst_flux_spect, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		WriteDataSpect(t, iters, spectra_group_id, sys_vars->n_spect, "EnstrophyFluxSpectrum", run_data->enst_flux_spect);
+		#endif
+		#ifdef __ENRG_FLUX_SPECT
+		MPI_Reduce(MPI_IN_PLACE, run_data->enrg_flux_spect, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		WriteDataSpect(t, iters, spectra_group_id, sys_vars->n_spect, "EnergyFluxSpectrum", run_data->enrg_flux_spect);
+		#endif
 	}
 	else {
 		// Reduce all other process to master rank
+		#ifdef __ENST_SPECT
 		MPI_Reduce(run_data->enst_spect, NULL,  sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		#endif
+		#ifdef __ENRG_SPECT
 		MPI_Reduce(run_data->enrg_spect, NULL,  sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		#endif
+		#ifdef __ENST_FLUX_SPECT
 		MPI_Reduce(run_data->enst_flux_spect, NULL,  sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		#endif
+		#ifdef __ENRG_FLUX_SPECT
 		MPI_Reduce(run_data->enrg_flux_spect, NULL,  sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		#endif
 	}
-	#endif
+	#endif 
 
 	// -------------------------------
 	// Close identifiers and File
@@ -533,7 +564,7 @@ void WriteDataToFile(double t, double dt, long int iters) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close output file ["CYAN"%s"RESET"] at: Iter = ["CYAN"%ld"RESET"] t = ["CYAN"%lf"RESET"]\n-->> Exiting...\n", file_info->output_file_name, iters, t);
 		exit(1);
 	}
-	#ifdef __SPECT
+	#if defined(__ENST_SPECT) || defined(__ENRG_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__ENRG_FLUX_SPECT)
 	if (!sys_vars->rank) {
 		status = H5Gclose(spectra_group_id);
 		status = H5Fclose(file_info->spectra_file_handle);
@@ -936,19 +967,26 @@ void FinalWriteAndCloseOutputFile(const long int* N) {
 	// System measures -> need to reduce (in place on rank 0) all arrays across the processess
 	if (!(sys_vars->rank)) {
 		// Reduce on to rank 0
+		#ifdef __SYS_MEASURES
 		MPI_Reduce(MPI_IN_PLACE, run_data->tot_energy, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		MPI_Reduce(MPI_IN_PLACE, run_data->tot_enstr, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		MPI_Reduce(MPI_IN_PLACE, run_data->tot_palin, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		MPI_Reduce(MPI_IN_PLACE, run_data->enrg_diss, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		MPI_Reduce(MPI_IN_PLACE, run_data->enst_diss, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		#endif
+		#ifdef __ENST_FLUX
 		MPI_Reduce(MPI_IN_PLACE, run_data->enst_flux_sbst, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		MPI_Reduce(MPI_IN_PLACE, run_data->enst_flux_sbst, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		#endif
+		#ifdef __ENRG_FLUX
 		MPI_Reduce(MPI_IN_PLACE, run_data->enrg_flux_sbst, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		MPI_Reduce(MPI_IN_PLACE, run_data->enrg_flux_sbst, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		#endif
 
 		// Dataset dims
 		dims1D[0] = sys_vars->num_print_steps;
 
+		#ifdef __SYS_MEASURES
 		// Energy
 		if ( (H5LTmake_dataset(file_info->output_file_handle, "TotalEnergy", D1, dims1D, H5T_NATIVE_DOUBLE, run_data->tot_energy)) < 0) {
 			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "TotalEnergy");
@@ -969,6 +1007,8 @@ void FinalWriteAndCloseOutputFile(const long int* N) {
 		if ( (H5LTmake_dataset(file_info->output_file_handle, "EnstrophyDissipation", D1, dims1D, H5T_NATIVE_DOUBLE, run_data->enst_diss)) < 0) {
 			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "EnstrophyDissipation");
 		}
+		#endif
+		#ifdef __ENST_FLUX
 		// Enstrophy flux in/out of a subset of modes
 		if ( (H5LTmake_dataset(file_info->output_file_handle, "EnstrophyFluxSubset", D1, dims1D, H5T_NATIVE_DOUBLE, run_data->enst_flux_sbst)) < 0) {
 			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "EnstrophyFluxSubset");
@@ -977,6 +1017,8 @@ void FinalWriteAndCloseOutputFile(const long int* N) {
 		if ( (H5LTmake_dataset(file_info->output_file_handle, "EnstrophyDissSubset", D1, dims1D, H5T_NATIVE_DOUBLE, run_data->enst_diss_sbst)) < 0) {
 			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "EnstrophyDissSubset");
 		}
+		#endif
+		#ifdef __ENRG_FLUX
 		// Energy flux in/out of a subset of modes
 		if ( (H5LTmake_dataset(file_info->output_file_handle, "EnergyFluxSubset", D1, dims1D, H5T_NATIVE_DOUBLE, run_data->enrg_flux_sbst)) < 0) {
 			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "EnergyFluxSubset");
@@ -985,18 +1027,25 @@ void FinalWriteAndCloseOutputFile(const long int* N) {
 		if ( (H5LTmake_dataset(file_info->output_file_handle, "EnergyDissSubset", D1, dims1D, H5T_NATIVE_DOUBLE, run_data->enrg_diss_sbst)) < 0) {
 			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "EnergyDissSubset");
 		}
+		#endif
 	}
 	else {
 		// Reduce all other process to rank 0
+		#ifdef __SYS_MEASURES
 		MPI_Reduce(run_data->tot_energy, NULL,  sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		MPI_Reduce(run_data->tot_enstr, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		MPI_Reduce(run_data->tot_palin, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		MPI_Reduce(run_data->enrg_diss, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		MPI_Reduce(run_data->enst_diss, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		#endif
+		#ifdef __ENST_FLUX
 		MPI_Reduce(run_data->enst_flux_sbst, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		MPI_Reduce(run_data->enst_diss_sbst, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		#endif
+		#ifdef __ENRG_FLUX
 		MPI_Reduce(run_data->enrg_flux_sbst, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		MPI_Reduce(run_data->enrg_diss_sbst, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		#endif
 	}
 
 	// -------------------------------

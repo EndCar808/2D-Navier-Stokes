@@ -86,8 +86,16 @@
 // Choose whether to save the Real or Fourier space velocitites
 // #define __MODES
 // #define __REALSPACE
+// Choose whether to compute system measures
+#define __SYS_MEASURES
+// Choose whether to compute the fluxes
+// #define __ENST_FLUX
+// #define __ENRG_FLUX
 // Choose whether to compute the Energy and Enstrophy spectra and flux spectra
-#define __SPECT
+// #define __ENST_SPECT
+// #define __ENRG_SPECT
+// #define __ENST_FLUX_SPECT
+// #define __ENRG_FLUX_SPECT
 // Choose whether to save the time, collocation points and wavenumbers
 #define __TIME
 #define __COLLOC_PTS

@@ -111,25 +111,25 @@ void SpectralSolve(void) {
 
 
 
-	printf("Enrgy: %1.5lf\tEns: %1.5lf\tPalin: %1.5lf---Enrgy Diss: %1.5lf Enst Diss: %1.5lf\n", run_data->tot_energy[0], run_data->tot_enstr[0], run_data->tot_palin[0], run_data->enrg_diss[0], run_data->enst_diss[0]);
-	if (!(sys_vars->rank)) {
-		// Reduce on to rank 0
-		MPI_Reduce(MPI_IN_PLACE, run_data->tot_energy, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		MPI_Reduce(MPI_IN_PLACE, run_data->tot_enstr, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		MPI_Reduce(MPI_IN_PLACE, run_data->tot_palin, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		MPI_Reduce(MPI_IN_PLACE, run_data->enrg_diss, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		MPI_Reduce(MPI_IN_PLACE, run_data->enst_diss, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+	// printf("Enrgy: %1.5lf\tEns: %1.5lf\tPalin: %1.5lf---Enrgy Diss: %1.5lf Enst Diss: %1.5lf\n", run_data->tot_energy[0], run_data->tot_enstr[0], run_data->tot_palin[0], run_data->enrg_diss[0], run_data->enst_diss[0]);
+	// if (!(sys_vars->rank)) {
+	// 	// Reduce on to rank 0
+	// 	MPI_Reduce(MPI_IN_PLACE, run_data->tot_energy, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+	// 	MPI_Reduce(MPI_IN_PLACE, run_data->tot_enstr, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+	// 	MPI_Reduce(MPI_IN_PLACE, run_data->tot_palin, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+	// 	MPI_Reduce(MPI_IN_PLACE, run_data->enrg_diss, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+	// 	MPI_Reduce(MPI_IN_PLACE, run_data->enst_diss, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 
-		printf("TOTAL:::: Iter: %d\tt: %1.6lf\tdt: %g\t Max Vort: %1.4lf \tTKE: %1.8lf\tENS: %1.8lf\tPAL: %g\tEDiss: %g\tEnDiss: %g\n", 0, 0.0, dt, sys_vars->w_max_init, run_data->tot_energy[0], run_data->tot_enstr[0], run_data->tot_palin[0], run_data->enst_flux_sbst[0], run_data->enst_diss_sbst[0]);
-	}
-	else {
-		// Reduce all other process to rank 0
-		MPI_Reduce(run_data->tot_energy, NULL,  sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		MPI_Reduce(run_data->tot_enstr, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		MPI_Reduce(run_data->tot_palin, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		MPI_Reduce(run_data->enrg_diss, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		MPI_Reduce(run_data->enst_diss, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-	}
+	// 	printf("TOTAL:::: Iter: %d\tt: %1.6lf\tdt: %g\t Max Vort: %1.4lf \tTKE: %1.8lf\tENS: %1.8lf\tPAL: %g\tEDiss: %g\tEnDiss: %g\n", 0, 0.0, dt, sys_vars->w_max_init, run_data->tot_energy[0], run_data->tot_enstr[0], run_data->tot_palin[0], run_data->enst_flux_sbst[0], run_data->enst_diss_sbst[0]);
+	// }
+	// else {
+	// 	// Reduce all other process to rank 0
+	// 	MPI_Reduce(run_data->tot_energy, NULL,  sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+	// 	MPI_Reduce(run_data->tot_enstr, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+	// 	MPI_Reduce(run_data->tot_palin, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+	// 	MPI_Reduce(run_data->enrg_diss, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+	// 	MPI_Reduce(run_data->enst_diss, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+	// }
 
 	
 	//////////////////////////////
@@ -759,6 +759,10 @@ void ApplyForcing(fftw_complex* w_hat, const long int* N) {
 	}
 	else if(!(strcmp(sys_vars->forcing, "KOLM"))) {
 		// Apply Kolmogorov forcing
+
+	}
+	else if(!(strcmp(sys_vars->forcing, "STOC"))) {
+		// Apply Stochastic forcing
 
 	}
 }
@@ -2512,6 +2516,7 @@ void RecordSystemMeasures(double t, int print_indx, RK_data_struct* RK_data) {
 
 	// Check if within memory limits
 	if (print_indx < sys_vars->num_print_steps) {
+		#ifdef __SYS_MEASURES
 		// Total Energy, enstrophy and palinstrophy
 		run_data->tot_enstr[print_indx]  = TotalEnstrophy();
 		run_data->tot_energy[print_indx] = TotalEnergy();
@@ -2519,9 +2524,14 @@ void RecordSystemMeasures(double t, int print_indx, RK_data_struct* RK_data) {
 		// Energy and enstrophy dissipation rates
 		run_data->enrg_diss[print_indx] = EnergyDissipationRate();
 		run_data->enst_diss[print_indx] = EnstrophyDissipationRate();
+		#endif
+		#ifdef __ENST_FLUX
 		// Enstrophy and energy flux in/out and dissipation of a subset of modes
 		EnstrophyFlux(&(run_data->enst_flux_sbst[print_indx]), &(run_data->enst_diss_sbst[print_indx]), RK_data);
+		#endif
+		#ifdef __ENRG_FLUX
 		EnergyFlux(&(run_data->enrg_flux_sbst[print_indx]), &(run_data->enrg_diss_sbst[print_indx]), RK_data);
+		#endif
 	}
 	else {
 		printf("\n["MAGENTA"WARNING"RESET"] --- Unable to write system measures at Indx: [%d] t: [%lf] ---- Number of intergration steps is now greater then memory allocated\n", print_indx, t);
@@ -2530,11 +2540,17 @@ void RecordSystemMeasures(double t, int print_indx, RK_data_struct* RK_data) {
 	// -------------------------------
 	// Record the Spectra 
 	// -------------------------------
-	#ifdef __SPECT 
+	#ifdef __ENST_SPECT 
 	// Call spectra functions
-	run_data->enst_spect 	  = (double* )EnstrophySpectrum(&(sys_vars->n_spect));
-	run_data->enrg_spect 	  = (double* )EnergySpectrum(&(sys_vars->n_spect));
+	run_data->enst_spect = (double* )EnstrophySpectrum(&(sys_vars->n_spect));
+	#endif
+	#ifdef __ENRG_SPECT
+	run_data->enrg_spect = (double* )EnergySpectrum(&(sys_vars->n_spect));
+	#endif
+	#ifdef __ENRG_FLUX_SPECT
 	run_data->enrg_flux_spect = (double* )EnergyFluxSpectrum(&(sys_vars->n_spect), RK_data);
+	#endif
+	#ifdef __ENST_FLUX_SPECT
 	run_data->enst_flux_spect = (double* )EnstrophyFluxSpectrum(&(sys_vars->n_spect), RK_data);
 	#endif
 }
@@ -2784,6 +2800,7 @@ void InitializeSystemMeasurables(RK_data_struct* RK_data) {
 	// ------------------------
 	// Allocate Memory
 	// ------------------------
+	#ifdef __SYS_MEASURES
 	// Total Energy in the system
 	run_data->tot_energy = (double* )fftw_malloc(sizeof(double) * print_steps);
 	if (run_data->tot_energy == NULL) {
@@ -2818,7 +2835,8 @@ void InitializeSystemMeasurables(RK_data_struct* RK_data) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Enstrophy Dissipation Rate");
 		exit(1);
 	}	
-
+	#endif
+	#ifdef __ENST_FLUX
 	// Enstrophy flux
 	run_data->enst_flux_sbst = (double* )fftw_malloc(sizeof(double) * print_steps);
 	if (run_data->enst_flux_sbst == NULL) {
@@ -2832,7 +2850,8 @@ void InitializeSystemMeasurables(RK_data_struct* RK_data) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Enstrophy Dissipation Rate Subset");
 		exit(1);
 	}	
-
+	#endif
+	#ifdef __ENRG_FLUX
 	// Energy Flux
 	run_data->enrg_flux_sbst = (double* )fftw_malloc(sizeof(double) * print_steps);
 	if (run_data->enrg_flux_sbst == NULL) {
@@ -2846,7 +2865,7 @@ void InitializeSystemMeasurables(RK_data_struct* RK_data) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Energy Dissipation Rate Subset");
 		exit(1);
 	}
-	
+	#endif
 	// Time
 	#ifdef __TIME
 	if (!(sys_vars->rank)){
@@ -2861,6 +2880,7 @@ void InitializeSystemMeasurables(RK_data_struct* RK_data) {
 	// ----------------------------
 	// Get Measurables of the ICs
 	// ----------------------------
+	#ifdef __SYS_MEASURES
 	// Total Energy
 	run_data->tot_energy[0] = TotalEnergy();
 
@@ -2875,13 +2895,15 @@ void InitializeSystemMeasurables(RK_data_struct* RK_data) {
 
 	// Enstrophy dissipation rate
 	run_data->enst_diss[0] = EnstrophyDissipationRate();
-
+	#endif
+	#ifdef __ENST_FLUX
 	// Enstrophy Flux and dissipation from/to Subset of modes
 	EnstrophyFlux(&(run_data->enst_flux_sbst[0]), &(run_data->enst_diss_sbst[0]), RK_data);
-
+	#endif
+	#ifdef __ENRG_FLUX
 	// Energy Flux and dissipation from/to a subset of modes
 	EnergyFlux(&(run_data->enrg_flux_sbst[0]), &(run_data->enrg_diss_sbst[0]), RK_data);
-
+	#endif
 	// Time
 	#ifdef __TIME
 	if (!(sys_vars->rank)) {
@@ -2892,11 +2914,17 @@ void InitializeSystemMeasurables(RK_data_struct* RK_data) {
 	// ----------------------------
 	// Get Spectra of the ICs
 	// ----------------------------
-	#ifdef __SPECT
 	// Call spectra functions
-	run_data->enst_spect 	  = (double* )EnstrophySpectrum(&(sys_vars->n_spect));
-	run_data->enrg_spect 	  = (double* )EnergySpectrum(&(sys_vars->n_spect));
+	#ifdef __ENST_SPECT
+	run_data->enst_spect = (double* )EnstrophySpectrum(&(sys_vars->n_spect));
+	#endif
+	#ifdef __ENRG_SPECT
+	run_data->enrg_spect = (double* )EnergySpectrum(&(sys_vars->n_spect));
+	#endif
+	#ifdef __ENRG_FLUX_SPECT
 	run_data->enrg_flux_spect = (double* )EnergyFluxSpectrum(&(sys_vars->n_spect), RK_data);
+	#endif
+	#ifdef __ENST_FLUX_SPECT
 	run_data->enst_flux_spect = (double* )EnstrophyFluxSpectrum(&(sys_vars->n_spect), RK_data);
 	#endif
 }
@@ -2920,15 +2948,21 @@ void FreeMemory(RK_data_struct* RK_data) {
 	fftw_free(run_data->u_hat);
 	fftw_free(run_data->w);
 	fftw_free(run_data->w_hat);
+	#ifdef __SYS_MEASURES
 	fftw_free(run_data->tot_energy);
 	fftw_free(run_data->tot_enstr);
 	fftw_free(run_data->tot_palin);
 	fftw_free(run_data->enrg_diss);
 	fftw_free(run_data->enst_diss);
+	#endif
+	#ifdef __ENST_FLUX
 	fftw_free(run_data->enst_flux_sbst);
 	fftw_free(run_data->enst_diss_sbst);
+	#endif
+	#ifdef __ENRG_FLUX
 	fftw_free(run_data->enrg_flux_sbst);
 	fftw_free(run_data->enrg_diss_sbst);
+	#endif
 	#ifdef TESTING
 	fftw_free(run_data->tg_soln);
 	#endif
