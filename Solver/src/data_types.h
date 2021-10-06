@@ -110,6 +110,7 @@
 #define BETA 1.0                // The aspect ratio for the Gaussian blob initial condition
 #define S 6.0                   // The scale parameter for the Gaussian Blob initial condition 
 #define K0 6.0					// The peak wavenumber for the McWilliams decaying vortex turblence initial condition
+#define E0 0.5                  // The initial energy for the McWilliams decaying vortex turbulence initial condition
 // System checking parameters
 #define MIN_STEP_SIZE 1e-10 	// The minimum allowed stepsize for the solver 
 #define MAX_ITERS 1e+12			// The maximum iterations to perform

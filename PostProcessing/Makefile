@@ -13,27 +13,27 @@ OS = $(strip $(shell lsb_release -si))
 # Set the operating system dependent compiler variables
 ifeq ($(OS), Ubuntu)
 	# CHIRP
-	GCC := gcc
-	CCFLAG := -O3 -W -Wall -g
+	GCC     := gcc
+	CCFLAG  := -O3 -W -Wall -g
 	LIBFLAG := -lfftw3_mpi -lfftw3 -lm -lhdf5 -lhdf5_hl #-fopenmp -lpthread -lfftw3_omp
 	# GSLFLAG := -lgsl -lgslcblas
 	# LAPACKFLAG := -llapacke -llapack -lblas -lgfortran
-	INCDIR = -I/usr/include/hdf5/serial  #-I/usr/include/gsl/
-	LIBDIR = -L/usr/lib/x86_64-linux-gnu/hdf5/serial
+	INCDIR   = -I/usr/include/hdf5/serial  #-I/usr/include/gsl/
+	LIBDIR   = -L/usr/lib/x86_64-linux-gnu/hdf5/serial
 else ifeq ($(OS), RedHatEnterpriseServer)
 	# SONIC
-	GCC := gcc
-	CCFLAG := -O3 -W -Wall -g
+	GCC     := gcc
+	CCFLAG  := -O3 -W -Wall -g
 	LIBFLAG := -lfftw3 -lm -lhdf5 -lhdf5_hl #-fopenmp -lpthread -lfftw3_omp
-	INCDIR = -I/opt/software/hdf5/1.10.5/include -I/opt/software/fftw/3.3.8/include
-	LIBDIR = -L/opt/software/hdf5/1.10.5/lib -L/opt/software/fftw/3.3.8/lib
+	INCDIR   = -I/opt/software/hdf5/1.10.5/include -I/opt/software/fftw/3.3.8/include
+	LIBDIR   = -L/opt/software/hdf5/1.10.5/lib -L/opt/software/fftw/3.3.8/lib
 else ifeq ($(OS), CentOS)
 	# KAY
-	GCC := gcc
-	CCFLAG := -O3 -W -Wall -g
+	GCC     := gcc
+	CCFLAG  := -O3 -W -Wall -g
 	LIBFLAG := -lfftw3 -lfftw3 -lm -lhdf5 -lhdf5_hl #-fopenmp -lpthread -lfftw3_omp
-	INCDIR = -I/ichec/packages/hdf5/gcc/1.12.0/include -I/ichec/packages/fftw/3.3.8/gcc/double/include
-	LIBDIR = -L/ichec/packages/hdf5/gcc/1.12.0/lib -L/ichec/packages/fftw/3.3.8/gcc/double/lib
+	INCDIR   = -I/ichec/packages/hdf5/gcc/1.12.0/include -I/ichec/packages/fftw/3.3.8/gcc/double/include
+	LIBDIR   = -L/ichec/packages/hdf5/gcc/1.12.0/lib -L/ichec/packages/fftw/3.3.8/gcc/double/lib
 else
 	$(error Unknown OS found, please check OS and add appropriate flags in Makefile)
 endif
@@ -51,9 +51,9 @@ BINDIR := $(shell mkdir -p $(BIN))
 OUT    := output
 OUTDIR := $(shell mkdir -p $(OUT))
 
-SRCDIR     := src
-SRCFILE    := $(wildcard $(SRCDIR)/*.c)
-SRCOBJ     := $(patsubst $(SRCDIR)/%.c, $(OBJBIN)/%.o, $(SRCFILE))
+SRCDIR  := src
+SRCFILE := $(wildcard $(SRCDIR)/*.c)
+SRCOBJ  := $(patsubst $(SRCDIR)/%.c, $(OBJBIN)/%.o, $(SRCFILE))
 # ---------------------------------------------------------------------
 #  Builds
 # ---------------------------------------------------------------------

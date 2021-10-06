@@ -1,5 +1,11 @@
 #!/usr/bin/env python    
 
+## Author: Enda Carroll
+## Date: Sept 2021
+## Info: General python functions for analysing
+#        Solver data
+
+
 #######################
 ##  Library Imports  ##
 #######################
@@ -23,6 +29,37 @@ class tc:
     Rst  = '\033[0m'
     Bold = '\033[1m'
     Underline = '\033[4m'
+
+
+
+
+#################################
+##          MISC               ##
+#################################
+def fft_ishift_freq(w_h, axes = None):
+
+    """
+    My version of fft.ifftshift
+    """
+
+    ## If no axes provided
+    if axes == None:
+        ## Create axes tuple
+        axes  = tuple(range(w_h.ndim))
+        ## Create shift list -> adjusted for FFTW freq numbering
+        shift = [-(dim // 2 + 1) for dim in w_h.shape]
+
+    ## If axes is an integer
+    elif isinstance(axes, int):
+        ## Create the shift object on this axes
+        shift = -(w_h.shape[axes] // 2 + 1)
+
+    ## If axes is a tuple
+    else:
+        ## Create appropriate shift for each axis
+        shift = [-(w_h.shape[ax] // 2 + 1) for ax in axes]
+
+    return np.roll(w_h, shift, axes)
 
 #####################################
 ##       DATA FILE FUNCTIONS       ##

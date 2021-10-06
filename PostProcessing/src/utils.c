@@ -43,9 +43,11 @@ int GetCMLArgs(int argc, char** argv) {
 	// -------------------------------
 	// Initialize Default Values
 	// -------------------------------
-	// Output file directory
+	// Output & Input file directory
 	strncpy(file_info->output_dir, "../Data/Tmp", 512);  // Set default output directory to the Tmp folder
+	strncpy(file_info->input_dir, "../Data/Tmp", 512);  // Set default output directory to the Tmp folder
 	strncpy(file_info->output_tag, "NO_TAG", 64);
+	file_info->input_file_only = 0; // used to indicate if input file was file only i.e., not output folder
 	file_info->output_file_only = 0; // used to indicate if output file should be file only i.e., not output folder
 
 	// -------------------------------

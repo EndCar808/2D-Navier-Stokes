@@ -150,7 +150,7 @@ void SpectralSolve(void) {
 		MPI_Reduce(MPI_IN_PLACE, run_data->enrg_diss, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		MPI_Reduce(MPI_IN_PLACE, run_data->enst_diss, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 
-		printf("Iter: %d\tt: %1.6lf\tdt: %g\t Max Vort: %1.4lf \tTKE: %1.8lf\tENS: %1.8lf\tPAL: %g\tEDiss: %g\tEnDiss: %g\n", 0, 0.0, dt, sys_vars->w_max_init, run_data->tot_energy[0], run_data->tot_enstr[0], run_data->tot_palin[0], run_data->enst_flux_sbst[0], run_data->enst_diss_sbst[0]);
+		printf("TOTAL:::: Iter: %d\tt: %1.6lf\tdt: %g\t Max Vort: %1.4lf \tTKE: %1.8lf\tENS: %1.8lf\tPAL: %g\tEDiss: %g\tEnDiss: %g\n", 0, 0.0, dt, sys_vars->w_max_init, run_data->tot_energy[0], run_data->tot_enstr[0], run_data->tot_palin[0], run_data->enst_flux_sbst[0], run_data->enst_diss_sbst[0]);
 	}
 	else {
 		// Reduce all other process to rank 0
@@ -972,7 +972,7 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 		double wnum_func;
 
 		// ---------------------------------------
-		// Initialize Foureir Stream Function
+		// Initialize Fourier Stream Function
 		// ---------------------------------------
 		for (int i = 0; i < local_Nx; ++i) {	
 			tmp = i * (Ny_Fourier);
@@ -991,8 +991,8 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 				}
 				else {
 					// Compute |k|^2 and the wavenumber function
-					k_sqr 	  = (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
-					wnum_func = sqrt(k_sqr) / (1.0 + pow((k_sqr / pow(K0, 2.0)), 2.0));
+					k_sqr 	  = sqrt((double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]));
+					wnum_func = 1. / sqrt(k_sqr * (1.0 + pow(k_sqr / K0, 4.0)));
 				}
 
 				// Compute the Fourier stream function so that variance is proportional to |k| / (1.0 + (|k|/k_0)^4)
@@ -1001,7 +1001,7 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 		}
 
 		// ---------------------------------------
-		// Normalize the Initial Energy
+		// Compute the Initial Energy
 		// ---------------------------------------
 		double spec_energy = 0.0;
 		for (int i = 0; i < local_Nx; ++i) {	
@@ -1009,22 +1009,28 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 			for (int j = 0; j < Ny_Fourier; ++j) {
 				indx = tmp + j;	
 
+				// Wavenumber prefactor -> |k|^2
+				k_sqr = (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
+
 				if ((j == 0) || (j == Ny_Fourier - 1)) {
 					// Compute the spectral energy -> the k = 0 and Nx/2 have no conjugate so onlt count their contribution once
-					spec_energy += cabs(psi_hat[indx]) / pow((Nx * Ny), 2.0);
+					spec_energy += k_sqr * cabs(psi_hat[indx] * conj(psi_hat[indx]));
 				}
 				else {
 					// Compute the spectral energy
-					spec_energy += 2.0 * cabs(psi_hat[indx]) / pow((Nx * Ny), 2.0);	
+					spec_energy += 2.0 * k_sqr * cabs(psi_hat[indx] * conj(psi_hat[indx]));	
 				}
 			}
 		}
+		// Normalize 
+		spec_energy *= (0.5 / pow(Nx * Ny, 2.0)) * 4.0 * pow(M_PI, 2.0);
+
 		// Reduce all local energy sums and broadcast back to each process
 		MPI_Allreduce(MPI_IN_PLACE, &spec_energy, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
-		// ---------------------------------------
-		// Compute the Fourier Vorticity
-		// ---------------------------------------
+		// -------------------------------------------
+		// Normalize & Compute the Fourier Vorticity
+		// -------------------------------------------
 		for (int i = 0; i < local_Nx; ++i) {	
 			tmp = i * (Ny_Fourier);
 			for (int j = 0; j < Ny_Fourier; ++j) {
@@ -1034,7 +1040,7 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 				k_sqr = (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 
 				// Compute the Fouorier vorticity
-				w_hat[indx] = k_sqr * psi_hat[indx] / spec_energy;
+				w_hat[indx] = -1.0 * k_sqr * psi_hat[indx] * sqrt(E0 / spec_energy);
 			}
 		}
 

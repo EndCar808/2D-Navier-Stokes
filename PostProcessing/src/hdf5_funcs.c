@@ -86,12 +86,16 @@ void OpenInputAndInitialize(void) {
 	//  Get Number of Snaps
 	// --------------------------------
 	// Count the number of snapshot groups in file
-	for(int i = 0; i < 1e6; ++i) {
+	printf("Checking Number of Snapshots ");
+	for(int i = 0; i < (int) 1e6; ++i) {
+		// Check for snap
 		sprintf(group_string, "/Iter_%05d", i);	
 		if(H5Lexists(file_info->input_file_handle, group_string, H5P_DEFAULT) > 0 ) {
 			snaps++;
 		}
 	}
+	// Print total number of snaps to screen
+	printf("\nTotal Snapshots: ["CYAN"%d"RESET"]\n\n", snaps);
 
 	// Save the total number of snaps
 	sys_vars->num_snaps = snaps;
@@ -179,11 +183,11 @@ void OpenInputAndInitialize(void) {
 		}
 
 		// Read in Fourier space arrays
-		if(H5LTread_dataset(file_info->input_file_handle, "kx", H5T_NATIVE_INT, run_data->x[0]) < 0) {
+		if(H5LTread_dataset(file_info->input_file_handle, "kx", H5T_NATIVE_INT, run_data->k[0]) < 0) {
 			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to read in data for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "kx");
 			exit(1);	
 		}
-		if(H5LTread_dataset(file_info->input_file_handle, "ky", H5T_NATIVE_INT, run_data->x[1]) < 0) {
+		if(H5LTread_dataset(file_info->input_file_handle, "ky", H5T_NATIVE_INT, run_data->k[1]) < 0) {
 			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to read in data for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "ky");
 			exit(1);
 		}
@@ -284,14 +288,14 @@ void OpenOutputFile(void) {
 		exit(1);
 	}	
 
-	// --------------------------------
-	//  Close HDF5 Identifiers
-	// --------------------------------
-	status = H5Fclose(file_info->output_file_handle);
-	if (status < 0) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close output file ["CYAN"%s"RESET"] at: Snap = ["CYAN"%s"RESET"]\n-->> Exiting...\n", file_info->output_file_name, "initial");
-		exit(1);		
-	}
+	// // --------------------------------
+	// //  Close HDF5 Identifiers
+	// // --------------------------------
+	// status = H5Fclose(file_info->output_file_handle);
+	// if (status < 0) {
+	// 	fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close output file ["CYAN"%s"RESET"] at: Snap = ["CYAN"%s"RESET"]\n-->> Exiting...\n", file_info->output_file_name, "initial");
+	// 	exit(1);		
+	// }
 }
 /**
  * Function to write the data for the current snapshot to the file
@@ -308,26 +312,29 @@ void WriteDataToFile(double t, long int snap) {
 	hsize_t dset_dims[Dims2D];        // array to hold dims of the dataset to be created
 	
 
+
 	// -------------------------------
 	// Check for Output File
 	// -------------------------------
-	// Check if output file exist if not create it
-	if (access(file_info->output_file_name, F_OK) != 0) {
-		file_info->output_file_handle = H5Fcreate(file_info->output_file_name, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
-		if (file_info->output_file_handle < 0) {
-			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to create output file ["CYAN"%s"RESET"] at: Snap = ["CYAN"%ld"RESET"]\n-->> Exiting...\n", file_info->output_file_name, snap);
-			exit(1);
-		}
-	}
-	else {
-		// Open file with default I/O access properties
-		file_info->output_file_handle = H5Fopen(file_info->output_file_name, H5F_ACC_RDWR, H5P_DEFAULT);
-		if (file_info->output_file_handle < 0) {
-			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to open output file ["CYAN"%s"RESET"] at: Snap = ["CYAN"%ld"RESET"]\n-->> Exiting...\n", file_info->output_file_name, snap);
-			exit(1);
-		}
-	}
-
+	// // Check if output file exist if not create it
+	// if (access(file_info->output_file_name, F_OK) != 0) {
+	// 	file_info->output_file_handle = H5Fcreate(file_info->output_file_name, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+	// 	if (file_info->output_file_handle < 0) {
+	// 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to create output file ["CYAN"%s"RESET"] at: Snap = ["CYAN"%ld"RESET"]\n-->> Exiting...\n", file_info->output_file_name, snap);
+	// 		exit(1);
+	// 	}
+	// }
+	// else {
+	// 	printf("Hereq1\n");
+	// 	// Open file with default I/O access properties
+	// 	printf("File: %s\n", file_info->output_file_name);
+	// 	file_info->output_file_handle = H5Fopen(file_info->output_file_name, H5F_ACC_RDWR, H5P_DEFAULT);
+	// 	if (file_info->output_file_handle < 0) {
+	// 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to open output file ["CYAN"%s"RESET"] at: Snap = ["CYAN"%ld"RESET"]\n-->> Exiting...\n", file_info->output_file_name, snap);
+	// 		exit(1);
+	// 	}
+	// }
+	// printf("Here-1\n");
 
 	// -------------------------------
 	// Create Group for Current Snap
@@ -341,35 +348,37 @@ void WriteDataToFile(double t, long int snap) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to create group in file ["CYAN"%s"RESET"] at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", file_info->output_file_name, t, snap);
 		exit(1);
 	}
+	printf("Here2\n");
 
 	// -------------------------------
 	// Write Datasets
 	// -------------------------------
 	// The full field phases
-	dset_dims[0] = 2.0 * sys_vars->kmax - 1;
-	dset_dims[1] = 2.0 * sys_vars->kmax - 1;
+	dset_dims[0] = 2 * sys_vars->kmax - 1;
+	dset_dims[1] = 2 * sys_vars->kmax - 1;
 	H5LTmake_dataset(group_id, "FullFieldPhases", Dims2D, dset_dims, H5T_NATIVE_DOUBLE, proc_data->phases);	
 
 	// The full field energy spectrum
-	dset_dims[0] = 2.0 * sys_vars->kmax - 1;
-	dset_dims[1] = 2.0 * sys_vars->kmax - 1;
+	dset_dims[0] = 2 * sys_vars->kmax - 1;
+	dset_dims[1] = 2 * sys_vars->kmax - 1;
 	H5LTmake_dataset(group_id, "FullFieldEnergySpectrum", Dims2D, dset_dims, H5T_NATIVE_DOUBLE, proc_data->enrg);		
 
 	// The full field enstrophy spectrum
-	dset_dims[0] = 2.0 * sys_vars->kmax - 1;
-	dset_dims[1] = 2.0 * sys_vars->kmax - 1;
+	dset_dims[0] = 2 * sys_vars->kmax - 1;
+	dset_dims[1] = 2 * sys_vars->kmax - 1;
 	H5LTmake_dataset(group_id, "FullFieldEnstrophySpectrum", Dims2D, dset_dims, H5T_NATIVE_DOUBLE, proc_data->enst);		
+	printf("Here3\n");
 
 
 	// -------------------------------
 	// Close HDF5 Identifiers
 	// -------------------------------
 	status = H5Gclose(group_id);
-	status = H5Fclose(file_info->output_file_handle);
-	if (status < 0) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close output file ["CYAN"%s"RESET"] at: Snap = ["CYAN"%ld"RESET"]\n-->> Exiting...\n", file_info->output_file_name, snap);
-		exit(1);
-	}
+	// status = H5Fclose(file_info->output_file_handle);
+	// if (status < 0) {
+	// 	fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close output file ["CYAN"%s"RESET"] at: Snap = ["CYAN"%ld"RESET"]\n-->> Exiting...\n", file_info->output_file_name, snap);
+	// 	exit(1);
+	// }
 }
 /**
  * Wrapper function used to create a Group for the current iteration in the output HDF5 file 
