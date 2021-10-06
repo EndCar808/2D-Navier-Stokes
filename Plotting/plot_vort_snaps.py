@@ -4,6 +4,12 @@
 ######################
 ##  Library Imports ##
 ######################
+import matplotlib as mpl
+# mpl.use('TkAgg') # Use this backend for displaying plots in window
+mpl.use('Agg') # Use this backend for writing plots to file
+mpl.rcParams['text.usetex'] = True
+mpl.rcParams['font.family'] = 'serif'
+mpl.rcParams['font.serif']  = 'Computer Modern Roman'
 import matplotlib.pyplot as plt
 import numpy as np
 import h5py
@@ -23,6 +29,98 @@ from plot_functions import plot_phase_snaps, plot_summary_snaps
 ###############################
 ##       FUNCTION DEFS       ##
 ###############################
+def parse_cml(argv):
+
+    """
+    Parses command line arguments
+    """
+
+    ## Create arguments class
+    class args:
+
+        """
+        Class for command line arguments
+        """
+        
+        def __init__(self, in_dir, out_dir, phase_dir, main_file, spec_file, summ_snap = False, phase_snap = False, parallel = False, plotting = False, video = False):
+            self.spec_file  = None
+            self.summ_snap  = summ_snap
+            self.phase_snap = phase_snap
+            self.parallel   = parallel
+            self.plotting   = plotting
+            self.video      = video 
+
+    ## Initialize class
+    args = cmd_args()
+
+    try:
+        ## Gather command line arguments
+        opts, args = getopt.getopt(argv, "i:o:m:s:", ["s_snap =", "p_snap =", "par =", "plot =", "vid ="])
+      
+    except:
+        print("[" + tc.R + "ERROR" + tc.Rst + "] ---> Incorrect Command Line Arguements.")
+        sys.exit()
+
+    ## Parse command line args
+    for opt, arg in opts:
+        
+        if opt in ['-i']:
+            ## Read input directory
+            args.in_dir = arg
+            print("Input Folder: " + tc.C + "{}".format(args.in_dir) + tc.Rst)
+
+        elif opt in ['-o']:
+            ## Read in output directory
+            args.out_dir = arg
+            print("Output Folder: " + tc.C + "{}".format(args.out_dir) + tc.Rst)
+
+
+        elif opt in ['-m']:
+            ## Read in main file
+            args.main_file = arg
+            print("Main File: " + tc.C + "{}".format(args.main_file) + tc.Rst)
+
+        elif opt in ['-s']:
+            ## Read in spectra file
+            args.spec_file = arg
+            print("Spectra File: " + tc.C + "{}".format(args.spec_file) + tc.Rst)
+
+        elif opt in ['--s_snap']:
+            ## Read in summary snaps indicator
+            args.summ_snap = arg
+
+            ## Make summary snaps output directory 
+            args.out_dir = args.in_dir + "SNAPS/"
+            if os.path.isdir(args.out_dir) != True:
+                print("Making folder:" + tc.C + " SNAPS/" + tc.Rst)
+                os.mkdir(args.out_dir)
+            print("Output Folder: "+ tc.C + "{}".format(args.out_dir) + tc.Rst)
+
+        elif opt in ['--p_snaps']:
+            ## Read in phase_snaps indicator
+            args.phase_snaps = arg
+
+            ## Make phase snaps output directory
+            args.phase_dir = args.in_dir + "PHASE_SNAPS/"
+            if os.path.isdir(args.phase_dir) != True:
+                print("Making folder:" + tc.C + " PHASE_SNAPS/" + tc.Rst)
+                os.mkdir(args.phase_dir)
+            print("Phases Output Folder: "+ tc.C + "{}".format(args.phase_dir) + tc.Rst)
+
+        elif opt in ['--par']:
+            ## Read in parallel indicator
+            args.parallel = arg
+
+        elif opt in ['--plot']:
+            ## Read in plotting indicator
+            args.plotting = arg
+
+        elif opt in ['--vid']:
+            ## Read in spectra file
+            args.video = arg
+
+    return args
+
 @njit
 def FullFieldShifted(w_h, kx, ky):
 
@@ -78,66 +176,28 @@ def transform_w(w):
 ##       MAIN       ##
 ######################
 if __name__ == '__main__':
-
-    phase_snap = True
-    summ_snap  = True
-    parallel   = True
-    plotting   = False
-    video      = True
-
-
+  
     # -------------------------------------
-    ## --------- Directories
+    ## --------- Parse Commnad Line
     # -------------------------------------
+    arg    = cmd_args(sys.argv[1:]) 
     method = "default"
-    ## Read in the data directory provided at CML
-    if len(sys.argv) < 2 or len(sys.argv) > 3:
-        print("[" + tc.R + "ERROR" + tc.Rst + "] ---> You must provide directory to data files.")
-        sys.exit()
-    elif len(sys.argv) == 2:
-        ## Get input folder from CML
-        input_dir = sys.argv[1]
-        print("Input Folder: " + tc.C + "{}".format(input_dir) + tc.Rst)
-    elif len(sys.argv) == 3 :
-        ## Get file output mode input files from CML
-        input_dir = sys.argv[1]
-        spectra_dir = sys.argv[2]
-        print("Main File: " + tc.C + "{}".format(input_dir) + tc.Rst)
-        print("Spectra File: " + tc.C + "{}".format(spectra_dir) + tc.Rst)
-        method = "file"
-    else: 
-        print("[" + tc.R + "ERROR" + tc.Rst + "] ---> Incorrect Command Line Arguements.")
-        sys.exit()
-
-
-    ## Check if output folder exists -> if not make it
-    if method != "file":
-        output_dir = input_dir + "SNAPS/"
-        if os.path.isdir(output_dir) != True:
-            print("Making folder:" + tc.C + " SNAPS/" + tc.Rst)
-            os.mkdir(output_dir)
-        print("Output Folder: "+ tc.C + "{}".format(output_dir) + tc.Rst)
-        phases_output_dir = input_dir + "PHASE_SNAPS/"
-        if os.path.isdir(phases_output_dir) != True:
-            print("Making folder:" + tc.C + " PHASE_SNAPS/" + tc.Rst)
-            os.mkdir(phases_output_dir)
-        print("Phases Output Folder: "+ tc.C + "{}".format(phases_output_dir) + tc.Rst)
-
+    
 
     # -----------------------------------------
     ## --------  Read In data
     # -----------------------------------------
     ## Read in simulation parameters
-    sys_params = sim_data(input_dir, method)
+    sys_params = sim_data(arg.in_dir, method)
 
     ## Read in solver data
-    run_data = import_data(input_dir, sys_params, method)
+    run_data = import_data(arg.in_dir, sys_params, method)
 
     ## Read in spectra data
-    if method == "file":
-        spectra_data = import_spectra_data(spectra_dir, sys_params, method)
+    if arg.spec_file == None:
+        spectra_data = import_spectra_data(arg.in_dir, sys_params, method)
     else:
-        spectra_data = import_spectra_data(input_dir, sys_params, method)
+        spectra_data = import_spectra_data(arg.spec_file, sys_params, method)
 
 
     # -----------------------------------------
@@ -155,7 +215,7 @@ if __name__ == '__main__':
             proc_lim = 10
 
             ## Create tasks for the process pool
-            groups_args = [(mprocs.Process(target = plot_summary_snaps, args = (output_dir, i, run_data.w[i, :, :], run_data.w_hat[i, :, :], run_data.x, run_data.y, np.amin(run_data.w), np.amax(run_data.w), run_data.kx, run_data.ky, int(sys_params.Nx / 3), run_data.tot_enrg[:i], run_data.tot_enst[:i], run_data.tot_palin[:i], spectra_data.enrg_spectrum[i, :], spectra_data.enst_spectrum[i, :], run_data.enrg_diss[:i], run_data.enst_diss[:i], run_data.enrg_flux_sbst[:i], run_data.enrg_diss_sbst[:i], run_data.enst_flux_sbst[:i], run_data.enst_diss_sbst[:i], run_data.time, sys_params.Nx, sys_params.Ny)) for i in range(run_data.w.shape[0]))] * proc_lim
+            groups_args = [(mprocs.Process(target = plot_summary_snaps, args = (arg.out_dir, i, run_data.w[i, :, :], run_data.w_hat[i, :, :], run_data.x, run_data.y, np.amin(run_data.w), np.amax(run_data.w), run_data.kx, run_data.ky, int(sys_params.Nx / 3), run_data.tot_enrg[:i], run_data.tot_enst[:i], run_data.tot_palin[:i], spectra_data.enrg_spectrum[i, :], spectra_data.enst_spectrum[i, :], run_data.enrg_diss[:i], run_data.enst_diss[:i], run_data.enrg_flux_sbst[:i], run_data.enrg_diss_sbst[:i], run_data.enst_flux_sbst[:i], run_data.enst_diss_sbst[:i], run_data.time, sys_params.Nx, sys_params.Ny)) for i in range(run_data.w.shape[0]))] * proc_lim
 
             ## Loop of grouped iterable
             for procs in zip_longest(*groups_args): 
@@ -172,7 +232,7 @@ if __name__ == '__main__':
         else:
             ## Loop over snapshots
             for i in range(sys_params.ndata):
-                plot_summary_snaps(output_dir, i, run_data.w[i, :, :], run_data.w_hat[i, :, :], run_data.x, run_data.y, np.amin(run_data.w), np.amax(run_data.w), run_data.kx, run_data.ky, int(sys_params.Nx / 3), run_data.tot_enrg[:i], run_data.tot_enst[:i], run_data.tot_palin[:i], spectra_data.enrg_spectrum[i, :], spectra_data.enst_spectrum[i, :], run_data.enrg_diss[:i], run_data.enst_diss[:i], run_data.enrg_flux_sbst[:i], run_data.enrg_diss_sbst[:i], run_data.enst_flux_sbst[:i], run_data.enst_diss_sbst[:i], run_data.time, sys_params.Nx, sys_params.Ny)
+                plot_summary_snaps(arg.out_dir, i, run_data.w[i, :, :], run_data.w_hat[i, :, :], run_data.x, run_data.y, np.amin(run_data.w), np.amax(run_data.w), run_data.kx, run_data.ky, int(sys_params.Nx / 3), run_data.tot_enrg[:i], run_data.tot_enst[:i], run_data.tot_palin[:i], spectra_data.enrg_spectrum[i, :], spectra_data.enst_spectrum[i, :], run_data.enrg_diss[:i], run_data.enst_diss[:i], run_data.enrg_flux_sbst[:i], run_data.enrg_diss_sbst[:i], run_data.enst_flux_sbst[:i], run_data.enst_diss_sbst[:i], run_data.time, sys_params.Nx, sys_params.Ny)
 
     ## Print phase summary snaps
     if phase_snap and plotting:
@@ -182,7 +242,7 @@ if __name__ == '__main__':
             proc_lim = 10
 
             ## Create tasks for the process pool
-            groups_args = [(mprocs.Process(target = plot_phase_snaps, args = (phases_output_dir, i, run_data.w[i, :, :], run_data.w_hat[i, :, :], run_data.x, run_data.y, run_data.time, sys_params.Nx, sys_params.Nx, run_data.k2Inv, run_data.kx, run_data.ky)) for i in range(run_data.w.shape[0]))] * proc_lim
+            groups_args = [(mprocs.Process(target = plot_phase_snaps, args = (arg.phase_dir, i, run_data.w[i, :, :], run_data.w_hat[i, :, :], run_data.x, run_data.y, run_data.time, sys_params.Nx, sys_params.Nx, run_data.k2Inv, run_data.kx, run_data.ky)) for i in range(run_data.w.shape[0]))] * proc_lim
 
             ## Loop of grouped iterable
             for procs in zip_longest(*groups_args): 
@@ -199,7 +259,7 @@ if __name__ == '__main__':
         else:
             ## Loop over snahpshots
             for i in range(sys_params.ndata):
-                plot_phase_snaps(phases_output_dir, i, run_data.w[i, :, :], run_data.w_hat[i, :, :], run_data.x, run_data.y, run_data.time, sys_params.Nx, sys_params.Nx, run_data.k2Inv, run_data.kx, run_data.ky)
+                plot_phase_snaps(arg.phase_dir, i, run_data.w[i, :, :], run_data.w_hat[i, :, :], run_data.x, run_data.y, run_data.time, sys_params.Nx, sys_params.Nx, run_data.k2Inv, run_data.kx, run_data.ky)
 
     ## End timer
     end = TIME.perf_counter()
@@ -213,8 +273,8 @@ if __name__ == '__main__':
     if video:
         if summ_snap:
             framesPerSec = 15
-            inputFile    = output_dir + "SNAP_%05d.png"
-            videoName    = output_dir + "2D_NavierStokes_N[{},{}]_u0[{}].mp4".format(sys_params.Nx, sys_params.Ny, sys_params.u0)
+            inputFile    = arg.out_dir + "SNAP_%05d.png"
+            videoName    = arg.out_dir + "2D_NavierStokes_N[{},{}]_u0[{}].mp4".format(sys_params.Nx, sys_params.Ny, sys_params.u0)
             cmd = "ffmpeg -y -r {} -f image2 -s 1920x1080 -i {} -vf 'pad=ceil(iw/2)*2:ceil(ih/2)*2' -vcodec libx264 -crf 25 -pix_fmt yuv420p {}".format(framesPerSec, inputFile, videoName)
             # cmd = "ffmpeg -r {} -f image2 -s 1280×720 -i {} -vcodec libx264 -preset ultrafast -crf 35 -pix_fmt yuv420p {}".format(framesPerSec, inputFile, videoName)
 
@@ -229,8 +289,8 @@ if __name__ == '__main__':
 
         if phase_snap:
             framesPerSec = 15
-            inputFile    = phases_output_dir + "Phase_SNAP_%05d.png"
-            videoName    = phases_output_dir + "2D_NavierStokes_N[{},{}]_u0[{}]_Phases.mp4".format(sys_params.Nx, sys_params.Ny, sys_params.u0)
+            inputFile    = arg.phase_dir + "Phase_SNAP_%05d.png"
+            videoName    = arg.phase_dir + "2D_NavierStokes_N[{},{}]_u0[{}]_Phases.mp4".format(sys_params.Nx, sys_params.Ny, sys_params.u0)
             cmd = "ffmpeg -y -r {} -f image2 -s 1920x1080 -i {} -vf 'pad=ceil(iw/2)*2:ceil(ih/2)*2' -vcodec libx264 -crf 25 -pix_fmt yuv420p {}".format(framesPerSec, inputFile, videoName)
             # cmd = "ffmpeg -r {} -f image2 -s 1280×720 -i {} -vcodec libx264 -preset ultrafast -crf 35 -pix_fmt yuv420p {}".format(framesPerSec, inputFile, videoName)
 
