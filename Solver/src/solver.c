@@ -67,6 +67,7 @@ void SpectralSolve(void) {
 	struct RK_data_struct* RK_data;	   // Initialize pointer to a RK_data_struct
 	struct RK_data_struct RK_data_tmp; // Initialize a RK_data_struct
 	RK_data = &RK_data_tmp;		       // Point the ptr to this new RK_data_struct
+
 	// -------------------------------
 	// Allocate memory
 	// -------------------------------
@@ -85,62 +86,31 @@ void SpectralSolve(void) {
 
 	// Get initial conditions
 	InitialConditions(run_data->w_hat, run_data->u, run_data->u_hat, N);
-	
-	// PrintScalarReal(run_data->w, N, "w");
-	// PrintScalarFourier(run_data->w_hat, N, "wh");
-
-	// NonlinearRHSBatch(run_data->w_hat, RK_data->RK1, RK_data->nabla_psi, RK_data->nabla_w);
-	// PrintScalarFourier(RK_data->RK1, N, "a_RHSh");
-
+		
 	// -------------------------------
 	// Integration Variables
 	// -------------------------------
-	// Set the spatial increments
-	sys_vars->dx = 2.0 * M_PI / (double )Nx;
-	sys_vars->dy = 2.0 * M_PI / (double )Ny;
+	// Initialize integration variables
+	double t0;
+	double t;
+	double dt;
+	double T;
+	int print_update;
 
-	// Get the timestep using a CFL like condition
-	double umax          = GetMaxData("VEL");
-	sys_vars->w_max_init = GetMaxData("VORT");
-	#ifdef __ADAPTIVE_STEP
-	GetTimestep(&(sys_vars->dt));
-	#endif
-	sys_vars->min_dt = 10;
-	sys_vars->max_dt = MIN_STEP_SIZE;
-
-	// Compute integration time variables
-	double t0 = sys_vars->t0;
-	double t  = t0;
-	double dt = sys_vars->dt;
-	double T  = sys_vars->T;
-
-	// Number of iterations
-	sys_vars->num_t_steps     = (T - t0) / dt;
-	sys_vars->num_print_steps = sys_vars->num_t_steps / sys_vars->SAVE_EVERY + 1; // plus one to include initial condition
-	if (!(sys_vars->rank)){
-		printf("Total Iters: %ld\t Saving Iters: %ld\n", sys_vars->num_t_steps, sys_vars->num_print_steps);
-	}
-
-	// Variable to control how ofter to print to screen -> 10% of num time steps
-	int print_update = (sys_vars->num_t_steps >= 10 ) ? (int)((double)sys_vars->num_t_steps * 0.1) : 1;
-	sys_vars->print_every = print_update;
-
-
+	// Get timestep and other integration variables
+	InitializeIntegrationVariables(&t0, &t, &dt, &T, &print_update);
+	
 	// -------------------------------
 	// Create & Open Output File
 	// -------------------------------
-	#ifdef TESTING
-	// If testing is enabled and TG initial condition selected -> computed TG solution for writing to file @ t = t0
-	if(!(strcmp(sys_vars->u0, "TG_VEL")) || !(strcmp(sys_vars->u0, "TG_VORT"))) {
-		TaylorGreenSoln(t0, N);
-	}
-	#endif
-
 	// Inialize system measurables
 	InitializeSystemMeasurables(RK_data);
 
 	// Create and open the output file - also write initial conditions to file
 	CreateOutputFilesWriteICs(N, dt);
+
+
+
 	printf("Enrgy: %1.5lf\tEns: %1.5lf\tPalin: %1.5lf---Enrgy Diss: %1.5lf Enst Diss: %1.5lf\n", run_data->tot_energy[0], run_data->tot_enstr[0], run_data->tot_palin[0], run_data->enrg_diss[0], run_data->enst_diss[0]);
 	if (!(sys_vars->rank)) {
 		// Reduce on to rank 0
@@ -160,34 +130,6 @@ void SpectralSolve(void) {
 		MPI_Reduce(run_data->enrg_diss, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		MPI_Reduce(run_data->enst_diss, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 	}
-
-
-
-	// int spectrum_size = (int) sqrt((double) ((sys_vars->N[0] / 2) * (sys_vars->N[0] / 2) + (sys_vars->N[1] / 2) * (sys_vars->N[1] / 2))) + 1; // plus 1 for the 0 mode
-	// int spec_indx;
-
-
-	// // ------------------------------------
-	// // Compute Spectrum
-	// // ------------------------------------
-	// if (!sys_vars->rank) {
-	// 	printf("\nspecsize: %d \t kmax: %d", spectrum_size, Ny_Fourier - 1);
-	// 	printf("\n");
-	// 	for (int i = 0; i < sys_vars->local_Nx; ++i) {
-	// 		tmp = i * Ny_Fourier;
-	// 		for (int j = 0; j < Ny_Fourier; ++j) {
-	// 			indx = tmp + j;
-
-	// 			// Get spectrum index -> spectrum is computed by summing over the energy contained in concentric annuli in wavenumber space
-	// 			spec_indx = (int) sqrt((double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]));
-	// 			printf("(%d, %d): %d - %1.4lf  ||  ", run_data->k[0][i], run_data->k[1][j], spec_indx, sqrt((double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j])));
-	// 		}
-	// 		printf("\n");
-	// 	}	
-	// }
-	
-
-
 
 	
 	//////////////////////////////
@@ -266,38 +208,7 @@ void SpectralSolve(void) {
 		// Print Update To Screen
 		// -------------------------------
 		#ifdef __PRINT_SCREEN
-		#ifdef TESTING
-		if (iters % TEST_PRINT == 0) {
-			// Call testing 
-			max_vort = GetMaxData("VORT");
-			if(!(strcmp(sys_vars->u0, "TG_VEL")) || !(strcmp(sys_vars->u0, "TG_VORT"))) {
-				TestTaylorGreenVortex(t, N, norms);
-				RecordSystemMeasures(t, save_data_indx, RK_data);
-				if( !(sys_vars->rank) ) {	
-					// printf("Iter: %d\tt: %1.6lf\tdt: %g\t Max Vort: %1.4lf \tL2 Err: %g\tLinf Err: %g\n", iters, t, dt, max_vort, norms[0], norms[1]);
-					printf("Iter: %d\tt: %1.6lf\tdt: %g\t Max Vort: %1.4lf \tTKE: %1.8lf\tENS: %1.8lf\tPAL: %g\tEDiss: %g\tEnDiss: %g\n", iters, t, dt, max_vort, run_data->tot_energy[save_data_indx], run_data->tot_enstr[save_data_indx], run_data->tot_palin[save_data_indx], run_data->enst_flux_sbst[save_data_indx], run_data->enst_diss_sbst[save_data_indx]);
-				}
-			}
-			else {
-				if ( iters % sys_vars->SAVE_EVERY != 0) {
-					RecordSystemMeasures(t, save_data_indx, RK_data);
-				}
-				if( !(sys_vars->rank) ) {	
-					printf("Iter: %d\tt: %1.6lf\tdt: %g\t Max Vort: %1.4lf \tKE: %1.5lf\tENS: %1.5lf\n", iters, t, dt, max_vort, run_data->tot_energy[save_data_indx], run_data->tot_enstr[save_data_indx]);
-				}
-			}
-		}
-		#else
-		if (iters % print_update == 0) {
-			// If needed compute system measures for printing to screen
-			if ( iters % sys_vars->SAVE_EVERY != 0) {
-				RecordSystemMeasures(t, save_data_indx, RK_data);
-			}
-			if( !(sys_vars->rank) ) {	
-				printf("Iter: %d/%ld\tt: %1.6lf/%1.3lf\tdt: %g\t ----------- \tKE: %1.5lf\tENS: %1.5lf\tPAL: %1.5lf\n", iters, sys_vars->num_t_steps, t, T, dt, run_data->tot_energy[save_data_indx], run_data->tot_enstr[save_data_indx], run_data->tot_palin[save_data_indx]);
-			}
-		}
-		#endif	
+		PrintUpdateToTerminal(iters, t, dt, T, save_data_indx, print_update, RK_data);
 		#endif
 	}
 	// Record total iterations
@@ -1212,6 +1123,17 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 	// Initialize the Forcing
 	// -------------------------------------------------
 	ApplyForcing(w_hat, N);
+
+
+	// -------------------------------------------------
+	// Initialize Taylor Green Vortex Soln 
+	// -------------------------------------------------
+	// If testing is enabled and TG initial condition selected -> compute TG solution for writing to file @ t = t0
+	#ifdef TESTING
+	if(!(strcmp(sys_vars->u0, "TG_VEL")) || !(strcmp(sys_vars->u0, "TG_VORT"))) {
+		TaylorGreenSoln(0.0, N);
+	}
+	#endif
 }
 /**
  * Function to initialize the Real space collocation points arrays and Fourier wavenumber arrays
@@ -1231,6 +1153,9 @@ void InitializeSpaceVariables(double** x, int** k, const long int* N) {
 	ptrdiff_t local_Nx       = sys_vars->local_Nx;
 	ptrdiff_t local_Nx_start = sys_vars->local_Nx_start;
 	
+	// Set the spatial increments
+	sys_vars->dx = 2.0 * M_PI / (double )Nx;
+	sys_vars->dy = 2.0 * M_PI / (double )Ny;
 
 	// -------------------------------
 	// Fill the first dirction 
@@ -1263,6 +1188,48 @@ void InitializeSpaceVariables(double** x, int** k, const long int* N) {
 		}
 		x[1][i] = (double) i * 2.0 * M_PI / (double) Ny;
 	}
+}
+/**
+ * Function to initialize all the integration time variables
+ * @param t0           The initial time of the simulation
+ * @param t            The current time of the simulaiton
+ * @param dt           The timestep
+ * @param T            The final time of the simulation
+ * @param print_update Variable to control the printing of updates to screen
+ */
+void InitializeIntegrationVariables(double* t0, double* t, double* dt, double* T, int* print_update) {
+	
+	// -------------------------------
+	// Get the Timestep
+	// -------------------------------
+	#ifdef __ADAPTIVE_STEP
+	GetTimestep(&(sys_vars->dt));
+	#endif
+
+	// -------------------------------
+	// Get Time variables
+	// -------------------------------
+	// Compute integration time variables
+	(*t0) = sys_vars->t0;
+	(*t ) = sys_vars->t0;
+	(*dt) = sys_vars->dt;
+	(*T ) = sys_vars->T;
+	sys_vars->min_dt = 10;
+	sys_vars->max_dt = MIN_STEP_SIZE;
+
+	// -------------------------------
+	// Integration Counters
+	// -------------------------------
+	// Number of time steps and saving steps
+	sys_vars->num_t_steps     = ((*T) - (*t0)) / (*dt);
+	sys_vars->num_print_steps = sys_vars->num_t_steps / sys_vars->SAVE_EVERY + 1; // plus one to include initial condition
+	if (!(sys_vars->rank)){
+		printf("Total Iters: %ld\t Saving Iters: %ld\n", sys_vars->num_t_steps, sys_vars->num_print_steps);
+	}
+
+	// Variable to control how ofter to print to screen -> 10% of num time steps
+	(*print_update)       = (sys_vars->num_t_steps >= 10 ) ? (int)((double)sys_vars->num_t_steps * 0.1) : 1;
+	sys_vars->print_every = (*print_update);
 }
 /**
  * Function used to compute of either the velocity or vorticity
@@ -1423,6 +1390,66 @@ void SystemCheck(double dt, int iters) {
 		fprintf(stderr, "\n["YELLOW"SOVLER FAILURE"RESET"]--- The maximum number of iterations has been reached at Iter: ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", iters);
 		exit(1);		
 	}
+}
+/**
+ * Used to print update to screen
+ * @param iters          The current iteration of the integration
+ * @param t              The current time in the simulation
+ * @param dt             The current timestep in the simulation
+ * @param T              The final time of the simulation
+ * @param save_data_indx The saving index for output data
+ * @param RK_data        Struct containing arrays for the Runge-Kutta integration
+ */
+void PrintUpdateToTerminal(int iters, double t, double dt, double T, int save_data_indx, int print_update, RK_data_struct* RK_data) {
+
+	// Initialize variables
+	double max_vort;
+
+	#ifdef TESTING
+	// Initialize norms array
+	double norms[2];
+
+	if (iters % TEST_PRINT == 0) {
+		// Get max vorticity
+		max_vort = GetMaxData("VORT");
+
+		// Get system measures if it hasn't been called before
+		if ( iters % sys_vars->SAVE_EVERY != 0) {
+			RecordSystemMeasures(t, save_data_indx, RK_data);
+		}
+
+		if(!(strcmp(sys_vars->u0, "TG_VEL")) || !(strcmp(sys_vars->u0, "TG_VORT"))) {
+			// Get Taylor Green Solution
+			TestTaylorGreenVortex(t, sys_vars->N, norms);
+
+			// Print Update to screen
+			if( !(sys_vars->rank) ) {	
+				printf("Iter: %d\tt: %1.6lf\tdt: %g\t Max Vort: %1.4lf\tKE: %1.5lf\tENS: %1.5lf\tPAL: %1.5lf\tL2: %g\tLinf: %g\n", iters, t, dt, max_vort, run_data->tot_energy[save_data_indx], run_data->tot_enstr[save_data_indx], run_data->tot_palin[save_data_indx], norms[0], norms[1]);
+			}
+		}
+		else {
+			// Print Update to screen
+			if( !(sys_vars->rank) ) {	
+				printf("Iter: %d\tt: %1.6lf\tdt: %g\t Max Vort: %1.4lf\tTKE: %1.8lf\tENS: %1.8lf\tPAL: %g\tEDiss: %g\tEnDiss: %g\n", iters, t, dt, max_vort, run_data->tot_energy[save_data_indx], run_data->tot_enstr[save_data_indx], run_data->tot_palin[save_data_indx], run_data->enst_flux_sbst[save_data_indx], run_data->enst_diss_sbst[save_data_indx]);
+			}
+		}
+	}
+	#else
+	if (iters % print_update == 0) {
+		// Get max vorticity
+		max_vort = GetMaxData("VORT");
+
+		// If needed compute system measures for printing to screen
+		if ( iters % sys_vars->SAVE_EVERY != 0) {
+			RecordSystemMeasures(t, save_data_indx, RK_data);
+		}
+
+		// Print to screen
+		if( !(sys_vars->rank) ) {	
+			printf("Iter: %d/%ld\tt: %1.6lf/%1.3lf\tdt: %g\tMax Vort: %1.4lf\tKE: %1.5lf\tENS: %1.5lf\tPAL: %1.5lf\n", iters, sys_vars->num_t_steps, t, T, dt, max_vort, run_data->tot_energy[save_data_indx], run_data->tot_enstr[save_data_indx], run_data->tot_palin[save_data_indx]);
+		}
+	}
+	#endif	
 }
 /**
  * Function to update the timestep if adaptive timestepping is enabled

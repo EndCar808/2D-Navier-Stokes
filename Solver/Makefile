@@ -101,9 +101,9 @@ $(OBJBIN)/%.o: $(SRCDIR)/%.c $(DEPS)
 test: $(BIN)/main_TG_test $(BIN)/main_DB_SL_test $(BIN)/main_DT_test
 
 test_run: $(BIN)/main_TG_test $(BIN)/main_DB_SL_test $(BIN)/main_DT_test
-	mpirun -n 4 $(BIN)/main_TG_test -o "../Data/Test/" -n 128 -n 128 -s 0.0 -e 1.0 -h 0.0001 -i "TG_VORT" -v 1.0
-	mpirun -n 4 $(BIN)/main_DB_SL_test -o "../Data/Test/" -n 128 -n 128 -s 0.0 -e 2.0 -h 0.001 -i "DOUBLE_SHEAR_LAYER" -v 0.0
-	mpirun -n 4 $(BIN)/main_DT_test -o "../Data/Test/" -n 128 -n 128 -s 0.0 -e 1.0 -h 0.001 -i "DECAY_TURB" -v 0.01
+	mpirun -n 4 $(BIN)/main_TG_test -o "../Data/Test/" -n 128 -n 128 -s 0.0 -e 1.0 -h 0.0001 -i "TG_VORT" -v 1.0 -t "TG-TEST"
+	mpirun -n 4 $(BIN)/main_DB_SL_test -o "../Data/Test/" -n 128 -n 128 -s 0.0 -e 2.0 -h 0.001 -i "DOUBLE_SHEAR_LAYER" -v 0.0 -t "DBL-TEST"
+	mpirun -n 4 $(BIN)/main_DT_test -o "../Data/Test/" -n 128 -n 128 -s 0.0 -e 1.0 -h 0.001 -i "DECAY_TURB" -v 0.01 -t "DECAY-TEST"
 
 # Taylor Green IC
 $(BIN)/main_TG_test: $(SRCOBJ_TG) $(DEPS)
