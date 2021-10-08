@@ -46,24 +46,31 @@ void OpenInputAndInitialize(void) {
 	// Create compound datatype for the complex datasets
 	file_info->COMPLEX_DTYPE = CreateComplexDatatype();
 
-
+	printf("ID: %s\n", file_info->input_dir);
 	// --------------------------------
 	//  Get Input File Path
 	// --------------------------------
-	// Check input file mode
-	if (!(file_info->input_file_only)) {
-		// If input folder construct input file path
-		strcpy(file_info->input_file_name, file_info->input_dir);
-		strcat(file_info->input_file_name, "Main_HDF_Data.h5");
+	if (strcmp(file_info->input_dir, "NONE") != 0) {
+		// Check input file mode
+		if (!(file_info->input_file_only)) {
+			// If input folder construct input file path
+			strcpy(file_info->input_file_name, file_info->input_dir);
+			strcat(file_info->input_file_name, "Main_HDF_Data.h5");
+		}
+		else {
+			// If file only mode construct input file path
+			strcpy(file_info->input_file_name, file_info->input_dir);
+		}
+
+		// Print input file path to screen
+		printf("\nInput File: "CYAN"%s"RESET"\n\n", file_info->input_file_name);
 	}
 	else {
-		// If file only mode construct input file path
-		strcpy(file_info->input_file_name, file_info->input_dir);
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- No input directory/file provided. Please provide input directory/file - see utils.c\n-->> Exiting...\n");
+		exit(1);
 	}
-
-	// Print input file path to screen
-	printf("\nInput File: "CYAN"%s"RESET"\n\n", file_info->input_file_name);
-
+	
+	
 
 	// --------------------------------
 	//  Open File
@@ -268,16 +275,32 @@ void OpenOutputFile(void) {
 
 	// Initialize variables
 	herr_t status;
+	struct stat st = {0};	// this is used to check whether the output directories exist or not.
+
 
 	// --------------------------------
 	//  Generate Output File Path
 	// --------------------------------
-	// Construct pathh
-	strcpy(file_info->output_file_name, file_info->output_dir);
-	strcat(file_info->output_file_name, "PostProcessing_HDF_Data.h5");
+	if (!strcmp(file_info->output_dir, "NONE")) {
+		// Construct pathh
+		strcpy(file_info->output_file_name, file_info->output_dir);
+		strcat(file_info->output_file_name, "PostProcessing_HDF_Data.h5");
+	}
+	else if ((strcmp(file_info->output_dir, "NONE")) && (stat(file_info->input_dir, &st) == 0)) {
+		printf("\n["YELLOW"NOTE"RESET"] --- No Output directory provided. Using input directory instead \n");
+
+		// Construct pathh
+		strcpy(file_info->output_file_name, file_info->input_dir);
+		strcat(file_info->output_file_name, "PostProcessing_HDF_Data.h5");
+	}
+	else if (stat(file_info->input_dir, &st) == -1) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"]  --- Output folder not provided or doesn't exist. Please provide output folder - see utils.c: \n-->>Exiting....\n");
+		exit(1);
+	}
 
 	// Print output file path to screen
-	printf("Output File: "CYAN"%s"RESET"\n\n", file_info->output_file_name);
+	printf("Output File: "CYAN"%s"RESET"\n\n", file_info->output_file_name);	
+	
 
 	// --------------------------------
 	//  Create Output File
@@ -288,14 +311,14 @@ void OpenOutputFile(void) {
 		exit(1);
 	}	
 
-	// // --------------------------------
-	// //  Close HDF5 Identifiers
-	// // --------------------------------
-	// status = H5Fclose(file_info->output_file_handle);
-	// if (status < 0) {
-	// 	fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close output file ["CYAN"%s"RESET"] at: Snap = ["CYAN"%s"RESET"]\n-->> Exiting...\n", file_info->output_file_name, "initial");
-	// 	exit(1);		
-	// }
+	// --------------------------------
+	//  Close HDF5 Identifiers
+	// --------------------------------
+	status = H5Fclose(file_info->output_file_handle);
+	if (status < 0) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close output file ["CYAN"%s"RESET"] at: Snap = ["CYAN"%s"RESET"]\n-->> Exiting...\n", file_info->output_file_name, "initial");
+		exit(1);		
+	}
 }
 /**
  * Function to write the data for the current snapshot to the file
@@ -312,29 +335,25 @@ void WriteDataToFile(double t, long int snap) {
 	hsize_t dset_dims[Dims2D];        // array to hold dims of the dataset to be created
 	
 
-
 	// -------------------------------
 	// Check for Output File
 	// -------------------------------
-	// // Check if output file exist if not create it
-	// if (access(file_info->output_file_name, F_OK) != 0) {
-	// 	file_info->output_file_handle = H5Fcreate(file_info->output_file_name, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
-	// 	if (file_info->output_file_handle < 0) {
-	// 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to create output file ["CYAN"%s"RESET"] at: Snap = ["CYAN"%ld"RESET"]\n-->> Exiting...\n", file_info->output_file_name, snap);
-	// 		exit(1);
-	// 	}
-	// }
-	// else {
-	// 	printf("Hereq1\n");
-	// 	// Open file with default I/O access properties
-	// 	printf("File: %s\n", file_info->output_file_name);
-	// 	file_info->output_file_handle = H5Fopen(file_info->output_file_name, H5F_ACC_RDWR, H5P_DEFAULT);
-	// 	if (file_info->output_file_handle < 0) {
-	// 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to open output file ["CYAN"%s"RESET"] at: Snap = ["CYAN"%ld"RESET"]\n-->> Exiting...\n", file_info->output_file_name, snap);
-	// 		exit(1);
-	// 	}
-	// }
-	// printf("Here-1\n");
+	// Check if output file exist if not create it
+	if (access(file_info->output_file_name, F_OK) != 0) {
+		file_info->output_file_handle = H5Fcreate(file_info->output_file_name, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+		if (file_info->output_file_handle < 0) {
+			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to create output file ["CYAN"%s"RESET"] at: Snap = ["CYAN"%ld"RESET"]\n-->> Exiting...\n", file_info->output_file_name, snap);
+			exit(1);
+		}
+	}
+	else {
+		// Open file with default I/O access properties
+		file_info->output_file_handle = H5Fopen(file_info->output_file_name, H5F_ACC_RDWR, H5P_DEFAULT);
+		if (file_info->output_file_handle < 0) {
+			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to open output file ["CYAN"%s"RESET"] at: Snap = ["CYAN"%ld"RESET"]\n-->> Exiting...\n", file_info->output_file_name, snap);
+			exit(1);
+		}
+	}
 
 	// -------------------------------
 	// Create Group for Current Snap
@@ -348,7 +367,6 @@ void WriteDataToFile(double t, long int snap) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to create group in file ["CYAN"%s"RESET"] at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", file_info->output_file_name, t, snap);
 		exit(1);
 	}
-	printf("Here2\n");
 
 	// -------------------------------
 	// Write Datasets
@@ -367,18 +385,17 @@ void WriteDataToFile(double t, long int snap) {
 	dset_dims[0] = 2 * sys_vars->kmax - 1;
 	dset_dims[1] = 2 * sys_vars->kmax - 1;
 	H5LTmake_dataset(group_id, "FullFieldEnstrophySpectrum", Dims2D, dset_dims, H5T_NATIVE_DOUBLE, proc_data->enst);		
-	printf("Here3\n");
 
 
 	// -------------------------------
 	// Close HDF5 Identifiers
 	// -------------------------------
 	status = H5Gclose(group_id);
-	// status = H5Fclose(file_info->output_file_handle);
-	// if (status < 0) {
-	// 	fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close output file ["CYAN"%s"RESET"] at: Snap = ["CYAN"%ld"RESET"]\n-->> Exiting...\n", file_info->output_file_name, snap);
-	// 	exit(1);
-	// }
+	status = H5Fclose(file_info->output_file_handle);
+	if (status < 0) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close output file ["CYAN"%s"RESET"] at: Snap = ["CYAN"%ld"RESET"]\n-->> Exiting...\n", file_info->output_file_name, snap);
+		exit(1);
+	}
 }
 /**
  * Wrapper function used to create a Group for the current iteration in the output HDF5 file 
