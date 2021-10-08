@@ -61,7 +61,6 @@ def parse_cml(argv):
     try:
         ## Gather command line arguments
         opts, args = getopt.getopt(argv, "i:o:m:s:", ["s_snap", "p_snap", "par", "plot", "vid"])
-        print(opts, args)
     except:
         print("[" + tc.R + "ERROR" + tc.Rst + "] ---> Incorrect Command Line Arguements.")
         sys.exit()
@@ -204,8 +203,8 @@ if __name__ == '__main__':
     else:
         spectra_data = import_spectra_data(cmdargs.spec_file, sys_params, method)
 
-    wmin = np.amin(run_data.w)
-    wmax = np.amax(run_data.w)
+    wmin = np.amin(run_data.w[:, :, :])
+    wmax = np.amax(run_data.w[:, :, :])
 
     # -----------------------------------------
     ## ------ Plot Snaps
@@ -240,7 +239,7 @@ if __name__ == '__main__':
             ## Loop over snapshots
             for i in range(sys_params.ndata):
                 plot_summary_snaps(cmdargs.out_dir, i, run_data.w[i, :, :], run_data.w_hat[i, :, :], run_data.x, run_data.y, wmin, wmax, run_data.kx, run_data.ky, int(sys_params.Nx / 3), run_data.tot_enrg[:i], run_data.tot_enst[:i], run_data.tot_palin[:i], spectra_data.enrg_spectrum[i, :], spectra_data.enst_spectrum[i, :], run_data.enrg_diss[:i], run_data.enst_diss[:i], run_data.enrg_flux_sbst[:i], run_data.enrg_diss_sbst[:i], run_data.enst_flux_sbst[:i], run_data.enst_diss_sbst[:i], run_data.time, sys_params.Nx, sys_params.Ny)
-    print(cmdargs.phase_snap)
+
     ## Print phase summary snaps
     if cmdargs.phase_snap and cmdargs.plotting:
         print("\n" + tc.Y + "Printing Phase Snaps..." + tc.Rst)
@@ -249,7 +248,7 @@ if __name__ == '__main__':
             proc_lim = 10
 
             ## Create tasks for the process pool
-            groups_args = [(mprocs.Process(target = plot_phase_snaps, args = (cmdargs.phase_dir, i, run_data.w[i, :, :], run_data.w_hat[i, :, :], wmax, wmin, run_data.x, run_data.y, run_data.time, sys_params.Nx, sys_params.Nx, run_data.k2Inv, run_data.kx, run_data.ky)) for i in range(run_data.w.shape[0]))] * proc_lim
+            groups_args = [(mprocs.Process(target = plot_phase_snaps, args = (cmdargs.phase_dir, i, run_data.w[i, :, :], run_data.w_hat[i, :, :], wmin, wmax, run_data.x, run_data.y, run_data.time, sys_params.Nx, sys_params.Nx, run_data.k2Inv, run_data.kx, run_data.ky)) for i in range(run_data.w.shape[0]))] * proc_lim
 
             ## Loop of grouped iterable
             for procs in zip_longest(*groups_args): 
@@ -266,7 +265,7 @@ if __name__ == '__main__':
         else:
             ## Loop over snahpshots
             for i in range(sys_params.ndata):
-                plot_phase_snaps(cmdargs.phase_dir, i, run_data.w[i, :, :], run_data.w_hat[i, :, :], wmax, wmin, run_data.x, run_data.y, run_data.time, sys_params.Nx, sys_params.Nx, run_data.k2Inv, run_data.kx, run_data.ky)
+                plot_phase_snaps(cmdargs.phase_dir, i, run_data.w[i, :, :], run_data.w_hat[i, :, :], wmin, wmax, run_data.x, run_data.y, run_data.time, sys_params.Nx, sys_params.Nx, run_data.k2Inv, run_data.kx, run_data.ky)
 
     ## End timer
     end = TIME.perf_counter()

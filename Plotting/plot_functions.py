@@ -85,7 +85,7 @@ def plot_summary_snaps(out_dir, i, w, w_hat, x, y, w_min, w_max, kx, ky, kx_max,
     ax2.set_xlabel(r"$|k|$")
     ax2.set_ylabel(r"$\mathcal{K}(|k|) / \sum \mathcal{K}(|k|)$")
     ax2.set_title(r"Energy Spectrum")
-    ax2.set_ylim(1e-20, 10)
+    ax2.set_ylim(1e-12, 10)
     ax2.set_yscale('log')
     ax2.set_xscale('log')
     # ax2.text(x = kx[61],  y = kpower[-1], s = r"$k^{-4}$")
@@ -100,7 +100,7 @@ def plot_summary_snaps(out_dir, i, w, w_hat, x, y, w_min, w_max, kx, ky, kx_max,
     ax3.set_xlabel(r"$|k|$")
     ax3.set_ylabel(r"$\mathcal{E}(|k|) / \sum \mathcal{E}(|k|)$")
     ax3.set_title(r"Enstrophy Spectrum")
-    ax3.set_ylim(1e-20, 10)
+    ax3.set_ylim(1e-12, 10)
     ax3.set_yscale('log')
     ax3.set_xscale('log')
     # ax3.text(x = kx[61],  y = kpower[-1], s = r"$k^{-5/3}$")
@@ -156,7 +156,7 @@ def plot_summary_snaps(out_dir, i, w, w_hat, x, y, w_min, w_max, kx, ky, kx_max,
 
 
 
-def plot_phase_snaps(out_dir, i, w, w_h, wmax, wmin, x, y, time, Nx, Ny, k2Inv, kx, ky):
+def plot_phase_snaps(out_dir, i, w, w_h, w_min, w_max, x, y, time, Nx, Ny, k2Inv, kx, ky):
 
     """
     Plots summary snap of the solver data for the current iteration. Plots vorticity, full zero centre phases and spectra.
@@ -196,7 +196,7 @@ def plot_phase_snaps(out_dir, i, w, w_h, wmax, wmin, x, y, time, Nx, Ny, k2Inv, 
     ## Plot vorticity   
     ##-------------------------
     ax1 = fig.add_subplot(gs[0, 0])
-    im1 = ax1.imshow(w, extent = (y[0], y[-1], x[-1], x[0]), cmap = "RdBu", vmin = wmin, vmax = wmax) 
+    im1 = ax1.imshow(w, extent = (y[0], y[-1], x[-1], x[0]), cmap = "RdBu", vmin = w_min, vmax = w_max) 
     ax1.set_xlabel(r"$y$")
     ax1.set_ylabel(r"$x$")
     ax1.set_xlim(0.0, y[-1])
@@ -242,8 +242,12 @@ def plot_phase_snaps(out_dir, i, w, w_h, wmax, wmin, x, y, time, Nx, Ny, k2Inv, 
     #--------------------------
     # Plot 2D Enstrophy Spectra   
     #--------------------------
-    ax3 = fig.add_subplot(gs[1, 0])
-    im3 = ax3.imshow(np.absolute(ZeroCentredField(w_h)) ** 2, extent = (Ny / 2, -Ny / 2 + 1, -Nx / 2 + 1, Nx / 2), cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1]), norm = mpl.colors.LogNorm(), vmax = 10, vmin = 0)
+    ax3  = fig.add_subplot(gs[1, 0])
+    spec = np.absolute(ZeroCentredField(w_h)) ** 2
+    print(np.any(spec < 0))
+    print()
+
+    im3  = ax3.imshow(spec / np.sum(spec), extent = (Ny / 2, -Ny / 2 + 1, -Nx / 2 + 1, Nx / 2), cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1])) # , norm = mpl.colors.LogNorm(), vmax = 10, vmin = 10^-15
     # im3 = ax3.imshow(np.absolute(np.fft.ifftshift(FullField(w_h))) ** 2, extent = (Ny / 2, -Ny / 2 + 1, -Nx / 2 + 1, Nx / 2), cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1]), norm = mpl.colors.LogNorm())
     ax3.set_xlabel(r"$k_y$")
     ax3.set_ylabel(r"$k_x$")
@@ -260,8 +264,11 @@ def plot_phase_snaps(out_dir, i, w, w_h, wmax, wmin, x, y, time, Nx, Ny, k2Inv, 
     ##-------------------------
     ## Plot 2D Energy Spectra  
     ##-------------------------
-    ax4 = fig.add_subplot(gs[1, 1])
-    im4 = ax4.imshow(np.absolute(ZeroCentredField(w_h * k2Inv.astype('complex128')))** 2, extent = (Ny / 2, -Ny / 2 + 1, -Nx / 2 + 1, Nx / 2), cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1]), norm = mpl.colors.LogNorm(), vmax = 10, vmin = 0)
+    ax4  = fig.add_subplot(gs[1, 1])
+    spec = np.absolute(ZeroCentredField(w_h * k2Inv.astype('complex128')))** 2
+    print(np.any(spec < 0))
+    print()
+    im4  = ax4.imshow(spec / np.sum(spec), extent = (Ny / 2, -Ny / 2 + 1, -Nx / 2 + 1, Nx / 2), cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1])) # , norm = mpl.colors.LogNorm(), vmax = 10, vmin = 10^-15
     # im4 = ax4.imshow(np.absolute(np.fft.ifftshift(FullField(w_h * k2Inv.astype('complex128')))) ** 2, extent = (Ny / 2, -Ny / 2 + 1, -Nx / 2 + 1, Nx / 2), cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1]), norm = mpl.colors.LogNorm())
     ax4.set_xlabel(r"$k_y$")
     ax4.set_ylabel(r"$k_x$")
