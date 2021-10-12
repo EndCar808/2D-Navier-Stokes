@@ -46,7 +46,6 @@ void OpenInputAndInitialize(void) {
 	// Create compound datatype for the complex datasets
 	file_info->COMPLEX_DTYPE = CreateComplexDatatype();
 
-	printf("ID: %s\n", file_info->input_dir);
 	// --------------------------------
 	//  Get Input File Path
 	// --------------------------------
@@ -277,31 +276,33 @@ void OpenOutputFile(void) {
 	herr_t status;
 	struct stat st = {0};	// this is used to check whether the output directories exist or not.
 
-
 	// --------------------------------
 	//  Generate Output File Path
 	// --------------------------------
-	if (!strcmp(file_info->output_dir, "NONE")) {
+	if (strcmp(file_info->output_dir, "NONE") == -1) {
 		// Construct pathh
 		strcpy(file_info->output_file_name, file_info->output_dir);
 		strcat(file_info->output_file_name, "PostProcessing_HDF_Data.h5");
+
+		// Print output file path to screen
+		printf("Output File: "CYAN"%s"RESET"\n\n", file_info->output_file_name);	
 	}
-	else if ((strcmp(file_info->output_dir, "NONE")) && (stat(file_info->input_dir, &st) == 0)) {
+	else if ((strcmp(file_info->output_dir, "NONE") == 0) && (stat(file_info->input_dir, &st) == 0)) {
 		printf("\n["YELLOW"NOTE"RESET"] --- No Output directory provided. Using input directory instead \n");
 
 		// Construct pathh
 		strcpy(file_info->output_file_name, file_info->input_dir);
 		strcat(file_info->output_file_name, "PostProcessing_HDF_Data.h5");
+
+		// Print output file path to screen
+		printf("Output File: "CYAN"%s"RESET"\n\n", file_info->output_file_name);	
 	}
-	else if (stat(file_info->input_dir, &st) == -1) {
+	else if ((stat(file_info->input_dir, &st) == -1) && (stat(file_info->output_dir, &st) == -1)) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"]  --- Output folder not provided or doesn't exist. Please provide output folder - see utils.c: \n-->>Exiting....\n");
 		exit(1);
 	}
 
-	// Print output file path to screen
-	printf("Output File: "CYAN"%s"RESET"\n\n", file_info->output_file_name);	
 	
-
 	// --------------------------------
 	//  Create Output File
 	// --------------------------------

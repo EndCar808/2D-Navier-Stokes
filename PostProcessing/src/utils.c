@@ -35,8 +35,6 @@ int GetCMLArgs(int argc, char** argv) {
 
 	// Initialize Variables
 	int c;
-	int dim_flag   = 0;
-	int force_flag = 0;
 	int output_dir_flag = 0;
 	int input_dir_flag  = 0;
 

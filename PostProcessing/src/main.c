@@ -110,7 +110,7 @@ int main(int argc, char** argv) {
 	// End Integration
 	//////////////////////////////
 	printf("\nStarting Snapshot Processing:\n");
-	for (int s = 0; s < 10; ++s) { // sys_vars->num_snaps
+	for (int s = 0; s < sys_vars->num_snaps; ++s) { 
 		
 		// Print update to screen
 		printf("Snapshot: %d\n", s);
@@ -207,11 +207,6 @@ int main(int argc, char** argv) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close compound datatype for complex data\n-->> Exiting...\n");
 		exit(1);		
 	}
-	// status = H5Fclose(file_info->output_file_handle);
-	// if (status < 0) {
-	// 	fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close output file ["CYAN"%s"RESET"] at: Snap = ["CYAN"%ld"RESET"]\n-->> Exiting...\n", file_info->output_file_name, 10);
-	// 	exit(1);
-	// }
 
 
 	return 0;

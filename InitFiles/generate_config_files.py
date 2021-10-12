@@ -49,6 +49,7 @@ ekmn_hypo_diff = 0
 t0        = 0.0
 T         = 1.0
 dt        = 1e-3
+cfl       = np.sqrt(3)
 step_type = True
 
 ## Solver parameters
@@ -59,16 +60,19 @@ save_every = 2
 
 ## Directory/File parameters
 input_dir       = "NONE"
-output_dir      = "./Data/Tmp"
+output_dir      = "./Data/Tmp/"
 file_only_mode  = False
 solver_tag      = "Decay-Test"
-post_input_dir  = output_dir
-post_output_dir = output_dir
+sys_tag         = "_NAVIER_RK4_FULL_"
+post_input_dir  = output_dir + "SIM_DATA" + sys_tag
+post_output_dir = output_dir + "SIM_DATA" + sys_tag
 
 ## Job parameters
+executable                  = "Solver/bin/main_DT_test"
 solver                      = True
 postprocessing              = True
 solver_procs                = 4
+collect_data                = True
 num_solver_job_threads      = 1
 num_postprocess_job_threads = 1
 
@@ -105,6 +109,7 @@ config['TIME'] = {
     'start_time'         : t0,
     'end_time'           : T,
     'timestep'           : dt,
+    'cfl'                : cfl,
     'adaptive_step_type' : step_type
 }
 
@@ -116,12 +121,15 @@ config['DIRECTORIES'] = {
     'solver_tag'            : solver_tag,
     'post_output_dir'       : post_output_dir,
     'post_input_dir'        : post_input_dir,
+    'system_tag'            : sys_tag
 }
 
 ## Job variables
 config['JOB'] = {
+    'executable'                  : executable,
     'call_solver'                 : solver,
     'call_postprocessing'         : postprocessing,
+    'collect_data'                : collect_data,
     'solver_procs'                : solver_procs,
     'num_solver_job_threads'      : num_solver_job_threads,
     'num_postprocess_job_threads' : num_postprocess_job_threads

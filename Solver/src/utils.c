@@ -67,7 +67,7 @@ int GetCMLArgs(int argc, char** argv) {
 	// -------------------------------
 	// Parse CML Arguments
 	// -------------------------------
-	while ((c = getopt(argc, argv, "o:h:n:s:e:t:v:i:c:p:f:z:")) != -1) {
+	while ((c = getopt(argc, argv, "o:h:n:d:s:e:t:v:i:c:p:f:z:")) != -1) {
 		switch(c) {
 			case 'o':
 				if (output_dir_flag == 0) {

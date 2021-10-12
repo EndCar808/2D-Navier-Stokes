@@ -109,28 +109,12 @@ void SpectralSolve(void) {
 	// Create and open the output file - also write initial conditions to file
 	CreateOutputFilesWriteICs(N, dt);
 
-
-
-	// printf("Enrgy: %1.5lf\tEns: %1.5lf\tPalin: %1.5lf---Enrgy Diss: %1.5lf Enst Diss: %1.5lf\n", run_data->tot_energy[0], run_data->tot_enstr[0], run_data->tot_palin[0], run_data->enrg_diss[0], run_data->enst_diss[0]);
-	// if (!(sys_vars->rank)) {
-	// 	// Reduce on to rank 0
-	// 	MPI_Reduce(MPI_IN_PLACE, run_data->tot_energy, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-	// 	MPI_Reduce(MPI_IN_PLACE, run_data->tot_enstr, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-	// 	MPI_Reduce(MPI_IN_PLACE, run_data->tot_palin, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-	// 	MPI_Reduce(MPI_IN_PLACE, run_data->enrg_diss, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-	// 	MPI_Reduce(MPI_IN_PLACE, run_data->enst_diss, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-
-	// 	printf("TOTAL:::: Iter: %d\tt: %1.6lf\tdt: %g\t Max Vort: %1.4lf \tTKE: %1.8lf\tENS: %1.8lf\tPAL: %g\tEDiss: %g\tEnDiss: %g\n", 0, 0.0, dt, sys_vars->w_max_init, run_data->tot_energy[0], run_data->tot_enstr[0], run_data->tot_palin[0], run_data->enst_flux_sbst[0], run_data->enst_diss_sbst[0]);
-	// }
-	// else {
-	// 	// Reduce all other process to rank 0
-	// 	MPI_Reduce(run_data->tot_energy, NULL,  sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-	// 	MPI_Reduce(run_data->tot_enstr, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-	// 	MPI_Reduce(run_data->tot_palin, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-	// 	MPI_Reduce(run_data->enrg_diss, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-	// 	MPI_Reduce(run_data->enst_diss, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-	// }
-
+	// -------------------------------------------------
+	// Print IC to Screen 
+	// -------------------------------------------------
+	#ifdef __PRINT_SCREEN
+	PrintUpdateToTerminal(0, t0, dt, T, 0, print_update, RK_data);
+	#endif	
 	
 	//////////////////////////////
 	// Begin Integration
@@ -1231,8 +1215,8 @@ void InitializeIntegrationVariables(double* t0, double* t, double* dt, double* T
 		printf("Total Iters: %ld\t Saving Iters: %ld\n", sys_vars->num_t_steps, sys_vars->num_print_steps);
 	}
 
-	// Variable to control how ofter to print to screen -> 10% of num time steps
-	(*print_update)       = (sys_vars->num_t_steps >= 10 ) ? (int)((double)sys_vars->num_t_steps * 0.1) : 1;
+	// Variable to control how ofter to print to screen -> set it to half the saving to file steps
+	(*print_update)       = (sys_vars->num_t_steps >= 10 ) ? (int)sys_vars->SAVE_EVERY / 2 : 1;
 	sys_vars->print_every = (*print_update);
 }
 /**
@@ -1413,15 +1397,34 @@ void PrintUpdateToTerminal(int iters, double t, double dt, double T, int save_da
 	// Initialize norms array
 	double norms[2];
 
-	if (iters % TEST_PRINT == 0) {
+	if (iters % print_update == 0) {
 		// Get max vorticity
 		max_vort = GetMaxData("VORT");
 
 		// Get system measures if it hasn't been called before
-		if ( iters % sys_vars->SAVE_EVERY != 0) {
+		if ((iters == 0) || (iters % sys_vars->SAVE_EVERY != 0)) {
 			RecordSystemMeasures(t, save_data_indx, RK_data);
-		}
-
+			#ifdef __SYS_MEASURES
+			if (!(sys_vars->rank)) {
+				// Reduce on to rank 0
+				MPI_Reduce(MPI_IN_PLACE, run_data->tot_energy, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+				MPI_Reduce(MPI_IN_PLACE, run_data->tot_enstr, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+				MPI_Reduce(MPI_IN_PLACE, run_data->tot_palin, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+				MPI_Reduce(MPI_IN_PLACE, run_data->enrg_diss, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+				MPI_Reduce(MPI_IN_PLACE, run_data->enst_diss, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+			}
+			else {
+				// Reduce all other process to rank 0
+				MPI_Reduce(run_data->tot_energy, NULL,  sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+				MPI_Reduce(run_data->tot_enstr, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+				MPI_Reduce(run_data->tot_palin, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+				MPI_Reduce(run_data->enrg_diss, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+				MPI_Reduce(run_data->enst_diss, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+			}
+			#endif
+		}		
+		
+		
 		if(!(strcmp(sys_vars->u0, "TG_VEL")) || !(strcmp(sys_vars->u0, "TG_VORT"))) {
 			// Get Taylor Green Solution
 			TestTaylorGreenVortex(t, sys_vars->N, norms);
@@ -1434,7 +1437,7 @@ void PrintUpdateToTerminal(int iters, double t, double dt, double T, int save_da
 		else {
 			// Print Update to screen
 			if( !(sys_vars->rank) ) {	
-				printf("Iter: %d\tt: %1.6lf\tdt: %g\t Max Vort: %1.4lf\tTKE: %1.8lf\tENS: %1.8lf\tPAL: %g\tEDiss: %g\tEnDiss: %g\n", iters, t, dt, max_vort, run_data->tot_energy[save_data_indx], run_data->tot_enstr[save_data_indx], run_data->tot_palin[save_data_indx], run_data->enst_flux_sbst[save_data_indx], run_data->enst_diss_sbst[save_data_indx]);
+				printf("Iter: %d\tt: %1.6lf\tdt: %g\t Max Vort: %1.4lf\tTKE: %1.8lf\tENS: %1.8lf\tPAL: %g\tE_Diss: %g\tEns_Diss: %g\n", iters, t, dt, max_vort, run_data->tot_energy[save_data_indx], run_data->tot_enstr[save_data_indx], run_data->tot_palin[save_data_indx], run_data->enrg_diss[save_data_indx], run_data->enst_diss[save_data_indx]);
 			}
 		}
 	}
@@ -1444,9 +1447,24 @@ void PrintUpdateToTerminal(int iters, double t, double dt, double T, int save_da
 		max_vort = GetMaxData("VORT");
 
 		// If needed compute system measures for printing to screen
-		if ( iters % sys_vars->SAVE_EVERY != 0) {
+		if ((iters == 0) ||  (iters % sys_vars->SAVE_EVERY != 0)) {
 			RecordSystemMeasures(t, save_data_indx, RK_data);
+			#ifdef __SYS_MEASURES
+			if (!(sys_vars->rank)) {
+				// Reduce on to rank 0
+				MPI_Reduce(MPI_IN_PLACE, run_data->tot_energy, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+				MPI_Reduce(MPI_IN_PLACE, run_data->tot_enstr, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+				MPI_Reduce(MPI_IN_PLACE, run_data->tot_palin, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+			}
+			else {
+				// Reduce all other process to rank 0
+				MPI_Reduce(run_data->tot_energy, NULL,  sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+				MPI_Reduce(run_data->tot_enstr, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+				MPI_Reduce(run_data->tot_palin, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+			}
+			#endif
 		}
+
 
 		// Print to screen
 		if( !(sys_vars->rank) ) {	

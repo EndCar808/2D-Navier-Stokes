@@ -72,7 +72,6 @@
 // Testing the solver will be decided at compilation
 #if defined(__TESTING)
 #define TESTING
-#define TEST_PRINT 10
 #endif
 // ---------------------------------------------------------------------
 //  Datasets to Write to File
@@ -168,14 +167,14 @@ typedef struct system_vars_struct {
 
 // Runtime data struct
 typedef struct runtime_data_struct {
-	double* x[SYS_DIM];      // Array to hold collocation pts
-	int* k[SYS_DIM];		 // Array to hold wavenumbers
-	fftw_complex* w_hat;     // Fourier space vorticity
-	fftw_complex* u_hat;     // Fourier space velocity
-	double* w;				 // Real space vorticity
-	double* u;				 // Real space velocity
-	double* tot_energy;      // Array to hold the total energy over the simulation
-	double* tot_enstr;		 // Array to hold the total entrophy over the simulation
+	double* x[SYS_DIM];       // Array to hold collocation pts
+	int* k[SYS_DIM];		  // Array to hold wavenumbers
+	fftw_complex* w_hat;      // Fourier space vorticity
+	fftw_complex* u_hat;      // Fourier space velocity
+	double* w;				  // Real space vorticity
+	double* u;				  // Real space velocity
+	double* tot_energy;       // Array to hold the total energy over the simulation
+	double* tot_enstr;		  // Array to hold the total entrophy over the simulation
 	double* tot_palin;		  // Array to hold the total palinstrophy over the simulaiotns
 	double* enrg_diss; 		  // Array to hold the energy dissipation rate 
 	double* enst_diss;		  // Array to hold the enstrophy dissipation rate
