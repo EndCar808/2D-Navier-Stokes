@@ -34,13 +34,19 @@ else:
 ###########################
 ##       VARIABLES       ##
 ###########################
+## NOTE: If providing multiple values they must be in python list type e.g. [1, 2, 3]
 ## Space variables
-Nx = 128
-Ny = 128
-Nk = int(Ny / 2 + 1)
+Nx = [64, 128]
+Ny = [64, 128]
+if len(Ny) > 1:
+    Nk = []
+    for n in Ny:
+        Nk.append(int(n / 2 + 1))
+else:
+    Nk = int(Ny / 2 + 1)
 
 ## System parameters
-nu             = 0.001
+nu             = np.logspace(start = -3, stop = -1, num = 3).tolist()
 ekmn_alpha     = 1.
 hypervisc      = 0 
 ekmn_hypo_diff = 0
@@ -69,12 +75,15 @@ post_output_dir = output_dir + "SIM_DATA" + sys_tag
 
 ## Job parameters
 executable                  = "Solver/bin/main_DT_test"
+plot_script                 = "Plotting/plot_vort_snaps.py"
 solver                      = True
 postprocessing              = True
+plotting                    = True
 solver_procs                = 4
 collect_data                = True
 num_solver_job_threads      = 1
 num_postprocess_job_threads = 1
+num_plottin_job_threads     = 1
 
 ##############################
 ##       CONFIG SETUP       ##
@@ -127,12 +136,15 @@ config['DIRECTORIES'] = {
 ## Job variables
 config['JOB'] = {
     'executable'                  : executable,
+    'plot_script'                 : plot_script,
     'call_solver'                 : solver,
     'call_postprocessing'         : postprocessing,
+    'plotting'                    : plotting,
     'collect_data'                : collect_data,
     'solver_procs'                : solver_procs,
     'num_solver_job_threads'      : num_solver_job_threads,
-    'num_postprocess_job_threads' : num_postprocess_job_threads
+    'num_postprocess_job_threads' : num_postprocess_job_threads,
+    'num_plotting_job_threads'    : num_plottin_job_threads
 }
 
 ###################################

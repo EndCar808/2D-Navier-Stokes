@@ -86,39 +86,79 @@ solver_tag = []
 ## Parse input parameters
 for section in parser.sections():
     if section in ['SYSTEM']:
-        Nx.append(int(parser[section]['nx']))
-        Ny.append(int(parser[section]['ny']))
-        Nk.append(int(parser[section]['nk']))
-        nu.append(float(parser[section]['viscosity']))
-        ekmn_alpha = float(parser[section]['drag_coefficient'])
+        if 'nx' in parser[section]:
+            for n in parser[section]['nx'].lstrip('[').rstrip(']').split(', '):
+                Nx.append(int(n))
+        if 'ny' in parser[section]:    
+            for n in parser[section]['ny'].lstrip('[').rstrip(']').split(', '):
+                Ny.append(int(n))
+        if 'nk' in parser[section]:
+            for n in parser[section]['nk'].lstrip('[').rstrip(']').split(', '):
+                Nk.append(int(n))
+        if 'viscosity' in parser[section]:
+            for n in parser[section]['viscosity'].lstrip('[').rstrip(']').split(', '):
+                nu.append(float(n))
+        if 'drag_coefficient' in parser[section]:
+            ekmn_alpha = float(parser[section]['drag_coefficient'])
     if section in ['SOLVER']:
-        ic.append(str(parser[section]['initial_condition']))
-        forcing    = str(parser[section]['forcing'])
-        force_k    = int(parser[section]['forcing_wavenumber'])
-        save_every = int(parser[section]['save_data_every'])
+        if 'initial_condition' in parser[section]:
+            for n in parser[section]['initial_condition'].lstrip('[').rstrip(']').split(', '):
+                ic.append(str(parser[section]['initial_condition']))
+        if 'forcing' in parser[section]:
+            forcing = str(parser[section]['forcing'])
+        if 'forcing_wavenumber' in parser[section]:
+            force_k = int(parser[section]['forcing_wavenumber'])
+        if 'save_data_every' in parser[section]:
+            save_every = int(parser[section]['save_data_every'])
     if section in ['TIME']:
-        T.append(float(parser[section]['end_time']))
-        dt.append(float(parser[section]['timestep']))
-        cfl.append(float(parser[section]['cfl']))
-        t0        = float(parser[section]['start_time'])
+        if 'end_time' in parser[section]:
+            for n in parser[section]['end_time'].lstrip('[').rstrip(']').split(', '):
+                T.append(float(parser[section]['end_time']))
+        if 'timestep' in parser[section]:
+            for n in parser[section]['timestep'].lstrip('[').rstrip(']').split(', '):
+                dt.append(float(parser[section]['timestep']))
+        if 'cfl' in parser[section]:
+            for n in parser[section]['cfl'].lstrip('[').rstrip(']').split(', '):
+                cfl.append(float(parser[section]['cfl']))
+        if 'start_time' in parser[section]:
+            t0 = float(parser[section]['start_time'])
         step_type = bool(parser[section]['adaptive_step_type'])
     if section in ['DIRECTORIES']:
-        input_dir       = str(parser[section]['solver_input_dir'])
-        output_dir      = str(parser[section]['solver_output_dir'])
-        solver_tag.append(str(parser[section]['solver_tag']))
-        post_input_dir  = str(parser[section]['post_input_dir'])
-        post_output_dir = str(parser[section]['post_output_dir'])
-        file_only_mode  = bool(parser[section]['solver_file_only_mode'])
-        system_tag      = str(parser[section]['system_tag'])
+        if 'solver_input_dir' in parser[section]:
+            input_dir = str(parser[section]['solver_input_dir'])
+        if 'solver_output_dir' in parser[section]:
+            output_dir = str(parser[section]['solver_output_dir'])
+        if 'solver_tag' in parser[section]:
+            for n in parser[section]['solver_tag'].lstrip('[').rstrip(']').split(', '):
+                solver_tag.append(str(parser[section]['solver_tag']))
+        if 'post_input_dir' in parser[section]:
+            post_input_dir = str(parser[section]['post_input_dir'])
+        if 'post_output_dir' in parser[section]:
+            post_output_dir = str(parser[section]['post_output_dir'])
+        if 'solver_file_only_mode' in parser[section]:
+            file_only_mode = bool(parser[section]['solver_file_only_mode'])
+        if 'system_tag' in parser[section]:
+            system_tag = str(parser[section]['system_tag'])
     if section in ['JOB']:
-        executable                  = str(parser[section]['executable'])
-        solver                      = bool(parser[section]['call_solver'])
-        postprocessing              = bool(parser[section]['call_postprocessing'])
-        solver_procs                = int(parser[section]['solver_procs'])
-        collect_data                = bool(parser[section]['collect_data'])
-        num_solver_job_threads      = int(parser[section]['num_solver_job_threads'])
-        num_postprocess_job_threads = int(parser[section]['num_postprocess_job_threads'])
-    
+        if 'executable' in parser[section]:
+            executable = str(parser[section]['executable'])
+        if 'plotting' in parser[section]:
+            plotting = str(parser[section]['plotting'])
+        if 'call_solver' in parser[section]:
+            solver = bool(parser[section]['call_solver'])
+        if 'call_postprocessing' in parser[section]:
+            postprocessing = bool(parser[section]['call_postprocessing'])
+        if 'solver_procs' in parser[section]:
+            solver_procs = int(parser[section]['solver_procs'])
+        if 'collect_data' in parser[section]:
+            collect_data = bool(parser[section]['collect_data'])
+        if 'num_solver_job_threads' in parser[section]:
+            num_solver_job_threads = int(parser[section]['num_solver_job_threads'])
+        if 'num_postprocess_job_threads' in parser[section]:
+            num_postprocess_job_threads = int(parser[section]['num_postprocess_job_threads'])
+        if 'num_plotting_job_threads' in parser[section]:
+            num_plotting_job_threads = int(parser[section]['num_plotting_job_threads'])
+        
 
 #########################
 ##      RUN SOLVER     ##
@@ -235,3 +275,64 @@ if postprocessing:
             for i, item in enumerate(post_error):
                 file.write("%s\n" % cmd_list[i])
                 file.write("%s\n" % item)
+                
+
+###########################
+##      RUN PLOTTING     ##
+###########################
+if plotting:
+    
+    ## Get the number of processes to launch
+    proc_limit = num_plotting_job_threads
+    print("Number of Post Processing Processes Created = [" + tc.C + "{}".format(proc_limit) + tc.Rst + "]")
+
+    # Create output objects to store process error and output
+    if collect_data:
+        plot_output = []
+        plot_error  = []
+
+    ## Generate command list 
+    cmd_list = [["python3 -i {} --p_snaps --s_snap --plotting --vid".format(post_input_dir + "N[{},{}]_T[{}-{}]_NU[{:1.6f}]_CFL[{:1.2f}]_u0[{}]_TAG[{}]/".format(nx, ny, int(t0), int(t), v, c, u0, s_tag))] for nx, ny in zip(Nx, Ny) for t in T for v in nu for c in cfl for u0 in ic for s_tag in solver_tag]
+    for i in cmd_list:
+        print(i)
+
+    ## Create grouped iterable of subprocess calls to Popen() - see grouper recipe in itertools
+    groups = [(Popen(cmd, shell = True, stdout = PIPE, stdin = PIPE, stderr = PIPE, universal_newlines = True) for cmd in cmd_list)] * proc_limit 
+
+    ## Loop through grouped iterable
+    for processes in zip_longest(*groups): 
+        for proc in filter(None, processes): # filters out 'None' fill values if proc_limit does not divide evenly into cmd_list
+            ## Print command to screen
+            print("Executing the following command:\n\t" + tc.C + "{}".format(proc.args[0]) + tc.Rst)
+            
+            # Communicate with process to retrive output and error
+            [run_CodeOutput, run_CodeErr] = proc.communicate()
+
+            # Append to output and error objects
+            if collect_data:
+                plot_output.append(run_CodeOutput)
+                plot_error.append(run_CodeErr)
+            
+            ## Print both to screen
+            print(run_CodeOutput)
+            print(run_CodeErr)
+
+            ## Wait until all finished
+            proc.wait()
+
+    if collect_data:
+        # Get data and time
+        now = datetime.now()
+        d_t = now.strftime("%d%b%Y_%H:%M:%S")
+
+        # Write output to file
+        with open("Data/ParallelRunsDump/par_run_plot_output_{}_{}.txt".format(config_file.lstrip('InitFiles/').rstrip(".ini"), d_t), "w") as file:
+            for item in plot_output:
+                file.write("%s\n" % item)
+
+        # Write error to file
+        with open("Data/ParallelRunsDump/par_run_plot_error_{}_{}.txt".format(config_file.lstrip('InitFiles/').rstrip(".ini"), d_t), "w") as file:
+            for i, item in enumerate(plot_error):
+                file.write("%s\n" % cmd_list[i])
+                file.write("%s\n" % item)
+                

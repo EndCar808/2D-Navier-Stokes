@@ -172,6 +172,14 @@ void SpectralSolve(void) {
 			// Update saving data index
 			save_data_indx++;
 		}
+		// -------------------------------
+		// Print Update To Screen
+		// -------------------------------
+		#ifdef __PRINT_SCREEN
+		if (iters % sys_vars->SAVE_EVERY == 0) {
+			PrintUpdateToTerminal(iters, t, dt, T, save_data_indx - 1, print_update, RK_data);
+		}
+		#endif
 
 		// -------------------------------
 		// Update & System Check
@@ -187,13 +195,6 @@ void SpectralSolve(void) {
 
 		// Check System: Determine if system has blown up or integration limits reached
 		SystemCheck(dt, iters);
-
-		// -------------------------------
-		// Print Update To Screen
-		// -------------------------------
-		#ifdef __PRINT_SCREEN
-		PrintUpdateToTerminal(iters, t, dt, T, save_data_indx, print_update, RK_data);
-		#endif
 	}
 	// Record total iterations
 	sys_vars->tot_iters      = (long int)iters - 1;
@@ -891,7 +892,7 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 				else {
 					// Compute |k|^2 and the wavenumber function
 					k_sqr 	  = sqrt((double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]));
-					wnum_func = 1. / sqrt(k_sqr * (1.0 + pow(k_sqr / K0, 4.0)));
+					wnum_func = 1. / sqrt(k_sqr * (1.0 + pow(k_sqr / DT_K0, 4.0)));
 				}
 
 				// Compute the Fourier stream function so that variance is proportional to |k| / (1.0 + (|k|/k_0)^4)
@@ -939,12 +940,194 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 				k_sqr = (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 
 				// Compute the Fouorier vorticity
-				w_hat[indx] = -1.0 * k_sqr * psi_hat[indx] * sqrt(E0 / spec_energy);
+				w_hat[indx] = -1.0 * k_sqr * psi_hat[indx] * sqrt(DT_E0 / spec_energy);
 			}
 		}
 
 		// free memory
 		fftw_free(psi_hat);
+
+		// ---------------------------------------------
+		// Apply deliasing and transform to Real space 	
+		// ---------------------------------------------
+		ApplyDealiasing(w_hat, 1, N);
+		#ifdef __VORT_REAL
+		fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_c2r), w_hat, run_data->w);
+		for (int i = 0; i < local_Nx; ++i) {
+			tmp = i * (Ny + 2);
+			for (int j = 0; j < Ny; ++j) {
+				indx = tmp + j;
+
+				// Normalize
+				run_data->w[indx] *= 1.0 / (double )(Nx * Ny);
+			}
+		}
+		#endif
+	}
+	else if (!(strcmp(sys_vars->u0, "DECAY_TURB_II"))) {
+		// ---------------------------------------
+		// McWilliams 2000 - Decaying Turbulence IC
+		// ---------------------------------------
+		// Initialize variables
+		double k_sqr;
+		double u1, u2;
+		double rand1, rand2;
+		double spec;
+
+		// ---------------------------------------
+		// Initialize Gaussian Vorticity
+		// ---------------------------------------
+		for (int i = 0; i < local_Nx; ++i) {	
+			tmp = i * (Ny_Fourier);
+			for (int j = 0; j < Ny_Fourier; ++j) {
+				indx = tmp + j;	
+
+				// Generate two standard normal variables using Box-Muller transform
+				u1 = (double)rand() / (double) RAND_MAX;
+				u2 = (double)rand() / (double) RAND_MAX;
+				rand1 = sqrt(-2.0 * log(u1)) * cos(2.0 * M_PI * u2);
+
+				if (run_data->k[0][i] == 0.0 && run_data->k[1][j] == 0.0) {
+					// Compute the energy
+					spec = 0.0;
+				}
+				else {
+					// Compute the form of the initial energy
+					k_sqr = sqrt((double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]));
+					spec  = pow(k_sqr, 6.0) / pow((1.0 + k_sqr / (2.0 * DT2_K0)), 18.0);
+				}
+
+				// Fill the vorticity
+				w_hat[indx] = sqrt(spec) * cexp( 2.0 * M_PI * rand1 * I);
+			}
+		}
+
+		// ---------------------------------------
+		// Compute the Initial Energy
+		// ---------------------------------------
+		double enrg = 0.0;
+		for (int i = 0; i < local_Nx; ++i) {	
+			tmp = i * (Ny_Fourier);
+			for (int j = 0; j < Ny_Fourier; ++j) {
+				indx = tmp + j;	
+
+				if (run_data->k[0][i] != 0 || run_data->k[1][j] != 0) {
+					// Wavenumber prefactor -> 1 / |k|^2
+					k_sqr = 1.0 / (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
+
+					if ((j == 0) || (j == Ny_Fourier - 1)) {
+						enrg += k_sqr * cabs(w_hat[indx] * conj(w_hat[indx]));
+					}
+					else {
+						enrg += 2.0 * k_sqr * cabs(w_hat[indx] * conj(w_hat[indx]));
+					}
+				}
+			}
+		}
+		// Normalize 
+		enrg *= (0.5 / pow(Nx * Ny, 2.0)) * 4.0 * pow(M_PI, 2.0);
+
+		// Reduce all local energy sums and broadcast back to each process
+		MPI_Allreduce(MPI_IN_PLACE, &enrg, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+
+		// -------------------------------------------
+		// Normalize & Compute the Fourier Vorticity
+		// -------------------------------------------
+		for (int i = 0; i < local_Nx; ++i) {	
+			tmp = i * (Ny_Fourier);
+			for (int j = 0; j < Ny_Fourier; ++j) {
+				indx = tmp + j;
+
+				// Compute the Fouorier vorticity
+				w_hat[indx] = w_hat[indx] * sqrt(DT2_C0 / enrg);
+			}
+		}
+
+		// ---------------------------------------------
+		// Apply deliasing and transform to Real space 	
+		// ---------------------------------------------
+		ApplyDealiasing(w_hat, 1, N);
+		#ifdef __VORT_REAL
+		fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_c2r), w_hat, run_data->w);
+		for (int i = 0; i < local_Nx; ++i) {
+			tmp = i * (Ny + 2);
+			for (int j = 0; j < Ny; ++j) {
+				indx = tmp + j;
+
+				// Normalize
+				run_data->w[indx] *= 1.0 / (double )(Nx * Ny);
+			}
+		}
+		#endif
+	}
+	else if (!(strcmp(sys_vars->u0, "GAUSS_DECAY_TURB"))) {
+		// ---------------------------------------------
+		// Gaussian IC with Prescribed initial Spectrum
+		// ---------------------------------------------
+		double k_sqr;
+		double u1, u2;
+		double rand1, rand2;
+
+		for (int i = 0; i < local_Nx; ++i) {	
+			tmp = i * (Ny_Fourier);
+			for (int j = 0; j < Ny_Fourier; ++j) {
+				indx = tmp + j;	
+
+				// Generate two standard normal variables using Box-Muller transform
+				u1 = (double)rand() / (double) RAND_MAX;
+				u2 = (double)rand() / (double) RAND_MAX;
+				rand1 = sqrt(-2.0 * log(u1)) * cos(2.0 * M_PI * u2);
+				rand2 = sqrt(-2.0 * log(u1)) * sin(2.0 * M_PI * u2);
+
+				// Fill the Fourier vorticity with Gaussian data
+				w_hat[indx] = rand1 + rand2 * I;
+			}
+		}
+
+		// ---------------------------------------------
+		// Compute the Energy
+		// ---------------------------------------------
+		double enrg = 0.0;
+		for (int i = 0; i < local_Nx; ++i) {
+			tmp = i * Ny_Fourier;
+			for (int j = 0; j < Ny_Fourier; ++j) {
+				indx = tmp + j;
+
+				if (run_data->k[0][i] != 0 || run_data->k[1][j] != 0) {
+					// Wavenumber prefactor -> 1 / |k|^2
+					k_sqr = 1.0 / (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
+
+					if ((j == 0) || (j == Ny_Fourier - 1)) {
+						enrg += k_sqr * cabs(w_hat[indx] * conj(w_hat[indx]));
+					}
+					else {
+						enrg += 2.0 * k_sqr * cabs(w_hat[indx] * conj(w_hat[indx]));
+					}
+				}
+			}
+		}
+		// // Normalize the energy
+		// enrg *= 4.0 * pow(M_PI, 2.0) * (0.5 / pow(Nx * Ny, 2.0));
+		
+		// Reduce all local energy sums and broadcast back to each process
+		MPI_Allreduce(MPI_IN_PLACE, &enrg, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+
+		// ---------------------------------------------
+		// Normalize Initial Condition with 
+		// ---------------------------------------------
+		for (int i = 0; i < local_Nx; ++i) {
+			tmp = i * Ny_Fourier;
+			for (int j = 0; j < Ny_Fourier; ++j) {
+				indx = tmp + j;
+
+				// Get |k|^2
+				k_sqr = (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
+
+				// Normalize the initial condition
+				w_hat[indx] /=  sqrt(enrg);
+				w_hat[indx] *=  sqrt(GDT_C0 * k_sqr * exp(-pow(k_sqr / GDT_K0, 2.0)));
+			}
+		}
 
 		// ---------------------------------------------
 		// Apply deliasing and transform to Real space 	
@@ -1210,13 +1393,13 @@ void InitializeIntegrationVariables(double* t0, double* t, double* dt, double* T
 	// -------------------------------
 	// Number of time steps and saving steps
 	sys_vars->num_t_steps     = ((*T) - (*t0)) / (*dt);
-	sys_vars->num_print_steps = sys_vars->num_t_steps / sys_vars->SAVE_EVERY + 1; // plus one to include initial condition
+	sys_vars->num_print_steps = (sys_vars->num_t_steps >= sys_vars->SAVE_EVERY ) ? sys_vars->num_t_steps / sys_vars->SAVE_EVERY + 1 : sys_vars->num_t_steps + 1; // plus one to include initial condition
 	if (!(sys_vars->rank)){
 		printf("Total Iters: %ld\t Saving Iters: %ld\n", sys_vars->num_t_steps, sys_vars->num_print_steps);
 	}
 
 	// Variable to control how ofter to print to screen -> set it to half the saving to file steps
-	(*print_update)       = (sys_vars->num_t_steps >= 10 ) ? (int)sys_vars->SAVE_EVERY / 2 : 1;
+	(*print_update)       = (sys_vars->num_t_steps >= 10 ) ? (int)sys_vars->SAVE_EVERY : 1;
 	sys_vars->print_every = (*print_update);
 }
 /**
@@ -1396,80 +1579,32 @@ void PrintUpdateToTerminal(int iters, double t, double dt, double T, int save_da
 	#ifdef TESTING
 	// Initialize norms array
 	double norms[2];
+	
+	// Get max vorticity
+	max_vort = GetMaxData("VORT");
 
-	if (iters % print_update == 0) {
-		// Get max vorticity
-		max_vort = GetMaxData("VORT");
+	if(!(strcmp(sys_vars->u0, "TG_VEL")) || !(strcmp(sys_vars->u0, "TG_VORT"))) {
+		// Get Taylor Green Solution
+		TestTaylorGreenVortex(t, sys_vars->N, norms);
 
-		// Get system measures if it hasn't been called before
-		if ((iters == 0) || (iters % sys_vars->SAVE_EVERY != 0)) {
-			RecordSystemMeasures(t, save_data_indx, RK_data);
-			#ifdef __SYS_MEASURES
-			if (!(sys_vars->rank)) {
-				// Reduce on to rank 0
-				MPI_Reduce(MPI_IN_PLACE, run_data->tot_energy, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-				MPI_Reduce(MPI_IN_PLACE, run_data->tot_enstr, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-				MPI_Reduce(MPI_IN_PLACE, run_data->tot_palin, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-				MPI_Reduce(MPI_IN_PLACE, run_data->enrg_diss, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-				MPI_Reduce(MPI_IN_PLACE, run_data->enst_diss, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-			}
-			else {
-				// Reduce all other process to rank 0
-				MPI_Reduce(run_data->tot_energy, NULL,  sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-				MPI_Reduce(run_data->tot_enstr, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-				MPI_Reduce(run_data->tot_palin, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-				MPI_Reduce(run_data->enrg_diss, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-				MPI_Reduce(run_data->enst_diss, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-			}
-			#endif
-		}		
-		
-		
-		if(!(strcmp(sys_vars->u0, "TG_VEL")) || !(strcmp(sys_vars->u0, "TG_VORT"))) {
-			// Get Taylor Green Solution
-			TestTaylorGreenVortex(t, sys_vars->N, norms);
-
-			// Print Update to screen
-			if( !(sys_vars->rank) ) {	
-				printf("Iter: %d\tt: %1.6lf\tdt: %g\t Max Vort: %1.4lf\tKE: %1.5lf\tENS: %1.5lf\tPAL: %1.5lf\tL2: %g\tLinf: %g\n", iters, t, dt, max_vort, run_data->tot_energy[save_data_indx], run_data->tot_enstr[save_data_indx], run_data->tot_palin[save_data_indx], norms[0], norms[1]);
-			}
+		// Print Update to screen
+		if( !(sys_vars->rank) ) {	
+			printf("Iter: %d\tt: %1.6lf\tdt: %g\t Max Vort: %1.4lf\tKE: %1.5lf\tENS: %1.5lf\tPAL: %1.5lf\tL2: %g\tLinf: %g\n", iters, t, dt, max_vort, run_data->tot_energy[save_data_indx], run_data->tot_enstr[save_data_indx], run_data->tot_palin[save_data_indx], norms[0], norms[1]);
 		}
-		else {
-			// Print Update to screen
-			if( !(sys_vars->rank) ) {	
-				printf("Iter: %d\tt: %1.6lf\tdt: %g\t Max Vort: %1.4lf\tTKE: %1.8lf\tENS: %1.8lf\tPAL: %g\tE_Diss: %g\tEns_Diss: %g\n", iters, t, dt, max_vort, run_data->tot_energy[save_data_indx], run_data->tot_enstr[save_data_indx], run_data->tot_palin[save_data_indx], run_data->enrg_diss[save_data_indx], run_data->enst_diss[save_data_indx]);
-			}
+	}
+	else {
+		// Print Update to screen
+		if( !(sys_vars->rank) ) {	
+			printf("Iter: %d\tt: %1.6lf\tdt: %g\t Max Vort: %1.4lf\tTKE: %1.8lf\tENS: %1.8lf\tPAL: %g\tE_Diss: %g\tEns_Diss: %g\n", iters, t, dt, max_vort, run_data->tot_energy[save_data_indx], run_data->tot_enstr[save_data_indx], run_data->tot_palin[save_data_indx], run_data->enrg_diss[save_data_indx], run_data->enst_diss[save_data_indx]);
 		}
 	}
 	#else
-	if (iters % print_update == 0) {
-		// Get max vorticity
-		max_vort = GetMaxData("VORT");
+	// Get max vorticity
+	max_vort = GetMaxData("VORT");
 
-		// If needed compute system measures for printing to screen
-		if ((iters == 0) ||  (iters % sys_vars->SAVE_EVERY != 0)) {
-			RecordSystemMeasures(t, save_data_indx, RK_data);
-			#ifdef __SYS_MEASURES
-			if (!(sys_vars->rank)) {
-				// Reduce on to rank 0
-				MPI_Reduce(MPI_IN_PLACE, run_data->tot_energy, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-				MPI_Reduce(MPI_IN_PLACE, run_data->tot_enstr, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-				MPI_Reduce(MPI_IN_PLACE, run_data->tot_palin, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-			}
-			else {
-				// Reduce all other process to rank 0
-				MPI_Reduce(run_data->tot_energy, NULL,  sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-				MPI_Reduce(run_data->tot_enstr, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-				MPI_Reduce(run_data->tot_palin, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-			}
-			#endif
-		}
-
-
-		// Print to screen
-		if( !(sys_vars->rank) ) {	
-			printf("Iter: %d/%ld\tt: %1.6lf/%1.3lf\tdt: %g\tMax Vort: %1.4lf\tKE: %1.5lf\tENS: %1.5lf\tPAL: %1.5lf\n", iters, sys_vars->num_t_steps, t, T, dt, max_vort, run_data->tot_energy[save_data_indx], run_data->tot_enstr[save_data_indx], run_data->tot_palin[save_data_indx]);
-		}
+	// Print to screen
+	if( !(sys_vars->rank) ) {	
+		printf("Iter: %d/%ld\tt: %1.6lf/%1.3lf\tdt: %g\tMax Vort: %1.4lf\tKE: %1.5lf\tENS: %1.5lf\tPAL: %1.5lf\n", iters, sys_vars->num_t_steps, t, T, dt, max_vort, run_data->tot_energy[save_data_indx], run_data->tot_enstr[save_data_indx], run_data->tot_palin[save_data_indx]);
 	}
 	#endif	
 }
@@ -1984,6 +2119,9 @@ double EnergyDissipationRate(void) {
 	int tmp;
 	int indx;
 	double pre_fac;
+	#if defined(HYPER_VISC) || defined(EKMN_DRAG)
+	double k_sqr;
+	#endif
 	ptrdiff_t local_Nx 		  = sys_vars->local_Nx;
 	const long int Nx         = sys_vars->N[0];
 	const long int Ny         = sys_vars->N[1];
@@ -2001,6 +2139,11 @@ double EnergyDissipationRate(void) {
 		tmp = i * Ny_Fourier;
 		for (int j = 0; j < Ny_Fourier; ++j) {
 			indx = tmp + j;
+
+			#if defined(HYPER_VISC) || defined(EKMN_DRAG)
+			// Compute |k|^2
+			k_sqr = (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
+			#endif
 
 			// Get the appropriate prefactor
 			#if defined(HYPER_VISC) && defined(EKMN_DRAG) 

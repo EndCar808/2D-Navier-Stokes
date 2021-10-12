@@ -116,8 +116,12 @@
 #define DELTA 0.005	 			// The delta term for the Double Shear Layer initial condition
 #define BETA 1.0                // The aspect ratio for the Gaussian blob initial condition
 #define S 6.0                   // The scale parameter for the Gaussian Blob initial condition 
-#define K0 6.0					// The peak wavenumber for the McWilliams decaying vortex turblence initial condition
-#define E0 0.5                  // The initial energy for the McWilliams decaying vortex turbulence initial condition
+#define DT_K0 6.0				// The peak wavenumber for the McWilliams decaying vortex turblence initial condition
+#define DT_E0 0.5               // The initial energy for the McWilliams decaying vortex turbulence initial condition
+#define DT2_K0 30				// The peak wavenumber for the second McWilliams decaying turbulence initial condition
+#define DT2_C0 0.5				// The spectrum normalizing constant for the second McWilliams decaying turbulence initial condition
+#define GDT_K0 5.0              // The peak wavenumber for the Gaussian decay turbulence initial condition
+#define GDT_C0 0.06             // The intial energy of the Gaussian decaying turbulence initial condition
 // System checking parameters
 #define MIN_STEP_SIZE 1e-10 	// The minimum allowed stepsize for the solver 
 #define MAX_ITERS 1e+12			// The maximum iterations to perform

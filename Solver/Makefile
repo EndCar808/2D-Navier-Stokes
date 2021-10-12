@@ -48,9 +48,10 @@ SOLVER_FLAGS := -D__NAVIER -D__ADAPTIVE_STEP -D__CFL_STEP # -D__HYPER -D__EKMN_D
 DSET_FLAGS := -D__VORT_REAL -D__SYS_MEASURES -D__ENST_FLUX -D__ENRG_FLUX -D__ENST_SPECT -D__ENRG_SPECT -D__ENST_FLUX_SPECT -D__ENRG_FLUX_SPECT # -D__MODES -D__REALSPACE 
  
 # Flags to be passed to the solver for testing
-TG_TEST_FLAGS    := -D__NAVIER -D__TESTING -D__ADAPTIVE_STEP -D__CFL_STEP
-DT_TEST_FLAGS    := -D__NAVIER -D__TESTING -D__ADAPTIVE_STEP -D__CFL_STEP
-DB_SL_TEST_FLAGS := -D__EULER -D__TESTING -D__ADAPTIVE_STEP -D__CFL_STEP
+TG_TEST_FLAGS    := -D__NAVIER -D__TESTING #-D__ADAPTIVE_STEP -D__CFL_STEP
+DT_TEST_FLAGS    := -D__NAVIER -D__TESTING #-D__ADAPTIVE_STEP -D__CFL_STEP
+DT2_TEST_FLAGS   := -D__NAVIER -D__TESTING -D__HYPER #-D__ADAPTIVE_STEP -D__CFL_STEP
+DB_SL_TEST_FLAGS := -D__EULER -D__TESTING #-D__ADAPTIVE_STEP -D__CFL_STEP
 # ---------------------------------------------------------------------
 #  Directory creation
 # ---------------------------------------------------------------------
@@ -69,6 +70,7 @@ SRCOBJ     := $(patsubst $(SRCDIR)/%.c, $(OBJBIN)/%.o, $(SRCFILE))
 SRCOBJ_TG  := $(patsubst $(SRCDIR)/%.c, $(OBJBIN)/%_TG_test.o, $(SRCFILE))
 SRCOBJ_DSL := $(patsubst $(SRCDIR)/%.c, $(OBJBIN)/%_DB_SL_test.o, $(SRCFILE))
 SRCOBJ_DT  := $(patsubst $(SRCDIR)/%.c, $(OBJBIN)/%_DT_test.o, $(SRCFILE))
+SRCOBJ_DT2 := $(patsubst $(SRCDIR)/%.c, $(OBJBIN)/%_DT2_test.o, $(SRCFILE))
 
 DEPS = $(wildcard *.h) 
 
@@ -80,7 +82,7 @@ DEPS = $(wildcard *.h)
 ############
 
 
-all: $(BIN)/main $(BIN)/main_TG_test $(BIN)/main_DB_SL_test $(BIN)/main_DT_test
+all: $(BIN)/main $(BIN)/main_TG_test $(BIN)/main_DB_SL_test $(BIN)/main_DT_test $(BIN)/main_DT2_test
 
 
 ####--------
@@ -98,12 +100,13 @@ $(OBJBIN)/%.o: $(SRCDIR)/%.c $(DEPS)
 ####--------
 #  Testing
 ####--------
-test: $(BIN)/main_TG_test $(BIN)/main_DB_SL_test $(BIN)/main_DT_test
+test: $(BIN)/main_TG_test $(BIN)/main_DB_SL_test $(BIN)/main_DT_test $(BIN)/main_DT2_test
 
-test_run: $(BIN)/main_TG_test $(BIN)/main_DB_SL_test $(BIN)/main_DT_test
+test_run: $(BIN)/main_TG_test $(BIN)/main_DB_SL_test $(BIN)/main_DT_test $(BIN)/main_DT2_test
 	mpirun -n 4 $(BIN)/main_TG_test -o "../Data/Test/" -n 128 -n 128 -s 0.0 -e 1.0 -h 0.0001 -i "TG_VORT" -v 1.0 -t "TG-TEST"
 	mpirun -n 4 $(BIN)/main_DB_SL_test -o "../Data/Test/" -n 128 -n 128 -s 0.0 -e 2.0 -h 0.001 -i "DOUBLE_SHEAR_LAYER" -v 0.0 -t "DBL-TEST"
 	mpirun -n 4 $(BIN)/main_DT_test -o "../Data/Test/" -n 128 -n 128 -s 0.0 -e 1.0 -h 0.001 -i "DECAY_TURB" -v 0.01 -t "DECAY-TEST"
+	mpirun -n 4 $(BIN)/main_DT2_test -o "../Data/Test/" -n 128 -n 128 -s 0.0 -e 1.0 -h 0.001 -i "DECAY_TURB_II" -v 0.01 -t "DECAY2-TEST"
 
 # Taylor Green IC
 $(BIN)/main_TG_test: $(SRCOBJ_TG) $(DEPS)
@@ -125,6 +128,13 @@ $(BIN)/main_DT_test: $(SRCOBJ_DT) $(DEPS)
 
 $(OBJBIN)/%_DT_test.o: $(SRCDIR)/%.c $(DEPS)
 	$(GCC) $(CCFLAG) $(DT_TEST_FLAGS) $(DSET_FLAGS) -c $^ -o $@ ${INCDIR} ${LIBDIR} $(LIBFLAG) $(GSLFLAG)
+
+# Decaying Turbulence IC with Hyperviscosity
+$(BIN)/main_DT2_test: $(SRCOBJ_DT2) $(DEPS)
+		$(GCC) $(CCFLAG) $(DT2_TEST_FLAGS) $(DSET_FLAGS) -o $@ $^ ${INCDIR} ${LIBDIR} $(LIBFLAG) $(GSLFLAG)
+
+$(OBJBIN)/%_DT2_test.o: $(SRCDIR)/%.c $(DEPS)
+	$(GCC) $(CCFLAG) $(DT2_TEST_FLAGS) $(DSET_FLAGS) -c $^ -o $@ ${INCDIR} ${LIBDIR} $(LIBFLAG) $(GSLFLAG)
 
 # ---------------------------------------------------------------------
 #  Clean up
