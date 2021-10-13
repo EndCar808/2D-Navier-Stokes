@@ -287,7 +287,188 @@ def plot_phase_snaps(out_dir, i, w, w_h, w_min, w_max, x, y, time, Nx, Ny, k2Inv
     plt.savefig(out_dir + "Phase_SNAP_{:05d}.png".format(i), bbox_inches='tight') 
     plt.close()
 
+def plot_decay_snaps(out_dir, i, w, w_min, w_max, measure_min, measure_max, x, y, time, Nx, Ny, kx, ky, tot_en, tot_ens, tot_pal):
 
+    """
+    Plots summary snap of the solver data for the current iteration. Plots vorticity, full zero centre phases and spectra.
+
+    i     : int
+           - The current snap
+    w     : ndarray, float64
+           - The Real space vorticity Array
+    x     : array, float64
+           - Array of the collocation points in the first direction
+    y     : array, float64
+           - Array of the collocation points in the second direction
+    time  : array, float64
+           - Array of the snapshot times
+    Nx    : int
+           - Size of the first dimension
+    Ny    : int
+           - Size of the second dimension
+    kx    : array, int
+           - The wavenumbers in the first direction
+    ky    : array, int
+           - The wavenumbers in the first direction
+    """
+
+    ## Print Update
+    print("SNAP: {}".format(i))
+
+    ## Create Figure
+    fig = plt.figure(figsize = (16, 8))
+    gs  = GridSpec(1, 2) 
+
+    ##-------------------------
+    ## Plot vorticity   
+    ##-------------------------
+    ax1 = fig.add_subplot(gs[0, 0])
+    im1 = ax1.imshow(w, extent = (y[0], y[-1], x[-1], x[0]), cmap = "RdBu", vmin = w_min, vmax = w_max) 
+    ax1.set_xlabel(r"$y$")
+    ax1.set_ylabel(r"$x$")
+    ax1.set_xlim(0.0, y[-1])
+    ax1.set_ylim(0.0, x[-1])
+    ax1.set_xticks([0.0, np.pi/2.0, np.pi, 1.5*np.pi, y[-1]])
+    ax1.set_xticklabels([r"$0$", r"$\frac{\pi}{2}$", r"$\pi$", r"$\frac{3\pi}{2}$", r"$2 \pi$"])
+    ax1.set_yticks([0.0, np.pi/2.0, np.pi, 1.5*np.pi, x[-1]])
+    ax1.set_yticklabels([r"$0$", r"$\frac{\pi}{2}$", r"$\pi$", r"$\frac{3\pi}{2}$", r"$2 \pi$"])
+    ax1.set_title(r"$t = {:0.5f}$".format(time[i]))
+    
+    ## Plot colourbar
+    div1  = make_axes_locatable(ax1)
+    cbax1 = div1.append_axes("right", size = "10%", pad = 0.05)
+    cb1   = plt.colorbar(im1, cax = cbax1)
+    cb1.set_label(r"$\omega(x, y)$")
+
+    #--------------------------
+    # Plot System Measures   
+    #-------------------------- 
+    ax2 = fig.add_subplot(gs[0, 1])
+    ax2.plot(time[:i], tot_en[:i] / tot_en[0])
+    ax2.plot(time[:i], tot_ens[:i] / tot_ens[0])
+    ax2.plot(time[:i], tot_pal[:i] / tot_pal[0])
+    ax2.set_xlabel(r"$t$")
+    ax2.set_xlim(time[0], time[-1])
+    ax2.set_ylim(measure_min, measure_max)
+    # ax2.set_yscale("log")
+    ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+    ax2.legend([r"$\mathcal{K}(t) / \mathcal{K}(0)$", r"$\mathcal{E}(t) / \mathcal{E}(0)$", r"$\mathcal{P}(t) / \mathcal{P}(0)$"])
+
+    ## Save figure
+    plt.savefig(out_dir + "Decay_SNAP_{:05d}.png".format(i), bbox_inches='tight') 
+    plt.close()
+
+
+def plot_decay_snaps_2(out_dir, i, w, w_min, w_max, measure_min, measure_max, x, y, time, Nx, Ny, kx, ky, enrg_spec, enst_spec, tot_en, tot_ens, tot_pal):
+
+       """
+       Plots summary snap of the solver data for the current iteration. Plots vorticity, full zero centre phases and spectra.
+
+       i     : int
+              - The current snap
+       w     : ndarray, float64
+              - The Real space vorticity Array
+       x     : array, float64
+              - Array of the collocation points in the first direction
+       y     : array, float64
+              - Array of the collocation points in the second direction
+       time  : array, float64
+              - Array of the snapshot times
+       Nx    : int
+              - Size of the first dimension
+       Ny    : int
+              - Size of the second dimension
+       kx    : array, int
+              - The wavenumbers in the first direction
+       ky    : array, int
+              - The wavenumbers in the first direction
+       """
+
+       ## Print Update
+       print("SNAP: {}".format(i))
+
+       ## Create Figure
+       fig = plt.figure(figsize = (16, 8))
+       gs  = GridSpec(2, 2, hspace = 0.3) 
+
+       ##-------------------------
+       ## Plot vorticity   
+       ##-------------------------
+       ax1 = fig.add_subplot(gs[0, 0])
+       im1 = ax1.imshow(w, extent = (y[0], y[-1], x[-1], x[0]), cmap = "RdBu", vmin = w_min, vmax = w_max) 
+       ax1.set_xlabel(r"$y$")
+       ax1.set_ylabel(r"$x$")
+       ax1.set_xlim(0.0, y[-1])
+       ax1.set_ylim(0.0, x[-1])
+       ax1.set_xticks([0.0, np.pi/2.0, np.pi, 1.5*np.pi, y[-1]])
+       ax1.set_xticklabels([r"$0$", r"$\frac{\pi}{2}$", r"$\pi$", r"$\frac{3\pi}{2}$", r"$2 \pi$"])
+       ax1.set_yticks([0.0, np.pi/2.0, np.pi, 1.5*np.pi, x[-1]])
+       ax1.set_yticklabels([r"$0$", r"$\frac{\pi}{2}$", r"$\pi$", r"$\frac{3\pi}{2}$", r"$2 \pi$"])
+       ax1.set_title(r"$t = {:0.5f}$".format(time[i]))
+       
+       ## Plot colourbar
+       div1  = make_axes_locatable(ax1)
+       cbax1 = div1.append_axes("right", size = "10%", pad = 0.05)
+       cb1   = plt.colorbar(im1, cax = cbax1)
+       cb1.set_label(r"$\omega(x, y)$")
+
+       #--------------------------
+       # Plot System Measures   
+       #-------------------------- 
+       ax2 = fig.add_subplot(gs[0, 1])
+       ax2.plot(time[:i], tot_en[:i] / tot_en[0])
+       ax2.plot(time[:i], tot_ens[:i] / tot_ens[0])
+       ax2.plot(time[:i], tot_pal[:i] / tot_pal[0])
+       ax2.set_xlabel(r"$t$")
+       ax2.set_xlim(time[0], time[-1])
+       ax2.set_ylim(measure_min, measure_max)
+       # ax2.set_yscale("log")
+       ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+       ax2.legend([r"$\mathcal{K}(t) / \mathcal{K}(0)$", r"$\mathcal{E}(t) / \mathcal{E}(0)$", r"$\mathcal{P}(t) / \mathcal{P}(0)$"])
+
+       #-------------------------
+       # Plot Energy Spectrum   
+       #-------------------------
+       ax3 = fig.add_subplot(gs[1, 0])
+       kindx = int(Nx / 3 + 1)
+       for i in range(enrg_spec.shape[0]):
+              spec = enrg_spec[i, :kindx] / np.sum(enrg_spec[i, :kindx])
+              if i == 0:
+                     ax3.plot(spec, color = 'y')
+              elif i == enrg_spec.shape[0] - 1:
+                     ax3.plot(spec, color = 'b')
+              else:                     
+                     ax3.plot(spec, linestyle = ':', color = 'k', linewidth = 0.5, alpha = 0.02)
+       ax3.set_xlabel(r"$|k|$")
+       ax3.set_ylabel(r"$\mathcal{K}(|k|) / \sum \mathcal{K}(|k|)$")
+       ax3.set_title(r"Energy Spectrum")
+       ax3.set_ylim(1e-20, 10)
+       ax3.set_yscale('log')
+       ax3.set_xscale('log')
+
+       #--------------------------
+       # Plot Enstrophy Spectrum   
+       #--------------------------
+       ax4 = fig.add_subplot(gs[1, 1]) 
+       kindx = int(Nx / 3 + 1)
+       for i in range(enst_spec.shape[0]):
+              spec = enst_spec[i, :kindx] / np.sum(enst_spec[i, :kindx])
+              if i == 0:
+                     ax4.plot(spec, color = 'y')
+              elif i == enst_spec.shape[0] - 1:
+                     ax4.plot(spec,  color = 'b')
+              else:                     
+                     ax4.plot(spec, linestyle = ':', color = 'k', linewidth = 0.5, alpha = 0.02)
+       ax4.set_xlabel(r"$|k|$")
+       ax4.set_ylabel(r"$\mathcal{E}(|k|) / \sum \mathcal{E}(|k|)$")
+       ax4.set_title(r"Enstrophy Spectrum")
+       ax4.set_ylim(1e-20, 10)
+       ax4.set_yscale('log')
+       ax4.set_xscale('log')
+
+       ## Save figure
+       plt.savefig(out_dir + "Decay2_SNAP_{:05d}.png".format(i), bbox_inches='tight') 
+       plt.close()
 
 ##################################
 ##       HELPER FUNCTIONS       ##

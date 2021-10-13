@@ -24,7 +24,7 @@ from numba import njit
 import pyfftw as fftw
 
 from functions import tc, sim_data, import_data, import_spectra_data
-from plot_functions import plot_phase_snaps, plot_summary_snaps
+from plot_functions import plot_decay_snaps, plot_decay_snaps_2
 
 
 ###############################
@@ -43,14 +43,13 @@ def parse_cml(argv):
         Class for command line arguments
         """
         
-        def __init__(self, in_dir = None, out_dir = None, phase_dir = None, main_file = None, spec_file = None, summ_snap = False, phase_snap = False, parallel = False, plotting = False, video = False):
+        def __init__(self, in_dir = None, out_dir = None, main_file = None, spec_file = None, base_snap = False, full_snap = False, parallel = False, plotting = False, video = False):
             self.spec_file  = spec_file
             self.main_file  = main_file
             self.in_dir     = in_dir
             self.out_dir    = out_dir
-            self.phase_dir  = phase_dir
-            self.summ_snap  = summ_snap
-            self.phase_snap = phase_snap
+            self.base_snap  = base_snap
+            self.full_snap  = full_snap
             self.parallel   = parallel
             self.plotting   = plotting
             self.video      = video 
@@ -60,7 +59,7 @@ def parse_cml(argv):
 
     try:
         ## Gather command line arguments
-        opts, args = getopt.getopt(argv, "i:o:m:s:", ["s_snap", "p_snap", "par", "plot", "vid"])
+        opts, args = getopt.getopt(argv, "i:o:m:s:", ["full_snap", "base_snap", "par", "plot", "vid"])
     except:
         print("[" + tc.R + "ERROR" + tc.Rst + "] ---> Incorrect Command Line Arguements.")
         sys.exit()
@@ -78,7 +77,6 @@ def parse_cml(argv):
             cargs.out_dir = str(arg)
             print("Output Folder: " + tc.C + "{}".format(cargs.out_dir) + tc.Rst)
 
-
         elif opt in ['-m']:
             ## Read in main file
             cargs.main_file = str(arg)
@@ -89,27 +87,27 @@ def parse_cml(argv):
             cargs.spec_file = str(arg)
             print("Spectra File: " + tc.C + "{}".format(cargs.spec_file) + tc.Rst)
 
-        elif opt in ['--s_snap']:
+        elif opt in ['--base_snap']:
             ## Read in summary snaps indicator
-            cargs.summ_snap = True
+            cargs.base_snap = True
 
             ## Make summary snaps output directory 
-            cargs.out_dir = cargs.in_dir + "SNAPS/"
+            cargs.out_dir = cargs.in_dir + "DECAY_SNAPS/"
             if os.path.isdir(cargs.out_dir) != True:
-                print("Making folder:" + tc.C + " SNAPS/" + tc.Rst)
+                print("Making folder:" + tc.C + "DECAY_SNAPS/" + tc.Rst)
                 os.mkdir(cargs.out_dir)
             print("Output Folder: "+ tc.C + "{}".format(cargs.out_dir) + tc.Rst)
 
-        elif opt in ['--p_snap']:
-            ## Read in phase_snaps indicator
-            cargs.phase_snap = True
+        elif opt in ['--full_snap']:
+            ## Read in summary snaps indicator
+            cargs.full_snap = True
 
-            ## Make phase snaps output directory
-            cargs.phase_dir = cargs.in_dir + "PHASE_SNAPS/"
-            if os.path.isdir(cargs.phase_dir) != True:
-                print("Making folder:" + tc.C + " PHASE_SNAPS/" + tc.Rst)
-                os.mkdir(cargs.phase_dir)
-            print("Phases Output Folder: "+ tc.C + "{}".format(cargs.phase_dir) + tc.Rst)
+            ## Make summary snaps output directory 
+            cargs.out_dir = cargs.in_dir + "DECAY_SNAPS/"
+            if os.path.isdir(cargs.out_dir) != True:
+                print("Making folder:" + tc.C + "DECAY_SNAPS/" + tc.Rst)
+                os.mkdir(cargs.out_dir)
+            print("Output Folder: "+ tc.C + "{}".format(cargs.out_dir) + tc.Rst)
 
         elif opt in ['--par']:
             ## Read in parallel indicator
@@ -125,56 +123,7 @@ def parse_cml(argv):
 
     return cargs
 
-@njit
-def FullFieldShifted(w_h, kx, ky):
 
-    ## Allocate memory
-    kmax     = int(w_h.shape[0] / 3)
-    w_h_full = np.ones((int(2 * kmax - 1), int(2 * kmax - 1))) * np.complex(0., 0.)
-
-    for i in range(w_h.shape[0]):
-        if abs(kx[i]) < kmax:
-            for j in range(w_h.shape[1]):
-                if abs(ky[j]) < kmax:
-                    if np.sqrt(kx[i]**2 + ky[j]**2) < kmax:
-                        if ky[j] == 0: 
-                            w_h_full[kmax - 1 + kx[i], kmax - 1 + ky[j]] = w_h[i, j]
-                        else:
-                            w_h_full[kmax - 1 + kx[i], kmax - 1 + ky[j]] = w_h[i, j]
-                            w_h_full[kmax - 1 - kx[i], kmax - 1 - ky[j]] = np.conjugate(w_h[i, j])
-
-    return w_h_full
-
-@njit
-def ZeroCentred(w_h):
-
-    ## Get dims
-    Nk = w_h.shape[1]
-    
-    ## Make kx > 0
-    tmp1 = np.concatenate((np.flipud(np.conjugate(w_h[:Nk, -2:0:-1])), np.flipud(w_h[:Nk, :])), axis = 1)
-
-    ## Make ky < 0
-    tmp2 = np.concatenate((np.flipud(np.conjugate(w_h[Nk:, -2:0:-1])), np.flipud(w_h[Nk:, :])), axis = 1)
-
-    return np.concatenate((tmp1, tmp2), axis = 0)
-
-
-def transform_w(w):
-
-    ## Initialize the Fourier space vorticity
-    w_hat = np.ones((w.shape[0], w.shape[1], int(w.shape[1] / 2 + 1))) * np.complex(0.0, 0.0)
-
-    ## Allocate array
-    real = fftw.zeros_aligned((w.shape[1], w.shape[2]), dtype = 'float64')
-
-    ## Create the FFTW transform
-    fft2_r2c = fftw.builders.rfft2(real)
-
-    for i in range(w.shape[0]):
-        w_hat[i, :, :] = fft2_r2c(w[i, :, :])
-
-    return w_hat
 
 ######################
 ##       MAIN       ##
@@ -187,7 +136,6 @@ if __name__ == '__main__':
     cmdargs = parse_cml(sys.argv[1:]) 
     method  = "default"
     
-
     # -----------------------------------------
     ## --------  Read In data
     # -----------------------------------------
@@ -203,27 +151,39 @@ if __name__ == '__main__':
     else:
         spectra_data = import_spectra_data(cmdargs.spec_file, sys_params, method)
 
+    ## Get max and min vorticity
     wmin = np.amin(run_data.w[:, :, :])
     wmax = np.amax(run_data.w[:, :, :])
+    ## Get max and min system measures 
+    emax  = np.amax(run_data.tot_enrg[:] / run_data.tot_enrg[0])
+    enmax = np.amax(run_data.tot_enst[:] / run_data.tot_enst[0])
+    pmax  = np.amax(run_data.tot_palin[:] / run_data.tot_palin[0])
+    print(emax, enmax, pmax)
+    m_max = np.amax([emax, enmax, pmax])
+    emin  = np.amin(run_data.tot_enrg[:] / run_data.tot_enrg[0])
+    enmin = np.amin(run_data.tot_enst[:] / run_data.tot_enst[0])
+    pmin  = np.amin(run_data.tot_palin[:] / run_data.tot_palin[0])
+    m_min = np.amin([emin, enmin, pmin])
+    print(emin, enmin, pmin)
 
     # -----------------------------------------
     ## ------ Plot Snaps
-    # -----------------------------------------
+    # -----------------------------------------  
     if cmdargs.plotting:
-        
+
         ## Start timer
         start = TIME.perf_counter()
         print("\n" + tc.Y + "Printing Snaps..." + tc.Rst)
         
-        ## Print main summary snaps
-        if cmdargs.summ_snap:
-            print("\n" + tc.Y + "Printing Summary Snaps..." + tc.Rst)
+        ## Print full summary snaps = base + spectra
+        if cmdargs.full_snap:
+            print("\n" + tc.Y + "Printing Full Snaps..." + tc.Rst)
             if cmdargs.parallel:
                 ## No. of processes
                 proc_lim = 10
 
                 ## Create tasks for the process pool
-                groups_args = [(mprocs.Process(target = plot_summary_snaps, args = (cmdargs.out_dir, i, run_data.w[i, :, :], run_data.w_hat[i, :, :], run_data.x, run_data.y, wmin, wmax, run_data.kx, run_data.ky, int(sys_params.Nx / 3), run_data.tot_enrg[:i], run_data.tot_enst[:i], run_data.tot_palin[:i], spectra_data.enrg_spectrum[i, :], spectra_data.enst_spectrum[i, :], run_data.enrg_diss[:i], run_data.enst_diss[:i], run_data.enrg_flux_sbst[:i], run_data.enrg_diss_sbst[:i], run_data.enst_flux_sbst[:i], run_data.enst_diss_sbst[:i], run_data.time, sys_params.Nx, sys_params.Ny)) for i in range(run_data.w.shape[0]))] * proc_lim
+                groups_args = [(mprocs.Process(target = plot_decay_snaps_2, args = (cmdargs.out_dir, i, run_data.w[i, :, :], wmin, wmax, m_min, m_max, run_data.x, run_data.y, run_data.time, sys_params.Nx, sys_params.Ny, run_data.kx, run_data.ky, spectra_data.enrg_spectrum[:i, :], spectra_data.enst_spectrum[:i, :], run_data.tot_enrg, run_data.tot_enst, run_data.tot_palin)) for i in range(run_data.w.shape[0]))] * proc_lim
 
                 ## Loop of grouped iterable
                 for procs in zip_longest(*groups_args): 
@@ -238,19 +198,21 @@ if __name__ == '__main__':
                     for process in processes:
                         process.join()
             else:
-                ## Loop over snapshots
+                # Loop over snapshots
                 for i in range(sys_params.ndata):
-                    plot_summary_snaps(cmdargs.out_dir, i, run_data.w[i, :, :], run_data.w_hat[i, :, :], run_data.x, run_data.y, wmin, wmax, run_data.kx, run_data.ky, int(sys_params.Nx / 3), run_data.tot_enrg[:i], run_data.tot_enst[:i], run_data.tot_palin[:i], spectra_data.enrg_spectrum[i, :], spectra_data.enst_spectrum[i, :], run_data.enrg_diss[:i], run_data.enst_diss[:i], run_data.enrg_flux_sbst[:i], run_data.enrg_diss_sbst[:i], run_data.enst_flux_sbst[:i], run_data.enst_diss_sbst[:i], run_data.time, sys_params.Nx, sys_params.Ny)
+                    plot_decay_snaps_2(cmdargs.out_dir, i, run_data.w[i, :, :], wmin, wmax, m_min, m_max, run_data.x, run_data.y, run_data.time, sys_params.Nx, sys_params.Ny, run_data.kx, run_data.ky, spectra_data.enrg_spectrum[:i, :], spectra_data.enst_spectrum[:i, :], run_data.tot_enrg, run_data.tot_enst, run_data.tot_palin)
+                # i = sys_params.ndata - 1
+                # plot_decay_snaps_2(cmdargs.out_dir, i, run_data.w[i, :, :], wmin, wmax, run_data.x, run_data.y, run_data.time, sys_params.Nx, sys_params.Ny, run_data.kx, run_data.ky, spectra_data.enrg_spectrum[:i, :], spectra_data.enst_spectrum[:i, :], run_data.tot_enrg, run_data.tot_enst, run_data.tot_palin)
 
-        ## Print phase summary snaps
-        if cmdargs.phase_snap:
-            print("\n" + tc.Y + "Printing Phase Snaps..." + tc.Rst)
+        ## Print base summary snaps
+        if cmdargs.base_snap:
+            print("\n" + tc.Y + "Printing Base Snaps..." + tc.Rst)
             if cmdargs.parallel:
                 ## No. of processes
                 proc_lim = 10
 
                 ## Create tasks for the process pool
-                groups_args = [(mprocs.Process(target = plot_phase_snaps, args = (cmdargs.phase_dir, i, run_data.w[i, :, :], run_data.w_hat[i, :, :], wmin, wmax, run_data.x, run_data.y, run_data.time, sys_params.Nx, sys_params.Nx, run_data.k2Inv, run_data.kx, run_data.ky)) for i in range(run_data.w.shape[0]))] * proc_lim
+                groups_args = [(mprocs.Process(target = plot_decay_snaps, args = (cmdargs.out_dir, i, run_data.w[i, :, :], wmin, wmax, m_min, m_max, run_data.x, run_data.y, run_data.time, sys_params.Nx, sys_params.Ny, run_data.kx, run_data.ky, run_data.tot_enrg, run_data.tot_enst, run_data.tot_palin)) for i in range(run_data.w.shape[0]))] * proc_lim
 
                 ## Loop of grouped iterable
                 for procs in zip_longest(*groups_args): 
@@ -265,16 +227,20 @@ if __name__ == '__main__':
                     for process in processes:
                         process.join()
             else:
-                ## Loop over snahpshots
+                # Loop over snapshots
                 for i in range(sys_params.ndata):
-                    plot_phase_snaps(cmdargs.phase_dir, i, run_data.w[i, :, :], run_data.w_hat[i, :, :], wmin, wmax, run_data.x, run_data.y, run_data.time, sys_params.Nx, sys_params.Nx, run_data.k2Inv, run_data.kx, run_data.ky)
+                    plot_decay_snaps(cmdargs.out_dir, i, run_data.w[i, :, :], wmin, wmax, m_min, m_max, run_data.x, run_data.y, run_data.time, sys_params.Nx, sys_params.Ny, run_data.kx, run_data.ky, run_data.tot_enrg, run_data.tot_enst, run_data.tot_palin)
+                # i = sys_params.ndata - 1
+                # plot_decay_snaps(cmdargs.out_dir, i, run_data.w[i, :, :], wmin, wmax, run_data.x, run_data.y, run_data.time, sys_params.Nx, sys_params.Ny, run_data.kx, run_data.ky, run_data.tot_enrg, run_data.tot_enst, run_data.tot_palin)
 
         ## End timer
         end = TIME.perf_counter()
         plot_time = end - start
         print("\n" + tc.Y + "Finished Plotting..." + tc.Rst)
         print("\n\nPlotting Time: " + tc.C + "{:5.8f}s\n\n".format(plot_time) + tc.Rst)
-        
+
+
+
     #------------------------------------
     # ----- Make Video
     #-------------------------------------
@@ -283,13 +249,12 @@ if __name__ == '__main__':
         ## Start timer
         start = TIME.perf_counter()
 
-        if cmdargs.summ_snap:
+        if cmdargs.full_snap:
             framesPerSec = 15
-            inputFile    = cmdargs.out_dir + "SNAP_%05d.png"
-            videoName    = cmdargs.out_dir + "2D_NavierStokes_N[{},{}]_u0[{}].mp4".format(sys_params.Nx, sys_params.Ny, sys_params.u0)
+            inputFile    = cmdargs.out_dir + "Decay2_SNAP_%05d.png"
+            videoName    = cmdargs.out_dir + "2D_FULL_NavierStokes_N[{},{}]_u0[{}].mp4".format(sys_params.Nx, sys_params.Ny, sys_params.u0)
             cmd = "ffmpeg -y -r {} -f image2 -s 1920x1080 -i {} -vf 'pad=ceil(iw/2)*2:ceil(ih/2)*2' -vcodec libx264 -crf 25 -pix_fmt yuv420p {}".format(framesPerSec, inputFile, videoName)
             # cmd = "ffmpeg -r {} -f image2 -s 1280×720 -i {} -vcodec libx264 -preset ultrafast -crf 35 -pix_fmt yuv420p {}".format(framesPerSec, inputFile, videoName)
-
 
             process = Popen(cmd, shell = True, stdout = PIPE, stdin = PIPE, universal_newlines = True)
             [runCodeOutput, runCodeErr] = process.communicate()
@@ -301,10 +266,10 @@ if __name__ == '__main__':
             print("\n" + tc.Y + "Finished making video..." + tc.Rst)
             print("Video Location: " + tc.C + videoName + tc.Rst + "\n")
 
-        if cmdargs.phase_snap:
+        if cmdargs.base_snap:
             framesPerSec = 15
-            inputFile    = cmdargs.phase_dir + "Phase_SNAP_%05d.png"
-            videoName    = cmdargs.phase_dir + "2D_NavierStokes_N[{},{}]_u0[{}]_Phases.mp4".format(sys_params.Nx, sys_params.Ny, sys_params.u0)
+            inputFile    = cmdargs.out_dir + "Decay_SNAP_%05d.png"
+            videoName    = cmdargs.out_dir + "2D_BASE_NavierStokes_N[{},{}]_u0[{}].mp4".format(sys_params.Nx, sys_params.Ny, sys_params.u0)
             cmd = "ffmpeg -y -r {} -f image2 -s 1920x1080 -i {} -vf 'pad=ceil(iw/2)*2:ceil(ih/2)*2' -vcodec libx264 -crf 25 -pix_fmt yuv420p {}".format(framesPerSec, inputFile, videoName)
             # cmd = "ffmpeg -r {} -f image2 -s 1280×720 -i {} -vcodec libx264 -preset ultrafast -crf 35 -pix_fmt yuv420p {}".format(framesPerSec, inputFile, videoName)
 
@@ -326,75 +291,6 @@ if __name__ == '__main__':
 
     ## Print summary of timmings to screen
     if cmdargs.plotting:
-        print("\n\nPlotting Time:" + tc.C + " {:5.8f}s\n\n".format(plot_time) + tc.Rst)
+        print("\n\nPlotting Time: " + tc.C + " {:5.8f}s\n\n".format(plot_time) + tc.Rst)
     if cmdargs.video:
-        print("Movie Time:" + tc.C + " {:5.8f}s\n\n".format(end - start) + tc.Rst)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    # kx = np.append(np.arange(0, sys_params.Nk), np.linspace(-sys_params.Ny//2 + 1, -1, sys_params.Ny//2 - 1))
-    # ky = np.append(np.arange(0, sys_params.Nk), np.linspace(-sys_params.Ny//2 + 1, -1, sys_params.Ny//2 - 1))
-    # print()
-    # print(kx)
-    # print(ky)
-    # print()
-    # print(np.fft.ifftshift(kx))
-
-    # kx = kx[:, np.newaxis] * np.ones((sys_params.Nx, sys_params.Ny))
-    # print(kx)
-    # axes = tuple(range(kx.ndim))
-    # print(kx.ndim)
-    # print(axes)
-
-    # for dim in kx.shape:
-    #     print("dim: {}".format(dim))
-    # shift = [-(dim // 2 + 1) for dim in kx.shape]
-    # print(shift)
-
-    # shift = -(x.shape[axes] // 2)
-    # shift = [-(x.shape[ax] // 2) for ax in axes]
-    # print()
-    # print(np.flipud(fft_ishift_freq(kx)))
-
-    # print()
-    # print(np.roll(kx, shift = [-2, -2], axis = (0, 1)))
-    # t = 1
-    # ffw_h = FullField(run_data.w_hat[t, :, :])
-    # print(sys_params.Nx, sys_params.Ny)
-    # print(ffw_h.shape)
-    # for i in range(ffw_h.shape[0]):
-    #     for j in range(ffw_h.shape[1]):
-    #         # print("wh[{}, {}]: {:0.5f} {:0.5f}I ".format(i, j, np.real(ffw_h[i, j]), np.imag(ffw_h[i, j])), end = "")
-    #         print("wh[{}, {}]: {:0.5f} ".format(i, j, np.angle(ffw_h[i, j])), end = "")
-    #     print()
-    # print()
-    # ffsw_h = FullFieldShifted(run_data.w_hat[t, :, :], run_data.kx, run_data.ky)
-    # # for i in range(ffsw_h.shape[0]):
-    # #     for j in range(ffsw_h.shape[1]):
-    # #         print("wh[{}, {}]: {:0.5f} {:0.5f}I ".format(i, j, np.real(ffsw_h[i, j]), np.imag(ffsw_h[i, j])), end = "")
-    # #     print()
-    # # print()
-    # print(ffw_h.shape)
-    # print(ffsw_h.shape)
-    # print(np.allclose(ffw_h[abs(run_data.kx) < int(sys_params.Nx/3), abs(run_data.ky) < int(sys_params.Nx/3)], ffsw_h))
+        print("Movie Time: " + tc.C + " {:5.8f}s\n\n".format(end - start) + tc.Rst)

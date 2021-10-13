@@ -36,9 +36,9 @@ else:
 ###########################
 ## NOTE: If providing multiple values they must be in python list type e.g. [1, 2, 3]
 ## Space variables
-Nx = [64, 128]
-Ny = [64, 128]
-if len(Ny) > 1:
+Nx = [512]
+Ny = [512]
+if len(Ny) >= 1:
     Nk = []
     for n in Ny:
         Nk.append(int(n / 2 + 1))
@@ -46,36 +46,37 @@ else:
     Nk = int(Ny / 2 + 1)
 
 ## System parameters
-nu             = np.logspace(start = -3, stop = -1, num = 3).tolist()
+nu             = 0.0
 ekmn_alpha     = 1.
 hypervisc      = 0 
 ekmn_hypo_diff = 0
 
 ## Time parameters
 t0        = 0.0
-T         = 1.0
-dt        = 1e-3
+T         = 10.0
+dt        = 1e-4
 cfl       = np.sqrt(3)
-step_type = True
+step_type = False
 
 ## Solver parameters
-ic         = "DECAY_TURB"
+ic         = "DOUBLE_SHEAR_LAYER"
 forcing    = "NONE"
 force_k    = 0
-save_every = 2
+save_every = 100
 
 ## Directory/File parameters
 input_dir       = "NONE"
 output_dir      = "./Data/Tmp/"
 file_only_mode  = False
-solver_tag      = "Decay-Test"
-sys_tag         = "_NAVIER_RK4_FULL_"
+solver_tag      = "DBL-Test"
+sys_tag         = "_EULER_RK4_FULL_"
 post_input_dir  = output_dir + "SIM_DATA" + sys_tag
 post_output_dir = output_dir + "SIM_DATA" + sys_tag
 
 ## Job parameters
-executable                  = "Solver/bin/main_DT_test"
-plot_script                 = "Plotting/plot_vort_snaps.py"
+executable                  = "Solver/bin/main_DB_SL_test"
+plot_script                 = "Plotting/plot_decay_snaps.py"
+plot_options                = "--full_snap --base_snap --plot --vid"
 solver                      = True
 postprocessing              = True
 plotting                    = True
@@ -137,6 +138,7 @@ config['DIRECTORIES'] = {
 config['JOB'] = {
     'executable'                  : executable,
     'plot_script'                 : plot_script,
+    'plot_options'                : plot_options,
     'call_solver'                 : solver,
     'call_postprocessing'         : postprocessing,
     'plotting'                    : plotting,

@@ -6,7 +6,7 @@ from configparser import ConfigParser
 import numpy as np
 import os
 import sys
-
+import distutils.util as utils
 from datetime import datetime
 from collections.abc import Iterable
 from itertools import zip_longest
@@ -56,6 +56,8 @@ post_input_dir  = output_dir
 post_output_dir = output_dir
 ## Job parameters
 executable                  = "Solver/bin/main"
+plot_options                = "--full_snap --base_snap --plot --vid"
+plotting                    = True
 solver                      = True
 postprocessing              = True
 solver_procs                = 4
@@ -122,7 +124,7 @@ for section in parser.sections():
                 cfl.append(float(parser[section]['cfl']))
         if 'start_time' in parser[section]:
             t0 = float(parser[section]['start_time'])
-        step_type = bool(parser[section]['adaptive_step_type'])
+        step_type = bool(utils.strtobool(parser[section]['adaptive_step_type']))
     if section in ['DIRECTORIES']:
         if 'solver_input_dir' in parser[section]:
             input_dir = str(parser[section]['solver_input_dir'])
@@ -136,7 +138,7 @@ for section in parser.sections():
         if 'post_output_dir' in parser[section]:
             post_output_dir = str(parser[section]['post_output_dir'])
         if 'solver_file_only_mode' in parser[section]:
-            file_only_mode = bool(parser[section]['solver_file_only_mode'])
+            file_only_mode = bool(utils.strtobool(parser[section]['solver_file_only_mode']))
         if 'system_tag' in parser[section]:
             system_tag = str(parser[section]['system_tag'])
     if section in ['JOB']:
@@ -144,14 +146,16 @@ for section in parser.sections():
             executable = str(parser[section]['executable'])
         if 'plotting' in parser[section]:
             plotting = str(parser[section]['plotting'])
+        if 'plot_options' in parser[section]:
+            plot_options = str(parser[section]['plot_options'])
         if 'call_solver' in parser[section]:
-            solver = bool(parser[section]['call_solver'])
+            solver = bool(utils.strtobool(parser[section]['call_solver']))
         if 'call_postprocessing' in parser[section]:
-            postprocessing = bool(parser[section]['call_postprocessing'])
+            postprocessing = bool(utils.strtobool(parser[section]['call_postprocessing']))
         if 'solver_procs' in parser[section]:
             solver_procs = int(parser[section]['solver_procs'])
         if 'collect_data' in parser[section]:
-            collect_data = bool(parser[section]['collect_data'])
+            collect_data = bool(utils.strtobool(parser[section]['collect_data']))
         if 'num_solver_job_threads' in parser[section]:
             num_solver_job_threads = int(parser[section]['num_solver_job_threads'])
         if 'num_postprocess_job_threads' in parser[section]:
@@ -159,7 +163,6 @@ for section in parser.sections():
         if 'num_plotting_job_threads' in parser[section]:
             num_plotting_job_threads = int(parser[section]['num_plotting_job_threads'])
         
-
 #########################
 ##      RUN SOLVER     ##
 #########################
@@ -175,7 +178,7 @@ if solver:
         solver_error  = []
 
     ## Generate command list 
-    cmd_list = [["mpirun -n {} {} -o {} -n {} -n {} -s {:3.1f} -e {:3.1f} -c {:1.6f} -h {:1.6f} -v {:1.6f} -d {:1.6f} -i {} -t {} -f {} -f {} -p {}".format(solver_procs, executable, output_dir, nx, ny, t0, t, c, h, v, ekmn_alpha, u0, s_tag, forcing, force_k, save_every)] for nx, ny in zip(Nx, Ny) for t in T for h in dt for u0 in ic for v in nu for c in cfl for s_tag in solver_tag]
+    cmd_list = [["mpirun -n {} {} -o {} -n {} -n {} -s {:3.1f} -e {:3.1f} -c {:1.6f} -h {:1.6f} -v {:1.10f} -d {:1.6f} -i {} -t {} -f {} -f {} -p {}".format(solver_procs, executable, output_dir, nx, ny, t0, t, c, h, v, ekmn_alpha, u0, s_tag, forcing, force_k, save_every)] for nx, ny in zip(Nx, Ny) for t in T for h in dt for u0 in ic for v in nu for c in cfl for s_tag in solver_tag]
    
 
     ## Create grouped iterable of subprocess calls to Popen() - see grouper recipe in itertools
@@ -292,7 +295,7 @@ if plotting:
         plot_error  = []
 
     ## Generate command list 
-    cmd_list = [["python3 -i {} --p_snaps --s_snap --plotting --vid".format(post_input_dir + "N[{},{}]_T[{}-{}]_NU[{:1.6f}]_CFL[{:1.2f}]_u0[{}]_TAG[{}]/".format(nx, ny, int(t0), int(t), v, c, u0, s_tag))] for nx, ny in zip(Nx, Ny) for t in T for v in nu for c in cfl for u0 in ic for s_tag in solver_tag]
+    cmd_list = [["python3 -i {} {}".format(post_input_dir + "N[{},{}]_T[{}-{}]_NU[{:1.6f}]_CFL[{:1.2f}]_u0[{}]_TAG[{}]/".format(nx, ny, int(t0), int(t), v, c, u0, s_tag), plot_options)] for nx, ny in zip(Nx, Ny) for t in T for v in nu for c in cfl for u0 in ic for s_tag in solver_tag]
     for i in cmd_list:
         print(i)
 
