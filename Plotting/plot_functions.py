@@ -156,7 +156,7 @@ def plot_summary_snaps(out_dir, i, w, w_hat, x, y, w_min, w_max, kx, ky, kx_max,
 
 
 
-def plot_phase_snaps(out_dir, i, w, w_h, w_min, w_max, x, y, time, Nx, Ny, k2Inv, kx, ky):
+def plot_phase_snaps(out_dir, i, w, phases, enrg_spec, enst_spec, w_min, w_max, x, y, time, Nx, Ny, kx, ky):
 
     """
     Plots summary snap of the solver data for the current iteration. Plots vorticity, full zero centre phases and spectra.
@@ -216,20 +216,16 @@ def plot_phase_snaps(out_dir, i, w, w_h, w_min, w_max, x, y, time, Nx, Ny, k2Inv
     #--------------------------
     # Plot Phases   
     #--------------------------
-    ## Adjust data
-    data = np.mod(np.angle(ZeroCentredField(w_h)), 2. * np.pi)
-    # data = np.mod(np.angle(np.fft.ifftshift(FullField(w_h))), 2. * np.pi)
     ## Generate colour map
     my_hsv = cm.hsv
     my_hsv.set_bad(color = "white")
-
     ax2  = fig.add_subplot(gs[0, 1])
-    im2  = ax2.imshow(data, extent = (Ny / 2, -Ny / 2 + 1, -Nx / 2 + 1, Nx / 2), cmap = my_hsv, vmin = 0., vmax = 2. * np.pi)
+    im2  = ax2.imshow(phases, extent = (Ny / 2, -Ny / 2 + 1, -Nx / 2 + 1, Nx / 2), cmap = my_hsv, vmin = 0., vmax = 2. * np.pi)
     ax2.set_xlabel(r"$k_y$")
     ax2.set_ylabel(r"$k_x$")
     ax2.set_title(r"Phases")
-    ax2.set_xlim(-Ny / 3, Ny / 3)
-    ax2.set_ylim(-Nx / 3, Nx / 3)
+    # ax2.set_xlim(-Ny / 3, Ny / 3)
+    # ax2.set_ylim(-Nx / 3, Nx / 3)
 
     ## Plot colourbar
     div2  = make_axes_locatable(ax2)
@@ -243,17 +239,12 @@ def plot_phase_snaps(out_dir, i, w, w_h, w_min, w_max, x, y, time, Nx, Ny, k2Inv
     # Plot 2D Enstrophy Spectra   
     #--------------------------
     ax3  = fig.add_subplot(gs[1, 0])
-    spec = np.absolute(ZeroCentredField(w_h)) ** 2
-    print(np.any(spec < 0))
-    print()
-
-    im3  = ax3.imshow(spec / np.sum(spec), extent = (Ny / 2, -Ny / 2 + 1, -Nx / 2 + 1, Nx / 2), cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1])) # , norm = mpl.colors.LogNorm(), vmax = 10, vmin = 10^-15
-    # im3 = ax3.imshow(np.absolute(np.fft.ifftshift(FullField(w_h))) ** 2, extent = (Ny / 2, -Ny / 2 + 1, -Nx / 2 + 1, Nx / 2), cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1]), norm = mpl.colors.LogNorm())
+    im3  = ax3.imshow(enst_spec, extent = (Ny / 2, -Ny / 2 + 1, -Nx / 2 + 1, Nx / 2), cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1]), norm = mpl.colors.LogNorm()) # , norm = mpl.colors.LogNorm(), vmax = 10, vmin = 10^-15
     ax3.set_xlabel(r"$k_y$")
     ax3.set_ylabel(r"$k_x$")
     ax3.set_title("Enstrophy Spectrum")
-    ax3.set_xlim(-Ny / 3, Ny / 3)
-    ax3.set_ylim(-Nx / 3, Nx / 3)
+    # ax3.set_xlim(-Ny / 3, Ny / 3)
+    # ax3.set_ylim(-Nx / 3, Nx / 3)
 
     ## Plot colourbar
     div3  = make_axes_locatable(ax3)
@@ -265,16 +256,12 @@ def plot_phase_snaps(out_dir, i, w, w_h, w_min, w_max, x, y, time, Nx, Ny, k2Inv
     ## Plot 2D Energy Spectra  
     ##-------------------------
     ax4  = fig.add_subplot(gs[1, 1])
-    spec = np.absolute(ZeroCentredField(w_h * k2Inv.astype('complex128')))** 2
-    print(np.any(spec < 0))
-    print()
-    im4  = ax4.imshow(spec / np.sum(spec), extent = (Ny / 2, -Ny / 2 + 1, -Nx / 2 + 1, Nx / 2), cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1])) # , norm = mpl.colors.LogNorm(), vmax = 10, vmin = 10^-15
-    # im4 = ax4.imshow(np.absolute(np.fft.ifftshift(FullField(w_h * k2Inv.astype('complex128')))) ** 2, extent = (Ny / 2, -Ny / 2 + 1, -Nx / 2 + 1, Nx / 2), cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1]), norm = mpl.colors.LogNorm())
+    im4  = ax4.imshow(enrg_spec, extent = (Ny / 2, -Ny / 2 + 1, -Nx / 2 + 1, Nx / 2), cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1]), norm = mpl.colors.LogNorm()) # , norm = mpl.colors.LogNorm(), vmax = 10, vmin = 10^-15
     ax4.set_xlabel(r"$k_y$")
     ax4.set_ylabel(r"$k_x$")
     ax4.set_title("Energy Spectrum")
-    ax4.set_xlim(-Ny / 3, Ny / 3)
-    ax4.set_ylim(-Nx / 3, Nx / 3)
+    # ax4.set_xlim(-Ny / 3, Ny / 3)
+    # ax4.set_ylim(-Nx / 3, Nx / 3)
 
     ## Plot colourbar
     div4  = make_axes_locatable(ax4)
@@ -469,70 +456,6 @@ def plot_decay_snaps_2(out_dir, i, w, w_min, w_max, measure_min, measure_max, x,
        ## Save figure
        plt.savefig(out_dir + "Decay2_SNAP_{:05d}.png".format(i), bbox_inches='tight') 
        plt.close()
-
-##################################
-##       HELPER FUNCTIONS       ##
-##################################
-# @njit
-def fft_ishift_freq(w_h, axes = None):
-
- """
- My version of numpy.fft.ifftshift - adjusted for FFTW wavenumber ordering
-
- w_h   : ndarray, complex128
-        - Array containing the Fourier variables of a given field e.g. Fourier vorticity or velocity
- axes  : int or tuple
-        - Specifies which axes to perform the shift over
- """
-
- ## If no axes provided
- if axes == None:
-     ## Create axes tuple
-     axes  = tuple(range(w_h.ndim))
-     ## Create shift list -> adjusted for FFTW freq numbering
-     shift = [-(dim // 2 + 1) for dim in w_h.shape]
-
- ## If axes is an integer
- elif isinstance(axes, int):
-     ## Create the shift object on this axes
-     shift = -(w_h.shape[axes] // 2 + 1)
-
- ## If axes is a tuple
- else:
-     ## Create appropriate shift for each axis
-     shift = [-(w_h.shape[ax] // 2 + 1) for ax in axes]
-
- return np.roll(w_h, shift, axes)
-
-# @njit
-def ZeroCentredField(w_h):
-
-    """ 
-    Returns the zero centred full field in Fourier space.
-
-    Input Parameters:
-    w_h : ndarray, complex128
-         - Array containing the Fourier variables of a given field e.g. Fourier vorticity or velocity
-         ordered according to FFTW library
-    """
-
-    return np.flipud(fft_ishift_freq(FullField(w_h)))
-
-# @njit
-def FullField(w_h):
-
-    """
-    Returns the full field of an containing the Fourier variables e.g. Fourier vorticity or velocity.
-
-    w_h : ndarray, complex128
-         - Array containing the Fourier variables of a given field e.g. Fourier vorticity or velocity
-         ordered according to FFTW library
-    """
-
-    return np.concatenate((w_h, np.conjugate(w_h[:, -2:0:-1])), axis = 1)
-
-
-
 
 #############################
 ##       COLOURMAPS        ##

@@ -231,8 +231,10 @@ def import_data(input_file, sim_data, method = "default"):
 
     ## Open file and read in the data
     with h5py.File(in_file, 'r') as file:
-
+        
+        ## Initialize counter
         nn = 0
+        
         # Read in the vorticity
         for group in file.keys():
             if "Iter" in group:
@@ -327,8 +329,10 @@ def import_spectra_data(input_file, sim_data, method = "default"):
 
     ## Open file and read in the data
     with h5py.File(file, 'r') as file:
-
+        
+        ## Initialze counter
         nn = 0
+
         # Read in the spectra
         for group in file.keys():
             if "Iter" in group:
@@ -347,7 +351,127 @@ def import_spectra_data(input_file, sim_data, method = "default"):
     return data
 
 
+def import_post_processing_data(input_file, sim_data, method = "default"):
 
+    """
+    Reads in post processing data from HDF5 file.
+
+    input_dir : string
+                - If method == "defualt" is True then this will be the path to 
+               the input folder. if not then this will be the input folder
+    method    : string
+                - Determines whether the data is to be read in from a file or 
+               from an input folder
+    sim_data  : class 
+                - object containing the simulation parameters
+    """
+
+    ## Define a data class for the solver data
+    class PostProcessData: 
+
+        """
+        Class for the run data.
+        """
+
+        def __init__(self):
+            ## Get the max wavenumber
+            self.kmax = int(sim_data.Nx / 3)
+            ## Allocate spectra aarrays
+            self.phases        = np.zeros((sim_data.ndata, int(2 * self.kmax - 1), int(2 * self.kmax - 1)))
+            self.enrg_spectrum = np.zeros((sim_data.ndata, int(2 * self.kmax - 1), int(2 * self.kmax - 1)))
+            self.enst_spectrum = np.zeros((sim_data.ndata, int(2 * self.kmax - 1), int(2 * self.kmax - 1)))
+
+    ## Create instance of data class
+    data = PostProcessData()
+
+    ## Depending on the output mmode of the solver the input files will be named differently
+    if method == "default":
+        file = input_file + "PostProcessing_HDF_Data.h5"
+    else: 
+        file = input_file
+
+    ## Open file and read in the data
+    with h5py.File(file, 'r') as file:
+
+        ## Initialize counter
+        nn = 0
+
+        # Read in the spectra
+        for group in file.keys():
+            if "Snap" in group:
+                if 'FullFieldPhases' in list(file[group].keys()):
+                    data.phases[nn, :] = file[group]["FullFieldPhases"][:]
+                if 'FullFieldEnstrophySpectrum' in list(file[group].keys()):
+                    data.enst_spectrum[nn, :] = file[group]["FullFieldEnstrophySpectrum"][:]
+                if 'FullFieldEnergySpectrum' in list(file[group].keys()):
+                    data.enrg_spectrum[nn, :] = file[group]["FullFieldEnergySpectrum"][:]
+                nn += 1
+            else:
+                continue
+
+    return data
+
+
+##################################
+##       HELPER FUNCTIONS       ##
+##################################
+# @njit
+def fft_ishift_freq(w_h, axes = None):
+
+ """
+ My version of numpy.fft.ifftshift - adjusted for FFTW wavenumber ordering
+
+ w_h   : ndarray, complex128
+        - Array containing the Fourier variables of a given field e.g. Fourier vorticity or velocity
+ axes  : int or tuple
+        - Specifies which axes to perform the shift over
+ """
+
+ ## If no axes provided
+ if axes == None:
+     ## Create axes tuple
+     axes  = tuple(range(w_h.ndim))
+     ## Create shift list -> adjusted for FFTW freq numbering
+     shift = [-(dim // 2 + 1) for dim in w_h.shape]
+
+ ## If axes is an integer
+ elif isinstance(axes, int):
+     ## Create the shift object on this axes
+     shift = -(w_h.shape[axes] // 2 + 1)
+
+ ## If axes is a tuple
+ else:
+     ## Create appropriate shift for each axis
+     shift = [-(w_h.shape[ax] // 2 + 1) for ax in axes]
+
+ return np.roll(w_h, shift, axes)
+
+# @njit
+def ZeroCentredField(w_h):
+
+    """ 
+    Returns the zero centred full field in Fourier space.
+
+    Input Parameters:
+    w_h : ndarray, complex128
+         - Array containing the Fourier variables of a given field e.g. Fourier vorticity or velocity
+         ordered according to FFTW library
+    """
+
+    return np.flipud(fft_ishift_freq(FullField(w_h)))
+
+# @njit
+def FullField(w_h):
+
+    """
+    Returns the full field of an containing the Fourier variables e.g. Fourier vorticity or velocity.
+
+    w_h : ndarray, complex128
+         - Array containing the Fourier variables of a given field e.g. Fourier vorticity or velocity
+         ordered according to FFTW library
+    """
+
+    return np.concatenate((w_h, np.conjugate(w_h[:, -2:0:-1])), axis = 1)
 
 
 ###################################

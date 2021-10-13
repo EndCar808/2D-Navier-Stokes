@@ -23,7 +23,7 @@ from subprocess import Popen, PIPE
 from numba import njit
 import pyfftw as fftw
 
-from functions import tc, sim_data, import_data, import_spectra_data
+from functions import tc, sim_data, import_data, import_spectra_data, ZeroCentredField, import_post_processing_data
 from plot_functions import plot_phase_snaps, plot_summary_snaps
 
 
@@ -43,7 +43,7 @@ def parse_cml(argv):
         Class for command line arguments
         """
         
-        def __init__(self, in_dir = None, out_dir = None, phase_dir = None, main_file = None, spec_file = None, summ_snap = False, phase_snap = False, parallel = False, plotting = False, video = False):
+        def __init__(self, in_dir = None, out_dir = None, phase_dir = None, main_file = None, spec_file = None, summ_snap = False, phase_snap = False, parallel = False, plotting = False, video = False, use_post = False):
             self.spec_file  = spec_file
             self.main_file  = main_file
             self.in_dir     = in_dir
@@ -54,13 +54,14 @@ def parse_cml(argv):
             self.parallel   = parallel
             self.plotting   = plotting
             self.video      = video 
+            self.use_post   = use_post
 
     ## Initialize class
     cargs = cmd_args()
 
     try:
         ## Gather command line arguments
-        opts, args = getopt.getopt(argv, "i:o:m:s:", ["s_snap", "p_snap", "par", "plot", "vid"])
+        opts, args = getopt.getopt(argv, "i:o:m:s:", ["s_snap", "p_snap", "par", "plot", "vid", "use_post"])
     except:
         print("[" + tc.R + "ERROR" + tc.Rst + "] ---> Incorrect Command Line Arguements.")
         sys.exit()
@@ -110,6 +111,10 @@ def parse_cml(argv):
                 print("Making folder:" + tc.C + " PHASE_SNAPS/" + tc.Rst)
                 os.mkdir(cargs.phase_dir)
             print("Phases Output Folder: "+ tc.C + "{}".format(cargs.phase_dir) + tc.Rst)
+
+        elif opt in ['--use_post']:
+            ## Read in use of post processing indicator
+            cargs.use_post = True
 
         elif opt in ['--par']:
             ## Read in parallel indicator
@@ -203,6 +208,28 @@ if __name__ == '__main__':
     else:
         spectra_data = import_spectra_data(cmdargs.spec_file, sys_params, method)
 
+    if cmdargs.use_post:
+        ## Read in post processing data
+        post_proc_data = import_post_processing_data(cmdargs.in_dir, sys_params, method)
+
+        if cmdargs.phase_snap:
+            phases        = post_proc_data.phases
+            enrg_spectrum = post_proc_data.enrg_spectrum
+            enst_spectrum = post_proc_data.enst_spectrum
+
+    ## If not using post processing data and phase snaps are needed precompute data
+    if cmdargs.phase_snap and not cmdargs.use_post:  
+        ## Allocate full field data
+        phases         = np.zeros((sys_params.ndata, sys_params.Nx, sys_params.Ny)) 
+        enrg_spectrum  = np.zeros((sys_params.ndata, sys_params.Nx, sys_params.Ny)) 
+        enst_spectrum  = np.zeros((sys_params.ndata, sys_params.Nx, sys_params.Ny))
+
+        for i in range(sys_params.ndata):
+            phases[i, :, :]        = np.mod(np.angle(ZeroCentredField(run_data.w_hat[i, :, :])), 2.0 * np.pi)
+            enst_spectrum[i, :, :] = np.absolute(ZeroCentredField(run_data.w_hat[i, :, :])) ** 2
+            enrg_spectrum[i, :, :] = np.absolute(ZeroCentredField(run_data.w_hat[i, :, :] * run_data.k2Inv)) ** 2
+
+    ## Get Max data for plotting
     wmin = np.amin(run_data.w[:, :, :])
     wmax = np.amax(run_data.w[:, :, :])
 
@@ -213,7 +240,7 @@ if __name__ == '__main__':
         
         ## Start timer
         start = TIME.perf_counter()
-        print("\n" + tc.Y + "Printing Snaps..." + tc.Rst)
+        print("\n" + tc.Y + "Printing Snaps..." + tc.Rst + "Total Snaps to Print: [" + tc.C + "{}".format(sys_params.ndata) + tc.Rst + "]")
         
         ## Print main summary snaps
         if cmdargs.summ_snap:
@@ -250,7 +277,7 @@ if __name__ == '__main__':
                 proc_lim = 10
 
                 ## Create tasks for the process pool
-                groups_args = [(mprocs.Process(target = plot_phase_snaps, args = (cmdargs.phase_dir, i, run_data.w[i, :, :], run_data.w_hat[i, :, :], wmin, wmax, run_data.x, run_data.y, run_data.time, sys_params.Nx, sys_params.Nx, run_data.k2Inv, run_data.kx, run_data.ky)) for i in range(run_data.w.shape[0]))] * proc_lim
+                groups_args = [(mprocs.Process(target = plot_phase_snaps, args = (cmdargs.phase_dir, i, run_data.w[i, :, :], phases[i, :, :], enrg_spectrum[i, :, :], enst_spectrum[i, :, :], wmin, wmax, run_data.x, run_data.y, run_data.time, sys_params.Nx, sys_params.Nx, run_data.kx, run_data.ky)) for i in range(run_data.w.shape[0]))] * proc_lim
 
                 ## Loop of grouped iterable
                 for procs in zip_longest(*groups_args): 
@@ -267,7 +294,7 @@ if __name__ == '__main__':
             else:
                 ## Loop over snahpshots
                 for i in range(sys_params.ndata):
-                    plot_phase_snaps(cmdargs.phase_dir, i, run_data.w[i, :, :], run_data.w_hat[i, :, :], wmin, wmax, run_data.x, run_data.y, run_data.time, sys_params.Nx, sys_params.Nx, run_data.k2Inv, run_data.kx, run_data.ky)
+                    plot_phase_snaps(cmdargs.phase_dir, i, run_data.w[i, :, :], phases[i, :, :], enrg_spectrum[i, :, :], enst_spectrum[i, :, :], wmin, wmax, run_data.x, run_data.y, run_data.time, sys_params.Nx, sys_params.Nx, run_data.kx, run_data.ky)
 
         ## End timer
         end = TIME.perf_counter()

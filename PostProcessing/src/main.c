@@ -34,7 +34,7 @@ int main(int argc, char** argv) {
 	// Initialize variables
 	int tmp, tmp1, tmp2;
 	int indx;
-	double k_sqr, phase, amp;
+	double k_sqr, k_sqr_fac, phase, amp;
 	herr_t status;
 	
 	// --------------------------------
@@ -133,7 +133,13 @@ int main(int argc, char** argv) {
 					if (abs(run_data->k[1][j] < sys_vars->kmax)) {
 
 						// Compute |k|^2
-						k_sqr = (double)run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]; 
+						k_sqr     = (double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]); 
+						if (run_data->k[0][i] != 0 || run_data->k[1][j] != 0) {
+							k_sqr_fac = 1.0 / k_sqr;
+						}
+						else {
+							k_sqr_fac = 0.0;	
+						}
 
 						// Compute data
 						phase = carg(run_data->w_hat[indx]);
@@ -144,15 +150,15 @@ int main(int argc, char** argv) {
 		 					// No conjugate for ky = 0
 		 					if (run_data->k[1][j] == 0) {
 		 						proc_data->phases[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]] = fmod(phase, 2.0 * M_PI);
-		 						proc_data->enrg[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = amp / k_sqr + 1e-50;
+		 						proc_data->enrg[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = amp * k_sqr_fac;
 		 						proc_data->enst[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = amp;
 		 					}
 		 					else {
 		 						// Fill data and its conjugate
 		 						proc_data->phases[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]] = fmod(phase, 2.0 * M_PI);
 		 						proc_data->phases[tmp2 + sys_vars->kmax - 1 - run_data->k[1][j]] = fmod(-phase, 2.0 * M_PI);
-		 						proc_data->enrg[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = amp / k_sqr + 1e-50;
-		 						proc_data->enrg[tmp2 + sys_vars->kmax - 1 - run_data->k[1][j]]   = amp / k_sqr + 1e-50;
+		 						proc_data->enrg[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = amp * k_sqr_fac;
+		 						proc_data->enrg[tmp2 + sys_vars->kmax - 1 - run_data->k[1][j]]   = amp * k_sqr_fac;
 		 						proc_data->enst[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = amp;
 		 						proc_data->enst[tmp2 + sys_vars->kmax - 1 - run_data->k[1][j]]   = amp;
 		 					}
