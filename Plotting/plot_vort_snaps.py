@@ -130,6 +130,34 @@ def parse_cml(argv):
 
     return cargs
 
+
+def FullFieldMask(Nx, Ny, k_max):
+
+    if Nx == 2 * k_max - 1 or Ny == 2 * k_max - 1:
+        kleftlim  = (Nx + 1) / 2
+        krightlim = (Ny + 1) / 2
+    else:
+        kleftlim = Nx / 2
+        krightlim = Ny / 2
+    ## Initialize indices
+    mask_array = np.full((Nx, Ny), False, dtype=bool)
+    x = np.linspace(-kleftlim + 1, krightlim, Nx)
+    y = np.linspace(-kleftlim + 1, krightlim, Ny)
+
+    ## Set up meshgrid
+    x, y = np.meshgrid(x, y)
+    mask = np.sqrt(x**2 + y**2)
+
+    ## Loop through array and set True/False mask
+    for i in range(Nx):
+        for j in range(Ny):
+            if mask[i, j] < k_max:
+                mask_array[i, j] = True
+            else:
+                mask_array[i, j] = False
+
+    return mask_array
+
 @njit
 def FullFieldShifted(w_h, kx, ky):
 
@@ -214,20 +242,37 @@ if __name__ == '__main__':
 
         if cmdargs.phase_snap:
             phases        = post_proc_data.phases
-            enrg_spectrum = post_proc_data.enrg_spectrum
-            enst_spectrum = post_proc_data.enst_spectrum
+            enrg_spectrum = post_proc_data.enrg_spectrum * 4.0 * np.pi ** 2 * (0.5 / (Nx * Ny)**2)
+            enst_spectrum = post_proc_data.enst_spectrum * 4.0 * np.pi ** 2 * (0.5 / (Nx * Ny)**2)
+
+            ## Spectrum limits for plotting
+            spec_limits = np.array([np.amin(enrg_spectrum[:, FullFieldMask(post_proc_data.kmax, post_proc_data.kmax, post_proc_data.kmax)]), np.amax(enrg_spectrum[:, FullFieldMask(post_proc_data.kmax, post_proc_data.kmax, post_proc_data.kmax)]), np.amin(enst_spectrum[:, FullFieldMask(post_proc_data.kmax, post_proc_data.kmax, post_proc_data.kmax)]), np.amax(enst_spectrum[:, FullFieldMask(post_proc_data.kmax, post_proc_data.kmax, post_proc_data.kmax)])])
+            spec_limits[spec_limits[:] == 0.0] = 1e-6
+            print(spec_limits)
 
     ## If not using post processing data and phase snaps are needed precompute data
     if cmdargs.phase_snap and not cmdargs.use_post:  
         ## Allocate full field data
-        phases         = np.zeros((sys_params.ndata, sys_params.Nx, sys_params.Ny)) 
-        enrg_spectrum  = np.zeros((sys_params.ndata, sys_params.Nx, sys_params.Ny)) 
-        enst_spectrum  = np.zeros((sys_params.ndata, sys_params.Nx, sys_params.Ny))
-
+        dim = 2 * int(sys_params.Nx / 3) - 1
+        phases         = np.zeros((sys_params.ndata, dim, dim)) 
+        enrg_spectrum  = np.zeros((sys_params.ndata, dim, dim)) 
+        enst_spectrum  = np.zeros((sys_params.ndata, dim, dim))
+        indx = FullFieldMask(sys_params.Nx, sys_params.Ny, int(sys_params.Nx / 3))
+        print(indx.shape)
+        print(run_data.w_hat[10, :, :].shape)
         for i in range(sys_params.ndata):
-            phases[i, :, :]        = np.mod(np.angle(ZeroCentredField(run_data.w_hat[i, :, :])), 2.0 * np.pi)
-            enst_spectrum[i, :, :] = np.absolute(ZeroCentredField(run_data.w_hat[i, :, :])) ** 2
-            enrg_spectrum[i, :, :] = np.absolute(ZeroCentredField(run_data.w_hat[i, :, :] * run_data.k2Inv)) ** 2
+            w_h = ZeroCentredField(run_data.w_hat[i, :, :])
+            print(w_h.shape)
+            print(w_h[indx].reshape((dim, dim)).shape)
+            print(phases[i, :, :].shape)
+            phases[i, :, :]        = np.mod(np.angle(w_h[indx]), 2.0 * np.pi)
+            enst_spectrum[i, :, :] = np.absolute(w_h[indx]) ** 2
+            enrg_spectrum[i, :, :] = np.absolute(w_h[indx]) ** 2
+        
+        ## Spectrum limits for plotting
+        spec_limits = np.array([np.amin(enrg_spectrum), np.amax(enrg_spectrum), np.amin(enst_spectrum), np.amax(enst_spectrum)])
+        spec_limits[spec_limits == 0.0] = 1e-6
+        print(spec_limits)
 
     ## Get Max data for plotting
     wmin = np.amin(run_data.w[:, :, :])
@@ -277,7 +322,7 @@ if __name__ == '__main__':
                 proc_lim = 10
 
                 ## Create tasks for the process pool
-                groups_args = [(mprocs.Process(target = plot_phase_snaps, args = (cmdargs.phase_dir, i, run_data.w[i, :, :], phases[i, :, :], enrg_spectrum[i, :, :], enst_spectrum[i, :, :], wmin, wmax, run_data.x, run_data.y, run_data.time, sys_params.Nx, sys_params.Nx, run_data.kx, run_data.ky)) for i in range(run_data.w.shape[0]))] * proc_lim
+                groups_args = [(mprocs.Process(target = plot_phase_snaps, args = (cmdargs.phase_dir, i, run_data.w[i, :, :], phases[i, :, :], enrg_spectrum[i, :, :], enst_spectrum[i, :, :], spec_limits, wmin, wmax, run_data.x, run_data.y, run_data.time, sys_params.Nx, sys_params.Nx, run_data.kx, run_data.ky)) for i in range(run_data.w.shape[0]))] * proc_lim
 
                 ## Loop of grouped iterable
                 for procs in zip_longest(*groups_args): 
@@ -294,7 +339,7 @@ if __name__ == '__main__':
             else:
                 ## Loop over snahpshots
                 for i in range(sys_params.ndata):
-                    plot_phase_snaps(cmdargs.phase_dir, i, run_data.w[i, :, :], phases[i, :, :], enrg_spectrum[i, :, :], enst_spectrum[i, :, :], wmin, wmax, run_data.x, run_data.y, run_data.time, sys_params.Nx, sys_params.Nx, run_data.kx, run_data.ky)
+                    plot_phase_snaps(cmdargs.phase_dir, i, run_data.w[i, :, :], phases[i, :, :], enrg_spectrum[i, :, :], enst_spectrum[i, :, :], spec_limits, wmin, wmax, run_data.x, run_data.y, run_data.time, sys_params.Nx, sys_params.Nx, run_data.kx, run_data.ky)
 
         ## End timer
         end = TIME.perf_counter()
@@ -331,7 +376,10 @@ if __name__ == '__main__':
         if cmdargs.phase_snap:
             framesPerSec = 15
             inputFile    = cmdargs.phase_dir + "Phase_SNAP_%05d.png"
-            videoName    = cmdargs.phase_dir + "2D_NavierStokes_N[{},{}]_u0[{}]_Phases.mp4".format(sys_params.Nx, sys_params.Ny, sys_params.u0)
+            if cmdargs.use_post:
+                videoName    = cmdargs.phase_dir + "2D_POSTDATA_NavierStokes_N[{},{}]_u0[{}]_Phases.mp4".format(sys_params.Nx, sys_params.Ny, sys_params.u0)
+            else:
+                videoName    = cmdargs.phase_dir + "2D_NavierStokes_N[{},{}]_u0[{}]_Phases.mp4".format(sys_params.Nx, sys_params.Ny, sys_params.u0)
             cmd = "ffmpeg -y -r {} -f image2 -s 1920x1080 -i {} -vf 'pad=ceil(iw/2)*2:ceil(ih/2)*2' -vcodec libx264 -crf 25 -pix_fmt yuv420p {}".format(framesPerSec, inputFile, videoName)
             # cmd = "ffmpeg -r {} -f image2 -s 1280×720 -i {} -vcodec libx264 -preset ultrafast -crf 35 -pix_fmt yuv420p {}".format(framesPerSec, inputFile, videoName)
 

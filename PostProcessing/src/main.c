@@ -105,6 +105,12 @@ int main(int argc, char** argv) {
 		exit(1);
 	}	
 
+	// Allocate memory for the full field wavenumbers
+	proc_data->k_full = (double* )fftw_malloc(sizeof(double) * (2 * sys_vars->kmax - 1) * (2 * sys_vars->kmax - 1));
+	if (proc_data->k_full == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Full Field Energy");
+		exit(1);
+	}	
 
 	//////////////////////////////
 	// End Integration
@@ -142,21 +148,22 @@ int main(int argc, char** argv) {
 						}
 
 						// Compute data
-						phase = carg(run_data->w_hat[indx]);
+						phase = fmod(carg(run_data->w_hat[indx]) + 2.0 * M_PI, 2.0 * M_PI);
 						amp   = cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
 
 						// fill the full field phases and spectra
 		 				if (sqrt(k_sqr) < sys_vars->kmax) {
 		 					// No conjugate for ky = 0
 		 					if (run_data->k[1][j] == 0) {
-		 						proc_data->phases[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]] = fmod(phase, 2.0 * M_PI);
+		 						// proc_data->k_full[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]] = 
+		 						proc_data->phases[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]] = phase;
 		 						proc_data->enrg[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = amp * k_sqr_fac;
 		 						proc_data->enst[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = amp;
 		 					}
 		 					else {
 		 						// Fill data and its conjugate
-		 						proc_data->phases[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]] = fmod(phase, 2.0 * M_PI);
-		 						proc_data->phases[tmp2 + sys_vars->kmax - 1 - run_data->k[1][j]] = fmod(-phase, 2.0 * M_PI);
+		 						proc_data->phases[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]] = phase;
+		 						proc_data->phases[tmp2 + sys_vars->kmax - 1 - run_data->k[1][j]] = fmod(-phase + 2.0 * M_PI, 2.0 * M_PI);
 		 						proc_data->enrg[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = amp * k_sqr_fac;
 		 						proc_data->enrg[tmp2 + sys_vars->kmax - 1 - run_data->k[1][j]]   = amp * k_sqr_fac;
 		 						proc_data->enst[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = amp;
@@ -166,13 +173,13 @@ int main(int argc, char** argv) {
 		 				else {
 		 					// All dealiased modes set to zero
 							if (run_data->k[1][j] == 0) {
-		 						proc_data->phases[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]] = 0.0;
+		 						proc_data->phases[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]] = -50.0;
 		 						proc_data->enrg[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = 0.0;
 		 						proc_data->enst[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = 0.0;
 		 					}
 		 					else {	
-		 						proc_data->phases[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]] = 0.0;
-		 						proc_data->phases[tmp2 + sys_vars->kmax - 1 - run_data->k[1][j]] = 0.0;
+		 						proc_data->phases[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]] = -50.0;
+		 						proc_data->phases[tmp2 + sys_vars->kmax - 1 - run_data->k[1][j]] = -50.0;
 		 						proc_data->enrg[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = 0.0;
 		 						proc_data->enrg[tmp2 + sys_vars->kmax - 1 - run_data->k[1][j]]   = 0.0;
 		 						proc_data->enst[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = 0.0;

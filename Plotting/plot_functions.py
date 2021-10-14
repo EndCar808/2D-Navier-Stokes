@@ -156,7 +156,7 @@ def plot_summary_snaps(out_dir, i, w, w_hat, x, y, w_min, w_max, kx, ky, kx_max,
 
 
 
-def plot_phase_snaps(out_dir, i, w, phases, enrg_spec, enst_spec, w_min, w_max, x, y, time, Nx, Ny, kx, ky):
+def plot_phase_snaps(out_dir, i, w, phases, enrg_spec, enst_spec, spec_lims, w_min, w_max, x, y, time, Nx, Ny, kx, ky):
 
     """
     Plots summary snap of the solver data for the current iteration. Plots vorticity, full zero centre phases and spectra.
@@ -217,10 +217,11 @@ def plot_phase_snaps(out_dir, i, w, phases, enrg_spec, enst_spec, w_min, w_max, 
     # Plot Phases   
     #--------------------------
     ## Generate colour map
-    my_hsv = cm.hsv
+    my_hsv = cm.jet
     my_hsv.set_bad(color = "white")
+
     ax2  = fig.add_subplot(gs[0, 1])
-    im2  = ax2.imshow(phases, extent = (Ny / 2, -Ny / 2 + 1, -Nx / 2 + 1, Nx / 2), cmap = my_hsv, vmin = 0., vmax = 2. * np.pi)
+    im2  = ax2.imshow(phases, extent = (Ny / 3, -Ny / 3 + 1, -Nx / 3 + 1, Nx / 3), cmap = my_hsv, vmin = 0., vmax = 2. * np.pi)
     ax2.set_xlabel(r"$k_y$")
     ax2.set_ylabel(r"$k_x$")
     ax2.set_title(r"Phases")
@@ -239,7 +240,7 @@ def plot_phase_snaps(out_dir, i, w, phases, enrg_spec, enst_spec, w_min, w_max, 
     # Plot 2D Enstrophy Spectra   
     #--------------------------
     ax3  = fig.add_subplot(gs[1, 0])
-    im3  = ax3.imshow(enst_spec, extent = (Ny / 2, -Ny / 2 + 1, -Nx / 2 + 1, Nx / 2), cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1]), norm = mpl.colors.LogNorm()) # , norm = mpl.colors.LogNorm(), vmax = 10, vmin = 10^-15
+    im3  = ax3.imshow(enst_spec, extent = (Ny / 3, -Ny / 3 + 1, -Nx / 3 + 1, Nx / 3), cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1]), norm = mpl.colors.LogNorm(), vmin = spec_lims[3], vmax = spec_lims[2])
     ax3.set_xlabel(r"$k_y$")
     ax3.set_ylabel(r"$k_x$")
     ax3.set_title("Enstrophy Spectrum")
@@ -256,7 +257,7 @@ def plot_phase_snaps(out_dir, i, w, phases, enrg_spec, enst_spec, w_min, w_max, 
     ## Plot 2D Energy Spectra  
     ##-------------------------
     ax4  = fig.add_subplot(gs[1, 1])
-    im4  = ax4.imshow(enrg_spec, extent = (Ny / 2, -Ny / 2 + 1, -Nx / 2 + 1, Nx / 2), cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1]), norm = mpl.colors.LogNorm()) # , norm = mpl.colors.LogNorm(), vmax = 10, vmin = 10^-15
+    im4  = ax4.imshow(enrg_spec, extent = (Ny / 3, -Ny / 3 + 1, -Nx / 3 + 1, Nx / 3), cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1]), norm = mpl.colors.LogNorm(), vmin = spec_lims[1], vmax = spec_lims[0])
     ax4.set_xlabel(r"$k_y$")
     ax4.set_ylabel(r"$k_x$")
     ax4.set_title("Energy Spectrum")
