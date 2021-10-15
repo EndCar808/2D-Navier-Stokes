@@ -158,6 +158,7 @@ for section in parser.sections():
             solver_procs = int(parser[section]['solver_procs'])
         if 'collect_data' in parser[section]:
             collect_data = bool(utils.strtobool(parser[section]['collect_data']))
+            print(collect_data)
         if 'num_solver_job_threads' in parser[section]:
             num_solver_job_threads = int(parser[section]['num_solver_job_threads'])
         if 'num_postprocess_job_threads' in parser[section]:

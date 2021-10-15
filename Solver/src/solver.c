@@ -972,7 +972,7 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 		double k_sqr;
 		double u1, u2;
 		double rand1, rand2;
-		double spec;
+		double spec_1d;
 
 		// ---------------------------------------
 		// Initialize Gaussian Vorticity
@@ -989,16 +989,17 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 
 				if (run_data->k[0][i] == 0.0 && run_data->k[1][j] == 0.0) {
 					// Compute the energy
-					spec = 0.0;
+					k_sqr = 0.0;
+					spec_1d = 0.0;
 				}
 				else {
 					// Compute the form of the initial energy
 					k_sqr = sqrt((double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]));
-					spec  = pow(k_sqr, 6.0) / pow((1.0 + k_sqr / (2.0 * DT2_K0)), 18.0);
+					spec_1d  = pow(k_sqr, 6.0) / pow((1.0 + k_sqr / (2.0 * DT2_K0)), 18.0);
 				}
 
 				// Fill the vorticity
-				w_hat[indx] = sqrt(spec) * cexp( 2.0 * M_PI * rand1 * I);
+				w_hat[indx] = sqrt(k_sqr * spec_1d / (2.0 * M_PI)) * cexp( 2.0 * M_PI * u1 * I);
 			}
 		}
 
@@ -1894,15 +1895,15 @@ double* EnergySpectrum(int* spectrum_size) {
 			}
 			
 			// Get spectrum index -> spectrum is computed by summing over the energy contained in concentric annuli in wavenumber space
-			spec_indx = (int) sqrt((double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]));
+			spec_indx = (int) round(sqrt((double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j])));
 
 			if ((j == 0) && (j = Ny_Fourier - 1)) {
 				// Update the current bin for  mode
-				spectrum[spec_indx] += 4.0 * M_PI * M_PI * cabs(u_hat * conj(u_hat)) + cabs(v_hat * conj(v_hat)) * norm_fac;
+				spectrum[spec_indx] += 4.0 * M_PI * M_PI * (cabs(u_hat * conj(u_hat)) + cabs(v_hat * conj(v_hat))) * norm_fac;
 			}
 			else {
 				// Update the energy sum for the current mode
-				spectrum[spec_indx] += 2.0 * 4.0 * M_PI * M_PI * cabs(u_hat * conj(u_hat)) + cabs(v_hat * conj(v_hat)) * norm_fac;
+				spectrum[spec_indx] += 2.0 * 4.0 * M_PI * M_PI * (cabs(u_hat * conj(u_hat)) + cabs(v_hat * conj(v_hat))) * norm_fac;
 			}
 
 		}
@@ -1954,7 +1955,7 @@ double* EnstrophySpectrum(int* spectrum_size) {
 			indx = tmp + j;
 
 			// Get spectrum index -> spectrum is computed by summing over the energy contained in concentric annuli in wavenumber space
-			spec_indx = (int) sqrt((double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]));
+			spec_indx = (int) round(sqrt((double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j])));
 
 			if ((j == 0) && (j == Ny_Fourier - 1)) {
 				// Update the sum of the enstrophy in the current mode
