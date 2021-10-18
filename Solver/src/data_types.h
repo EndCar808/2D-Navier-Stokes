@@ -19,7 +19,8 @@
 #define __FFTW3
 #endif
 	
-
+#include <gsl/gsl_histogram.h> 
+#include <gsl/gsl_statistics.h>
 
 // ---------------------------------------------------------------------
 //  Compile Time Macros and Definitions

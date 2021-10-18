@@ -10,6 +10,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
+#include <gsl/gsl_histogram.h> 
+#include <gsl/gsl_statistics.h>
 // ---------------------------------------------------------------------
 //  User Libraries and Headers
 // ---------------------------------------------------------------------

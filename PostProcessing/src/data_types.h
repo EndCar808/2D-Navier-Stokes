@@ -18,6 +18,13 @@
 #include <fftw3.h>
 #define __FFTW3
 #endif
+#ifndef __OPENMP
+#include <omp.h>
+#define __OPENMP
+#endif
+#include <gsl/gsl_histogram.h> 
+#include <gsl/gsl_statistics_double.h>
+#include <gsl/gsl_rstat.h>
 
 // ---------------------------------------------------------------------
 //  Compile Time Macros and Definitions
@@ -57,6 +64,8 @@
 // ---------------------------------------------------------------------
 // These definitions define some of the solver parameters.
 #define SYS_DIM 2 				// The system dimension i.e., 2D
+// Statistics definitions
+#define N_BINS 1000				// The number of histogram bins to use
 // ---------------------------------------------------------------------
 //  Global Struct Definitions
 // ---------------------------------------------------------------------
@@ -91,6 +100,8 @@ typedef struct system_vars_struct {
 	double CFL_CONST;					// The CFL constant for the adaptive step
 	double NU;							// The viscosity
 	int SAVE_EVERY; 					// For specifying how often to print
+	int REAL_VORT_FLAG;					// Flag to indicate if the Real space vorticity exists in solver data
+	int REAL_VEL_FLAG;					// Flag to indicate if the Real space velocity exists in solver data
 } system_vars_struct;
 
 // Runtime data struct
@@ -111,6 +122,13 @@ typedef struct postprocess_data_struct {
 	double* enst;			// Array to hold the full field zero centred enstrophy
 	double* k_full;			// Array to hold the full field zero centre wavenumbers
 } postprocess_data_struct;
+
+// Post processing stats data struct
+typedef struct stats_data_struct {
+	gsl_rstat_workspace r_stat;  // Workplace for the running stats
+	gsl_histogram* w_pdf;		 // Histogram struct for the vorticity distribution
+	gsl_histogram* u_pdf;		 // Histrogam struct for the velocity distribution
+} stats_data_struct;
 
 // HDF5 file info struct
 typedef struct HDF_file_info_struct {
@@ -138,6 +156,7 @@ extern system_vars_struct *sys_vars; 		    // Global pointer to system parameter
 extern runtime_data_struct *run_data; 			// Global pointer to system runtime variables struct 
 extern HDF_file_info_struct *file_info; 		// Global pointer to system forcing variables struct 
 extern postprocess_data_struct *proc_data;      // Global pointer to the post processing data struct
+extern stats_data_struct *stats_data;           // Globale pointer to the statistics struct
 
 #define __DATA_TYPES
 #endif
