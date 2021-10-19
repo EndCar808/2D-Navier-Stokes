@@ -84,8 +84,8 @@
 // #define __VORT_REAL
 #define __VORT_FOUR
 // Choose whether to save the Real or Fourier space velocitites
-// #define __MODES
-// #define __REALSPACE
+#define __MODES
+#define __REALSPACE
 // Choose whether to compute system measures
 #define __SYS_MEASURES
 // Choose whether to compute the fluxes

@@ -380,6 +380,11 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
             self.phases        = np.zeros((sim_data.ndata, int(2 * self.kmax - 1), int(2 * self.kmax - 1)))
             self.enrg_spectrum = np.zeros((sim_data.ndata, int(2 * self.kmax - 1), int(2 * self.kmax - 1)))
             self.enst_spectrum = np.zeros((sim_data.ndata, int(2 * self.kmax - 1), int(2 * self.kmax - 1)))
+            ## Allocate histogram arrays
+            self.w_pdf_counts  = np.zeros((sim_data.ndata, 1000))
+            self.u_pdf_counts  = np.zeros((sim_data.ndata, 1000))
+            self.w_pdf_ranges  = np.zeros((sim_data.ndata, 1001))
+            self.u_pdf_ranges  = np.zeros((sim_data.ndata, 1001))
 
     ## Create instance of data class
     data = PostProcessData()
@@ -405,6 +410,14 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                     data.enst_spectrum[nn, :] = file[group]["FullFieldEnstrophySpectrum"][:]
                 if 'FullFieldEnergySpectrum' in list(file[group].keys()):
                     data.enrg_spectrum[nn, :] = file[group]["FullFieldEnergySpectrum"][:]
+                if 'VelocityPDFCounts' in list(file[group].keys()):
+                    data.u_pdf_counts[nn, :] = file[group]["VelocityPDFCounts"][:]
+                if 'VelocityPDFRanges' in list(file[group].keys()):
+                    data.u_pdf_ranges[nn, :] = file[group]["VelocityPDFRanges"][:]
+                if 'VorticityPDFCounts' in list(file[group].keys()):
+                    data.w_pdf_counts[nn, :] = file[group]["VorticityPDFCounts"][:]
+                if 'VorticityPDFRanges' in list(file[group].keys()):
+                    data.w_pdf_ranges[nn, :] = file[group]["VorticityPDFRanges"][:]
                 nn += 1
             else:
                 continue

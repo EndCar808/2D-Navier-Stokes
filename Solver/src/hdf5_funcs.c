@@ -45,7 +45,12 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 	hid_t plist_id;
 	int tmp;
 	int indx;
-	
+
+	#if defined(__VORT_FOUR) || defined(__MODES)
+	// Create compound datatype for the complex datasets
+	file_info->COMPLEX_DTYPE = CreateComplexDatatype();
+	#endif
+
 	///////////////////////////
 	/// Create & Open Files
 	///////////////////////////
@@ -136,9 +141,6 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 	WriteDataReal(0.0, 0, main_group_id, "w", H5T_NATIVE_DOUBLE, (hsize_t* )sys_vars->N, slab_dims, mem_space_dims, sys_vars->local_Nx_start, run_data->w);
 	#endif
 	#ifdef __VORT_FOUR
-	// Create compound datatype for the complex datasets
-	file_info->COMPLEX_DTYPE = CreateComplexDatatype();
-
 	// Create dimension arrays
 	dset_dims[0] 	  = Nx;
 	dset_dims[1] 	  = Ny_Fourier;
@@ -149,6 +151,65 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 
 	// Write the real space vorticity
 	WriteDataFourier(0.0, 0, main_group_id, "w_hat", file_info->COMPLEX_DTYPE, dset_dims, slab_dims, mem_space_dims, sys_vars->local_Nx_start, run_data->w_hat);
+	#endif
+	#if defined(__MODES) || defined(__REALSPACE)
+	fftw_complex k_sqr;
+
+	// Get the Fourier velocities
+	for (int i = 0; i < sys_vars->local_Nx; ++i) {
+		tmp = i * Ny_Fourier;
+		for (int j = 0; j < Ny_Fourier; ++j) {
+			indx = tmp + j;
+
+			if ((run_data->k[0][i] != 0) || (run_data->k[1][j] != 0)) {
+				// Compute the prefactor
+				k_sqr = I / (double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
+
+				// Fill the Fourier velocities
+				run_data->u_hat[SYS_DIM * indx + 0] = k_sqr * run_data->k[1][j] * run_data->w_hat[indx];
+				run_data->u_hat[SYS_DIM * indx + 1] = -k_sqr * run_data->k[0][i] * run_data->w_hat[indx];
+			}
+			else {
+				run_data->u_hat[SYS_DIM * indx + 0] = 0.0 + 0.0 * I;
+				run_data->u_hat[SYS_DIM * indx + 1] = 0.0 + 0.0 * I;
+			}
+		}
+	}
+	#endif
+	#ifdef __MODES
+	// Create dimension arrays
+	dset_dims[0] 	  = Nx;
+	dset_dims[1] 	  = Ny_Fourier * SYS_DIM;
+	slab_dims[0] 	  = sys_vars->local_Nx;
+	slab_dims[1] 	  = Ny_Fourier * SYS_DIM;
+	mem_space_dims[0] = sys_vars->local_Nx;
+	mem_space_dims[1] = Ny_Fourier * SYS_DIM;
+
+	// Write the real space vorticity
+	WriteDataFourier(0.0, 0, main_group_id, "u_hat", file_info->COMPLEX_DTYPE, dset_dims, slab_dims, mem_space_dims, sys_vars->local_Nx_start, run_data->u_hat);
+	#endif
+	#ifdef __REALSPACE
+	// Transform velocities back to real space and normalize
+	fftw_mpi_execute_dft_c2r(sys_vars->fftw_2d_dft_batch_c2r, run_data->u_hat, run_data->u);
+	for (int i = 0; i < sys_vars->local_Nx; ++i) {
+		tmp = i * (Ny + 2);
+		for (int j = 0; j < Ny; ++j) {
+			indx = tmp + j;
+
+			// Normalize
+			run_data->u[SYS_DIM * indx + 0] *= 1.0 / (double) (Nx * Ny);
+			run_data->u[SYS_DIM * indx + 1] *= 1.0 / (double) (Nx * Ny);
+		}
+	}
+
+	// Specify dataset dimensions
+	slab_dims[0]      = sys_vars->local_Nx;
+	slab_dims[1]      = Ny;
+	mem_space_dims[0] = sys_vars->local_Nx;
+	mem_space_dims[1] = Ny + 2;
+
+	// Write the real space vorticity
+	WriteDataReal(0.0, 0, main_group_id, "u", H5T_NATIVE_DOUBLE, (hsize_t* )sys_vars->N, slab_dims, mem_space_dims, sys_vars->local_Nx_start, run_data->u);
 	#endif
 	#ifdef TESTING
 	if (!(strcmp(sys_vars->u0, "TG_VEL")) || !(strcmp(sys_vars->u0, "TG_VORT"))) {
@@ -503,6 +564,65 @@ void WriteDataToFile(double t, double dt, long int iters) {
 
 	// Write the real space vorticity
 	WriteDataFourier(t, (int)iters, main_group_id, "w_hat", file_info->COMPLEX_DTYPE, dset_dims, slab_dims, slab_dims, sys_vars->local_Nx_start, run_data->w_hat);
+	#endif
+	#if defined(__MODES) || defined(__REALSPACE)
+	fftw_complex k_sqr;
+
+	// Get the Fourier velocities
+	for (int i = 0; i < sys_vars->local_Nx; ++i) {
+		tmp = i * Ny_Fourier;
+		for (int j = 0; j < Ny_Fourier; ++j) {
+			indx = tmp + j;
+
+			if ((run_data->k[0][i] != 0) || (run_data->k[1][j] != 0)) {
+				// Compute the prefactor
+				k_sqr = I / (double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
+
+				// Fill the Fourier velocities
+				run_data->u_hat[SYS_DIM * indx + 0] = k_sqr * run_data->k[1][j] * run_data->w_hat[indx];
+				run_data->u_hat[SYS_DIM * indx + 1] = -k_sqr * run_data->k[0][i] * run_data->w_hat[indx];
+			}
+			else {
+				run_data->u_hat[SYS_DIM * indx + 0] = 0.0 + 0.0 * I;
+				run_data->u_hat[SYS_DIM * indx + 1] = 0.0 + 0.0 * I;
+			}
+		}
+	}
+	#endif
+	#ifdef __MODES
+	// Create dimension arrays
+	dset_dims[0] 	  = Nx;
+	dset_dims[1] 	  = Ny_Fourier * SYS_DIM;
+	slab_dims[0] 	  = sys_vars->local_Nx;
+	slab_dims[1] 	  = Ny_Fourier * SYS_DIM;
+	mem_space_dims[0] = sys_vars->local_Nx;
+	mem_space_dims[1] = Ny_Fourier * SYS_DIM;
+
+	// Write the real space vorticity
+	WriteDataFourier(t, (int)iters, main_group_id, "u_hat", file_info->COMPLEX_DTYPE, dset_dims, slab_dims, mem_space_dims, sys_vars->local_Nx_start, run_data->u_hat);
+	#endif
+	#ifdef __REALSPACE
+	// Transform velocities back to real space and normalize
+	fftw_mpi_execute_dft_c2r(sys_vars->fftw_2d_dft_batch_c2r, run_data->u_hat, run_data->u);
+	for (int i = 0; i < sys_vars->local_Nx; ++i) {
+		tmp = i * (Ny + 2);
+		for (int j = 0; j < Ny; ++j) {
+			indx = tmp + j;
+
+			// Normalize
+			run_data->u[SYS_DIM * indx + 0] *= 1.0 / (double) (Nx * Ny);
+			run_data->u[SYS_DIM * indx + 1] *= 1.0 / (double) (Nx * Ny);
+		}
+	}
+
+	// Specify dataset dimensions
+	slab_dims[0]      = sys_vars->local_Nx;
+	slab_dims[1]      = Ny;
+	mem_space_dims[0] = sys_vars->local_Nx;
+	mem_space_dims[1] = Ny + 2;
+
+	// Write the real space vorticity
+	WriteDataReal(t, (int)iters, main_group_id, "u", H5T_NATIVE_DOUBLE, (hsize_t* )sys_vars->N, slab_dims, mem_space_dims, sys_vars->local_Nx_start, run_data->u);
 	#endif
 	#ifdef TESTING
 	if (!(strcmp(sys_vars->u0, "TG_VEL")) || !(strcmp(sys_vars->u0, "TG_VORT"))) {

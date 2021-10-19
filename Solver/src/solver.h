@@ -46,7 +46,7 @@ void GetTimestep(double* dt);
 // Check System
 void SystemCheck(double dt, int iters);
 // Print Update
-void PrintUpdateToTerminal(int iters, double t, double dt, double T, int save_data_indx, int print_update, RK_data_struct* RK_data);
+void PrintUpdateToTerminal(int iters, double t, double dt, double T, int save_data_indx);
 // System Measurables 
 double TotalEnergy(void);
 double TotalEnstrophy(void);

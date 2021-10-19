@@ -59,6 +59,10 @@
 #define __TIME
 #define __COLLOC_PTS
 #define __WAVELIST
+
+// Post processing Modes
+#define __REAL_STATS
+#define __FULL_FIELD
 // ---------------------------------------------------------------------
 //  Global Variables
 // ---------------------------------------------------------------------

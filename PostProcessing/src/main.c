@@ -36,6 +36,7 @@ int main(int argc, char** argv) {
 	// Initialize variables
 	int tmp, tmp1, tmp2;
 	int indx;
+	int gsl_status;
 	double k_sqr, k_sqr_fac, phase, amp;
 	double w_max, w_min;
 	double u_max, u_min;
@@ -86,11 +87,30 @@ int main(int argc, char** argv) {
 
 	InitializeFFTWPlans(sys_vars->N);
 
+
+
+	// double* w_test = (double* )fftw_malloc(sizeof(double) * Nx * Ny * SYS_DIM);
+	// for (int i = 0; i < Nx; ++i) {
+	// 	for (int j = 0; j < Ny; ++j) {
+	// 		w_test[SYS_DIM * (i * Ny + j) + 0] = 0.0;
+	// 		w_test[SYS_DIM * (i * Ny + j) + 1] = 0.0;
+	// 	}
+	// }
+	// double* diff = (double* )fftw_malloc(sizeof(double) * Nx * Ny);
+	// for (int i = 0; i < Nx; ++i) {
+	// 	for (int j = 0; j < Ny; ++j) {
+	// 		diff[i * Ny + j] = 0.0;
+	// 	}
+	// }
+	// double error1, error2;
+	// double max = 0.0, min = 1e10;
+	// size_t min_indx, max_indx;
+
 	//////////////////////////////
 	// Begin Snapshot Processing
 	//////////////////////////////
 	printf("\nStarting Snapshot Processing:\n");
-	for (int s = 0; s < sys_vars->num_snaps; ++s) {
+	for (int s = 0; s < sys_vars->num_snaps; ++s) {  
 		
 		// Print update to screen
 		printf("Snapshot: %d\n", s);
@@ -103,20 +123,23 @@ int main(int argc, char** argv) {
 		// --------------------------------
 		//  Real Space Stats
 		// --------------------------------
+		#ifdef __REAL_STATS
 		// Get min and max data for histogram limits
 		w_max = 0.0;
 		w_min = 1e8;
 		gsl_stats_minmax(&w_min, &w_max, run_data->w, 1, Nx * Ny);
 		u_max = 0.0; 
 		u_min = 1e8;
-		gsl_stats_minmax(&u_min, &u_max, run_data->u, 1, Nx * (Ny + 2) * SYS_DIM);
-			
+		gsl_stats_minmax(&u_min, &u_max, run_data->u, 1, Nx * Ny * SYS_DIM);
+
 		// Set histogram ranges
-		if (gsl_histogram_set_ranges_uniform(stats_data->w_pdf, w_min, w_max) != 0) {
+		gsl_status = gsl_histogram_set_ranges_uniform(stats_data->w_pdf, w_min - 0.5, w_max + 0.5);
+		if (gsl_status != 0) {
 			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set bin ranges for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", "Real Vorticity", s);
 			exit(1);
 		}
-		if (gsl_histogram_set_ranges_uniform(stats_data->u_pdf, u_min, u_max) != 0) {
+		gsl_status = gsl_histogram_set_ranges_uniform(stats_data->u_pdf, u_min - 0.5, u_max + 0.5);
+		if (gsl_status != 0) {
 			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set bin ranges for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", "Real Velocity", s);
 			exit(1);
 		}
@@ -127,25 +150,88 @@ int main(int argc, char** argv) {
 			for (int j = 0; j < Ny; ++j) {
 				indx = tmp + j;
 
-				// Add current value to appropriate bin
-				if (gsl_histogram_increment(stats_data->w_pdf, run_data->w[indx]) != 0) {
+				// Add current values to appropriate bins
+				gsl_status = gsl_histogram_increment(stats_data->w_pdf, run_data->w[indx]);
+				if (gsl_status != 0) {
 					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", "Real Vorticity", s);
 					exit(1);
 				}
-				if (gsl_histogram_increment(stats_data->u_pdf, run_data->u[SYS_DIM * indx + 0]) != 0) {
+				gsl_status = gsl_histogram_increment(stats_data->u_pdf, run_data->u[SYS_DIM * Ny + 0]);
+				if (gsl_status != 0) {
 					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", "Real Velocity", s);
 					exit(1);
 				}
-				if (gsl_histogram_increment(stats_data->u_pdf, run_data->u[SYS_DIM * indx + 1]) != 0) {
+				gsl_status = gsl_histogram_increment(stats_data->u_pdf, run_data->u[SYS_DIM * Ny + 1]);
+				if (gsl_status != 0) {
 					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", "Real Velocity", s);
 					exit(1);
 				}
 			}
 		}
 
+
+		// // Get the real space vorticity from the Fourier space
+		// fftw_complex k_sqr;
+		// for (int i = 0; i < Nx; ++i) {
+		// 	tmp = i * Ny_Fourier;
+		// 	for (int j = 0; j < Ny_Fourier; ++j) {
+		// 		indx = tmp + j;
+
+		// 		if ((run_data->k[0][i] != 0) || (run_data->k[1][j] != 0)) {
+		// 			// Compute the prefactor
+		// 			k_sqr = I / (double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
+					
+		// 			// Compute the Fourier velocity
+		// 			run_data->u_hat[SYS_DIM * indx + 0] = k_sqr * (double)run_data->k[1][j] * run_data->w_hat[indx];
+		// 			run_data->u_hat[SYS_DIM * indx + 1] = -k_sqr * (double)run_data->k[0][i] * run_data->w_hat[indx];
+		// 		}
+		// 		else {
+		// 			run_data->u_hat[SYS_DIM * indx + 0] = 0.0 + 0.0 * I;
+		// 			run_data->u_hat[SYS_DIM * indx + 1] = 0.0 + 0.0 * I;
+		// 		}
+		// 	}
+		// }
+		// fftw_execute_dft_c2r(sys_vars->fftw_2d_dft_batch_c2r, run_data->u_hat, w_test);
+		// for (int i = 0; i < Nx; ++i) {	
+		// 	tmp = i * Ny;
+		// 	for (int j = 0; j < Ny; ++j) {
+		// 		indx = tmp + j;
+
+		// 		// Normalize the vorticity
+		// 		w_test[SYS_DIM * indx + 0] /= (Nx * Ny);
+		// 		w_test[SYS_DIM * indx + 1] /= (Nx * Ny);
+		// 	}
+		// }
+
+		// error1    = 0.0;
+		// error2	  = 0.0;
+		// max = 0.0;
+		// min = 1e10;
+		// for (int i = 0; i < Nx; ++i)
+		// {
+		// 	for (int j = 0; j < Ny; ++j)
+		// 	{	
+		// 		diff[i * Ny + j] = run_data->u[SYS_DIM * (i * Ny + j) + 0] - w_test[SYS_DIM * (i * Ny + j) + 0];
+		// 		min = fmin(run_data->u[SYS_DIM * (i * Ny + j) + 0] - w_test[SYS_DIM * (i * Ny + j) + 0], min);
+		// 		max = fmax(run_data->u[SYS_DIM * (i * Ny + j) + 0] - w_test[SYS_DIM * (i * Ny + j) + 0], max);
+		// 		error1 += pow(fabs(run_data->u[SYS_DIM * (i * Ny + j) + 0] - w_test[SYS_DIM * (i * Ny + j) + 0]), 2.0);
+		// 		error2 += pow(fabs(run_data->u[SYS_DIM * (i * Ny + j) + 1] - w_test[SYS_DIM * (i * Ny + j) + 1]), 2.0);
+		// 		if (i < 10 && j < 10) {
+		// 			printf("e: %g | %g ", run_data->u[SYS_DIM * (i * Ny + j) + 0] - w_test[SYS_DIM * (i * Ny + j) + 0], run_data->u[SYS_DIM * (i * Ny + j) + 1] - w_test[SYS_DIM * (i * Ny + j) + 1]);
+		// 		}
+		// 	}
+		// 	if (i < 10) {
+		// 		printf("\n");
+		// 	}
+		// }
+		// gsl_stats_minmax_index(&min_indx, &max_indx, diff, 1, Nx * Ny);
+		// printf("Error: %1.15lf | %1.15lf\tMax: %lf | Min: %lf\t MaxIndx: %d | MinIndx: %d\n", sqrt(error1), sqrt(error2), max, min, max_indx, min_indx);
+		#endif
+
 		// --------------------------------
 		//  Full Field Data
 		// --------------------------------
+		#ifdef __FULL_FIELD
 		for (int i = 0; i < Nx; ++i) {
 			if (abs(run_data->k[0][i]) < sys_vars->kmax) {
 				tmp  = i * Ny_Fourier;	
@@ -156,7 +242,7 @@ int main(int argc, char** argv) {
 					if (abs(run_data->k[1][j] < sys_vars->kmax)) {
 
 						// Compute |k|^2
-						k_sqr     = (double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]); 
+						k_sqr = (double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]); 
 						if (run_data->k[0][i] != 0 || run_data->k[1][j] != 0) {
 							k_sqr_fac = 1.0 / k_sqr;
 						}
@@ -207,6 +293,7 @@ int main(int argc, char** argv) {
 				}						
 			}
 		}
+		#endif
 		// --------------------------------
 		//  Write Data to File
 		// --------------------------------
@@ -233,6 +320,7 @@ int main(int argc, char** argv) {
 void AllocateMemory(const long int* N) {
 
 	// Initialize variables
+	int tmp1, tmp2, tmp3;
 	const long int Nx = N[0];
 	const long int Ny = N[1];
 	const long int Ny_Fourier = N[1] / 2 + 1;
@@ -251,6 +339,7 @@ void AllocateMemory(const long int* N) {
 		exit(1);
 	}
 
+	#ifdef __REAL_STATS
 	// Allocate current Fourier vorticity
 	run_data->w = (double* )fftw_malloc(sizeof(double) * Nx * Ny);
 	if (run_data->w == NULL) {
@@ -266,12 +355,14 @@ void AllocateMemory(const long int* N) {
 	}
 
 	// Allocate current Fourier vorticity
-	run_data->u = (double* )fftw_malloc(sizeof(double) * Nx * (Ny + 2) * SYS_DIM);
+	run_data->u = (double* )fftw_malloc(sizeof(double) * Nx * Ny * SYS_DIM);
 	if (run_data->u == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Velocity");
 		exit(1);
 	}
-
+	#endif
+	
+	#ifdef __FULL_FIELD
 	// Allocate memory for the full field phases
 	proc_data->phases = (double* )fftw_malloc(sizeof(double) * (2 * sys_vars->kmax - 1) * (2 * sys_vars->kmax - 1));
 	if (proc_data->phases == NULL) {
@@ -299,10 +390,12 @@ void AllocateMemory(const long int* N) {
 	// 	fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Full Field Energy");
 	// 	exit(1);
 	// }	
+	#endif
 
 	// --------------------------------
 	//  Allocate Stats Data
 	// --------------------------------
+	#ifdef __REAL_STATS
 	// Allocate vorticity histograms
 	stats_data->w_pdf = gsl_histogram_alloc(N_BINS);
 	if (stats_data->w_pdf == NULL) {
@@ -316,6 +409,31 @@ void AllocateMemory(const long int* N) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Vorticity Histogram");
 		exit(1);
 	}	
+	#endif
+
+	// --------------------------------
+	//  Initialize Arrays
+	// --------------------------------
+	for (int i = 0; i < Nx; ++i) {
+		tmp1 = i * Ny;
+		tmp2 = i * (Ny_Fourier);
+		tmp3 = i * (2 * sys_vars->kmax - 1);
+		for (int j = 0; j < Ny; ++j) {
+			if (j < Ny_Fourier) {
+				run_data->w_hat[tmp2 + j] 				  = 0.0 + 0.0 * I;
+				run_data->u_hat[SYS_DIM * (tmp2 + j) + 0] = 0.0 + 0.0 * I;
+				run_data->u_hat[SYS_DIM * (tmp2 + j) + 1] = 0.0 + 0.0 * I;
+			}
+			if ((i < 2 * sys_vars->kmax - 1) && (j < 2 * sys_vars->kmax - 1)) {
+				proc_data->phases[tmp3 + j] = 0.0;
+				proc_data->enst[tmp3 + j]   = 0.0;
+				proc_data->enrg[tmp3 + j]   = 0.0;
+			}
+				run_data->w[tmp1 + j] = 0.0;
+				run_data->u[SYS_DIM * (tmp1 + j) + 0] = 0.0;
+				run_data->u[SYS_DIM * (tmp1 + j) + 1] = 0.0;
+		}
+	}
 }
 /**
  * Wrapper function for initializing FFTW plans
@@ -328,11 +446,21 @@ void InitializeFFTWPlans(const long int* N) {
 	const long int Ny = N[1];
 	const int N_batch[SYS_DIM] = {Nx, Ny};
 
+	#ifdef __REAL_STATS
 	// Initialize Fourier Transforms
 	sys_vars->fftw_2d_dft_c2r = fftw_plan_dft_c2r_2d(Nx, Ny, run_data->w_hat, run_data->w, FFTW_ESTIMATE);
+	if (sys_vars->fftw_2d_dft_c2r == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to initialize basic FFTW Plans \n-->> Exiting!!!\n");
+		exit(1);
+	}
 	
 	// Initialize Batch Fourier Transforms
 	sys_vars->fftw_2d_dft_batch_c2r = fftw_plan_many_dft_c2r(SYS_DIM, N_batch, SYS_DIM, run_data->u_hat, NULL, SYS_DIM, 1, run_data->u, NULL, SYS_DIM, 1, FFTW_MEASURE);
+	if (sys_vars->fftw_2d_dft_batch_c2r == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to initialize batch FFTW Plans \n-->> Exiting!!!\n");
+		exit(1);
+	}
+	#endif
 }
 /**
  * Wrapper function to free memory and close any objects before exiting
@@ -345,11 +473,16 @@ void FreeMemoryAndCleanUp(void) {
 	// --------------------------------
 	fftw_free(run_data->w_hat);
 	fftw_free(run_data->time);
+	#ifdef __REAL_STATS
 	fftw_free(run_data->w);
 	fftw_free(run_data->u);
+	fftw_free(run_data->u_hat);
+	#endif
+	#ifdef __FULL_FIELD
 	fftw_free(proc_data->phases);
 	fftw_free(proc_data->enrg);
 	fftw_free(proc_data->enst);
+	#endif
 	for (int i = 0; i < SYS_DIM; ++i) {
 		fftw_free(run_data->x[i]);
 		fftw_free(run_data->k[i]);
@@ -358,16 +491,20 @@ void FreeMemoryAndCleanUp(void) {
 	// --------------------------------
 	//  Free GSL objects
 	// --------------------------------
+	#ifdef __REAL_STATS
 	// Free histogram structs
 	gsl_histogram_free(stats_data->w_pdf);
 	gsl_histogram_free(stats_data->u_pdf);
+	#endif
 
 	// --------------------------------
 	//  Free FFTW Plans
 	// --------------------------------
+	#ifdef __REAL_STATS
 	// Destroy FFTW plans
 	fftw_destroy_plan(sys_vars->fftw_2d_dft_c2r);
 	fftw_destroy_plan(sys_vars->fftw_2d_dft_batch_c2r);
+	#endif
 
 	// --------------------------------
 	//  Close HDF5 Objects

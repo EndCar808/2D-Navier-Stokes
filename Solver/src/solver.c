@@ -50,18 +50,8 @@ static const double RK5_C2 = 0.2, 	  RK5_A21 = 0.2, \
 void SpectralSolve(void) {
 
 	// Initialize variables
-	int tmp;
-	int indx;
-	herr_t status;
-	const long int N[SYS_DIM] = {sys_vars->N[0], sys_vars->N[1]};
+	const long int N[SYS_DIM]      = {sys_vars->N[0], sys_vars->N[1]};
 	const long int NBatch[SYS_DIM] = {sys_vars->N[0], sys_vars->N[1] / 2 + 1};
-	const long int Nx 		  = N[0];
-	const long int Ny 		  = N[1];
-	const long int Ny_Fourier = N[1] / 2 + 1;
-	#ifdef TESTING
-	double max_vort;
-	double norms[2];
-	#endif
 
 	// Initialize the Runge-Kutta struct
 	struct RK_data_struct* RK_data;	   // Initialize pointer to a RK_data_struct
@@ -113,7 +103,7 @@ void SpectralSolve(void) {
 	// Print IC to Screen 
 	// -------------------------------------------------
 	#ifdef __PRINT_SCREEN
-	PrintUpdateToTerminal(0, t0, dt, T, 0, print_update, RK_data);
+	PrintUpdateToTerminal(0, t0, dt, T, 0);
 	#endif	
 	
 	//////////////////////////////
@@ -177,7 +167,7 @@ void SpectralSolve(void) {
 		// -------------------------------
 		#ifdef __PRINT_SCREEN
 		if (iters % sys_vars->SAVE_EVERY == 0) {
-			PrintUpdateToTerminal(iters, t, dt, T, save_data_indx - 1, print_update, RK_data);
+			PrintUpdateToTerminal(iters, t, dt, T, save_data_indx - 1);
 		}
 		#endif
 
@@ -673,7 +663,7 @@ void ApplyDealiasing(fftw_complex* array, int array_dim, const long int* N) {
 	ptrdiff_t local_Nx        = sys_vars->local_Nx;
 	const long int Nx         = N[0];
 	const long int Ny         = N[1];
-	const long int Ny_Fourier = N[1] / 2 + 1;
+	const long int Ny_Fourier = Ny / 2 + 1;
 	#ifdef __DEALIAS_HOU_LI
 	double hou_li_filter;
 	#endif
@@ -721,9 +711,8 @@ void ApplyForcing(fftw_complex* w_hat, const long int* N) {
 	// Initialize variables
 	int tmp, indx;
 	ptrdiff_t local_Nx        = sys_vars->local_Nx;
-	const long int Nx         = N[0];
 	const long int Ny         = N[1];
-	const long int Ny_Fourier = N[1] / 2 + 1;
+	const long int Ny_Fourier = Ny / 2 + 1;
 
 	// --------------------------------------------
 	// Apply Appropriate Forcing
@@ -801,23 +790,6 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 				w_hat[indx] = I * (run_data->k[0][i] * u_hat[SYS_DIM * (indx) + 1] - run_data->k[1][j] * u_hat[SYS_DIM * (indx) + 0]);
 			}
 		}
-
-		// ---------------------------------------------
-		// Apply deliasing and transform to Real space 	
-		// ---------------------------------------------
-		ApplyDealiasing(w_hat, 1, N);
-		#ifdef __VORT_REAL
-		fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_c2r), w_hat, run_data->w);
-		for (int i = 0; i < local_Nx; ++i) {
-			tmp = i * (Ny + 2);
-			for (int j = 0; j < Ny; ++j) {
-				indx = tmp + j;
-
-				// Normalize
-				run_data->w[indx] *= 1.0 / (double )(Nx * Ny);
-			}
-		}
-		#endif
 	}
 	else if(!(strcmp(sys_vars->u0, "TG_VORT"))) {
 		// ------------------------------------------------
@@ -946,23 +918,6 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 
 		// free memory
 		fftw_free(psi_hat);
-
-		// ---------------------------------------------
-		// Apply deliasing and transform to Real space 	
-		// ---------------------------------------------
-		ApplyDealiasing(w_hat, 1, N);
-		#ifdef __VORT_REAL
-		fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_c2r), w_hat, run_data->w);
-		for (int i = 0; i < local_Nx; ++i) {
-			tmp = i * (Ny + 2);
-			for (int j = 0; j < Ny; ++j) {
-				indx = tmp + j;
-
-				// Normalize
-				run_data->w[indx] *= 1.0 / (double )(Nx * Ny);
-			}
-		}
-		#endif
 	}
 	else if (!(strcmp(sys_vars->u0, "DECAY_TURB_II"))) {
 		// ---------------------------------------
@@ -970,8 +925,7 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 		// ---------------------------------------
 		// Initialize variables
 		double k_sqr;
-		double u1, u2;
-		double rand1, rand2;
+		double u1;
 		double spec_1d;
 
 		// ---------------------------------------
@@ -982,10 +936,8 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 			for (int j = 0; j < Ny_Fourier; ++j) {
 				indx = tmp + j;	
 
-				// Generate two standard normal variables using Box-Muller transform
+				// Generate uniform random number between 0, 1
 				u1 = (double)rand() / (double) RAND_MAX;
-				u2 = (double)rand() / (double) RAND_MAX;
-				rand1 = sqrt(-2.0 * log(u1)) * cos(2.0 * M_PI * u2);
 
 				if (run_data->k[0][i] == 0.0 && run_data->k[1][j] == 0.0) {
 					// Compute the energy
@@ -1043,23 +995,6 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 				w_hat[indx] = w_hat[indx] * sqrt(DT2_C0 / enrg);
 			}
 		}
-
-		// ---------------------------------------------
-		// Apply deliasing and transform to Real space 	
-		// ---------------------------------------------
-		ApplyDealiasing(w_hat, 1, N);
-		#ifdef __VORT_REAL
-		fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_c2r), w_hat, run_data->w);
-		for (int i = 0; i < local_Nx; ++i) {
-			tmp = i * (Ny + 2);
-			for (int j = 0; j < Ny; ++j) {
-				indx = tmp + j;
-
-				// Normalize
-				run_data->w[indx] *= 1.0 / (double )(Nx * Ny);
-			}
-		}
-		#endif
 	}
 	else if (!(strcmp(sys_vars->u0, "GAUSS_DECAY_TURB"))) {
 		// ---------------------------------------------
@@ -1129,23 +1064,6 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 				w_hat[indx] *=  sqrt(GDT_C0 * k_sqr * exp(-pow(k_sqr / GDT_K0, 2.0)));
 			}
 		}
-
-		// ---------------------------------------------
-		// Apply deliasing and transform to Real space 	
-		// ---------------------------------------------
-		ApplyDealiasing(w_hat, 1, N);
-		#ifdef __VORT_REAL
-		fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_c2r), w_hat, run_data->w);
-		for (int i = 0; i < local_Nx; ++i) {
-			tmp = i * (Ny + 2);
-			for (int j = 0; j < Ny; ++j) {
-				indx = tmp + j;
-
-				// Normalize
-				run_data->w[indx] *= 1.0 / (double )(Nx * Ny);
-			}
-		}
-		#endif
 	}
 	else if (!(strcmp(sys_vars->u0, "GAUSS_BLOB"))) {
 	
@@ -1163,13 +1081,10 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 		}		
 
 		// ---------------------------------------------
-		// Transform to Fourier Space & Dealias
+		// Transform to Fourier Space
 		// ---------------------------------------------
 		// Transform
 		fftw_mpi_execute_dft_r2c((sys_vars->fftw_2d_dft_r2c), run_data->w, w_hat);
-		
-		// Dealias
-		ApplyDealiasing(w_hat, 1, N);
 	}
 	else if (!(strcmp(sys_vars->u0, "RANDOM"))) {
 		// ---------------------------------------
@@ -1181,26 +1096,9 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 				indx = tmp + j;
 
 				// Fill vorticity
-				w_hat[indx] = ((double)rand() / (double) RAND_MAX) * 2.0 * M_PI + ((double)rand() / (double) RAND_MAX)* 2.0 * M_PI * I;
+				w_hat[indx] = ((double)rand() / (double) RAND_MAX) * cexp(((double)rand() / (double) RAND_MAX)* 2.0 * M_PI * I);
 			}
 		}		
-
-		// ---------------------------------------------
-		// Apply deliasing and transform to Real space 	
-		// ---------------------------------------------
-		ApplyDealiasing(w_hat, 1, N);
-		#ifdef __VORT_REAL
-		fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_c2r), w_hat, run_data->w);
-		for (int i = 0; i < local_Nx; ++i) {
-			tmp = i * (Ny + 2);
-			for (int j = 0; j < Ny; ++j) {
-				indx = tmp + j;
-
-				// Normalize
-				run_data->w[indx] *= 1.0 / (double )(Nx * Ny);
-			}
-		}
-		#endif
 	}
 	else if (!(strcmp(sys_vars->u0, "TESTING"))) {
 		// Initialize temp variables
@@ -1234,23 +1132,6 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 				}
 			}
 		}
-
-		// ---------------------------------------------
-		// Apply deliasing and transform to Real space 	
-		// ---------------------------------------------
-		ApplyDealiasing(w_hat, 1, N);
-		#ifdef __VORT_REAL
-		fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_c2r), w_hat, run_data->w);
-		for (int i = 0; i < local_Nx; ++i) {
-			tmp = i * (Ny + 2);
-			for (int j = 0; j < Ny; ++j) {
-				indx = tmp + j;
-
-				// Normalize
-				run_data->w[indx] *= 1.0 / (double )(Nx * Ny);
-			}
-		}
-		#endif
 	}
 	else {
 		printf("\n["MAGENTA"WARNING"RESET"] --- No initial conditions specified\n---> Using random initial conditions...\n");
@@ -1263,39 +1144,19 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 				indx = tmp + j;
 
 				// Fill vorticity
-				w_hat[indx] = ((double)rand() / (double) RAND_MAX) * 2.0 * M_PI + ((double)rand() / (double) RAND_MAX) * 2.0 * M_PI * I;
+				w_hat[indx] = ((double)rand() / (double) RAND_MAX) * cexp(((double)rand() / (double) RAND_MAX) * 2.0 * M_PI * I);
 			}
 		}		
-
-		// ---------------------------------------------
-		// Apply deliasing and transform to Real space 	
-		// ---------------------------------------------
-		#ifdef __VORT_REAL
-		ApplyDealiasing(w_hat, 1, N);
-		fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_c2r), w_hat, run_data->w);
-		for (int i = 0; i < local_Nx; ++i) {
-			tmp = i * (Ny + 2);
-			for (int j = 0; j < Ny; ++j) {
-				indx = tmp + j;
-
-				// Normalize
-				run_data->w[indx] *= 1.0 / (double )(Nx * Ny);
-			}
-		}
-		#endif
 	}
 	// -------------------------------------------------
 	// Initialize the Dealiasing
 	// -------------------------------------------------
-	if (strcmp(sys_vars->u0, "TESTING") || strcmp(sys_vars->u0, "TG_VEL")) {
-		ApplyDealiasing(w_hat, 1, N);
-	}
+	ApplyDealiasing(w_hat, 1, N);
 
 	// -------------------------------------------------
 	// Initialize the Forcing
 	// -------------------------------------------------
 	ApplyForcing(w_hat, N);
-
 
 	// -------------------------------------------------
 	// Initialize Taylor Green Vortex Soln 
@@ -1572,7 +1433,7 @@ void SystemCheck(double dt, int iters) {
  * @param save_data_indx The saving index for output data
  * @param RK_data        Struct containing arrays for the Runge-Kutta integration
  */
-void PrintUpdateToTerminal(int iters, double t, double dt, double T, int save_data_indx, int print_update, RK_data_struct* RK_data) {
+void PrintUpdateToTerminal(int iters, double t, double dt, double T, int save_data_indx) {
 
 	// Initialize variables
 	double max_vort;
@@ -2464,11 +2325,11 @@ double* EnergyFluxSpectrum(int* n_spect, RK_data_struct* RK_data) {
 	int indx;
 	double k_sqr;
 	int spec_indx;
-	double pre_fac;
 	ptrdiff_t local_Nx 		  = sys_vars->local_Nx;
 	const long int Nx         = sys_vars->N[0];
 	const long int Ny         = sys_vars->N[1];
 	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
+	double pre_fac = 0.0;
 	double norm_fac = 0.5 / pow(Nx * Ny, 2.0);
 
 	// ------------------------------------
@@ -2568,11 +2429,11 @@ double* EnstrophyFluxSpectrum(int* n_spect, RK_data_struct* RK_data) {
 	int indx;
 	double k_sqr;
 	int spec_indx;
-	double pre_fac;
 	ptrdiff_t local_Nx 		  = sys_vars->local_Nx;
 	const long int Nx         = sys_vars->N[0];
 	const long int Ny         = sys_vars->N[1];
 	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
+	double pre_fac = 0.0;
 	double norm_fac = 0.5 / pow(Nx * Ny, 2.0);
 
 	// ------------------------------------

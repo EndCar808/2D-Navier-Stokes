@@ -262,6 +262,7 @@ void ReadInData(int snap_indx) {
 	// --------------------------------
 	//  Read in Real Vorticity
 	// --------------------------------
+	#ifdef __REAL_STATS
 	// If Real Space vorticity exists read it in
 	sprintf(group_string, "/Iter_%05d/w", snap_indx);	
 	if (H5Lexists(file_info->input_file_handle, group_string, H5P_DEFAULT) > 0 ) {
@@ -275,6 +276,7 @@ void ReadInData(int snap_indx) {
 			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to read in data for ["CYAN"%s"RESET"] at Snap = ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", "w", snap_indx);
 			exit(1);	
 		}
+	
 		// Real space vorticity exists
 		sys_vars->REAL_VORT_FLAG = 1; 
 	}
@@ -290,14 +292,16 @@ void ReadInData(int snap_indx) {
 				indx = tmp + j;
 
 				// Normalize the vorticity
-				run_data->w[indx] /= pow(Nx * Ny, 2.0);
+				run_data->w[indx] /= (Nx * Ny);
 			}
 		}
 	}
+	#endif
 
 	// --------------------------------
 	//  Read in Real Velocity
 	// --------------------------------
+	#ifdef __REAL_STATS
 	// If Real Space Velocity exists read it in
 	sprintf(group_string, "/Iter_%05d/u", snap_indx);	
 	if (H5Lexists(file_info->input_file_handle, group_string, H5P_DEFAULT) > 0 ) {
@@ -311,10 +315,13 @@ void ReadInData(int snap_indx) {
 			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to read in data for ["CYAN"%s"RESET"] at Snap = ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", "u", snap_indx);
 			exit(1);	
 		}
+
 		// Real space vorticity exists
 		sys_vars->REAL_VEL_FLAG = 1; 
 	}
 	else {
+		fftw_complex k_sqr;
+		
 		// Real space vorticity exists
 		sys_vars->REAL_VEL_FLAG = 0; 
 
@@ -324,25 +331,35 @@ void ReadInData(int snap_indx) {
 			for (int j = 0; j < Ny_Fourier; ++j) {
 				indx = tmp + j;
 
-				// Compute the Fourier velocity
-				run_data->u_hat[SYS_DIM * indx + 0] = I * run_data->k[1][j] * run_data->w_hat[indx];
-				run_data->u_hat[SYS_DIM * indx + 1] = -I * run_data->k[0][i] * run_data->w_hat[indx];
+				if ((run_data->k[0][i] != 0) || (run_data->k[1][j] != 0)) {
+					// Compute the prefactor
+					k_sqr = I / (double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
+					
+					// Compute the Fourier velocity
+					run_data->u_hat[SYS_DIM * indx + 0] = k_sqr * (double)run_data->k[1][j] * run_data->w_hat[indx];
+					run_data->u_hat[SYS_DIM * indx + 1] = -k_sqr * (double)run_data->k[0][i] * run_data->w_hat[indx];
+				}
+				else {
+					run_data->u_hat[SYS_DIM * indx + 0] = 0.0 + 0.0 * I;
+					run_data->u_hat[SYS_DIM * indx + 1] = 0.0 + 0.0 * I;
+				}
 			}
 		}
 
 		// Transform back to Real space and Normalize
 		fftw_execute_dft_c2r(sys_vars->fftw_2d_dft_batch_c2r, run_data->u_hat, run_data->u);
 		for (int i = 0; i < Nx; ++i) {	
-			tmp = i * (Ny + 2);
+			tmp = i * Ny;
 			for (int j = 0; j < Ny; ++j) {
 				indx = tmp + j;
 
 				// Normalize the velocity
-				run_data->u[SYS_DIM * indx + 0] /= pow(Nx * Ny, 2.0);
-				run_data->u[SYS_DIM * indx + 1] /= pow(Nx * Ny, 2.0);
+				run_data->u[SYS_DIM * indx + 0] /= (Nx * Ny);
+				run_data->u[SYS_DIM * indx + 1] /= (Nx * Ny);
 			}
 		}
 	}
+	#endif
 
 	// --------------------------------
 	//  Close HDF5 Identifiers
@@ -461,6 +478,7 @@ void WriteDataToFile(double t, long int snap) {
 	// -------------------------------
 	// Write Datasets
 	// -------------------------------
+	#ifdef __FULL_FIELD
 	// The full field phases
 	dset_dims_2d[0] = 2 * sys_vars->kmax - 1;
 	dset_dims_2d[1] = 2 * sys_vars->kmax - 1;
@@ -475,7 +493,8 @@ void WriteDataToFile(double t, long int snap) {
 	dset_dims_2d[0] = 2 * sys_vars->kmax - 1;
 	dset_dims_2d[1] = 2 * sys_vars->kmax - 1;
 	H5LTmake_dataset(group_id, "FullFieldEnstrophySpectrum", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, proc_data->enst);		
-
+	#endif
+	#ifdef __REAL_STATS
 	// The vorticity histogram bin ranges and bin counts
 	dset_dims_1d[0] = stats_data->w_pdf->n + 1;
 	H5LTmake_dataset(group_id, "VorticityPDFRanges", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, stats_data->w_pdf->range);		
@@ -487,7 +506,8 @@ void WriteDataToFile(double t, long int snap) {
 	H5LTmake_dataset(group_id, "VelocityPDFRanges", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, stats_data->u_pdf->range);		
 	dset_dims_1d[0] = stats_data->u_pdf->n;
 	H5LTmake_dataset(group_id, "VelocityPDFCounts", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, stats_data->u_pdf->bin);		
-
+	#endif
+	
 	// -------------------------------
 	// Close HDF5 Identifiers
 	// -------------------------------
