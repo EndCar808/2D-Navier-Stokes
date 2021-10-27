@@ -88,24 +88,6 @@ int main(int argc, char** argv) {
 	InitializeFFTWPlans(sys_vars->N);
 
 
-
-	// double* w_test = (double* )fftw_malloc(sizeof(double) * Nx * Ny * SYS_DIM);
-	// for (int i = 0; i < Nx; ++i) {
-	// 	for (int j = 0; j < Ny; ++j) {
-	// 		w_test[SYS_DIM * (i * Ny + j) + 0] = 0.0;
-	// 		w_test[SYS_DIM * (i * Ny + j) + 1] = 0.0;
-	// 	}
-	// }
-	// double* diff = (double* )fftw_malloc(sizeof(double) * Nx * Ny);
-	// for (int i = 0; i < Nx; ++i) {
-	// 	for (int j = 0; j < Ny; ++j) {
-	// 		diff[i * Ny + j] = 0.0;
-	// 	}
-	// }
-	// double error1, error2;
-	// double max = 0.0, min = 1e10;
-	// size_t min_indx, max_indx;
-
 	//////////////////////////////
 	// Begin Snapshot Processing
 	//////////////////////////////
@@ -128,9 +110,13 @@ int main(int argc, char** argv) {
 		w_max = 0.0;
 		w_min = 1e8;
 		gsl_stats_minmax(&w_min, &w_max, run_data->w, 1, Nx * Ny);
+
 		u_max = 0.0; 
 		u_min = 1e8;
 		gsl_stats_minmax(&u_min, &u_max, run_data->u, 1, Nx * Ny * SYS_DIM);
+		if (fabs(u_min) > u_max) {
+			u_max = fabs(u_min);
+		}
 
 		// Set histogram ranges
 		gsl_status = gsl_histogram_set_ranges_uniform(stats_data->w_pdf, w_min - 0.5, w_max + 0.5);
@@ -138,7 +124,7 @@ int main(int argc, char** argv) {
 			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set bin ranges for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", "Real Vorticity", s);
 			exit(1);
 		}
-		gsl_status = gsl_histogram_set_ranges_uniform(stats_data->u_pdf, u_min - 0.5, u_max + 0.5);
+		gsl_status = gsl_histogram_set_ranges_uniform(stats_data->u_pdf, 0.0 - 0.1, u_max + 0.5);
 		if (gsl_status != 0) {
 			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set bin ranges for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", "Real Velocity", s);
 			exit(1);
@@ -156,76 +142,18 @@ int main(int argc, char** argv) {
 					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", "Real Vorticity", s);
 					exit(1);
 				}
-				gsl_status = gsl_histogram_increment(stats_data->u_pdf, run_data->u[SYS_DIM * Ny + 0]);
+				gsl_status = gsl_histogram_increment(stats_data->u_pdf, fabs(run_data->u[SYS_DIM * indx + 0]));
 				if (gsl_status != 0) {
 					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", "Real Velocity", s);
 					exit(1);
 				}
-				gsl_status = gsl_histogram_increment(stats_data->u_pdf, run_data->u[SYS_DIM * Ny + 1]);
+				gsl_status = gsl_histogram_increment(stats_data->u_pdf, fabs(run_data->u[SYS_DIM * indx + 1]));
 				if (gsl_status != 0) {
 					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", "Real Velocity", s);
 					exit(1);
 				}
 			}
 		}
-
-
-		// // Get the real space vorticity from the Fourier space
-		// fftw_complex k_sqr;
-		// for (int i = 0; i < Nx; ++i) {
-		// 	tmp = i * Ny_Fourier;
-		// 	for (int j = 0; j < Ny_Fourier; ++j) {
-		// 		indx = tmp + j;
-
-		// 		if ((run_data->k[0][i] != 0) || (run_data->k[1][j] != 0)) {
-		// 			// Compute the prefactor
-		// 			k_sqr = I / (double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
-					
-		// 			// Compute the Fourier velocity
-		// 			run_data->u_hat[SYS_DIM * indx + 0] = k_sqr * (double)run_data->k[1][j] * run_data->w_hat[indx];
-		// 			run_data->u_hat[SYS_DIM * indx + 1] = -k_sqr * (double)run_data->k[0][i] * run_data->w_hat[indx];
-		// 		}
-		// 		else {
-		// 			run_data->u_hat[SYS_DIM * indx + 0] = 0.0 + 0.0 * I;
-		// 			run_data->u_hat[SYS_DIM * indx + 1] = 0.0 + 0.0 * I;
-		// 		}
-		// 	}
-		// }
-		// fftw_execute_dft_c2r(sys_vars->fftw_2d_dft_batch_c2r, run_data->u_hat, w_test);
-		// for (int i = 0; i < Nx; ++i) {	
-		// 	tmp = i * Ny;
-		// 	for (int j = 0; j < Ny; ++j) {
-		// 		indx = tmp + j;
-
-		// 		// Normalize the vorticity
-		// 		w_test[SYS_DIM * indx + 0] /= (Nx * Ny);
-		// 		w_test[SYS_DIM * indx + 1] /= (Nx * Ny);
-		// 	}
-		// }
-
-		// error1    = 0.0;
-		// error2	  = 0.0;
-		// max = 0.0;
-		// min = 1e10;
-		// for (int i = 0; i < Nx; ++i)
-		// {
-		// 	for (int j = 0; j < Ny; ++j)
-		// 	{	
-		// 		diff[i * Ny + j] = run_data->u[SYS_DIM * (i * Ny + j) + 0] - w_test[SYS_DIM * (i * Ny + j) + 0];
-		// 		min = fmin(run_data->u[SYS_DIM * (i * Ny + j) + 0] - w_test[SYS_DIM * (i * Ny + j) + 0], min);
-		// 		max = fmax(run_data->u[SYS_DIM * (i * Ny + j) + 0] - w_test[SYS_DIM * (i * Ny + j) + 0], max);
-		// 		error1 += pow(fabs(run_data->u[SYS_DIM * (i * Ny + j) + 0] - w_test[SYS_DIM * (i * Ny + j) + 0]), 2.0);
-		// 		error2 += pow(fabs(run_data->u[SYS_DIM * (i * Ny + j) + 1] - w_test[SYS_DIM * (i * Ny + j) + 1]), 2.0);
-		// 		if (i < 10 && j < 10) {
-		// 			printf("e: %g | %g ", run_data->u[SYS_DIM * (i * Ny + j) + 0] - w_test[SYS_DIM * (i * Ny + j) + 0], run_data->u[SYS_DIM * (i * Ny + j) + 1] - w_test[SYS_DIM * (i * Ny + j) + 1]);
-		// 		}
-		// 	}
-		// 	if (i < 10) {
-		// 		printf("\n");
-		// 	}
-		// }
-		// gsl_stats_minmax_index(&min_indx, &max_indx, diff, 1, Nx * Ny);
-		// printf("Error: %1.15lf | %1.15lf\tMax: %lf | Min: %lf\t MaxIndx: %d | MinIndx: %d\n", sqrt(error1), sqrt(error2), max, min, max_indx, min_indx);
 		#endif
 
 		// --------------------------------
@@ -302,7 +230,6 @@ int main(int argc, char** argv) {
 	//////////////////////////////
 	// End Snapshot Processing
 	//////////////////////////////
-
 	
 	// --------------------------------
 	//  Clean Up
@@ -382,17 +309,10 @@ void AllocateMemory(const long int* N) {
 	if (proc_data->enrg == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Full Field Energy");
 		exit(1);
-	}	
-
-	// // Allocate memory for the full field wavenumbers
-	// proc_data->k_full = (double* )fftw_malloc(sizeof(double) * (2 * sys_vars->kmax - 1) * (2 * sys_vars->kmax - 1));
-	// if (proc_data->k_full == NULL) {
-	// 	fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Full Field Energy");
-	// 	exit(1);
-	// }	
+	}		
 	#endif
 
-	// --------------------------------
+	// --------------------------------	
 	//  Allocate Stats Data
 	// --------------------------------
 	#ifdef __REAL_STATS
@@ -406,7 +326,7 @@ void AllocateMemory(const long int* N) {
 	// Allocate velocity histograms
 	stats_data->u_pdf = gsl_histogram_alloc(N_BINS);
 	if (stats_data->u_pdf == NULL) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Vorticity Histogram");
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Velocity In Time Histogram");
 		exit(1);
 	}	
 	#endif

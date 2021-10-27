@@ -124,7 +124,6 @@ typedef struct postprocess_data_struct {
 	double* phases;			// Array to hold the full field zero centred phases
 	double* enrg;			// Array to hold the full field zero centred energy
 	double* enst;			// Array to hold the full field zero centred enstrophy
-	double* k_full;			// Array to hold the full field zero centre wavenumbers
 } postprocess_data_struct;
 
 // Post processing stats data struct

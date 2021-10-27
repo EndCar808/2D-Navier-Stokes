@@ -311,7 +311,7 @@ def plot_decay_snaps(out_dir, i, w, w_min, w_max, measure_min, measure_max, x, y
     ## Plot vorticity   
     ##-------------------------
     ax1 = fig.add_subplot(gs[0, 0])
-    im1 = ax1.imshow(w, extent = (y[0], y[-1], x[-1], x[0]), cmap = "RdBu", vmin = w_min, vmax = w_max) 
+    im1 = ax1.imshow(w, extent = (y[0], y[-1], x[-1], x[0]), cmap = "jet") # vmin = w_min, vmax = w_max 
     ax1.set_xlabel(r"$y$")
     ax1.set_ylabel(r"$x$")
     ax1.set_xlim(0.0, y[-1])
@@ -328,7 +328,7 @@ def plot_decay_snaps(out_dir, i, w, w_min, w_max, measure_min, measure_max, x, y
     cb1   = plt.colorbar(im1, cax = cbax1)
     cb1.set_label(r"$\omega(x, y)$")
 
-    #--------------------------
+    #--------------------------    
     # Plot System Measures   
     #-------------------------- 
     ax2 = fig.add_subplot(gs[0, 1])
@@ -419,16 +419,16 @@ def plot_decay_snaps_2(out_dir, i, w, w_min, w_max, measure_min, measure_max, x,
        #-------------------------
        ax3 = fig.add_subplot(gs[1, 0])
        kindx = int(Nx / 3 + 1)
-       kk = np.arange(kindx)
-       ax3.plot(kk, kk**6 /(1 + kk/60)**18 / 10**6.5)
+       kk = np.arange(1, kindx)
+       ax3.plot(kk, (kk**6 /(1 + kk/60)**18 )/ 10**6.5)
        for i in range(enrg_spec.shape[0]):
-              spec = enrg_spec[i, :kindx] / np.sum(enrg_spec[i, :kindx])
+              spec = enrg_spec[i, 1:kindx] / np.sum(enrg_spec[i, 1:kindx])
               if i == 0:
-                     ax3.plot(spec, color = 'y')
+                     ax3.plot(kk, spec, color = 'y')
               elif i == enrg_spec.shape[0] - 1:
-                     ax3.plot(spec, color = 'b')
+                     ax3.plot(kk, spec, color = 'b')
               else:                     
-                     ax3.plot(spec, linestyle = ':', color = 'k', linewidth = 0.5, alpha = 0.02)
+                     ax3.plot(kk, spec, linestyle = ':', color = 'k', linewidth = 0.5, alpha = 0.02)
        ax3.set_xlabel(r"$|k|$")
        ax3.set_ylabel(r"$\mathcal{K}(|k|) / \sum \mathcal{K}(|k|)$")
        ax3.set_title(r"Energy Spectrum")
@@ -442,13 +442,13 @@ def plot_decay_snaps_2(out_dir, i, w, w_min, w_max, measure_min, measure_max, x,
        ax4 = fig.add_subplot(gs[1, 1]) 
        kindx = int(Nx / 3 + 1)
        for i in range(enst_spec.shape[0]):
-              spec = enst_spec[i, :kindx] / np.sum(enst_spec[i, :kindx])
+              spec = enst_spec[i, 1:kindx] / np.sum(enst_spec[i, 1:kindx])
               if i == 0:
-                     ax4.plot(spec, color = 'y')
+                     ax4.plot(kk, spec, color = 'y')
               elif i == enst_spec.shape[0] - 1:
-                     ax4.plot(spec,  color = 'b')
+                     ax4.plot(kk, spec,  color = 'b')
               else:                     
-                     ax4.plot(spec, linestyle = ':', color = 'k', linewidth = 0.5, alpha = 0.02)
+                     ax4.plot(kk, spec, linestyle = ':', color = 'k', linewidth = 0.5, alpha = 0.02)
        ax4.set_xlabel(r"$|k|$")
        ax4.set_ylabel(r"$\mathcal{E}(|k|) / \sum \mathcal{E}(|k|)$")
        ax4.set_title(r"Enstrophy Spectrum")

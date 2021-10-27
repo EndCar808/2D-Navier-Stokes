@@ -319,7 +319,7 @@ void PrintSimulationDetails(int argc, char** argv, double sim_time) {
 	#endif
 	#if defined(__HYPER)
 	fprintf(sim_file, "Hyperviscosity: YES\n");
-	fprintf(sim_file, "Hyperviscosity Power: %d\n", VIS_POW);	
+	fprintf(sim_file, "Hyperviscosity Power: %1.1lf\n", VIS_POW);	
 	#else
 	fprintf(sim_file, "Hyperviscosity: NO\n");
 	#endif

@@ -117,8 +117,30 @@ if __name__ == '__main__':
     ax2.set_xlim(run_data.time[0], run_data.time[-1])
     ax2.set_yscale('log')
     ax2.set_ylim(1e-2, 1.01)
-    plt.savefig(cmdargs.out_dir + "DecayTurb_System_Measures.png", bbox_inches='tight') 
+    plt.savefig(cmdargs.out_dir + "DecayTurb_System_Measures.png", bbox_inches = 'tight') 
     plt.close()
+
+
+
+    ## Energy Spectrum Test Initial Condition
+
+    fig = plt.figure(figsize = (16, 8))
+    gs  = GridSpec(1, 1)
+    ax1 = fig.add_subplot(gs[0, 0])
+    kmax = int(sys_params.Nx/3 + 1)
+    kk = np.arange(1, kmax)
+    kk_sqr = np.zeros((kmax - 1, ))
+    spec_ic = (kk**6) / ((1 + kk/60)**18) / (10**9.5)
+    ax1.plot(kk, spec_ic)
+    ax1.plot(kk, spectra_data.enrg_spectrum[0, 1:kmax])
+    ax1.set_xlabel(r"$|\mathbf{k}|$")
+    ax1.set_ylabel(r"$\mathcal{K}(|\mathbf{k}|)$")
+    ax1.set_xscale('log')
+    ax1.set_yscale('log')
+    ax1.legend([r"Spec", r"IC"])
+    plt.savefig(cmdargs.out_dir + "DecayTurb_EnergySpectrum_TEST_IC.png", bbox_inches = 'tight') 
+    plt.close()
+
 
     ## Energy Spectrum
     fig = plt.figure(figsize = (16, 8))
@@ -131,10 +153,10 @@ if __name__ == '__main__':
     ax1.set_xscale('log')
     ax1.set_yscale('log')
     ax1.legend([r"$t = {:0.2}$".format(i * (run_data.time[1] - run_data.time[0])) for i in [0, int(sys_params.ndata/2), sys_params.ndata - 1]])
-    plt.savefig(cmdargs.out_dir + "DecayTurb_EnergySpectrum.png", bbox_inches='tight') 
+    plt.savefig(cmdargs.out_dir + "DecayTurb_EnergySpectrum.png", bbox_inches = 'tight') 
     plt.close()
 
-    ## Vorticity Distribution
+    ## Vorticity & Velocity Distribution
     fig = plt.figure(figsize = (16, 8))
     gs  = GridSpec(1, 2)
     ax1 = fig.add_subplot(gs[0, 0])
@@ -150,29 +172,35 @@ if __name__ == '__main__':
     ax1.legend([r"$t = {:0.2}$".format(i * (run_data.time[1] - run_data.time[0])) for i in [0, int(sys_params.ndata/2), sys_params.ndata - 1]])
     ax2 = fig.add_subplot(gs[0, 1])
     for i in [0, int(sys_params.ndata/2), sys_params.ndata - 1]:
+        # print(post_proc_data.u_pdf_ranges.shape)
+        # print(post_proc_data.u_pdf_ranges)
+        # counts, bins = np.histogram(np.absolute(run_data.u[i, :, :, :]), bins = 1000)
+        # bin_width   = bins[1] - bins[0]
+        # bin_centres = (bins[1:] + bins[:-1]) * 0.5
+        # pdf = counts[:] / (np.sum((counts[:])) * bin_width)
         bin_width   = post_proc_data.u_pdf_ranges[i, 1] - post_proc_data.u_pdf_ranges[i, 0]
         bin_centres = (post_proc_data.u_pdf_ranges[i, 1:] + post_proc_data.u_pdf_ranges[i, :-1]) * 0.5
         pdf = post_proc_data.u_pdf_counts[i, :] / (np.sum((post_proc_data.u_pdf_counts[i, :])) * bin_width)
         var = np.sqrt(np.sum(pdf * bin_centres**2 * bin_width))
-        ax2.plot(bin_centres / var, pdf * var)
+        ax2.plot(bin_centres, pdf)
     ax2.set_xlabel(r"$\mathbf{u}$")
     ax2.set_ylabel(r"PDF")
     ax2.set_yscale('log') 
-    ax2.set_xlim(-10, 10)   
+    # ax2.set_xlim(-10, 10)   
     ax2.legend([r"$t = {:0.2}$".format(i * (run_data.time[1] - run_data.time[0])) for i in [0, int(sys_params.ndata/2), sys_params.ndata - 1]])
-    plt.savefig(cmdargs.out_dir + "DecayTurb_VelVortPDFs.png", bbox_inches='tight') 
+    plt.savefig(cmdargs.out_dir + "DecayTurb_VelVortPDFs_C.png", bbox_inches='tight') 
     plt.close()
 
     ## Flux Spectra
     fig = plt.figure(figsize = (16, 8))
     gs  = GridSpec(1, 2)
     ax1 = fig.add_subplot(gs[0, 0])
-    ax1.plot(spectra_data.enrg_flux_spectrum[-1, :])
+    ax1.plot(np.cumsum(spectra_data.enrg_flux_spectrum[-1, :]))
     ax1.set_xlabel(r"$|\mathbf{k}|$")
     ax1.set_ylabel(r"$\Pi(|\mathbf{k}|)$")
     ax1.set_title(r"Energy Flux Spectra")
     ax2 = fig.add_subplot(gs[0, 1])
-    ax2.plot(spectra_data.enst_flux_spectrum[-1, :])
+    ax2.plot(np.cumsum(spectra_data.enst_flux_spectrum[-1, :]))
     ax2.set_title(r"Enstrophy Flux Spectra")
     ax2.set_xlabel(r"$|\mathbf{k}|$")
     ax2.set_ylabel(r"$\Pi(|\mathbf{k}|)$")

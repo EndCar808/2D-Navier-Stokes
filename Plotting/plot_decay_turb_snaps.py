@@ -199,6 +199,7 @@ if __name__ == '__main__':
                         process.join()
             else:
                 # Loop over snapshots
+                print(spectra_data.enrg_spectrum[0, :int(sys_params.Nx/3)])
                 for i in range(sys_params.ndata):
                     plot_decay_snaps_2(cmdargs.out_dir, i, run_data.w[i, :, :], wmin, wmax, m_min, m_max, run_data.x, run_data.y, run_data.time, sys_params.Nx, sys_params.Ny, run_data.kx, run_data.ky, spectra_data.enrg_spectrum[:i, :], spectra_data.enst_spectrum[:i, :], run_data.tot_enrg, run_data.tot_enst, run_data.tot_palin)
                 # i = sys_params.ndata - 1

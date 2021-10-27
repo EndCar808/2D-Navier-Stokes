@@ -941,17 +941,17 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 
 				if (run_data->k[0][i] == 0.0 && run_data->k[1][j] == 0.0) {
 					// Compute the energy
-					k_sqr = 0.0;
+					k_sqr   = 0.0;
 					spec_1d = 0.0;
 				}
 				else {
 					// Compute the form of the initial energy
-					k_sqr = sqrt((double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]));
-					spec_1d  = pow(k_sqr, 6.0) / pow((1.0 + k_sqr / (2.0 * DT2_K0)), 18.0);
+					k_sqr   = round(sqrt((double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j])));
+					spec_1d = pow(k_sqr, 6.0) / pow((1.0 + k_sqr / (2.0 * DT2_K0)), 18.0);
 				}
 
 				// Fill the vorticity
-				w_hat[indx] = sqrt(k_sqr * spec_1d / (2.0 * M_PI)) * cexp( 2.0 * M_PI * u1 * I);
+				w_hat[indx] = sqrt(pow(k_sqr, 2.0) * spec_1d / (2.0 * M_PI)) * cexp(2.0 * M_PI * u1 * I); // k_sqr 
 			}
 		}
 
@@ -1710,6 +1710,7 @@ double* EnergySpectrum(int* spectrum_size) {
 	int spec_indx;
 	double u_hat;
 	double v_hat;
+	double k_sqrd;
 	fftw_complex k_sqr;
 	ptrdiff_t local_Nx 		  = sys_vars->local_Nx;
 	const long int Nx         = sys_vars->N[0];
@@ -1741,32 +1742,53 @@ double* EnergySpectrum(int* spectrum_size) {
 		for (int j = 0; j < Ny_Fourier; ++j) {
 			indx = tmp + j;
 
-			if ((run_data->k[0][i] != 0) || (run_data->k[1][j] != 0)) {
-				// Compute the prefactor
-				k_sqr = I / (double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
+			// if ((run_data->k[0][i] == 0) && (run_data->k[1][j] == 0)) {
+			// 	// Compute the zero mode
+			// 	u_hat = 0.0 + 0.0 * I;
+			// 	v_hat = 0.0 + 0.0 * I;
+			// }
+			// else {
+			// 	// Compute the prefactor
+			// 	k_sqr = I / (double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 
-				// Compute Fourier velocities
-				u_hat = k_sqr * ((double) run_data->k[1][j]) * run_data->w_hat[indx];
-				v_hat = -k_sqr * ((double) run_data->k[0][i]) * run_data->w_hat[indx];
-			}
-			else {
-				// Compute the zero mode
-				u_hat = 0.0 + 0.0 * I;
-				v_hat = 0.0 + 0.0 * I;
-			}
+			// 	// Compute Fourier velocities
+			// 	u_hat = k_sqr * ((double) run_data->k[1][j]) * run_data->w_hat[indx];
+			// 	v_hat = -k_sqr * ((double) run_data->k[0][i]) * run_data->w_hat[indx];
+			// }
 			
+			// // Get spectrum index -> spectrum is computed by summing over the energy contained in concentric annuli in wavenumber space
+			// spec_indx = (int) round(sqrt((double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j])));
+
+			// if ((j == 0) || (j = Ny_Fourier - 1)) {
+			// 	// Update the current bin for mode
+			// 	spectrum[spec_indx] += 4.0 * M_PI * M_PI * (cabs(u_hat * conj(u_hat)) + cabs(v_hat * conj(v_hat))) * norm_fac;
+			// }
+			// else {
+			// 	// Update the energy sum for the current mode
+			// 	spectrum[spec_indx] += 2.0 * 4.0 * M_PI * M_PI * (cabs(u_hat * conj(u_hat)) + cabs(v_hat * conj(v_hat))) * norm_fac;
+			// }
+			// 
+			
+
 			// Get spectrum index -> spectrum is computed by summing over the energy contained in concentric annuli in wavenumber space
 			spec_indx = (int) round(sqrt((double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j])));
 
-			if ((j == 0) && (j = Ny_Fourier - 1)) {
-				// Update the current bin for  mode
-				spectrum[spec_indx] += 4.0 * M_PI * M_PI * (cabs(u_hat * conj(u_hat)) + cabs(v_hat * conj(v_hat))) * norm_fac;
+			if ((run_data->k[0][i] == 0) && (run_data->k[1][j] == 0)) {
+				spectrum[spec_indx] += 0.0;
 			}
 			else {
-				// Update the energy sum for the current mode
-				spectrum[spec_indx] += 2.0 * 4.0 * M_PI * M_PI * (cabs(u_hat * conj(u_hat)) + cabs(v_hat * conj(v_hat))) * norm_fac;
-			}
+				// Compute |k|^2
+				k_sqrd = (double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 
+				if ((j == 0) || (j = Ny_Fourier - 1)) {
+					// Update the current bin for mode
+					spectrum[spec_indx] += 4.0 * M_PI * M_PI * (cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) / k_sqrd) * norm_fac;
+				}
+				else {
+					// Update the energy sum for the current mode
+					spectrum[spec_indx] += 2.0 * 4.0 * M_PI * M_PI * (cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) / k_sqrd) * norm_fac;
+				}
+			}
 		}
 	}
 
@@ -1818,7 +1840,7 @@ double* EnstrophySpectrum(int* spectrum_size) {
 			// Get spectrum index -> spectrum is computed by summing over the energy contained in concentric annuli in wavenumber space
 			spec_indx = (int) round(sqrt((double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j])));
 
-			if ((j == 0) && (j == Ny_Fourier - 1)) {
+			if ((j == 0) || (j == Ny_Fourier - 1)) {
 				// Update the sum of the enstrophy in the current mode
 				spectrum[spec_indx] += 4.0 * M_PI * M_PI * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * norm_fac;
 			}
@@ -1861,7 +1883,7 @@ double TotalEnergy(void) {
 				// The 1/k^2 prefactor
 				k_sqr = 1.0 / (double )(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 
-				if ((j == 0) && (j == Ny_Fourier - 1)) {
+				if ((j == 0) || (j == Ny_Fourier - 1)) {
 					// Update the sum for the total energy
 					tot_energy += cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * k_sqr;
 				}
@@ -1906,7 +1928,7 @@ double TotalEnstrophy(void) {
 		for (int j = 1; j < Ny_Fourier; ++j) {
 			indx = tmp + j;
 
-			if ((j == 0) && (j == Ny_Fourier - 1)) {
+			if ((j == 0) || (j == Ny_Fourier - 1)) {
 				// Update the sum for the total enstrophy -> only count the 0 and N/2 modes once as they have no conjugate
 				tot_enstr += cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
 			}	
@@ -1954,7 +1976,7 @@ double TotalPalinstrophy(void) {
 				k_sqr = 1.0 * (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 
 				// Update the running sum for the palinstrophy
-				if((j == 0) && (j == Ny_Fourier - 1)) {
+				if((j == 0) || (j == Ny_Fourier - 1)) {
 					tot_palin += k_sqr * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
 				}
 				else {
@@ -2023,7 +2045,7 @@ double EnergyDissipationRate(void) {
 			#endif
 
 			// Update the running sum for the palinstrophy -> first and last modes have no conjugate so only count once
-			if((j == 0) && (j == Ny_Fourier - 1)) {
+			if((j == 0) || (j == Ny_Fourier - 1)) {
 				enrgy += pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
 			}
 			else {
@@ -2085,7 +2107,7 @@ double EnstrophyDissipationRate(void) {
 				#endif
 
 				// Update the running sum for the palinstrophy -> first and last modes have no conjugate so only count once
-				if((j == 0) && (j == Ny_Fourier - 1)) {
+				if((j == 0) || (j == Ny_Fourier - 1)) {
 					tot_palin += pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
 				}
 				else {
@@ -2171,7 +2193,7 @@ void EnstrophyFlux(double* enst_flux, double* enst_diss, RK_data_struct* RK_data
 				#endif
 
 				// Update sums
-				if ((j == 0) && (Ny_Fourier - 1)) {
+				if ((j == 0) || (Ny_Fourier - 1)) {
 					// Update the running sum for the flux of enstrophy
 					tmp_enst_flux += creal(run_data->w_hat[indx] * conj(dwhat_dt[indx]) + conj(run_data->w_hat[indx]) * dwhat_dt[indx]); 
 
@@ -2273,7 +2295,7 @@ void EnergyFlux(double* enrg_flux, double* enrg_diss, RK_data_struct* RK_data) {
 					#endif
 
 					// Update sums
-					if ((j == 0) && (Ny_Fourier - 1)) {
+					if ((j == 0) || (Ny_Fourier - 1)) {
 						// Update the running sum for the flux of energy
 						tmp_enrgy_flux += creal(run_data->w_hat[indx] * conj(dwhat_dt[indx]) + conj(run_data->w_hat[indx]) * dwhat_dt[indx]) / k_sqr;
 
@@ -2390,10 +2412,10 @@ double* EnergyFluxSpectrum(int* n_spect, RK_data_struct* RK_data) {
 				#endif
 
 				// Get the spectrum index
-				spec_indx = (int) sqrt(k_sqr);
+				spec_indx = (int) ceil(sqrt(k_sqr));
 
 				// Update spectrum bin
-				if ((j == 0) && (Ny_Fourier - 1)) {
+				if ((j == 0) || (Ny_Fourier - 1)) {
 					// Update the running sum for the flux of energy
 					spectrum[spec_indx] += 4.0 * M_PI * M_PI * norm_fac * creal(run_data->w_hat[indx] * conj(dwhat_dt[indx]) + conj(run_data->w_hat[indx]) * dwhat_dt[indx]) / k_sqr;
 				}
@@ -2494,10 +2516,10 @@ double* EnstrophyFluxSpectrum(int* n_spect, RK_data_struct* RK_data) {
 				#endif
 
 				// Get the spectrum index
-				spec_indx = (int) sqrt(k_sqr);
+				spec_indx = (int) ceil(sqrt(k_sqr));
 
 				// Update spectrum bin
-				if ((j == 0) && (Ny_Fourier - 1)) {
+				if ((j == 0) || (Ny_Fourier - 1)) {
 					// Update the current bin sum 
 					spectrum[spec_indx] += 4.0 * M_PI * M_PI * norm_fac * creal(run_data->w_hat[indx] * conj(dwhat_dt[indx]) + conj(run_data->w_hat[indx]) * dwhat_dt[indx]);
 				}

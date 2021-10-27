@@ -199,7 +199,9 @@ def import_data(input_file, sim_data, method = "default"):
         def __init__(self):
             ## Allocate global arrays
             self.w       = np.zeros((sim_data.ndata, sim_data.Nx, sim_data.Ny))
+            self.u       = np.zeros((sim_data.ndata, sim_data.Nx, sim_data.Ny, 2))
             self.tg_soln = np.zeros((sim_data.ndata, sim_data.Nx, sim_data.Ny))
+            self.u_hat   = np.ones((sim_data.ndata, sim_data.Nx, sim_data.Nk, 2)) * np.complex(0.0, 0.0)
             self.w_hat   = np.ones((sim_data.ndata, sim_data.Nx, sim_data.Nk)) * np.complex(0.0, 0.0)
             self.time    = np.zeros((sim_data.ndata, ))
             ## Allocate system measure arrays
@@ -242,6 +244,10 @@ def import_data(input_file, sim_data, method = "default"):
                     data.w[nn, :, :] = file[group]["w"][:, :]
                 if 'w_hat' in list(file[group].keys()):
                     data.w_hat[nn, :, :] = file[group]["w_hat"][:, :]
+                if 'u' in list(file[group].keys()):
+                    data.u[nn, :, :] = file[group]["u"][:, :, :]
+                if 'u_hat' in list(file[group].keys()):
+                    data.u_hat[nn, :, :] = file[group]["u_hat"][:, :, :]
                 if 'TGSoln' in list(file[group].keys()):
                     data.tg_soln[nn, :, :] = file[group]["TGSoln"][:, :]
                 data.time[nn] = file[group].attrs["TimeValue"]

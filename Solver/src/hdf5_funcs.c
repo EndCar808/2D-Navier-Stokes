@@ -113,10 +113,17 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 	// Write Initial Conditions
 	// --------------------------------------
 	// Create dimension arrays
-	static const hsize_t Dims2D = 2;
-	hsize_t dset_dims[Dims2D];        // array to hold dims of the dataset to be created
-	hsize_t slab_dims[Dims2D];	      // Array to hold the dimensions of the hyperslab
-	hsize_t mem_space_dims[Dims2D];   // Array to hold the dimensions of the memoray space - for real data this will be different to slab_dims due to 0 padding
+	static const int d_set_rank2D = 2;
+	hsize_t dset_dims2D[d_set_rank2D];        // array to hold dims of the dataset to be created
+	hsize_t slab_dims2D[d_set_rank2D];	      // Array to hold the dimensions of the hyperslab
+	hsize_t mem_space_dims2D[d_set_rank2D];   // Array to hold the dimensions of the memoray space - for real data this will be different to slab_dims due to 0 padding
+	#if defined(__MODES) || defined(__REALSPACE)
+	static const int d_set_rank3D = 3;
+	hsize_t dset_dims3D[d_set_rank3D];        // array to hold dims of the dataset to be created
+	hsize_t slab_dims3D[d_set_rank3D];	      // Array to hold the dimensions of the hyperslab
+	hsize_t mem_space_dims3D[d_set_rank3D];   // Array to hold the dimensions of the memoray space - for real data this will be different to slab_dims due to 0 padding
+	#endif
+
 
 	#ifdef __VORT_REAL
 	// Transform vorticity back to real space and normalize
@@ -132,25 +139,27 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 	}
 
 	// Specify dataset dimensions
-	slab_dims[0]      = sys_vars->local_Nx;
-	slab_dims[1]      = Ny;
-	mem_space_dims[0] = sys_vars->local_Nx;
-	mem_space_dims[1] = Ny + 2;
+	dset_dims2D[0] 	  = Nx;
+	dset_dims2D[1] 	  = Ny;
+	slab_dims2D[0]      = sys_vars->local_Nx;
+	slab_dims2D[1]      = Ny;
+	mem_space_dims2D[0] = sys_vars->local_Nx;
+	mem_space_dims2D[1] = Ny + 2;
 
 	// Write the real space vorticity
-	WriteDataReal(0.0, 0, main_group_id, "w", H5T_NATIVE_DOUBLE, (hsize_t* )sys_vars->N, slab_dims, mem_space_dims, sys_vars->local_Nx_start, run_data->w);
+	WriteDataReal(0.0, 0, main_group_id, "w", H5T_NATIVE_DOUBLE, d_set_rank2D, dset_dims2D, slab_dims2D, mem_space_dims2D, sys_vars->local_Nx_start, run_data->w);
 	#endif
 	#ifdef __VORT_FOUR
 	// Create dimension arrays
-	dset_dims[0] 	  = Nx;
-	dset_dims[1] 	  = Ny_Fourier;
-	slab_dims[0] 	  = sys_vars->local_Nx;
-	slab_dims[1] 	  = Ny_Fourier;
-	mem_space_dims[0] = sys_vars->local_Nx;
-	mem_space_dims[1] = Ny_Fourier;
+	dset_dims2D[0] 	  = Nx;
+	dset_dims2D[1] 	  = Ny_Fourier;
+	slab_dims2D[0] 	  = sys_vars->local_Nx;
+	slab_dims2D[1] 	  = Ny_Fourier;
+	mem_space_dims2D[0] = sys_vars->local_Nx;
+	mem_space_dims2D[1] = Ny_Fourier;
 
 	// Write the real space vorticity
-	WriteDataFourier(0.0, 0, main_group_id, "w_hat", file_info->COMPLEX_DTYPE, dset_dims, slab_dims, mem_space_dims, sys_vars->local_Nx_start, run_data->w_hat);
+	WriteDataFourier(0.0, 0, main_group_id, "w_hat", file_info->COMPLEX_DTYPE, d_set_rank2D, dset_dims2D, slab_dims2D, mem_space_dims2D, sys_vars->local_Nx_start, run_data->w_hat);
 	#endif
 	#if defined(__MODES) || defined(__REALSPACE)
 	fftw_complex k_sqr;
@@ -178,15 +187,18 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 	#endif
 	#ifdef __MODES
 	// Create dimension arrays
-	dset_dims[0] 	  = Nx;
-	dset_dims[1] 	  = Ny_Fourier * SYS_DIM;
-	slab_dims[0] 	  = sys_vars->local_Nx;
-	slab_dims[1] 	  = Ny_Fourier * SYS_DIM;
-	mem_space_dims[0] = sys_vars->local_Nx;
-	mem_space_dims[1] = Ny_Fourier * SYS_DIM;
+	dset_dims3D[0] 	    = Nx;
+	dset_dims3D[1] 	    = Ny_Fourier;
+	dset_dims3D[2]      = SYS_DIM;
+	slab_dims3D[0] 	    = sys_vars->local_Nx;
+	slab_dims3D[1] 	    = Ny_Fourier;
+	slab_dims3D[2]      = SYS_DIM;
+	mem_space_dims3D[0] = sys_vars->local_Nx;
+	mem_space_dims3D[1] = Ny_Fourier;
+	mem_space_dims3D[2] = SYS_DIM;
 
 	// Write the real space vorticity
-	WriteDataFourier(0.0, 0, main_group_id, "u_hat", file_info->COMPLEX_DTYPE, dset_dims, slab_dims, mem_space_dims, sys_vars->local_Nx_start, run_data->u_hat);
+	WriteDataFourier(0.0, 0, main_group_id, "u_hat", file_info->COMPLEX_DTYPE, d_set_rank3D, dset_dims3D, slab_dims3D, mem_space_dims3D, sys_vars->local_Nx_start, run_data->u_hat);
 	#endif
 	#ifdef __REALSPACE
 	// Transform velocities back to real space and normalize
@@ -203,24 +215,31 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 	}
 
 	// Specify dataset dimensions
-	slab_dims[0]      = sys_vars->local_Nx;
-	slab_dims[1]      = Ny;
-	mem_space_dims[0] = sys_vars->local_Nx;
-	mem_space_dims[1] = Ny + 2;
+	dset_dims3D[0] 	  = Nx;
+	dset_dims3D[1] 	  = Ny;
+	dset_dims3D[2]    = SYS_DIM;
+	slab_dims3D[0]    = sys_vars->local_Nx;
+	slab_dims3D[1]    = Ny;
+	slab_dims3D[2]    = SYS_DIM;
+	mem_space_dims3D[0] = sys_vars->local_Nx;
+	mem_space_dims3D[1] = (Ny + 2);
+	mem_space_dims3D[2] = SYS_DIM;
 
 	// Write the real space vorticity
-	WriteDataReal(0.0, 0, main_group_id, "u", H5T_NATIVE_DOUBLE, (hsize_t* )sys_vars->N, slab_dims, mem_space_dims, sys_vars->local_Nx_start, run_data->u);
+	WriteDataReal(0.0, 0, main_group_id, "u", H5T_NATIVE_DOUBLE, d_set_rank3D, dset_dims3D, slab_dims3D, mem_space_dims3D, sys_vars->local_Nx_start, run_data->u);
 	#endif
 	#ifdef TESTING
 	if (!(strcmp(sys_vars->u0, "TG_VEL")) || !(strcmp(sys_vars->u0, "TG_VORT"))) {
 		// Create dimension arrays
-		slab_dims[0]      = sys_vars->local_Nx;
-		slab_dims[1]      = Ny;
-		mem_space_dims[0] = sys_vars->local_Nx;
-		mem_space_dims[1] = Ny + 2;
+		dset_dims2D[0] 	    = Nx;
+		dset_dims2D[1] 	    = Ny;
+		slab_dims2D[0]      = sys_vars->local_Nx;
+		slab_dims2D[1]      = Ny;
+		mem_space_dims2D[0] = sys_vars->local_Nx;
+		mem_space_dims2D[1] = Ny + 2;
 
 		// Write the real space vorticity
-		WriteDataReal(0.0, 0, main_group_id, "TGSoln", H5T_NATIVE_DOUBLE, (hsize_t* )sys_vars->N, slab_dims, mem_space_dims, sys_vars->local_Nx_start, run_data->tg_soln);	
+		WriteDataReal(0.0, 0, main_group_id, "TGSoln", H5T_NATIVE_DOUBLE, d_set_rank2D, dset_dims2D, slab_dims2D, mem_space_dims2D, sys_vars->local_Nx_start, run_data->tg_soln);	
 	}
 	#endif
 	#if defined(__ENST_SPECT) || defined(__ENRG_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__ENRG_FLUX_SPECT)
@@ -464,10 +483,17 @@ void WriteDataToFile(double t, double dt, long int iters) {
 	hid_t spectra_group_id;
 	#endif
 	hid_t plist_id;
-	static const hsize_t Dims2D = 2;
-	hsize_t dset_dims[Dims2D];        // array to hold dims of the dataset to be created
-	hsize_t slab_dims[Dims2D];	      // Array to hold the dimensions of the hyperslab
-	hsize_t mem_space_dims[Dims2D];   // Array to hold the dimensions of the memoray space - for real data this will be different to slab_dims due to 0 padding
+	static const int d_set_rank2D = 2;
+	hsize_t dset_dims2D[d_set_rank2D];        // array to hold dims of the dataset to be created
+	hsize_t slab_dims2D[d_set_rank2D];	      // Array to hold the dimensions of the hyperslab
+	hsize_t mem_space_dims2D[d_set_rank2D];   // Array to hold the dimensions of the memoray space - for real data this will be different to slab_dims due to 0 padding
+	#if defined(__MODES) || defined(__REALSPACE)
+	static const int d_set_rank3D = 3;
+	hsize_t dset_dims3D[d_set_rank3D];        // array to hold dims of the dataset to be created
+	hsize_t slab_dims3D[d_set_rank3D];	      // Array to hold the dimensions of the hyperslab
+	hsize_t mem_space_dims3D[d_set_rank3D];   // Array to hold the dimensions of the memoray space - for real data this will be different to slab_dims due to 0 padding
+	#endif
+	
 
 	// --------------------------------------
 	// Check if files exist and Open/Create
@@ -547,23 +573,25 @@ void WriteDataToFile(double t, double dt, long int iters) {
 	}
 
 	// Create dimension arrays
-	slab_dims[0]      = sys_vars->local_Nx;
-	slab_dims[1]      = Ny;
-	mem_space_dims[0] = sys_vars->local_Nx;
-	mem_space_dims[1] = Ny + 2;
+	dset_dims2D[0] 	    = Nx;
+	dset_dims2D[1] 	    = Ny;
+	slab_dims2D[0]      = sys_vars->local_Nx;
+	slab_dims2D[1]      = Ny;
+	mem_space_dims2D[0] = sys_vars->local_Nx;
+	mem_space_dims2D[1] = Ny + 2;
 
 	// Write the real space vorticity
-	WriteDataReal(t, (int)iters, main_group_id, "w", H5T_NATIVE_DOUBLE, (hsize_t* )sys_vars->N, slab_dims, mem_space_dims, sys_vars->local_Nx_start, run_data->w);
+	WriteDataReal(t, (int)iters, main_group_id, "w", H5T_NATIVE_DOUBLE, d_set_rank2D, dset_dims2D, slab_dims2D, mem_space_dims2D, sys_vars->local_Nx_start, run_data->w);
 	#endif
 	#ifdef __VORT_FOUR
 	// Create dimension arrays
-	dset_dims[0] = sys_vars->N[0];
-	dset_dims[1] = sys_vars->N[1] / 2 + 1;
-	slab_dims[0] = sys_vars->local_Nx;
-	slab_dims[1] = Ny_Fourier;
+	dset_dims2D[0] = Nx;
+	dset_dims2D[1] = Ny_Fourier;
+	slab_dims2D[0] = sys_vars->local_Nx;
+	slab_dims2D[1] = Ny_Fourier;
 
 	// Write the real space vorticity
-	WriteDataFourier(t, (int)iters, main_group_id, "w_hat", file_info->COMPLEX_DTYPE, dset_dims, slab_dims, slab_dims, sys_vars->local_Nx_start, run_data->w_hat);
+	WriteDataFourier(t, (int)iters, main_group_id, "w_hat", file_info->COMPLEX_DTYPE, d_set_rank2D, dset_dims2D, slab_dims2D, slab_dims2D, sys_vars->local_Nx_start, run_data->w_hat);
 	#endif
 	#if defined(__MODES) || defined(__REALSPACE)
 	fftw_complex k_sqr;
@@ -591,15 +619,18 @@ void WriteDataToFile(double t, double dt, long int iters) {
 	#endif
 	#ifdef __MODES
 	// Create dimension arrays
-	dset_dims[0] 	  = Nx;
-	dset_dims[1] 	  = Ny_Fourier * SYS_DIM;
-	slab_dims[0] 	  = sys_vars->local_Nx;
-	slab_dims[1] 	  = Ny_Fourier * SYS_DIM;
-	mem_space_dims[0] = sys_vars->local_Nx;
-	mem_space_dims[1] = Ny_Fourier * SYS_DIM;
+	dset_dims3D[0] 	    = Nx;
+	dset_dims3D[1] 	    = Ny_Fourier;
+	dset_dims3D[2]      = SYS_DIM;
+	slab_dims3D[0] 	    = sys_vars->local_Nx;
+	slab_dims3D[1] 	    = Ny_Fourier;
+	slab_dims3D[2]      = SYS_DIM;
+	mem_space_dims3D[0] = sys_vars->local_Nx;
+	mem_space_dims3D[1] = Ny_Fourier;
+	mem_space_dims3D[2] = SYS_DIM;
 
 	// Write the real space vorticity
-	WriteDataFourier(t, (int)iters, main_group_id, "u_hat", file_info->COMPLEX_DTYPE, dset_dims, slab_dims, mem_space_dims, sys_vars->local_Nx_start, run_data->u_hat);
+	WriteDataFourier(t, (int)iters, main_group_id, "u_hat", file_info->COMPLEX_DTYPE, d_set_rank3D, dset_dims3D, slab_dims3D, mem_space_dims3D, sys_vars->local_Nx_start, run_data->u_hat);
 	#endif
 	#ifdef __REALSPACE
 	// Transform velocities back to real space and normalize
@@ -616,24 +647,31 @@ void WriteDataToFile(double t, double dt, long int iters) {
 	}
 
 	// Specify dataset dimensions
-	slab_dims[0]      = sys_vars->local_Nx;
-	slab_dims[1]      = Ny;
-	mem_space_dims[0] = sys_vars->local_Nx;
-	mem_space_dims[1] = Ny + 2;
+	dset_dims3D[0] 	    = Nx;
+	dset_dims3D[1] 	    = Ny;
+	dset_dims3D[2]      = SYS_DIM;
+	slab_dims3D[0]      = sys_vars->local_Nx;
+	slab_dims3D[1]      = Ny;
+	slab_dims3D[2]      = SYS_DIM;
+	mem_space_dims3D[0] = sys_vars->local_Nx;
+	mem_space_dims3D[1] = (Ny + 2);
+	mem_space_dims3D[2] = SYS_DIM;
 
 	// Write the real space vorticity
-	WriteDataReal(t, (int)iters, main_group_id, "u", H5T_NATIVE_DOUBLE, (hsize_t* )sys_vars->N, slab_dims, mem_space_dims, sys_vars->local_Nx_start, run_data->u);
+	WriteDataReal(t, (int)iters, main_group_id, "u", H5T_NATIVE_DOUBLE, d_set_rank3D, dset_dims3D, slab_dims3D, mem_space_dims3D, sys_vars->local_Nx_start, run_data->u);
 	#endif
 	#ifdef TESTING
 	if (!(strcmp(sys_vars->u0, "TG_VEL")) || !(strcmp(sys_vars->u0, "TG_VORT"))) {
 		// Create dimension arrays
-		slab_dims[0]      = sys_vars->local_Nx;
-		slab_dims[1]      = Ny;
-		mem_space_dims[0] = sys_vars->local_Nx;
-		mem_space_dims[1] = Ny + 2;
+		dset_dims2D[0] 	    = Nx;
+		dset_dims2D[1] 	    = Ny;
+		slab_dims2D[0]      = sys_vars->local_Nx;
+		slab_dims2D[1]      = Ny;
+		mem_space_dims2D[0] = sys_vars->local_Nx;
+		mem_space_dims2D[1] = Ny + 2;
 
 		// Write the real space vorticity
-		WriteDataReal(t, (int)iters, main_group_id, "TGSoln", H5T_NATIVE_DOUBLE, (hsize_t* )sys_vars->N, slab_dims, mem_space_dims, sys_vars->local_Nx_start, run_data->tg_soln);	
+		WriteDataReal(t, (int)iters, main_group_id, "TGSoln", H5T_NATIVE_DOUBLE, d_set_rank2D, dset_dims2D, slab_dims2D, mem_space_dims2D, sys_vars->local_Nx_start, run_data->tg_soln);	
 	}
 	#endif
 	#if defined(__ENST_SPECT) || defined(__ENRG_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__ENRG_FLUX_SPECT)
@@ -660,16 +698,16 @@ void WriteDataToFile(double t, double dt, long int iters) {
 	else {
 		// Reduce all other process to master rank
 		#ifdef __ENST_SPECT
-		MPI_Reduce(run_data->enst_spect, NULL,  sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(run_data->enst_spect, NULL, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		#endif
 		#ifdef __ENRG_SPECT
-		MPI_Reduce(run_data->enrg_spect, NULL,  sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(run_data->enrg_spect, NULL, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		#endif
 		#ifdef __ENST_FLUX_SPECT
-		MPI_Reduce(run_data->enst_flux_spect, NULL,  sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(run_data->enst_flux_spect, NULL, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		#endif
 		#ifdef __ENRG_FLUX_SPECT
-		MPI_Reduce(run_data->enrg_flux_spect, NULL,  sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(run_data->enrg_flux_spect, NULL, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		#endif
 	}
 	#endif 
@@ -778,28 +816,29 @@ hid_t CreateGroup(hid_t file_handle, char* filename, char* group_name, double t,
  * @param offset_Nx      The offset in the dataset that each process will write to
  * @param data           The data being written to file
  */
-void WriteDataFourier(double t, int iters, hid_t group_id, char* dset_name, hid_t dtype, hsize_t* dset_dims, hsize_t* slab_dims, hsize_t* mem_space_dims, int offset_Nx, fftw_complex* data) {
+void WriteDataFourier(double t, int iters, hid_t group_id, char* dset_name, hid_t dtype, int dset_rank, hsize_t* dset_dims, hsize_t* slab_dims, hsize_t* mem_space_dims, int offset_Nx, fftw_complex* data) {
 
 	// Initialize variables
 	hid_t plist_id;
 	hid_t dset_space;
 	hid_t file_space;
 	hid_t mem_space;
-	static const hsize_t Dims2D = 2;
-	hsize_t dims2d[Dims2D];        // array to hold dims of the dataset to be created
-	hsize_t mem_dims[Dims2D];	   // Array to hold the dimensions of the memory space - this will be diferent to slab dims for real data due to zero
-	hsize_t mem_offset[Dims2D];    // Array to hold the offset in eahc direction for the local hypslabs to write from
-	hsize_t slabsize[Dims2D];      // Array holding the size of the hyperslab in each direction
-	hsize_t dset_offset[Dims2D];   // Array containig the offset positions in the file for each process to write to
-	hsize_t dset_slabsize[Dims2D]; // Array containing the size of the slabbed that is being written to in file	
+	const int Dims = dset_rank;
+	hsize_t dims[Dims];          // array to hold dims of the dataset to be created
+	hsize_t mem_dims[Dims];	     // Array to hold the dimensions of the memory space - this will be diferent to slab dims for real data due to zero
+	hsize_t mem_offset[Dims];    // Array to hold the offset in eahc direction for the local hypslabs to write from
+	hsize_t slabsize[Dims];      // Array holding the size of the hyperslab in each direction
+	hsize_t dset_offset[Dims];   // Array containig the offset positions in the file for each process to write to
+	hsize_t dset_slabsize[Dims]; // Array containing the size of the slabbed that is being written to in file	
 
 	// -------------------------------
 	// Create Dataset In Group
 	// -------------------------------
 	// Create the dataspace for the data set
-	dims2d[0] = dset_dims[0];
-	dims2d[1] = dset_dims[1];
-	dset_space = H5Screate_simple(Dims2D, dims2d, NULL); 
+	for (int i = 0; i < dset_rank; ++i) {
+		dims[i] = dset_dims[i];
+	}
+	dset_space = H5Screate_simple(Dims, dims, NULL); 
 	if (dset_space < 0) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set dataspace for dataset ["CYAN"%s"RESET"] at: Iter = ["CYAN"%d"RESET"] t = ["CYAN"%lf"RESET"]\n-->> Exiting...\n", dset_name, iters, t);
 		exit(1);
@@ -809,26 +848,37 @@ void WriteDataFourier(double t, int iters, hid_t group_id, char* dset_name, hid_
 	file_space = H5Dcreate(group_id, dset_name, dtype, dset_space, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 
 	// -------------------------------
-	// Create Appropriate Hyperslabs
+	// Select Hyperslab in Memory
 	// -------------------------------
-	// Setup for hyperslab selection
-	slabsize[0]      = slab_dims[0];
-	slabsize[1]      = slab_dims[1];
-	mem_offset[0]    = 0;
-	mem_offset[1]    = 0;
-	dset_offset[0]   = offset_Nx;
-	dset_offset[1]   = 0;
-	dset_slabsize[0] = slab_dims[0];
-	dset_slabsize[1] = slab_dims[1];
+	// Setup for memory hyperslab selection dimensions
+	for (int i = 0; i < dset_rank; ++i) {
+		slabsize[i]   = slab_dims[i];
+		mem_offset[i] = 0;
+		mem_dims[i]   = mem_space_dims[i];
+	}
 	
-	// Create the memory space for the hyperslabs for each process - reset second dimension for hyperslab selection to ignore padding
-	mem_dims[0] = mem_space_dims[0];
-	mem_dims[1] = mem_space_dims[1];
-	mem_space = H5Screate_simple(Dims2D, mem_dims, NULL);
+	// Create the memory space for the hyperslabs for each process
+	mem_space = H5Screate_simple(Dims, mem_dims, NULL);
 
 	// Select local hyperslab from the memoryspace (slab size adjusted to ignore 0 padding) - local to each process
 	if ((H5Sselect_hyperslab(mem_space, H5S_SELECT_SET, mem_offset, NULL, slabsize, NULL)) < 0 ) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- unable to select local hyperslab for datset ["CYAN"%s"RESET"] at: Iter = ["CYAN"%d"RESET"] t = ["CYAN"%lf"RESET"]\n-->> Exiting...\n", dset_name, iters, t);
+		exit(1);		
+	}
+
+	// -------------------------------
+	// Select Hyperslab in File
+	// -------------------------------
+	// Setup for file hyperslab selection dimensions
+	for (int i = 0; i < dset_rank; ++i) {
+		dset_offset[i]   = 0;
+		dset_slabsize[i] = slab_dims[i];
+	}
+	dset_offset[0]   = offset_Nx;
+
+	// Select the hyperslab in the dataset on file to write to
+	if ((H5Sselect_hyperslab(dset_space, H5S_SELECT_SET, dset_offset, NULL, dset_slabsize, NULL)) < 0 ) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to select hyperslab in file for datset ["CYAN"%s"RESET"] at: Iter = ["CYAN"%d"RESET"] t = ["CYAN"%lf"RESET"]\n-->> Exiting...\n", dset_name, iters, t);
 		exit(1);		
 	}
 
@@ -838,12 +888,6 @@ void WriteDataFourier(double t, int iters, hid_t group_id, char* dset_name, hid_
 	// Set up Collective write property
 	plist_id = H5Pcreate(H5P_DATASET_XFER);
 	H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
-
-	// Select the hyperslab in the dataset on file to write to
-	if ((H5Sselect_hyperslab(dset_space, H5S_SELECT_SET, dset_offset, NULL, dset_slabsize, NULL)) < 0 ) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to select hyperslab in file for datset ["CYAN"%s"RESET"] at: Iter = ["CYAN"%d"RESET"] t = ["CYAN"%lf"RESET"]\n-->> Exiting...\n", dset_name, iters, t);
-		exit(1);		
-	}
 
 	// Write data to file
 	if ((H5Dwrite(file_space, dtype, mem_space, dset_space, plist_id, data)) < 0 ) {
@@ -870,57 +914,69 @@ void WriteDataFourier(double t, int iters, hid_t group_id, char* dset_name, hid_
  * @param offset_Nx      The offset in the dataset that each process will write to
  * @param data           The data being written to file
  */
-void WriteDataReal(double t, int iters, hid_t group_id, char* dset_name, hid_t dtype, hsize_t* dset_dims, hsize_t* slab_dims, hsize_t* mem_space_dims, int offset_Nx, double* data) {
+void WriteDataReal(double t, int iters, hid_t group_id, char* dset_name, hid_t dtype, int dset_rank, hsize_t* dset_dims, hsize_t* slab_dims, hsize_t* mem_space_dims, int offset_Nx, double* data) {
 
 	// Initialize variables
 	hid_t plist_id;
 	hid_t dset_space;
 	hid_t file_space;
 	hid_t mem_space;
-	static const hsize_t Dims2D = 2;
-	hsize_t dims2d[Dims2D];        // array to hold dims of the dataset to be created
-	hsize_t mem_dims[Dims2D];	   // Array to hold the dimensions of the memory space - this will be diferent to slab dims for real data due to zero
-	hsize_t mem_offset[Dims2D];    // Array to hold the offset in eahc direction for the local hypslabs to write from
-	hsize_t slabsize[Dims2D];      // Array holding the size of the hyperslab in each direction
-	hsize_t dset_offset[Dims2D];   // Array containig the offset positions in the file for each process to write to
-	hsize_t dset_slabsize[Dims2D]; // Array containing the size of the slabbed that is being written to in file	
+	const int Dims = dset_rank;
+	hsize_t dims[Dims];          // array to hold dims of the dataset to be created
+	hsize_t mem_dims[Dims];	     // Array to hold the dimensions of the memory space - this will be diferent to slab dims for real data due to zero
+	hsize_t mem_offset[Dims];    // Array to hold the offset in each direction for the local hypslabs to write from
+	hsize_t slabsize[Dims];      // Array holding the size of the hyperslab in each direction
+	hsize_t dset_offset[Dims];   // Array containig the offset positions in the file for each process to write to
+	hsize_t dset_slabsize[Dims]; // Array containing the size of the slabs that is being written to in file	
 
 	// -------------------------------
 	// Create Dataset In Group
 	// -------------------------------
 	// Create the dataspace for the data set
-	dims2d[0] = dset_dims[0];
-	dims2d[1] = dset_dims[1];
-	dset_space = H5Screate_simple(Dims2D, dims2d, NULL); 
+	for (int i = 0; i < dset_rank; ++i) {
+		dims[i] = dset_dims[i];
+	}
+	dset_space = H5Screate_simple(Dims, dims, NULL); 
 	if (dset_space < 0) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set dataspace for dataset: ["CYAN"%s"RESET"] at: Iter = ["CYAN"%d"RESET"] t = ["CYAN"%lf"RESET"]\n-->> Exiting...\n", dset_name, iters, t);
 		exit(1);
-	}
+	}	
 
 	// Create the file space id for the dataset in the group
 	file_space = H5Dcreate(group_id, dset_name, H5T_NATIVE_DOUBLE, dset_space, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 
 	// -------------------------------
-	// Create Appropriate Hyperslabs
+	// Select Hyperslab in Memory
 	// -------------------------------
-	// Setup for hyperslab selection
-	slabsize[0]      = slab_dims[0];
-	slabsize[1]      = slab_dims[1];
-	mem_offset[0]    = 0;
-	mem_offset[1]    = 0;
-	dset_offset[0]   = offset_Nx;
-	dset_offset[1]   = 0;
-	dset_slabsize[0] = slab_dims[0];
-	dset_slabsize[1] = slab_dims[1];
+	// Setup for memory hyperslab selection dimensions
+	for (int i = 0; i < dset_rank; ++i) {
+		slabsize[i]   = slab_dims[i];
+		mem_offset[i] = 0;
+		mem_dims[i]   = mem_space_dims[i];
+	}
 	
 	// Create the memory space for the hyperslabs for each process - reset second dimension for hyperslab selection to ignore padding
-	mem_dims[0] = mem_space_dims[0];
-	mem_dims[1] = mem_space_dims[1];
-	mem_space = H5Screate_simple(Dims2D, mem_dims, NULL);
+	mem_space = H5Screate_simple(Dims, mem_dims, NULL);
 
 	// Select local hyperslab from the memoryspace (slab size adjusted to ignore 0 padding) - local to each process
 	if ((H5Sselect_hyperslab(mem_space, H5S_SELECT_SET, mem_offset, NULL, slabsize, NULL)) < 0 ) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- unable to select local hyperslab for datset ["CYAN"%s"RESET"] at: Iter = ["CYAN"%d"RESET"] t = ["CYAN"%lf"RESET"]\n-->> Exiting...\n", dset_name, iters, t);
+		exit(1);		
+	}
+
+	// -------------------------------
+	// Select Hyperslab in File
+	// -------------------------------
+	// Set up file hyperslab selection dimensions
+	for (int i = 0; i < dset_rank; ++i) {
+		dset_offset[i]   = 0;
+		dset_slabsize[i] = slab_dims[i];
+	}
+	dset_offset[0]   = offset_Nx;
+
+	// Select the hyperslab in the dataset on file to write to
+	if ((H5Sselect_hyperslab(dset_space, H5S_SELECT_SET, dset_offset, NULL, dset_slabsize, NULL)) < 0 ) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to select hyperslab in file for datset ["CYAN"%s"RESET"] at: Iter = ["CYAN"%d"RESET"] t = ["CYAN"%lf"RESET"]\n-->> Exiting...\n", dset_name, iters, t);
 		exit(1);		
 	}
 
@@ -930,12 +986,6 @@ void WriteDataReal(double t, int iters, hid_t group_id, char* dset_name, hid_t d
 	// Set up Collective write property
 	plist_id = H5Pcreate(H5P_DATASET_XFER);
 	H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
-
-	// Select the hyperslab in the dataset on file to write to
-	if ((H5Sselect_hyperslab(dset_space, H5S_SELECT_SET, dset_offset, NULL, dset_slabsize, NULL)) < 0 ) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to select hyperslab in file for datset ["CYAN"%s"RESET"] at: Iter = ["CYAN"%d"RESET"] t = ["CYAN"%lf"RESET"]\n-->> Exiting...\n", dset_name, iters, t);
-		exit(1);		
-	}
 
 	// Write data to file
 	if ((H5Dwrite(file_space, dtype, mem_space, dset_space, plist_id, data)) < 0 ) {
@@ -1008,7 +1058,7 @@ void FinalWriteAndCloseOutputFile(const long int* N) {
 	const long int Ny 		  = N[1];
 	const long int Ny_Fourier = Ny / 2 + 1;
 	herr_t status;
-	const hsize_t D1 = 1;
+	static const hsize_t D1 = 1;
 	hsize_t dims1D[D1];
 
 
