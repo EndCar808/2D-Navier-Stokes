@@ -131,6 +131,10 @@ def sim_data(input_dir, method = "default"):
                 if line.startswith('Total Saving Steps'):
                     data.ndata = int(line.split()[-1]) + 1 # plus 1 to include initial condition
 
+                ## Parse the initial condition
+                if line.startswith('Initial Conditions'):
+                    data.u0 = str(line.split()[-1])
+
             ## Get spectrum size
             data.spec_size = int(np.sqrt((data.Nx / 2)**2 + (data.Ny / 2)**2) + 1)            
     else:
@@ -387,10 +391,12 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
             self.enrg_spectrum = np.zeros((sim_data.ndata, int(2 * self.kmax - 1), int(2 * self.kmax - 1)))
             self.enst_spectrum = np.zeros((sim_data.ndata, int(2 * self.kmax - 1), int(2 * self.kmax - 1)))
             ## Allocate histogram arrays
-            self.w_pdf_counts  = np.zeros((sim_data.ndata, 1000))
-            self.u_pdf_counts  = np.zeros((sim_data.ndata, 1000))
-            self.w_pdf_ranges  = np.zeros((sim_data.ndata, 1001))
-            self.u_pdf_ranges  = np.zeros((sim_data.ndata, 1001))
+            self.w_pdf_counts = np.zeros((sim_data.ndata, 1000))
+            self.u_pdf_counts = np.zeros((sim_data.ndata, 1000))
+            self.w_pdf_ranges = np.zeros((sim_data.ndata, 1001))
+            self.u_pdf_ranges = np.zeros((sim_data.ndata, 1001))
+            ## Allocate spectra arrays
+            self.enst_spectrum_1d = np.zeros((sim_data.ndata, sim_data.spec_size))
 
     ## Create instance of data class
     data = PostProcessData()
@@ -424,6 +430,8 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                     data.w_pdf_counts[nn, :] = file[group]["VorticityPDFCounts"][:]
                 if 'VorticityPDFRanges' in list(file[group].keys()):
                     data.w_pdf_ranges[nn, :] = file[group]["VorticityPDFRanges"][:]
+                if 'EnstrophySpectrum' in list(file[group].keys()):
+                    data.enst_spectrum_1d[nn, :] = file[group]["EnstrophySpectrum"][:]
                 nn += 1
             else:
                 continue
@@ -575,7 +583,7 @@ def enstrophy_spectrum(w_h, kx, ky, Nx, Ny):
         for j in range(w_h.shape[1]):
 
             ## Compute the indx
-            spec_indx = int(np.sqrt(kx[i] * kx[i] + ky[j] * ky[j]))
+            spec_indx = int(np.round(np.sqrt(kx[i] * kx[i] + ky[j] * ky[j])))
             
             if j == 0 or j == w_h.shape[0] - 1:
                 ## Update the spectrum sum for the current mode

@@ -18,6 +18,7 @@
 void AllocateMemory(const long int* N);
 void InitializeFFTWPlans(const long int* N);
 void FreeMemoryAndCleanUp(void);
+void EnstrophySpectrum(void);
 // ---------------------------------------------------------------------
 //  End of File
 // ---------------------------------------------------------------------

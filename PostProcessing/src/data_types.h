@@ -63,6 +63,7 @@
 // Post processing Modes
 #define __REAL_STATS
 #define __FULL_FIELD
+#define __SPECTRA
 // ---------------------------------------------------------------------
 //  Global Variables
 // ---------------------------------------------------------------------
@@ -97,7 +98,7 @@ typedef struct system_vars_struct {
 	double dx;							// Collocation point spaceing in the x direction
 	double dy;							// Collocation point spacing in the y direction
 	double w_max_init;					// Max vorticity of the initial condition
-	int n_spect;                        // Size of the spectra arrays
+	int n_spec;                         // Size of the spectra arrays
 	int force_k; 						// The forcing wavenumber 
 	int print_every;                    // Records how many iterations are performed before printing to file
 	double EKMN_ALPHA; 					// The value of the Ekman drag coefficient
@@ -124,6 +125,7 @@ typedef struct postprocess_data_struct {
 	double* phases;			// Array to hold the full field zero centred phases
 	double* enrg;			// Array to hold the full field zero centred energy
 	double* enst;			// Array to hold the full field zero centred enstrophy
+	double* enst_spec; 		// Array to hoold the enstrophy spectrum
 } postprocess_data_struct;
 
 // Post processing stats data struct

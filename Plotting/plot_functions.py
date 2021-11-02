@@ -347,7 +347,7 @@ def plot_decay_snaps(out_dir, i, w, w_min, w_max, measure_min, measure_max, x, y
     plt.close()
 
 
-def plot_decay_snaps_2(out_dir, i, w, w_min, w_max, measure_min, measure_max, x, y, time, Nx, Ny, kx, ky, enrg_spec, enst_spec, tot_en, tot_ens, tot_pal):
+def plot_decay_snaps_2(out_dir, i, w, w_min, w_max, measure_min, measure_max, x, y, time, Nx, Ny, kx, ky, enrg_spec, enst_spec, tot_en, tot_ens, tot_pal, u0):
 
        """
        Plots summary snap of the solver data for the current iteration. Plots vorticity, full zero centre phases and spectra.
@@ -383,7 +383,7 @@ def plot_decay_snaps_2(out_dir, i, w, w_min, w_max, measure_min, measure_max, x,
        ## Plot vorticity   
        ##-------------------------
        ax1 = fig.add_subplot(gs[0, 0])
-       im1 = ax1.imshow(w, extent = (y[0], y[-1], x[-1], x[0]), cmap = "jet", vmin = w_min, vmax = w_max) 
+       im1 = ax1.imshow(w, extent = (y[0], y[-1], x[-1], x[0]), cmap = "jet") #, vmin = w_min, vmax = w_max 
        ax1.set_xlabel(r"$y$")
        ax1.set_ylabel(r"$x$")
        ax1.set_xlim(0.0, y[-1])
@@ -420,41 +420,63 @@ def plot_decay_snaps_2(out_dir, i, w, w_min, w_max, measure_min, measure_max, x,
        ax3 = fig.add_subplot(gs[1, 0])
        kindx = int(Nx / 3 + 1)
        kk = np.arange(1, kindx)
-       ax3.plot(kk, (kk**6 /(1 + kk/60)**18 )/ 10**6.5)
-       for i in range(enrg_spec.shape[0]):
-              spec = enrg_spec[i, 1:kindx] / np.sum(enrg_spec[i, 1:kindx])
-              if i == 0:
-                     ax3.plot(kk, spec, color = 'y')
-              elif i == enrg_spec.shape[0] - 1:
-                     ax3.plot(kk, spec, color = 'b')
-              else:                     
-                     ax3.plot(kk, spec, linestyle = ':', color = 'k', linewidth = 0.5, alpha = 0.02)
+       line_color = []
+       if u0 == "DECAY_TURB_II":
+              p1, = ax3.plot(kk, (kk**6 /(1 + kk/60.)**18 )/ 10**7.5)
+       elif u0 == "DECAY_TURB":
+              p1, = ax3.plot(kk, (kk /(1 + (kk**4)/6.))/ 10**0.25)              
+       line_color.append(p1.get_color())
+       for j in range(enrg_spec.shape[0]):
+              spec_enrg = enrg_spec[j, 1:kindx] / np.sum(enrg_spec[j, 1:kindx])
+              if j == 0:
+                     p2, = ax3.plot(kk, spec_enrg, color = 'y')
+                     line_color.append(p2.get_color())
+              elif j == enrg_spec.shape[0] - 1:
+                     p3, = ax3.plot(kk, spec_enrg, color = 'b')
+                     line_color.append(p3.get_color())
+              # else:                     
+              #        ax3.plot(kk, spec, linestyle = ':', color = 'k', linewidth = 0.5, alpha = 0.02)
        ax3.set_xlabel(r"$|k|$")
        ax3.set_ylabel(r"$\mathcal{K}(|k|) / \sum \mathcal{K}(|k|)$")
        ax3.set_title(r"Energy Spectrum")
-       ax3.set_ylim(1e-10, 10)
+       # ax3.set_ylim(1e-10, 10)
        ax3.set_yscale('log')
        ax3.set_xscale('log')
+       ax3.legend([r"Paper", r"$E(0)$", r"$E(t)$"])
+       leg = ax3.get_legend()
+       for j, handle in enumerate(leg.legendHandles):
+              handle.set_color(line_color[j])
 
        #--------------------------
        # Plot Enstrophy Spectrum   
        #--------------------------
        ax4 = fig.add_subplot(gs[1, 1]) 
-       kindx = int(Nx / 3 + 1)
-       for i in range(enst_spec.shape[0]):
-              spec = enst_spec[i, 1:kindx] / np.sum(enst_spec[i, 1:kindx])
-              if i == 0:
-                     ax4.plot(kk, spec, color = 'y')
-              elif i == enst_spec.shape[0] - 1:
-                     ax4.plot(kk, spec,  color = 'b')
+       line_color = []
+       if u0 == "DECAY_TURB_II":
+              p1, = ax4.plot(kk, (kk**8 /(1 + kk/60.)**18 )/ 10**7.5)
+       elif u0 == "DECAY_TURB":
+              p1, = ax4.plot(kk, ((kk**3) /(1 + (kk**4)/6.))/ 10**2.5)
+       line_color.append(p1.get_color())
+       for j in range(enst_spec.shape[0]):
+              spec_enst = enst_spec[j, 1:kindx] / np.sum(enst_spec[j, 1:kindx])
+              if j == 0:
+                     p2, = ax4.plot(kk, spec_enst, color = 'y')
+                     line_color.append(p2.get_color())
+              elif j == enst_spec.shape[0] - 1:
+                     p3, = ax4.plot(kk, spec_enst,  color = 'b')
+                     line_color.append(p3.get_color())
               else:                     
-                     ax4.plot(kk, spec, linestyle = ':', color = 'k', linewidth = 0.5, alpha = 0.02)
+                     ax4.plot(kk, spec_enst, linestyle = ':', color = 'k', linewidth = 0.5, alpha = 0.02)
        ax4.set_xlabel(r"$|k|$")
        ax4.set_ylabel(r"$\mathcal{E}(|k|) / \sum \mathcal{E}(|k|)$")
        ax4.set_title(r"Enstrophy Spectrum")
-       ax4.set_ylim(1e-10, 10)
+       # ax4.set_ylim(1e-10, 10)
        ax4.set_yscale('log')
        ax4.set_xscale('log')
+       ax4.legend([r"Paper", r"$E(0)$", r"$E(t)$"])
+       leg = ax4.get_legend()
+       for j, handle in enumerate(leg.legendHandles):
+              handle.set_color(line_color[j])
 
        ## Save figure
        plt.savefig(out_dir + "Decay2_SNAP_{:05d}.png".format(i), bbox_inches='tight') 

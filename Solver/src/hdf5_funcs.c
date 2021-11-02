@@ -228,6 +228,34 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 	// Write the real space vorticity
 	WriteDataReal(0.0, 0, main_group_id, "u", H5T_NATIVE_DOUBLE, d_set_rank3D, dset_dims3D, slab_dims3D, mem_space_dims3D, sys_vars->local_Nx_start, run_data->u);
 	#endif
+	#ifdef PHASE_ONLY
+	// Record the Fourier amplitudes and phases
+	for (int i = 0; i < sys_vars->local_Nx; ++i) {
+		tmp = i * Ny_Fourier;
+		for (int j = 0; j < Ny_Fourier; ++j) {
+			indx = tmp + j;
+
+			//record the amplitudes
+			run_data->a_k = cabs(run_data->w_hat[indx]);
+			// record the phases 
+			run_data->phi_k = carg(run_data->w_hat[indx]);
+		}
+	}
+	
+	// Create dimension arrays for the Fourier amplitudes and phases
+	dset_dims2D[0] 	  = Nx;
+	dset_dims2D[1] 	  = Ny_Fourier;
+	slab_dims2D[0] 	  = sys_vars->local_Nx;
+	slab_dims2D[1] 	  = Ny_Fourier;
+	mem_space_dims2D[0] = sys_vars->local_Nx;
+	mem_space_dims2D[1] = Ny_Fourier;
+
+	// Write the Fourier amplitudes
+	WriteDataFourier(0.0, 0, main_group_id, "a_k", H5T_NATIVE_DOUBLE, d_set_rank2D, dset_dims2D, slab_dims2D, mem_space_dims2D, sys_vars->local_Nx_start, run_data->a_k);
+
+	// Write the Fourier phases
+	WriteDataFourier(0.0, 0, main_group_id, "phi_k", H5T_NATIVE_DOUBLE, d_set_rank2D, dset_dims2D, slab_dims2D, mem_space_dims2D, sys_vars->local_Nx_start, run_data->phi_k);
+	#endif
 	#ifdef TESTING
 	if (!(strcmp(sys_vars->u0, "TG_VEL")) || !(strcmp(sys_vars->u0, "TG_VORT"))) {
 		// Create dimension arrays
@@ -659,6 +687,34 @@ void WriteDataToFile(double t, double dt, long int iters) {
 
 	// Write the real space vorticity
 	WriteDataReal(t, (int)iters, main_group_id, "u", H5T_NATIVE_DOUBLE, d_set_rank3D, dset_dims3D, slab_dims3D, mem_space_dims3D, sys_vars->local_Nx_start, run_data->u);
+	#endif
+	#ifdef PHASE_ONLY
+	// Record the Fourier amplitudes and phases
+	for (int i = 0; i < sys_vars->local_Nx; ++i) {
+		tmp = i * Ny_Fourier;
+		for (int j = 0; j < Ny_Fourier; ++j) {
+			indx = tmp + j;
+
+			//record the amplitudes
+			run_data->a_k = cabs(run_data->w_hat[indx]);
+			// record the phases 
+			run_data->phi_k = carg(run_data->w_hat[indx]);
+		}
+	}
+
+	// Create dimension arrays for the Fourier amplitudes and phases
+	dset_dims2D[0] 	  = Nx;
+	dset_dims2D[1] 	  = Ny_Fourier;
+	slab_dims2D[0] 	  = sys_vars->local_Nx;
+	slab_dims2D[1] 	  = Ny_Fourier;
+	mem_space_dims2D[0] = sys_vars->local_Nx;
+	mem_space_dims2D[1] = Ny_Fourier;
+
+	// Write the Fourier amplitudes
+	WriteDataFourier(t, (int)iters, main_group_id, "a_k", H5T_NATIVE_DOUBLE, d_set_rank2D, dset_dims2D, slab_dims2D, mem_space_dims2D, sys_vars->local_Nx_start, run_data->a_k);
+
+	// Write the Fourier phases
+	WriteDataFourier(t, (int)iters, main_group_id, "phi_k", H5T_NATIVE_DOUBLE, d_set_rank2D, dset_dims2D, slab_dims2D, mem_space_dims2D, sys_vars->local_Nx_start, run_data->phi_k);
 	#endif
 	#ifdef TESTING
 	if (!(strcmp(sys_vars->u0, "TG_VEL")) || !(strcmp(sys_vars->u0, "TG_VORT"))) {

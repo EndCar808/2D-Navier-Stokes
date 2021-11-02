@@ -85,7 +85,7 @@ int main(int argc, char** argv) {
 	// --------------------------------
 	AllocateMemory(sys_vars->N);
 
-	InitializeFFTWPlans(sys_vars->N);
+	InitializeFFTWPlans(sys_vars->N);	
 
 
 	//////////////////////////////
@@ -154,6 +154,14 @@ int main(int argc, char** argv) {
 				}
 			}
 		}
+		#endif
+
+		// --------------------------------
+		//  Spectra Data
+		// --------------------------------
+		#ifdef __SPECTRA
+		// Compute the enstrophy spectrum
+		EnstrophySpectrum();
 		#endif
 
 		// --------------------------------
@@ -255,7 +263,6 @@ void AllocateMemory(const long int* N) {
 	// Compute maximum wavenumber
 	sys_vars->kmax    = (int) (Nx / 3);	
 
-
 	// --------------------------------
 	//  Allocate Field Data
 	// --------------------------------
@@ -310,6 +317,23 @@ void AllocateMemory(const long int* N) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Full Field Energy");
 		exit(1);
 	}		
+	#endif
+
+	#ifdef __SPECTRA
+	// Get the size of the spectra
+	sys_vars->n_spec = (int) sqrt(pow((double)Nx / 2.0, 2.0) + pow((double)Ny / 2.0, 2.0)) + 1;
+
+	// Allocate memory for the enstrophy spectrum
+	proc_data->enst_spec = (double* )fftw_malloc(sizeof(double) * sys_vars->n_spec);
+	if (proc_data->enst_spec == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "1D Enstrophy Spectrum");
+		exit(1);
+	}	
+
+	// Initialize arrays
+	for (int i = 0; i < sys_vars->n_spec; ++i) {
+		proc_data->enst_spec[i] = 0.0;
+	}
 	#endif
 
 	// --------------------------------	
@@ -383,6 +407,40 @@ void InitializeFFTWPlans(const long int* N) {
 	#endif
 }
 /**
+ * Function to compute the 1D enstrophy spectrum from the Fourier vorticity
+ */
+void EnstrophySpectrum(void) {
+
+	// Initialize variables
+	int tmp, indx;
+	int spec_indx;
+	const long int Nx 		  = sys_vars->N[0];
+	const long int Ny 		  = sys_vars->N[1];
+	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
+	double norm_fac  = 0.5 / pow(Nx * Ny, 2.0);
+	double const_fac = 4.0 * pow(M_PI, 2.0); 
+
+	// --------------------------------
+	//  Compute spectrum
+	// --------------------------------	
+	for (int i = 0; i < Nx; ++i) {
+		tmp = i * Ny_Fourier;
+		for (int j = 0; j < Ny_Fourier; ++j) {
+			indx = tmp + j;
+
+			// Compute spectrum index/bin
+			spec_indx = (int )round(sqrt(pow(run_data->k[0][i], 2.0) + pow(run_data->k[1][j], 2.0)));
+
+			if ((j == 0) || (j == Ny_Fourier - 1)) {
+				proc_data->enst_spec[spec_indx] += const_fac * norm_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+			}
+			else {
+				proc_data->enst_spec[spec_indx] += 2.0 * const_fac * norm_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+			}
+		}
+	}
+}
+/**
  * Wrapper function to free memory and close any objects before exiting
  */
 void FreeMemoryAndCleanUp(void) {
@@ -402,6 +460,9 @@ void FreeMemoryAndCleanUp(void) {
 	fftw_free(proc_data->phases);
 	fftw_free(proc_data->enrg);
 	fftw_free(proc_data->enst);
+	#endif
+	#ifdef __SPECTRA
+	fftw_free(proc_data->enst_spec);
 	#endif
 	for (int i = 0; i < SYS_DIM; ++i) {
 		fftw_free(run_data->x[i]);

@@ -67,8 +67,11 @@
 #define VIS_POW 2.0             // The power of the hyperviscosity -> 1.0 means no hyperviscosity
 #endif
 #if defined(__EKMN_DRAG)
-#define EKMN_DRAG     			// Turn or Ekman drag if called for at compilation time
+#define EKMN_DRAG     			// Turn on Ekman drag if called for at compilation time
 #define EKMN_POW -2.0 			// The power of the Eckman drag term -> 0.0 means no drag
+#endif
+#if defined(__PHASE_ONLY)		// Turn on phase only mode if called for at compilation
+#define PHASE_ONLY
 #endif
 // Testing the solver will be decided at compilation
 #if defined(__TESTING)
@@ -120,7 +123,7 @@
 #define DT_K0 6.0				// The peak wavenumber for the McWilliams decaying vortex turblence initial condition
 #define DT_E0 0.5               // The initial energy for the McWilliams decaying vortex turbulence initial condition
 #define DT2_K0 30				// The peak wavenumber for the second McWilliams decaying turbulence initial condition
-#define DT2_C0 0.5				// The spectrum normalizing constant for the second McWilliams decaying turbulence initial condition
+#define DT2_E0 0.5				// The spectrum normalizing constant for the second McWilliams decaying turbulence initial condition
 #define GDT_K0 5.0              // The peak wavenumber for the Gaussian decay turbulence initial condition
 #define GDT_C0 0.06             // The intial energy of the Gaussian decaying turbulence initial condition
 // System checking parameters
@@ -178,6 +181,9 @@ typedef struct runtime_data_struct {
 	fftw_complex* u_hat;      // Fourier space velocity
 	double* w;				  // Real space vorticity
 	double* u;				  // Real space velocity
+	double* a_k;			  // Fourier vorticity amplitudes
+	double* tmp_a_k;
+	double* phi_k;			  // Fourier vorticity phases
 	double* tot_energy;       // Array to hold the total energy over the simulation
 	double* tot_enstr;		  // Array to hold the total entrophy over the simulation
 	double* tot_palin;		  // Array to hold the total palinstrophy over the simulaiotns

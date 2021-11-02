@@ -158,13 +158,13 @@ if __name__ == '__main__':
     emax  = np.amax(run_data.tot_enrg[:] / run_data.tot_enrg[0])
     enmax = np.amax(run_data.tot_enst[:] / run_data.tot_enst[0])
     pmax  = np.amax(run_data.tot_palin[:] / run_data.tot_palin[0])
-    print(emax, enmax, pmax)
+    # print(emax, enmax, pmax)
     m_max = np.amax([emax, enmax, pmax])
     emin  = np.amin(run_data.tot_enrg[:] / run_data.tot_enrg[0])
     enmin = np.amin(run_data.tot_enst[:] / run_data.tot_enst[0])
     pmin  = np.amin(run_data.tot_palin[:] / run_data.tot_palin[0])
     m_min = np.amin([emin, enmin, pmin])
-    print(emin, enmin, pmin)
+    # print(emin, enmin, pmin)
 
     # -----------------------------------------
     ## ------ Plot Snaps
@@ -199,9 +199,8 @@ if __name__ == '__main__':
                         process.join()
             else:
                 # Loop over snapshots
-                print(spectra_data.enrg_spectrum[0, :int(sys_params.Nx/3)])
                 for i in range(sys_params.ndata):
-                    plot_decay_snaps_2(cmdargs.out_dir, i, run_data.w[i, :, :], wmin, wmax, m_min, m_max, run_data.x, run_data.y, run_data.time, sys_params.Nx, sys_params.Ny, run_data.kx, run_data.ky, spectra_data.enrg_spectrum[:i, :], spectra_data.enst_spectrum[:i, :], run_data.tot_enrg, run_data.tot_enst, run_data.tot_palin)
+                    plot_decay_snaps_2(cmdargs.out_dir, i, run_data.w[i, :, :], wmin, wmax, m_min, m_max, run_data.x, run_data.y, run_data.time, sys_params.Nx, sys_params.Ny, run_data.kx, run_data.ky, spectra_data.enrg_spectrum[:i, :], spectra_data.enst_spectrum[:i, :], run_data.tot_enrg, run_data.tot_enst, run_data.tot_palin, sys_params.u0)
                 # i = sys_params.ndata - 1
                 # plot_decay_snaps_2(cmdargs.out_dir, i, run_data.w[i, :, :], wmin, wmax, run_data.x, run_data.y, run_data.time, sys_params.Nx, sys_params.Ny, run_data.kx, run_data.ky, spectra_data.enrg_spectrum[:i, :], spectra_data.enst_spectrum[:i, :], run_data.tot_enrg, run_data.tot_enst, run_data.tot_palin)
 

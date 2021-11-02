@@ -228,6 +228,19 @@ void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdif
 	const long int Nx = N[0];
 	double dp_ho_step;
 	#endif
+	#ifdef PHASE_ONLY
+	// Pre-record the amplitudes so they can be reset after update step
+	for (int i = 0; i < local_Nx; ++i) {
+		tmp = i * Ny_Fourier;
+		for (int j = 0; j < Ny_Fourier; ++j) {
+			indx = tmp + j;
+
+			// record amplitudes
+			run_data->tmp_a_k[indx] = cabs(run_data->w_hat[indx]);
+		}
+	}
+	double tmp_a_k_norm;
+	#endif
 	
 	/////////////////////
 	/// RK STAGES
@@ -311,8 +324,12 @@ void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdif
 		for (int j = 0; j < Ny_Fourier; ++j) {
 			indx = tmp + j;
 
+			#if defined(PHASE_ONLY)
+			tmp_a_k_norm = cabs(run_data->w_hat[indx]);
+			#endif
 
-			#ifdef __EULER
+
+			#if defined(__EULER)
 			// Update the Fourier space vorticity with the RHS
 			run_data->w_hat[indx] = run_data->w_hat[indx] + (dt * (RK5_B1 * RK_data->RK1[indx]) + dt * (RK5_B3 * RK_data->RK3[indx]) + dt * (RK5_B4 * RK_data->RK4[indx]) + dt * (RK5_B5 * RK_data->RK5[indx]) + dt * (RK5_B6 * RK_data->RK6[indx]));
 			#elif defined(__NAVIER)
@@ -336,10 +353,18 @@ void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdif
 			// Complete the update step
 			run_data->w_hat[indx] = run_data->w_hat[indx] * ((2.0 - D_fac) / (2.0 + D_fac)) + (2.0 * dt / (2.0 + D_fac)) * (RK5_B1 * RK_data->RK1[indx] + RK5_B3 * RK_data->RK3[indx] + RK5_B4 * RK_data->RK4[indx] + RK5_B5 * RK_data->RK5[indx] + RK5_B6 * RK_data->RK6[indx]);
 			#endif
+			#ifdef PHASE_ONLY
+			// Reset the amplitudes
+			run_data->w_hat[indx] *= (tmp_a_k_norm / cabs(run_data->w_hat[indx]));
+			#endif
 			#ifdef __DPRK5
 			if (iters > 1) {
 				// Get the higher order update step
 				dp_ho_step = run_data->w_hat[indx] + (dt * (RK5_Bs1 * RK_data->RK1[indx]) + dt * (RK5_Bs3 * RK_data->RK3[indx]) + dt * (RK5_Bs4 * RK_data->RK4[indx]) + dt * (RK5_Bs5 * RK_data->RK5[indx]) + dt * (RK5_Bs6 * RK_data->RK6[indx])) + dt * (RK5_Bs7 * RK_data->RK7[indx]));
+				#ifdef PHASE_ONLY
+				// Reset the amplitudes
+				dp_ho_step *= (tmp_a_k_norm / cabs(run_data->w_hat[indx]))
+				#endif
 
 				// Denominator in the error
 				err_denom = DP_ABS_TOL + DPMax(cabs(RK_data->w_hat_last[indx]), cabs(run_data->w_hat[indx])) * DP_REL_TOL;
@@ -435,6 +460,19 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Nx, RK_da
 	double D_fac;
 	#endif
 	const long int Ny_Fourier = N[1] / 2 + 1;
+	#ifdef PHASE_ONLY
+	// Pre-record the amplitudes so they can be reset after update step
+	for (int i = 0; i < local_Nx; ++i) {
+		tmp = i * Ny_Fourier;
+		for (int j = 0; j < Ny_Fourier; ++j) {
+			indx = tmp + j;
+
+			// record amplitudes
+			run_data->tmp_a_k[indx] = cabs(run_data->w_hat[indx]);
+		}
+	}
+	double tmp_a_k_norm;
+	#endif
 
 
 	/////////////////////
@@ -485,8 +523,12 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Nx, RK_da
 		for (int j = 0; j < Ny_Fourier; ++j) {
 			indx = tmp + j;
 
+			#if defined(PHASE_ONLY)
+			// Pre-record the amplitudes
+			tmp_a_k_norm = cabs(run_data->w_hat[indx]);
+			#endif
 
-			#ifdef __EULER
+			#if defined(__EULER)
 			// Update Fourier vorticity with the RHS
 			run_data->w_hat[indx] = run_data->w_hat[indx] + (dt * (RK4_B1 * RK_data->RK1[indx]) + dt * (RK4_B2 * RK_data->RK2[indx]) + dt * (RK4_B3 * RK_data->RK3[indx]) + dt * (RK4_B4 * RK_data->RK4[indx]));
 			#elif defined(__NAVIER)
@@ -509,6 +551,9 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Nx, RK_da
 
 			// Update temporary input for nonlinear term
 			run_data->w_hat[indx] = run_data->w_hat[indx] * ((2.0 - D_fac) / (2.0 + D_fac)) + (2.0 * dt / (2.0 + D_fac)) * (RK4_B1 * RK_data->RK1[indx] + RK4_B2 * RK_data->RK2[indx] + RK4_B3 * RK_data->RK3[indx] + RK4_B4 * RK_data->RK4[indx]);
+			#endif
+			#if defined(PHASE_ONLY)
+			run_data->w_hat[indx] *= (tmp_a_k_norm / cabs(run_data->w_hat[indx]));
 			#endif
 		}
 	}
@@ -832,99 +877,13 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 		// ---------------------------------------
 		fftw_mpi_execute_dft_r2c((sys_vars->fftw_2d_dft_r2c), run_data->w, w_hat);
 	}
-	else if (!(strcmp(sys_vars->u0, "DECAY_TURB"))) {
-		// ---------------------------------------
-		// McWilliams - Decaying Turbulence IC
-		// ---------------------------------------
-		// Initialize memory for the Stream function
-		fftw_complex* psi_hat = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * local_Nx * Ny_Fourier);
-		double k_sqr;
-		double u1, u2;
-		double rand1, rand2;
-		double wnum_func;
-
-		// ---------------------------------------
-		// Initialize Fourier Stream Function
-		// ---------------------------------------
-		for (int i = 0; i < local_Nx; ++i) {	
-			tmp = i * (Ny_Fourier);
-			for (int j = 0; j < Ny_Fourier; ++j) {
-				indx = tmp + j;	
-
-				// Generate two standard normal variables using Box-Muller transform
-				u1 = (double)rand() / (double) RAND_MAX;
-				u2 = (double)rand() / (double) RAND_MAX;
-				rand1 = sqrt(-2.0 * log(u1)) * cos(2.0 * M_PI * u2);
-				rand2 = sqrt(-2.0 * log(u1)) * sin(2.0 * M_PI * u2);
-
-				if (run_data->k[0][i] == 0.0 && run_data->k[1][j] == 0.0) {
-					// Compute |k|^2 and the wavenumber function
-					wnum_func = 0.0;
-				}
-				else {
-					// Compute |k|^2 and the wavenumber function
-					k_sqr 	  = sqrt((double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]));
-					wnum_func = 1. / sqrt(k_sqr * (1.0 + pow(k_sqr / DT_K0, 4.0)));
-				}
-
-				// Compute the Fourier stream function so that variance is proportional to |k| / (1.0 + (|k|/k_0)^4)
-				psi_hat[indx] = rand1 * wnum_func + rand2 * wnum_func * I;
-			}
-		}
-
-		// ---------------------------------------
-		// Compute the Initial Energy
-		// ---------------------------------------
-		double spec_energy = 0.0;
-		for (int i = 0; i < local_Nx; ++i) {	
-			tmp = i * (Ny_Fourier);
-			for (int j = 0; j < Ny_Fourier; ++j) {
-				indx = tmp + j;	
-
-				// Wavenumber prefactor -> |k|^2
-				k_sqr = (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
-
-				if ((j == 0) || (j == Ny_Fourier - 1)) {
-					// Compute the spectral energy -> the k = 0 and Nx/2 have no conjugate so onlt count their contribution once
-					spec_energy += k_sqr * cabs(psi_hat[indx] * conj(psi_hat[indx]));
-				}
-				else {
-					// Compute the spectral energy
-					spec_energy += 2.0 * k_sqr * cabs(psi_hat[indx] * conj(psi_hat[indx]));	
-				}
-			}
-		}
-		// Normalize 
-		spec_energy *= (0.5 / pow(Nx * Ny, 2.0)) * 4.0 * pow(M_PI, 2.0);
-
-		// Reduce all local energy sums and broadcast back to each process
-		MPI_Allreduce(MPI_IN_PLACE, &spec_energy, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-
-		// -------------------------------------------
-		// Normalize & Compute the Fourier Vorticity
-		// -------------------------------------------
-		for (int i = 0; i < local_Nx; ++i) {	
-			tmp = i * (Ny_Fourier);
-			for (int j = 0; j < Ny_Fourier; ++j) {
-				indx = tmp + j;
-
-				// Wavenumber prefactor -> |k|^2
-				k_sqr = (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
-
-				// Compute the Fouorier vorticity
-				w_hat[indx] = -1.0 * k_sqr * psi_hat[indx] * sqrt(DT_E0 / spec_energy);
-			}
-		}
-
-		// free memory
-		fftw_free(psi_hat);
-	}
-	else if (!(strcmp(sys_vars->u0, "DECAY_TURB_II"))) {
-		// ---------------------------------------
-		// McWilliams 2000 - Decaying Turbulence IC
-		// ---------------------------------------
+	else if (!(strcmp(sys_vars->u0, "DECAY_TURB")) || !(strcmp(sys_vars->u0, "DECAY_TURB"))) {
+		// --------------------------------------------------------
+		// McWilliams 2000 - Decaying Turbulence ICs
+		// --------------------------------------------------------
 		// Initialize variables
-		double k_sqr;
+		double sqrt_k;
+		double inv_k_sqr;
 		double u1;
 		double spec_1d;
 
@@ -941,17 +900,28 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 
 				if (run_data->k[0][i] == 0.0 && run_data->k[1][j] == 0.0) {
 					// Compute the energy
-					k_sqr   = 0.0;
+					sqrt_k  = 0.0;
 					spec_1d = 0.0;
+
+					// Fill the vorticity	
+					w_hat[indx] = 0.0 + 0.0 * I;
 				}
 				else {
 					// Compute the form of the initial energy
-					k_sqr   = round(sqrt((double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j])));
-					spec_1d = pow(k_sqr, 6.0) / pow((1.0 + k_sqr / (2.0 * DT2_K0)), 18.0);
-				}
+					sqrt_k = sqrt((double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]));
 
-				// Fill the vorticity
-				w_hat[indx] = sqrt(pow(k_sqr, 2.0) * spec_1d / (2.0 * M_PI)) * cexp(2.0 * M_PI * u1 * I); // k_sqr 
+					if (!(strcmp(sys_vars->u0, "DECAY_TURB"))) {
+						// Computet the Broad band initial spectrum
+						spec_1d = sqrt_k / (1.0 + pow(sqrt_k, 4.0) / DT_K0);
+					} 
+					else if (!(strcmp(sys_vars->u0, "DECAY_TURB_II"))) {
+						// Compute the Narrow Band initial spectrum
+						spec_1d = pow(sqrt_k, 6.0) / pow((1.0 + sqrt_k / (2.0 * DT2_K0)), 18.0);
+					}
+					
+					// Fill the vorticity	
+					w_hat[indx] = sqrt_k * sqrt(spec_1d / (2.0 * M_PI)) * cexp(2.0 * M_PI * u1 * I); // sqrt_k pow(sqrt_k, 2.0) *
+				}
 			}
 		}
 
@@ -966,13 +936,13 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 
 				if (run_data->k[0][i] != 0 || run_data->k[1][j] != 0) {
 					// Wavenumber prefactor -> 1 / |k|^2
-					k_sqr = 1.0 / (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
+					inv_k_sqr = 1.0 / (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 
 					if ((j == 0) || (j == Ny_Fourier - 1)) {
-						enrg += k_sqr * cabs(w_hat[indx] * conj(w_hat[indx]));
+						enrg += inv_k_sqr * cabs(w_hat[indx] * conj(w_hat[indx]));
 					}
 					else {
-						enrg += 2.0 * k_sqr * cabs(w_hat[indx] * conj(w_hat[indx]));
+						enrg += 2.0 * inv_k_sqr * cabs(w_hat[indx] * conj(w_hat[indx]));
 					}
 				}
 			}
@@ -991,8 +961,14 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 			for (int j = 0; j < Ny_Fourier; ++j) {
 				indx = tmp + j;
 
-				// Compute the Fouorier vorticity
-				w_hat[indx] = w_hat[indx] * sqrt(DT2_C0 / enrg);
+				if (!(strcmp(sys_vars->u0, "DECAY_TURB"))) {
+					// Compute the Fouorier vorticity
+					w_hat[indx] *= sqrt(DT_E0 / enrg);
+				}
+				else if (!(strcmp(sys_vars->u0, "DECAY_TURB_II"))) {
+					// Compute the Fouorier vorticity
+					w_hat[indx] *= sqrt(DT2_E0 / enrg);
+				}
 			}
 		}
 	}
@@ -1001,6 +977,7 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 		// Gaussian IC with Prescribed initial Spectrum
 		// ---------------------------------------------
 		double k_sqr;
+		double inv_k_sqr;
 		double u1, u2;
 		double rand1, rand2;
 
@@ -1031,13 +1008,13 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 
 				if (run_data->k[0][i] != 0 || run_data->k[1][j] != 0) {
 					// Wavenumber prefactor -> 1 / |k|^2
-					k_sqr = 1.0 / (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
+					inv_k_sqr = 1.0 / (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 
 					if ((j == 0) || (j == Ny_Fourier - 1)) {
-						enrg += k_sqr * cabs(w_hat[indx] * conj(w_hat[indx]));
+						enrg += inv_k_sqr * cabs(w_hat[indx] * conj(w_hat[indx]));
 					}
 					else {
-						enrg += 2.0 * k_sqr * cabs(w_hat[indx] * conj(w_hat[indx]));
+						enrg += 2.0 * inv_k_sqr * cabs(w_hat[indx] * conj(w_hat[indx]));
 					}
 				}
 			}
@@ -1102,7 +1079,7 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 	}
 	else if (!(strcmp(sys_vars->u0, "TESTING"))) {
 		// Initialize temp variables
-		double k_sqr;
+		double inv_k_sqr;
 
 		// ---------------------------------------
 		// Powerlaw Amplitude & Fixed Phase
@@ -1118,17 +1095,17 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 				}
 				else if (j == 0 && run_data->k[0][i] < 0 ) {
 					// Amplitudes
-					k_sqr = 1.0 / (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
+					inv_k_sqr = 1.0 / (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 
 					// Fill vorticity - this is for the kx axis - to enfore conjugate symmetry
-					w_hat[indx] = k_sqr * cexp(-I * M_PI / 4.0);
+					w_hat[indx] = inv_k_sqr * cexp(-I * M_PI / 4.0);
 				}
 				else {
 					// Amplitudes
-					k_sqr = 1.0 / (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
+					inv_k_sqr = 1.0 / (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 
 					// Fill vorticity - fill the rest of the modes
-					w_hat[indx] = k_sqr * cexp(I * M_PI / 4.0);
+					w_hat[indx] = inv_k_sqr * cexp(I * M_PI / 4.0);
 				}
 			}
 		}
@@ -1276,7 +1253,7 @@ double GetMaxData(char* dtype) {
 	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
 	int tmp;
 	int indx;
-	fftw_complex k_sqr;
+	fftw_complex I_over_k_sqr;
 
 	// -------------------------------
 	// Compute the Data 
@@ -1290,11 +1267,11 @@ double GetMaxData(char* dtype) {
 
 				if ((run_data->k[0][i] != 0) || (run_data->k[1][j]  != 0)) {
 					// Compute the prefactor				
-					k_sqr = I / (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
+					I_over_k_sqr = I / (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 
 					// compute the velocity in Fourier space
-					run_data->u_hat[SYS_DIM * indx + 0] = ((double) run_data->k[1][j]) * k_sqr * run_data->w_hat[indx];
-					run_data->u_hat[SYS_DIM * indx + 1] = -1.0 * ((double) run_data->k[0][i]) * k_sqr * run_data->w_hat[indx];
+					run_data->u_hat[SYS_DIM * indx + 0] = ((double) run_data->k[1][j]) * I_over_k_sqr * run_data->w_hat[indx];
+					run_data->u_hat[SYS_DIM * indx + 1] = -1.0 * ((double) run_data->k[0][i]) * I_over_k_sqr * run_data->w_hat[indx];
 				}
 				else {
 					run_data->u_hat[SYS_DIM * indx + 0] = 0.0 + 0.0 * I;
@@ -1484,7 +1461,7 @@ void GetTimestep(double* dt) {
 	// Compute New Timestep
 	// -------------------------------
 	#ifdef __CFL_STEP
-	fftw_complex k_sqr;
+	fftw_complex I_over_k_sqr;
 	const long int Nx = sys_vars->N[0];
 	const long int Ny = sys_vars->N[1];
 	
@@ -1499,11 +1476,11 @@ void GetTimestep(double* dt) {
 
 			if ((run_data->k[0][i] != 0) || (run_data->k[1][j]  != 0)) {
 				// Compute the prefactor				
-				k_sqr = I / (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
+				I_over_k_sqr = I / (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 
 				// compute the velocity in Fourier space
-				run_data->u_hat[SYS_DIM * indx + 0] = ((double) run_data->k[1][j]) * k_sqr * run_data->w_hat[indx];
-				run_data->u_hat[SYS_DIM * indx + 1] = -1.0 * ((double) run_data->k[0][i]) * k_sqr * run_data->w_hat[indx];
+				run_data->u_hat[SYS_DIM * indx + 0] = ((double) run_data->k[1][j]) * I_over_k_sqr * run_data->w_hat[indx];
+				run_data->u_hat[SYS_DIM * indx + 1] = -1.0 * ((double) run_data->k[0][i]) * I_over_k_sqr * run_data->w_hat[indx];
 			}
 			else {
 				// Get the zero mode
@@ -1708,10 +1685,7 @@ double* EnergySpectrum(int* spectrum_size) {
 	int tmp;
 	int indx;
 	int spec_indx;
-	double u_hat;
-	double v_hat;
-	double k_sqrd;
-	fftw_complex k_sqr;
+	double k_sqr;
 	ptrdiff_t local_Nx 		  = sys_vars->local_Nx;
 	const long int Nx         = sys_vars->N[0];
 	const long int Ny         = sys_vars->N[1];
@@ -1742,34 +1716,6 @@ double* EnergySpectrum(int* spectrum_size) {
 		for (int j = 0; j < Ny_Fourier; ++j) {
 			indx = tmp + j;
 
-			// if ((run_data->k[0][i] == 0) && (run_data->k[1][j] == 0)) {
-			// 	// Compute the zero mode
-			// 	u_hat = 0.0 + 0.0 * I;
-			// 	v_hat = 0.0 + 0.0 * I;
-			// }
-			// else {
-			// 	// Compute the prefactor
-			// 	k_sqr = I / (double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
-
-			// 	// Compute Fourier velocities
-			// 	u_hat = k_sqr * ((double) run_data->k[1][j]) * run_data->w_hat[indx];
-			// 	v_hat = -k_sqr * ((double) run_data->k[0][i]) * run_data->w_hat[indx];
-			// }
-			
-			// // Get spectrum index -> spectrum is computed by summing over the energy contained in concentric annuli in wavenumber space
-			// spec_indx = (int) round(sqrt((double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j])));
-
-			// if ((j == 0) || (j = Ny_Fourier - 1)) {
-			// 	// Update the current bin for mode
-			// 	spectrum[spec_indx] += 4.0 * M_PI * M_PI * (cabs(u_hat * conj(u_hat)) + cabs(v_hat * conj(v_hat))) * norm_fac;
-			// }
-			// else {
-			// 	// Update the energy sum for the current mode
-			// 	spectrum[spec_indx] += 2.0 * 4.0 * M_PI * M_PI * (cabs(u_hat * conj(u_hat)) + cabs(v_hat * conj(v_hat))) * norm_fac;
-			// }
-			// 
-			
-
 			// Get spectrum index -> spectrum is computed by summing over the energy contained in concentric annuli in wavenumber space
 			spec_indx = (int) round(sqrt((double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j])));
 
@@ -1778,15 +1724,15 @@ double* EnergySpectrum(int* spectrum_size) {
 			}
 			else {
 				// Compute |k|^2
-				k_sqrd = (double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
+				k_sqr = (double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 
 				if ((j == 0) || (j = Ny_Fourier - 1)) {
 					// Update the current bin for mode
-					spectrum[spec_indx] += 4.0 * M_PI * M_PI * (cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) / k_sqrd) * norm_fac;
+					spectrum[spec_indx] += 4.0 * M_PI * M_PI * (cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) / k_sqr) * norm_fac;
 				}
 				else {
 					// Update the energy sum for the current mode
-					spectrum[spec_indx] += 2.0 * 4.0 * M_PI * M_PI * (cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) / k_sqrd) * norm_fac;
+					spectrum[spec_indx] += 2.0 * 4.0 * M_PI * M_PI * (cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) / k_sqr) * norm_fac;
 				}
 			}
 		}
@@ -2665,7 +2611,28 @@ void AllocateMemory(const long int* NBatch, RK_data_struct* RK_data) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Fourier Space Velocities");
 		exit(1);
 	}
+	#ifdef PHASE_ONLY
+	// Allocate array for the Fourier amplitudes
+	run_data->a_k = (double* )fftw_malloc(sizeof(double) * sys_vars->alloc_local_batch);
+	if (run_data->a_k == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Fourier Amplitudes");
+		exit(1);
+	}
+	// Allocate array for the Fourier phases
+	run_data->phi_k = (double* )fftw_malloc(sizeof(double) * sys_vars->alloc_local_batch);
+	if (run_data->phi_k == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Fourier Phases");
+		exit(1);
+	}
+	// Allocate array for the Fourier phases
+	run_data->tmp_a_k = (double* )fftw_malloc(sizeof(double) * sys_vars->alloc_local_batch);
+	if (run_data->tmp_a_k == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Fourier Tmp Amplitudes");
+		exit(1);
+	}
+	#endif
 	#ifdef TESTING
+	// Allocate array for the taylor green solution
 	run_data->tg_soln = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->alloc_local);
 	if (run_data->tg_soln == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Taylor Green vortex solution");
@@ -2761,6 +2728,11 @@ void AllocateMemory(const long int* NBatch, RK_data_struct* RK_data) {
 			#endif
 			run_data->w[indx_real]                      = 0.0;
 			if (j < Ny_Fourier) {
+				#ifdef PHASE_ONLY
+				run_data->a_k[indx_four] 				 = 0.0;
+				run_data->phi_k[indx_four]				 = 0.0;
+				run_data->tmp_a_k[indx_four] 			 = 0.0;
+				#endif
 				run_data->w_hat[indx_four]               = 0.0 + 0.0 * I;
 				RK_data->RK_tmp[indx_four]    			 = 0.0 + 0.0 * I;
 				run_data->u_hat[SYS_DIM * indx_four + 0] = 0.0 + 0.0 * I;
@@ -2993,6 +2965,11 @@ void FreeMemory(RK_data_struct* RK_data) {
 	fftw_free(run_data->u_hat);
 	fftw_free(run_data->w);
 	fftw_free(run_data->w_hat);
+	#ifdef PHASE_ONLY
+	fftw_free(run_data->a_k);
+	fftw_free(run_data->phi_k);
+	fftw_free(run_data->tmp_a_k);
+	#endif
 	#ifdef __SYS_MEASURES
 	fftw_free(run_data->tot_energy);
 	fftw_free(run_data->tot_enstr);
