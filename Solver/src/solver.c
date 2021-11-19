@@ -923,7 +923,7 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 					} 
 					else if (!(strcmp(sys_vars->u0, "DECAY_TURB_II"))) {
 						// Compute the Narrow Band initial spectrum
-						spec_1d = pow(sqrt_k, 8.0) / pow((1.0 + sqrt_k / (2.0 * DT2_K0)), 18.0);
+						spec_1d = pow(sqrt_k, 6.0) / pow((1.0 + sqrt_k / (2.0 * DT2_K0)), 18.0);
 					}
 					else if (!(strcmp(sys_vars->u0, "DECAY_TURB_EXP"))) {
 						// Computet the Broad band initial spectrum
@@ -945,8 +945,8 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 						w_hat[indx] = sqrt(sqrt_k * spec_1d / (M_PI)) * cexp(2.0 * M_PI * u1 * I); 
 					}
 					else {
-						// Fill the vorticity	
-						w_hat[indx] = sqrt(sqrt_k * spec_1d / (2.0 * M_PI)) * cexp(2.0 * M_PI * u1 * I);  /// (2.0 * M_PI)
+						// Fill the vorticity -. the factor of k/2pi is to account for the area of the annulus
+						w_hat[indx] = sqrt(spec_1d * (sqrt_k / (2.0 * M_PI))) * cexp(2.0 * M_PI * u1 * I);
 					}
 				}
 			}
