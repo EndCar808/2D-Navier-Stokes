@@ -55,6 +55,13 @@ Thumbs.db
 *.pdf
 *.h5
 
+# Jupyter
+*.ipynb_checkpoints/
+*.ipynb_checkpoints
+#TestingFunctions/.ipynb_checkpoints
+
 # Misc
-/Solver/bin/main*
+/Solver/bin/*
 /Solver/obj/*
+/PostProcessing/bin/*
+/PostProcessing/obj/*

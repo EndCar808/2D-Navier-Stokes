@@ -248,15 +248,21 @@ void ReadInData(int snap_indx) {
 	// --------------------------------
 	// Open Fourier space vorticity
 	sprintf(group_string, "/Iter_%05d/w_hat", snap_indx);	
-	dset = H5Dopen (file_info->input_file_handle, group_string, H5P_DEFAULT);
-	if (dset < 0 ) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to open dataset for ["CYAN"%s"RESET"] at Snap = ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", "w_hat", snap_indx);
-		exit(1);		
-	} 
-	// Read in Fourier space vorticity
-	if(H5LTread_dataset(file_info->input_file_handle, group_string, file_info->COMPLEX_DTYPE, run_data->w_hat) < 0) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to read in data for ["CYAN"%s"RESET"] at Snap = ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", "w_hat", snap_indx);
-		exit(1);	
+	if (H5Lexists(file_info->input_file_handle, group_string, H5P_DEFAULT) > 0 ) {
+		dset = H5Dopen (file_info->input_file_handle, group_string, H5P_DEFAULT);
+		if (dset < 0 ) {
+			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to open dataset for ["CYAN"%s"RESET"] at Snap = ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", "w_hat", snap_indx);
+			exit(1);		
+		} 
+		// Read in Fourier space vorticity
+		if(H5LTread_dataset(file_info->input_file_handle, group_string, file_info->COMPLEX_DTYPE, run_data->w_hat) < 0) {
+			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to read in data for ["CYAN"%s"RESET"] at Snap = ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", "w_hat", snap_indx);
+			exit(1);	
+		}
+	}
+	else {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to find ["CYAN"%s"RESET"] in file ["CYAN"%s"RESET"]. Please check input file\n-->> Exiting...\n", "w_hat", file_info->input_file_name);
+		exit(1);
 	}
 
 	// --------------------------------
@@ -478,6 +484,16 @@ void WriteDataToFile(double t, long int snap) {
 	// -------------------------------
 	// Write Datasets
 	// -------------------------------
+	#ifdef __VORT
+	// The full field phases
+	dset_dims_2d[0] = sys_vars->N[0];
+	dset_dims_2d[1] = sys_vars->N[1] / 2 + 1;
+	status = H5LTmake_dataset(group_id, "w_hat", Dims2D, dset_dims_2d, file_info->COMPLEX_DTYPE, run_data->w_hat);	
+	if (status < 0) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "w_hat", t, snap);
+		exit(1);
+	}
+	#endif
 	#ifdef __FULL_FIELD
 	// The full field phases
 	dset_dims_2d[0] = 2 * sys_vars->kmax - 1;
@@ -525,23 +541,40 @@ void WriteDataToFile(double t, long int snap) {
 	dset_dims_1d[0] = stats_data->u_pdf->n + 1;
 	status = H5LTmake_dataset(group_id, "VelocityPDFRanges", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, stats_data->u_pdf->range);
 	if (status < 0) {
-			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Velocity PDF Bin Ranges", t, snap);
-			exit(1);
-		}		
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Velocity PDF Bin Ranges", t, snap);
+        exit(1);
+    }		
 	dset_dims_1d[0] = stats_data->u_pdf->n;
 	status = H5LTmake_dataset(group_id, "VelocityPDFCounts", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, stats_data->u_pdf->bin);	
 	if (status < 0) {
-			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Velocity PDF Bin Counts", t, snap);
-			exit(1);
-		}	
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Velocity PDF Bin Counts", t, snap);
+        exit(1);
+    }	
 	#endif
 	#ifdef __SPECTRA
 	dset_dims_1d[0] = sys_vars->n_spec;
 	status = H5LTmake_dataset(group_id, "EnstrophySpectrum", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, proc_data->enst_spec);
 	if (status < 0) {
-			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "1D Enstrophy Spectrum", t, snap);
-			exit(1);
-		}
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "1D Enstrophy Spectrum", t, snap);
+        exit(1);
+    }
+    
+    status = H5LTmake_dataset(group_id, "EnergySpectrum", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, proc_data->enrg_spec);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "1D Energy Spectrum", t, snap);
+        exit(1);
+    }
+	status = H5LTmake_dataset(group_id, "EnstrophySpectrumAlt", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, proc_data->enst_alt);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Alternative 1D Enstrophy Spectrum", t, snap);
+        exit(1);
+    }
+    
+    status = H5LTmake_dataset(group_id, "EnergySpectrumAlt", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, proc_data->enrg_alt);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Alternative 1D Energy Spectrum", t, snap);
+        exit(1);
+    }
 	#endif
 	
 	// -------------------------------

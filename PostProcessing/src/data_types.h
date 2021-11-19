@@ -64,6 +64,7 @@
 #define __REAL_STATS
 #define __FULL_FIELD
 #define __SPECTRA
+#define __VORT
 // ---------------------------------------------------------------------
 //  Global Variables
 // ---------------------------------------------------------------------
@@ -117,7 +118,8 @@ typedef struct runtime_data_struct {
 	fftw_complex* u_hat;     // Fourier space velocity
 	double* w;				 // Real space vorticity
 	double* u;				 // Real space velocity
-	double* time;			  // Array to hold the simulation times
+	double* time;			 // Array to hold the simulation times
+	fftw_complex* psi_hat;   // Fourier stream function
 } runtime_data_struct;
 
 // Post processing data struct
@@ -125,7 +127,10 @@ typedef struct postprocess_data_struct {
 	double* phases;			// Array to hold the full field zero centred phases
 	double* enrg;			// Array to hold the full field zero centred energy
 	double* enst;			// Array to hold the full field zero centred enstrophy
-	double* enst_spec; 		// Array to hoold the enstrophy spectrum
+	double* enst_spec; 		// Array to hold the enstrophy spectrum
+    double* enrg_spec; 		// Array to hold the energy spectrum
+    double* enst_alt;
+    double* enrg_alt;
 } postprocess_data_struct;
 
 // Post processing stats data struct

@@ -77,6 +77,10 @@
 #if defined(__TESTING)
 #define TESTING
 #endif
+// If debugging / testing is called for at compile time
+#if defined(__DEBUG)
+#define DEBUG
+#endif
 // ---------------------------------------------------------------------
 //  Datasets to Write to File
 // ---------------------------------------------------------------------
@@ -124,6 +128,8 @@
 #define DT_E0 0.5               // The initial energy for the McWilliams decaying vortex turbulence initial condition
 #define DT2_K0 30				// The peak wavenumber for the second McWilliams decaying turbulence initial condition
 #define DT2_E0 0.5				// The spectrum normalizing constant for the second McWilliams decaying turbulence initial condition
+#define DTEXP_K0 8.0			// The peak of the initial spectrum for the decaying turbulence exponential spectrum initial condition
+#define DTEXP_E0 343.0/96.0		// The initial energy for the decaying turbulence exponential spectrum initial condition
 #define GDT_K0 5.0              // The peak wavenumber for the Gaussian decay turbulence initial condition
 #define GDT_C0 0.06             // The intial energy of the Gaussian decaying turbulence initial condition
 // System checking parameters
@@ -229,6 +235,8 @@ typedef struct HDF_file_info_struct {
 	hid_t spectra_file_handle;      // Spectra file handle
 	hid_t COMPLEX_DTYPE;			// Complex datatype handle
 	int file_only;					// Indicates if output should be file only with no output folder created
+	hid_t test_file_handle;         // File handle for testing
+	char test_file_name[512];       // File name for testing
 } HDF_file_info_struct;
 
 // Complex datatype struct for HDF5

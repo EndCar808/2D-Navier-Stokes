@@ -92,7 +92,7 @@ int main(int argc, char** argv) {
 	// Begin Snapshot Processing
 	//////////////////////////////
 	printf("\nStarting Snapshot Processing:\n");
-	for (int s = 0; s < sys_vars->num_snaps; ++s) {  
+	for (int s = 0; s < sys_vars->num_snaps; ++s) {   // sys_vars->num_snaps
 		
 		// Print update to screen
 		printf("Snapshot: %d\n", s);
@@ -162,6 +162,9 @@ int main(int argc, char** argv) {
 		#ifdef __SPECTRA
 		// Compute the enstrophy spectrum
 		EnstrophySpectrum();
+        EnergySpectrum();
+        EnstrophySpectrumAlt();
+        EnergySpectrumAlt();
 		#endif
 
 		// --------------------------------
@@ -273,6 +276,13 @@ void AllocateMemory(const long int* N) {
 		exit(1);
 	}
 
+	// Allocate the Fourier stream funciton
+	run_data->psi_hat = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * Nx * Ny_Fourier);
+	if (run_data->psi_hat == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Fourier Stream Function");
+		exit(1);
+	}
+
 	#ifdef __REAL_STATS
 	// Allocate current Fourier vorticity
 	run_data->w = (double* )fftw_malloc(sizeof(double) * Nx * Ny);
@@ -328,11 +338,35 @@ void AllocateMemory(const long int* N) {
 	if (proc_data->enst_spec == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "1D Enstrophy Spectrum");
 		exit(1);
-	}	
+	}
+    
+    // Allocate memory for the enstrophy spectrum
+	proc_data->enrg_spec = (double* )fftw_malloc(sizeof(double) * sys_vars->n_spec);
+	if (proc_data->enrg_spec == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "1D Energy Spectrum");
+		exit(1);
+	}
+
+	// Allocate memory for the alternative enstrophy spectrum
+	proc_data->enst_alt = (double* )fftw_malloc(sizeof(double) * sys_vars->n_spec);
+	if (proc_data->enst_alt == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "1D Enstrophy Spectrum");
+		exit(1);
+	}
+    
+    // Allocate memory for the alternative enstrophy spectrum
+	proc_data->enrg_alt = (double* )fftw_malloc(sizeof(double) * sys_vars->n_spec);
+	if (proc_data->enrg_alt == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "1D Energy Spectrum");
+		exit(1);
+	}
 
 	// Initialize arrays
 	for (int i = 0; i < sys_vars->n_spec; ++i) {
 		proc_data->enst_spec[i] = 0.0;
+        proc_data->enrg_spec[i] = 0.0;
+        proc_data->enst_alt[i]  = 0.0;
+        proc_data->enrg_alt[i]  = 0.0;
 	}
 	#endif
 
@@ -407,6 +441,192 @@ void InitializeFFTWPlans(const long int* N) {
 	#endif
 }
 /**
+* Function to compute 1D energy spectrum from the Fourier vorticity
+*/
+void EnergySpectrumAlt(void) {
+    
+    // Initialize variables
+    int tmp, indx;
+	int spec_indx;
+	const long int Nx 		  = sys_vars->N[0];
+	const long int Ny 		  = sys_vars->N[1];
+	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
+	double norm_fac  = 0.5 / pow(Nx * Ny, 2.0);
+	double const_fac = 4.0 * pow(M_PI, 2.0); 
+    double k_sqr;
+    
+    // --------------------------------
+	//  Initialize Spectrum
+	// --------------------------------	
+    for(int i = 0; i < sys_vars->n_spec; ++i) {
+        proc_data->enrg_alt[i] = 0.0;
+    }
+
+    // --------------------------------
+	//  Get Psi
+	// --------------------------------	
+	for(int i = 0; i < Nx; ++i) {
+	    tmp = i * Ny_Fourier;
+	    for(int j = 0; j < Ny_Fourier; ++j) {
+	        indx = tmp + j;
+
+	        if ((run_data->k[0][i] == 0) && (run_data->k[1][j] == 0)) {
+	        	run_data->psi_hat[indx] = 0.0 + 0.0 * I;
+	        }
+	        else {
+	       		k_sqr = 1.0 / ((double) (pow(run_data->k[0][i], 2.0) + pow(run_data->k[1][j], 2.0)));
+
+		        // Get Fourier stream function
+		        run_data->psi_hat[indx] = run_data->w_hat[indx] * k_sqr;
+	        }
+	    }
+	}
+
+    // --------------------------------
+	//  Compute spectrum
+	// --------------------------------	
+    for(int i = 0; i < Nx; ++i) {
+        tmp = i * Ny_Fourier;
+        for(int j = 0; j < Ny_Fourier; ++j) {
+            indx = tmp + j;
+            
+            // Compute the spectral index
+            spec_indx = (int ) round(sqrt(pow(run_data->k[0][i], 2.0) + pow(run_data->k[1][j], 2.0)));
+       		
+       		// Compute the |k|^2
+            k_sqr = ((double) (pow(run_data->k[0][i], 2.0) + pow(run_data->k[1][j], 2.0)));
+        
+            if ((j == 0) || (j == Ny_Fourier - 1)) {
+                proc_data->enrg_alt[spec_indx] += const_fac * norm_fac * cabs(run_data->psi_hat[indx] * conj(run_data->psi_hat[indx])) * k_sqr;
+            }
+            else {
+                proc_data->enrg_alt[spec_indx] += 2.0 * const_fac * norm_fac * cabs(run_data->psi_hat[indx] * conj(run_data->psi_hat[indx])) * k_sqr;
+            }
+        }
+    }
+}
+/**
+* Function to compute 1D enstrophy spectrum from the Fourier vorticity
+*/
+void EnstrophySpectrumAlt(void) {
+    
+    // Initialize variables
+    int tmp, indx;
+	int spec_indx;
+	const long int Nx 		  = sys_vars->N[0];
+	const long int Ny 		  = sys_vars->N[1];
+	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
+	double norm_fac  = 0.5 / pow(Nx * Ny, 2.0);
+	double const_fac = 4.0 * pow(M_PI, 2.0); 
+    double k_sqr;
+    
+    // --------------------------------
+	//  Initialize Spectrum
+	// --------------------------------	
+    for(int i = 0; i < sys_vars->n_spec; ++i) {
+        proc_data->enst_alt[i] = 0.0;
+    }
+
+
+    // --------------------------------
+	//  Get Psi
+	// --------------------------------	
+	for(int i = 0; i < Nx; ++i) {
+	    tmp = i * Ny_Fourier;
+	    for(int j = 0; j < Ny_Fourier; ++j) {
+	        indx = tmp + j;
+
+	        if ((run_data->k[0][i] == 0) && (run_data->k[1][j] == 0)) {
+	        	run_data->psi_hat[indx] = 0.0 + 0.0 * I;
+	        }
+	        else {
+	       		k_sqr = 1.0 / ((double) (pow(run_data->k[0][i], 2.0) + pow(run_data->k[1][j], 2.0)));
+
+		        // Get Fourier stream function
+		        run_data->psi_hat[indx] = run_data->w_hat[indx] * k_sqr;
+	        }
+	    }
+	}
+
+    // --------------------------------
+	//  Compute spectrum
+	// --------------------------------	
+    for(int i = 0; i < Nx; ++i) {
+        tmp = i * Ny_Fourier;
+        for(int j = 0; j < Ny_Fourier; ++j) {
+            indx = tmp + j;
+            
+            // Compute the spectral index
+            spec_indx = (int ) round(sqrt(pow(run_data->k[0][i], 2.0) + pow(run_data->k[1][j], 2.0)));
+            
+            // Compute |k|^2
+            k_sqr = ((double) (pow(run_data->k[0][i], 2.0) + pow(run_data->k[1][j], 2.0)));
+        
+            if ((j == 0) || (j == Ny_Fourier - 1)) {
+                proc_data->enst_alt[spec_indx] += const_fac * norm_fac * cabs(run_data->psi_hat[indx] * conj(run_data->psi_hat[indx])) * pow(k_sqr, 2.0);
+            }
+            else {
+                proc_data->enst_alt[spec_indx] += 2.0 * const_fac * norm_fac * cabs(run_data->psi_hat[indx] * conj(run_data->psi_hat[indx])) * pow(k_sqr, 2.0);
+            }
+        }
+    }
+}
+/**
+* Function to compute 1Denergy spectrum from the Fourier vorticity
+*/
+void EnergySpectrum(void) {
+    
+    // Initialize variables
+    int tmp, indx;
+	int spec_indx;
+	const long int Nx 		  = sys_vars->N[0];
+	const long int Ny 		  = sys_vars->N[1];
+	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
+	double norm_fac  = 0.5 / pow(Nx * Ny, 2.0);
+	double const_fac = 4.0 * pow(M_PI, 2.0); 
+    double k_sqr;
+    
+    // --------------------------------
+	//  Initialize Spectrum
+	// --------------------------------	
+    for(int i = 0; i < sys_vars->n_spec; ++i) {
+        proc_data->enrg_spec[i] = 0.0;
+    }
+    
+
+    // --------------------------------
+	//  Compute spectrum
+	// --------------------------------	
+    for(int i = 0; i < Nx; ++i) {
+        tmp = i * Ny_Fourier;
+        for(int j = 0; j < Ny_Fourier; ++j) {
+            indx = tmp + j;
+            
+            // Compute the spectral index
+            spec_indx = (int) round(sqrt((double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j])));
+            // spec_indx = (int ) round(sqrt(pow((double) run_data->k[0][i], 2.0) + pow((double) run_data->k[1][j], 2.0)));
+            
+            if ((run_data->k[0][i] == 0) && (run_data->k[1][j] == 0)) {
+				proc_data->enrg_spec[spec_indx] += 0.0;
+			}
+			else {
+                // Compute the normalization factor 1.0 / |k|^2
+                k_sqr = 1.0 / ((double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]));
+				// k_sqr = 1.0 / ((double) (pow((double) run_data->k[0][i], 2.0) + pow((double) run_data->k[1][j], 2.0)));
+            
+                if ((j == 0) || (j == Ny_Fourier - 1)) {
+                	// printf("sp: %d\ti: %d j: %d - ", spec_indx, i, j);
+                    proc_data->enrg_spec[spec_indx] += const_fac * norm_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * k_sqr;
+                }
+                else {
+                	// printf("sp: %d\ti: %d j: %d - ", spec_indx, i, j);
+                    proc_data->enrg_spec[spec_indx] += 2.0 * const_fac * norm_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * k_sqr;
+                }
+            }
+        }
+    }
+}
+/**
  * Function to compute the 1D enstrophy spectrum from the Fourier vorticity
  */
 void EnstrophySpectrum(void) {
@@ -421,6 +641,14 @@ void EnstrophySpectrum(void) {
 	double const_fac = 4.0 * pow(M_PI, 2.0); 
 
 	// --------------------------------
+	//  Initialize Spectrum
+	// --------------------------------	
+    for(int i = 0; i < sys_vars->n_spec; ++i) {
+        proc_data->enst_spec[i] = 0.0;
+    }
+
+
+	// --------------------------------
 	//  Compute spectrum
 	// --------------------------------	
 	for (int i = 0; i < Nx; ++i) {
@@ -431,11 +659,16 @@ void EnstrophySpectrum(void) {
 			// Compute spectrum index/bin
 			spec_indx = (int )round(sqrt(pow(run_data->k[0][i], 2.0) + pow(run_data->k[1][j], 2.0)));
 
-			if ((j == 0) || (j == Ny_Fourier - 1)) {
-				proc_data->enst_spec[spec_indx] += const_fac * norm_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+			if ((run_data->k[0][i] == 0) && (run_data->k[1][j] == 0)) {
+				proc_data->enst_spec[spec_indx] += 0.0;
 			}
 			else {
-				proc_data->enst_spec[spec_indx] += 2.0 * const_fac * norm_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+				if ((j == 0) || (j == Ny_Fourier - 1)) {
+					proc_data->enst_spec[spec_indx] += const_fac * norm_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+				}
+				else {
+					proc_data->enst_spec[spec_indx] += 2.0 * const_fac * norm_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+				}
 			}
 		}
 	}
@@ -451,6 +684,7 @@ void FreeMemoryAndCleanUp(void) {
 	// --------------------------------
 	fftw_free(run_data->w_hat);
 	fftw_free(run_data->time);
+	fftw_free(run_data->psi_hat);
 	#ifdef __REAL_STATS
 	fftw_free(run_data->w);
 	fftw_free(run_data->u);
@@ -463,6 +697,9 @@ void FreeMemoryAndCleanUp(void) {
 	#endif
 	#ifdef __SPECTRA
 	fftw_free(proc_data->enst_spec);
+    fftw_free(proc_data->enrg_spec);
+    fftw_free(proc_data->enst_alt);
+    fftw_free(proc_data->enrg_alt);
 	#endif
 	for (int i = 0; i < SYS_DIM; ++i) {
 		fftw_free(run_data->x[i]);

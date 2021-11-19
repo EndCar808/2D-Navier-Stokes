@@ -32,6 +32,9 @@ void PrintVectorReal(double* data, const long int* N, char* arr_name1, char* arr
 void PrintVectorFourier(fftw_complex* data, const long int* N, char* arr_name1, char* arr_name2);
 void PrintSpaceVariables(const long int* N);
 void PrintScalarReal(double* data, const long int* N, char* arr_name);
+// Testing / Debugging functions
+void WriteTestDataReal(double* data, char* dset_name, int dset_rank, int* dset_dims, int local_dim_x);
+void WriteTestDataFourier(fftw_complex* data, char* dset_name, int dim_x, int dim_y, int local_dim_x);
 // ---------------------------------------------------------------------
 //  End of File
 // ---------------------------------------------------------------------

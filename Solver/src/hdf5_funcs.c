@@ -46,11 +46,11 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 	int tmp;
 	int indx;
 
-	#if defined(__VORT_FOUR) || defined(__MODES)
+    #if (defined(__VORT_FOUR) || defined(__MODES)) && !defined(DEBUG)
 	// Create compound datatype for the complex datasets
 	file_info->COMPLEX_DTYPE = CreateComplexDatatype();
 	#endif
-
+		
 	///////////////////////////
 	/// Create & Open Files
 	///////////////////////////
@@ -1105,9 +1105,11 @@ void WriteDataSpect(double t, int iters, hid_t group_id, int dims, char* dset_na
 /**
  * Wrapper function that writes all the non-slabbed/chunk datasets to file after integeration has finished - to do so the file must be reponed 
  * with the right read/write permissions and normal I/0 access properties -> otherwise writing to file in a non MPI way would not work
- * @param N Array containing the dimensions of the system
+ * @param N 			 Array containing the dimensions of the system
+ * @param iters 	     The number of iterations performed by the simulation 
+ * @param save_data_indx The number of saving steps performed by the simulation
  */
-void FinalWriteAndCloseOutputFile(const long int* N) {
+void FinalWriteAndCloseOutputFile(const long int* N, int iters, int save_data_indx) {
 
 	// Initialize Variables
 	const long int Nx 		  = N[0];
@@ -1117,6 +1119,9 @@ void FinalWriteAndCloseOutputFile(const long int* N) {
 	static const hsize_t D1 = 1;
 	hsize_t dims1D[D1];
 
+	// Record total iterations
+	sys_vars->tot_iters      = (long int)iters - 1;
+	sys_vars->tot_save_steps = (long int)save_data_indx - 1;
 
 	////////////////////////////////
 	/// Repon and Write Datasets
@@ -1273,9 +1278,9 @@ void FinalWriteAndCloseOutputFile(const long int* N) {
 		#endif
 	}
 
-	// -------------------------------
-	// Close File for the final time
-	// -------------------------------
+	// -----------------------------------
+	// Close Files for the final time
+	// -----------------------------------
 	if (!(sys_vars->rank)) {
 		status = H5Fclose(file_info->output_file_handle);
 		if (status < 0) {
@@ -1283,6 +1288,49 @@ void FinalWriteAndCloseOutputFile(const long int* N) {
 			exit(1);
 		}
 	}
+	#ifdef DEBUG
+	if (!sys_vars->rank) {
+		// Close test / debug file
+	    H5Fclose(file_info->test_file_handle);
+	}
+	#endif
+	#if defined(__VORT_FOUR) || defined(__MODES)
+	// Close the complex datatype identifier
+	H5Tclose(file_info->COMPLEX_DTYPE);
+	#endif
+}
+/**
+ * Function to create and open the file for writinig test data to
+ */
+void OpenTestingFile(void) {
+
+	// Initialzie variables
+	char file_data[512];
+	char tmp_path[512];
+
+	// Get filename
+	sprintf(file_data, "Test_Data_N[%ld,%ld]_u0[%s].h5", sys_vars->N[0], sys_vars->N[1], sys_vars->u0);
+
+	// Create compound datatype for the complex datasets
+	file_info->COMPLEX_DTYPE = CreateComplexDatatype();
+
+	// ----------------------------------
+	// Construct File Paths
+	// ---------------------------------- 
+	// Construct main file path
+	strcpy(file_info->test_file_name, file_info->output_dir);
+	strcat(file_info->test_file_name, file_data); 
+
+	// ----------------------------------
+	// Create file
+	// ---------------------------------- 
+	if (!sys_vars->rank) {
+        file_info->test_file_handle = H5Fcreate(file_info->test_file_name, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+        if (file_info->test_file_handle < 0) {
+        	fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to create test file: "CYAN"%s"RESET" \n-->>Exiting....n", file_info->test_file_name);
+        	exit(1);
+        }
+    }
 }
 /**
  * Function to create a HDF5 datatype for complex data

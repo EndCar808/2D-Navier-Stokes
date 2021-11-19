@@ -42,6 +42,8 @@ int GetCMLArgs(int argc, char** argv) {
 	// -------------------------------
 	// Initialize Default Values
 	// -------------------------------
+	// Input file path
+	strncpy(file_info->input_file_name, "NONE", 512);
 	// Output file directory
 	strncpy(file_info->output_dir, "../Data/Tmp/", 512);  // Set default output directory to the Tmp folder
 	strncpy(file_info->output_tag, "NO_TAG", 64);
@@ -162,13 +164,23 @@ int GetCMLArgs(int argc, char** argv) {
 					break;
 				}
 				else if (!(strcmp(optarg,"DECAY_TURB"))) {
-					// Decay Turbulence -> McWilliams initial conditions
+					// Decay Turbulence -> Broadband
 					strncpy(sys_vars->u0, "DECAY_TURB", 64);
 					break;
 				}
 				else if (!(strcmp(optarg,"DECAY_TURB_II"))) {
-					// Decay Turbulence -> McWilliams 2000
+					// Decay Turbulence -> Narrow Band
 					strncpy(sys_vars->u0, "DECAY_TURB_II", 64);
+					break;
+				}
+				else if (!(strcmp(optarg,"DECAY_TURB_ALT"))) {
+					// Decay Turbulence -> McWilliams 1984
+					strncpy(sys_vars->u0, "DECAY_TURB_ALT", 64);
+					break;
+				}
+				else if (!(strcmp(optarg,"DECAY_TURB_EXP"))) {
+					// Decay Turbulence -> Exponential Spectrum
+					strncpy(sys_vars->u0, "DECAY_TURB_EXP", 64);
 					break;
 				}
 				else if (!(strcmp(optarg,"GAUSS_DECAY_TURB"))) {
@@ -223,7 +235,11 @@ int GetCMLArgs(int argc, char** argv) {
 				}
 				break;
 			case 'z':
-				// TODO: Read in inputs from a given (.ini) file
+				strncpy((file_info->input_file_name), optarg, 512);	// copy the input file name given as a command line argument
+				if ( access((file_info->input_file_name), F_OK) != 0) {
+					fprintf(stderr, "\n["RED"ERROR"RESET"] Parsing of Command Line Arguements Failed: The input file [%s] cannot be found, please ensure correct path to file is specified.\n", (file_info->input_file_name));		
+					exit(1);					
+				}
 				break;
 			default:
 				fprintf(stderr, "\n["RED"ERROR"RESET"] Incorrect command line flag encountered\n");		
@@ -734,6 +750,93 @@ void PrintSpaceVariables(const long int* N) {
 	// Free up memory
 	fftw_free(x0);
 	fftw_free(k0);
+}
+/**
+ * Function used in testing /debugging to write Real datasets to file
+ * @param data        The data to be written to file
+ * @param dset_name   The name of the dataset
+ * @param dset_rank   The rank of the dataset
+ * @param dset_dims   Array containing the dimensions of the dataset to be written
+ * @param local_dim_x The size of the first dimension of the lcoal dataset
+ */
+void WriteTestDataReal(double* data, char* dset_name, int dset_rank, int* dset_dims, int local_dim_x) {
+
+	// Initialize variables
+	hsize_t rank = dset_rank;
+    hsize_t Dims[rank];
+    herr_t status;
+    
+    // Allocate array for gathering full dataset on root process
+    int mem_size = 1;
+    for (int i = 0; i < rank; ++i) {
+    	mem_size *= dset_dims[i];
+    }
+	double* full_data = (double* )fftw_malloc(sizeof(double) * mem_size);
+	if (full_data == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for writing ["CYAN"%s"RESET"] to test data file\n-->> Exiting!!!\n", dset_name);
+		exit(1);
+	}	
+
+	// Gather full dataset on root process
+	int local_size = local_dim_x;
+	for (int i = 1; i < rank; ++i) {
+		local_size *= dset_dims[i];
+	}
+	MPI_Gather(data, local_size, MPI_DOUBLE, full_data, local_size, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+	
+	// Write data to file on root process
+	if (!sys_vars->rank) {   
+	    for (int i = 0; i < rank; ++i) {
+	    	Dims[i] = dset_dims[i];
+	    }
+	    status = H5LTmake_dataset(file_info->test_file_handle, dset_name, rank, Dims, H5T_NATIVE_DOUBLE, full_data);
+	    if (status < 0) {
+	    	fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to test data file\n-->> Exiting!!!\n", dset_name);
+	    	exit(1);
+	    }
+	}
+
+	// Free memory
+	fftw_free(full_data);
+}
+/**
+ * Function used in testing / debugging to write a Fourier dataset to file
+ * @param data        The data to be written to file
+ * @param dset_name   The name of the dataset to be written	
+ * @param dim_x       The size of the first dimension of the global dataset
+ * @param dim_y       The size of the second dimension of the global dataset
+ * @param local_dim_x The size of first dimension of the local (to each process) dataset
+ */
+void WriteTestDataFourier(fftw_complex* data, char* dset_name, int dim_x, int dim_y, int local_dim_x) {
+	
+	// Initialzie variables
+	hsize_t rank = 2;
+    hsize_t Dims[rank];
+    herr_t status;
+
+    // Allocate array for gathering full dataset on root process
+	fftw_complex* full_data = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * dim_x * dim_y);
+	if (full_data == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for writing ["CYAN"%s"RESET"] to test data file\n-->> Exiting!!!\n", dset_name);
+		exit(1);
+	}	
+
+	// Gather full dataset on root process
+	MPI_Gather(data, local_dim_x * dim_y, MPI_C_DOUBLE_COMPLEX, full_data, local_dim_x * dim_y, MPI_C_DOUBLE_COMPLEX, 0, MPI_COMM_WORLD);
+	
+	// Write dataset to file
+	if (!sys_vars->rank) {   
+	    Dims[0] = dim_x;
+	    Dims[1] = dim_y;
+	    status = H5LTmake_dataset(file_info->test_file_handle, dset_name, rank, Dims, file_info->COMPLEX_DTYPE, full_data);
+	    if (status < 0) {
+	    	fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to test data file\n-->> Exiting!!!\n", dset_name);
+	    	exit(1);
+	    }	
+	}
+
+	// Free memory
+	fftw_free(full_data);
 }
 // ---------------------------------------------------------------------
 //  End of File

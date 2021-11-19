@@ -124,16 +124,16 @@
 \maketitle	
 
 
-\section{2D Ekman Navier Stokes Equations}
+\section{2D Navier Stokes Equations}
 
-We start with the 2D incompressible Navier Stokes equations with an Ekman friction and hyperviscosity
+We start with the 2D incompressible Navier Stokes equations with an Ekmann friction term. The friction term is added to remove energy at large scale modes to achieve a statistically stationary state
 
 \begin{align}
-	\pder{\bfu}{t} + \left(\bfu \cdot \nabla \right) \bfu &= -\frac{\nabla p}{\rho} - \nu (-\nabla^2)^n \bfu - \alpha \bfu + \mathbf{F} \label{eq:conserv_momentum} \\
+	\pder{\bfu}{t} + \left(\bfu \cdot \nabla \right) \bfu &= -\frac{\nabla p}{\rho} + \nu \nabla^2 \bfu -\alpha \bfu + \mathbf{F} \label{eq:conserv_momentum} \\
 	\diverg{\bfu} &= 0 
 	\label{eq:conserv_mass}
 \end{align}
-where $\bfu = (u, v, w)^{T} \in \mathbf{\Omega} = [0, 2 \pi]^3$ is the velocity vector field, $p$ is the scalar pressure field, $\rho$ is the density, $\nu$ is the kinematic viscosity, $\mathbf{F}$ is the forcing and $\alpha$ is the Ekman friction coeficient. The Ekman friction term is introduced to remove energy from the flow at larges scales making the inverse energy cascade stationary.
+where $\bfu = (u, v, w)^{T} \in \mathbf{\Omega} = [0, 2 \pi]^3$ is the velocity vector field, $p$ is the scalar pressure field, $\rho$ is the density, $\nu$ is the kinematic viscosity and $\mathbf{F}$ is the forcing.
 
 Recal that 
 
@@ -183,13 +183,13 @@ and second, we make use of the following identity
 Substituting (\ref{eq:nolinear_identity}) into equation (\ref{eq:conserv_momentum}) and taking the curl we get
 
 \begin{align}
-	\curl{\left(\pder{\bfu}{t} + \nabla \left( \frac{1}{2} \bfu \cdot \bfu \right) - \bfu \times \curl{\bfu}\right)} &= \curl{\left( -\frac{\nabla p}{\rho} - \nu (-\nabla^2)^n  \bfu - \alpha \bfu + \mathbf{F} \right)} \notag \\
-	\pder{\curl{\bfu}}{t} + \curl{\nabla \left( \frac{1}{2} \bfu \cdot \bfu \right)} - \curl{\bfu \times \curl{\bfu}} &= -\frac{1}{\rho}\curl{\grad{p}} - \nu \curl{(-\nabla^2)^n \bfu } - \alpha \curl{\omega} + \curl{\mathbf{F}} \notag,
+	\curl{\left(\pder{\bfu}{t} + \nabla \left( \frac{1}{2} \bfu \cdot \bfu \right) - \bfu \times \curl{\bfu}\right)} &= \curl{\left( -\frac{\nabla p}{\rho} + \nu \nabla^2  \bfu  - \alpha \bfu + \mathbf{F} \right)} \notag \\
+	\pder{\curl{\bfu}}{t} + \curl{\nabla \left( \frac{1}{2} \bfu \cdot \bfu \right)} - \curl{\bfu \times \curl{\bfu}} &= -\frac{1}{\rho}\curl{\grad{p}} + \nu \curl{\nabla^2 \bfu } -\alpha \curl{\bfu} + \curl{\mathbf{F}} \notag,
 \end{align}
 using (\ref{eq:vort}) and noting that the curl of the gradient is 0 we get 
 
 \begin{align}
-	\pder{\omega}{t} - \curl{\left( \bfu  \times \omega\right)} = - \nu (-\nabla^2)^n \omega  - \alpha \omega + \curl{\mathbf{F}}.
+	\pder{\omega}{t} - \curl{\left( \bfu  \times \omega\right)} = \nu \nabla^2 \omega + \curl{\mathbf{F}}.
 \end{align}
 We also make use of the following
 
@@ -201,7 +201,7 @@ since $\omega = \left(0, 0, \pder{v}{x} - \pder{u}{y}\right)^{T}$ and $ \left(\b
 Therefore the 2D incompressible Ekman Nvaier Stokes equations in vorticity form are 
 
 \begin{align}
-	\pder{\omega}{t} + \left(\bfu \cdot \nabla\right)\omega = - \nu (-\nabla^2)^n \omega - \alpha \omega +  \curl{F}
+	\pder{\omega}{t} + \left(\bfu \cdot \nabla\right)\omega = \nu \nabla^2 \omega  - \alpha \omega +  \curl{F}
 \end{align}
 
 To ensure the uniqueness of solutions and that the incompressibilty condition is satisfied, once the vorticity $\omega$ is known, we must find the stream function $\psi = (0, 0, \psi)^T$ for the flow by solving the following equation
@@ -225,10 +225,11 @@ Once the stream function is known the real space velocity can then be found usin
 In summary, we have the following system
 
 \begin{align}
-	\pder{\omega}{t} + \left(\bfu \cdot \nabla\right)\omega &= -\nu (-\nabla^2)^n\omega - \alpha \omega +  \curl{F}, \label{eq:vort_eq}\\
+	\pder{\omega}{t} + \left(\bfu \cdot \nabla\right)\omega &=\nu \nabla^2\omega -\alpha \omega +  \curl{F}, \label{eq:vort_eq}\\
 	\Delta\psi &= -\omega. \label{eq:laplace}
 \end{align}
 
+Often times, when numerically solving the above system the viscosity and friction terms are replaced with an hyperviscosity term $(-1)^{p + 1}\nu_p \nabla^{2p}\omega$ and a hyperfriction (or hypo-diffusivity) term $(-1)^{q + 1}\alpha_q \nabla^{2q}\omega$. The motivation behined the hypervisosity and hyperfriction terms (when $p > 1$ and $q > 1$ respectively) is to reduces the range of scales over which the dissipative terms (friction and viscosity) contribute substantially, thereby ewxtending the inertial range for a given spatial resolution.
 
 \section{Vorticity Equation in Fourier Space}
 
@@ -244,13 +245,14 @@ where $\bfx = (x, y)$ and $\bfk = (k_x, k_y)$. The various terms in (\ref{eq:vor
 	\pder{\omega}{t} = \sum_{\bfk \in \mathbb{Z}^2\setminus \mathbf{0}} \pder{\omegahat{k}}{t} \e^{\ii \mathbf{k}\cdot \mathbf{x}}
 \end{align}
 
+
 \begin{align}
-	-\alpha\omega = -\alpha \sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}}\hat{\omega}_{\mathbf{k}}(t)\e^{\ii \mathbf{k}\cdot \mathbf{x}}
+	(-1)^{p + 1}\nu_p (\nabla^2)^p  \omega =  (-1)^{p + 1}\nu_p \left(\left(\ppder{}{x}\right)^p\omega + \left(\ppder{}{y}^p\right)\omega\right) &= (-1)^{p + 1}\nu_p (-1)^p\nu_p\left(\sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}} \left(k_x^2\right)^p\hat{\omega}_{\mathbf{k}}\e^{\ii \mathbf{k}\cdot \mathbf{x}} +\sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}} \left(k_y^2\right)^p\hat{\omega}_{\mathbf{k}}\e^{\ii \mathbf{k}\cdot \mathbf{x}} \right)\notag \\
+	&= (-1)^{p + 1}(-1)^p\nu_p\sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}} |\bfk|^{2p}\hat{\omega}_{\mathbf{k}}\e^{\ii \mathbf{k}\cdot \mathbf{x}}
 \end{align}
 
 \begin{align}
-	- \nu (-\nabla^2)^n  \omega = - \nu \left(\left(\ppder{}{x}\right)^n\omega + \left(\ppder{}{y}^n\right)\omega\right) &= -\nu\left(\sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}} \left(k_x^2\right)^n\hat{\omega}_{\mathbf{k}}\e^{\ii \mathbf{k}\cdot \mathbf{x}} +\sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}} \left(k_y^2\right)^n\hat{\omega}_{\mathbf{k}}\e^{\ii \mathbf{k}\cdot \mathbf{x}} \right)\notag \\
-	&= -\nu\sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}} |\bfk|^{2n}\hat{\omega}_{\mathbf{k}}\e^{\ii \mathbf{k}\cdot \mathbf{x}}
+	-(-1)^{q + 1}\alpha_q \nabla^{2q}\omega = -(-1)^{q + 1} (-1)^{q}\alpha_q \sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}} |\bfk|^{2q}\hat{\omega}_{\mathbf{k}}(t)\e^{\ii \mathbf{k}\cdot \mathbf{x}}
 \end{align}
 with the nonlinear term becoming 
 
@@ -274,7 +276,7 @@ Putting them all together and performing the following transform
 the system in Fourier space becomes
 
 \begin{align}
-	\der{\omegahat{k}}{t} = \frac{1}{2}	\sum_{\mathbf{k}_1, \mathbf{k}_2\in \mathbb{Z}^2\setminus \mathbf{0}}\left(k_{1x}k_{2y} - k_{1y}k_{2x}\right) \left(\frac{1}{|\bfkn{1}|^2} - \frac{1}{|\bfkn{2}|^2}\right) \omegahat{\bfkn{1}}\omegahat{\bfkn{2}} \delta_{\bfkn{1}, \bfkn{2}}^{\bfk} - \nu |\bfk|^{2n}\omegahat{k} - \alpha\omegahat{k} + \hat{f}_{\bfk}
+	\der{\omegahat{k}}{t} = \frac{1}{2}	\sum_{\mathbf{k}_1, \mathbf{k}_2\in \mathbb{Z}^2\setminus \mathbf{0}}\left(k_{1x}k_{2y} - k_{1y}k_{2x}\right) \left(\frac{1}{|\bfkn{1}|^2} - \frac{1}{|\bfkn{2}|^2}\right) \omegahat{\bfkn{1}}\omegahat{\bfkn{2}} \delta_{\bfkn{1}, \bfkn{2}}^{\bfk} +(-1)^{p + 1} (-1)^p\nu_p |\bfk|^{2n}\omegahat{k} -(-1)^{q + 1}(-1)^{q} \alpha_q|\bfk|^{2q}\omegahat{k} + \hat{f}_{\bfk}
 	\label{eq:vort_eqn_fourier_space}
 \end{align}
 

@@ -14,7 +14,10 @@ import h5py
 import sys
 import os
 from numba import njit
-
+import pyfftw
+from collections.abc import Iterable
+from itertools import zip_longest
+from subprocess import Popen, PIPE
 
 #################################
 ## Colour Printing to Terminal ##
@@ -60,6 +63,37 @@ def fft_ishift_freq(w_h, axes = None):
         shift = [-(w_h.shape[ax] // 2 + 1) for ax in axes]
 
     return np.roll(w_h, shift, axes)
+
+def run_commands_parallel(cmd_lsit, proc_limit):
+
+    """
+    Runs commands in parallel.
+    
+    Input Parameters:
+        cmd_list    : list
+                     - List of commands to run
+        proc_limit  : int
+                     - the number of processes to create to execute the commands in parallel
+    """
+
+    ## Create grouped iterable of subprocess calls to Popen() - see grouper recipe in itertools
+    groups = [(Popen(cmd, shell = True, stdout = PIPE, stdin = PIPE, stderr = PIPE, universal_newlines = True) for cmd in cmd_list)] * proc_limit 
+
+    ## Loop through grouped iterable
+    for processes in zip_longest(*groups): 
+        for proc in filter(None, processes): # filters out 'None' fill values if proc_limit does not divide evenly into cmd_list
+            ## Print command to screen
+            print("\nExecuting the following command:\n\t" + tc.C + "{}".format(proc.args[0]) + tc.Rst)
+            
+            # Communicate with process to retrive output and error
+            [run_CodeOutput, run_CodeErr] = proc.communicate()
+            
+            ## Print both to screen
+            print(run_CodeOutput)
+            print(run_CodeErr)
+
+            ## Wait until all finished
+            proc.wait()
 
 #####################################
 ##       DATA FILE FUNCTIONS       ##
@@ -202,12 +236,12 @@ def import_data(input_file, sim_data, method = "default"):
 
         def __init__(self):
             ## Allocate global arrays
-            self.w       = np.zeros((sim_data.ndata, sim_data.Nx, sim_data.Ny))
-            self.u       = np.zeros((sim_data.ndata, sim_data.Nx, sim_data.Ny, 2))
-            self.tg_soln = np.zeros((sim_data.ndata, sim_data.Nx, sim_data.Ny))
-            self.u_hat   = np.ones((sim_data.ndata, sim_data.Nx, sim_data.Nk, 2)) * np.complex(0.0, 0.0)
-            self.w_hat   = np.ones((sim_data.ndata, sim_data.Nx, sim_data.Nk)) * np.complex(0.0, 0.0)
-            self.time    = np.zeros((sim_data.ndata, ))
+            self.w         = np.zeros((sim_data.ndata, sim_data.Nx, sim_data.Ny))
+            self.u         = np.zeros((sim_data.ndata, sim_data.Nx, sim_data.Ny, 2))
+            self.tg_soln   = np.zeros((sim_data.ndata, sim_data.Nx, sim_data.Ny))
+            self.u_hat     = np.ones((sim_data.ndata, sim_data.Nx, sim_data.Nk, 2)) * np.complex(0.0, 0.0)
+            self.w_hat     = np.ones((sim_data.ndata, sim_data.Nx, sim_data.Nk)) * np.complex(0.0, 0.0)
+            self.time      = np.zeros((sim_data.ndata, ))
             ## Allocate system measure arrays
             self.tot_enrg  = np.zeros((int(sim_data.ndata * 2), ))
             self.tot_enst  = np.zeros((int(sim_data.ndata * 2), ))
@@ -397,6 +431,11 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
             self.u_pdf_ranges = np.zeros((sim_data.ndata, 1001))
             ## Allocate spectra arrays
             self.enst_spectrum_1d = np.zeros((sim_data.ndata, sim_data.spec_size))
+            self.enrg_spectrum_1d = np.zeros((sim_data.ndata, sim_data.spec_size))
+            self.enst_spectrum_1d_alt = np.zeros((sim_data.ndata, sim_data.spec_size))
+            self.enrg_spectrum_1d_alt = np.zeros((sim_data.ndata, sim_data.spec_size))
+            ## Allocate solver data arrays
+            self.w_hat = np.ones((sim_data.ndata, sim_data.Nx, sim_data.Nk)) * np.complex(0.0, 0.0)
 
     ## Create instance of data class
     data = PostProcessData()
@@ -432,6 +471,14 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                     data.w_pdf_ranges[nn, :] = file[group]["VorticityPDFRanges"][:]
                 if 'EnstrophySpectrum' in list(file[group].keys()):
                     data.enst_spectrum_1d[nn, :] = file[group]["EnstrophySpectrum"][:]
+                if 'EnergySpectrum' in list(file[group].keys()):
+                    data.enrg_spectrum_1d[nn, :] = file[group]["EnergySpectrum"][:]
+                if 'EnstrophySpectrumAlt' in list(file[group].keys()):
+                    data.enst_spectrum_1d_alt[nn, :] = file[group]["EnstrophySpectrumAlt"][:]
+                if 'EnergySpectrumAlt' in list(file[group].keys()):
+                    data.enrg_spectrum_1d_alt[nn, :] = file[group]["EnergySpectrumAlt"][:]
+                if 'w_hat' in list(file[group].keys()):
+                    data.w_hat[nn, :, :] = file[group]["w_hat"][:, :]
                 nn += 1
             else:
                 continue
@@ -502,6 +549,113 @@ def FullField(w_h):
 
 
 ###################################
+##      FOURIER TRANSFORMS       ##
+###################################
+def fftw_init_2D(Nx, Ny):
+
+    ## Store transforms in cache for quick look up
+    pyfftw.interfaces.cache.enable()
+
+    ## Create class for forward transform
+    class fftw_2D: 
+
+        """
+        Class for forward transform.
+        """
+
+        def __init__(self, nx = Nx, ny = Ny):
+            # dummy variables forward transofmr
+            self._in       = empty_real_array(nx, ny)
+            self.dummy_in  = self._in
+            self._out      = empty_complex_array(nx, int(ny / 2 + 1))
+            self.dummy_out = self._out
+       
+            # dummy ffts 
+            self.fft = pyfftw.FFTW(self._in, self._out, threads = 1, direction = 'FFTW_FORWARD', axes = (-2,-1))
+
+    ## Create class for backward transform
+    class ifftw_2D: 
+
+        """
+        Class for backward transform.
+        """
+
+        def __init__(self, nx = Nx, ny = Ny):
+            # dummy variables backward transform
+            self._in       = empty_complex_array(nx, int(ny / 2 + 1))
+            self.dummy_in  = self._in
+            self._out      = empty_real_array(nx, ny)
+            self.dummy_out = self._out
+
+            ## dummy ifft
+            self.ifft = pyfftw.FFTW(self._in, self._out, threads = 1, direction = 'FFTW_BACKWARD', axes = (-2,-1))
+
+    ## Create instance of these classes
+    fft  = fftw_2D()
+    ifft = ifftw_2D()
+
+    return fft, ifft
+
+def empty_real_array(nx, ny):
+
+    """
+    Allocate a space-grid-sized variable for use with fftw transformations.
+    """
+    
+    ## Get the shape of the array
+    shape = (nx, ny)
+    
+    ## Allocate array and initialize
+    out        = pyfftw.empty_aligned(shape, dtype = "float64")
+    out.flat[:] = 0.
+       
+    return out
+
+def empty_complex_array(nx, nk):
+    
+    """
+    Allocate a Fourier-grid-sized variable for use with fftw transformations.
+    """
+    ## Get the shape of the array
+    shape = (nx, nk)
+
+    ## Allocate and initialize array
+    out         = pyfftw.empty_aligned(shape, dtype = "complex128")
+    out.flat[:] = 0. + 0. * 1.j
+
+    return out
+    
+def fft(fftw, v):
+    
+    """"
+    Generic FFT function for real grid-sized variables.
+    """
+    
+    ## Get copy of input array
+    v_view = v
+    
+    # copy input into memory view
+    fftw.dummy_in[:] = v_view
+    fftw.fft()
+    
+    # return a copy of the output
+    return np.asarray(fftw.dummy_out).copy()
+
+def ifft(ifftw, v):
+    
+    """"
+    Generic IFFT function for complex grid-sized variables.
+    """
+    ## Get copy of input array
+    v_view = v
+    
+    # copy input into memory view
+    ifftw.dummy_in[:] = v_view
+    ifftw.ifft()
+    
+    return np.asarray(ifftw.dummy_out).copy()
+
+###################################
 ##       SPECTRA FUNCTIONS       ##
 ###################################
 @njit
@@ -509,6 +663,51 @@ def energy_spectrum(w_h, kx, ky, Nx, Ny):
 
     """
     Computes the energy spectrum from the Fourier vorticity
+
+    w_h : 2d complex array
+          - Contains the Fourier vorticity
+    kx  : int array 
+          - The wavenumbers in the first dimension
+    ky  : int array 
+          - The wavenumbers in the second dimension
+    Nx  : int
+          - Number of collocations in the first dimension 
+    Ny  : int
+          - Number of collocations in the second dimension
+    """
+
+    ## Spectrum size
+    spec_size = int(np.sqrt((Nx / 2) * (Nx / 2) + (Ny / 2) * (Ny / 2)) + 1)
+
+    ## Velocity arrays
+    energy_spec = np.zeros(spec_size)
+
+    for i in range(w_h.shape[0]):
+        for j in range(w_h.shape[1]):
+            
+            ## Compute the mode
+            spec_indx = int(np.round(np.sqrt(kx[i] * kx[i] + ky[j] * ky[j])))
+            
+            if kx[i] == 0.0 and ky[i] == 0.0:
+                continue
+            else:
+                ## Compute prefactor
+                k_sqr = 1.0 / (kx[i] ** 2 + ky[j] ** 2)
+
+                if j == 0 or j == w_h.shape[0] - 1:
+                    ## Update spectrum sum for current mode
+                    energy_spec[spec_indx] += np.absolute(w_h[i, j] * np.conjugate(w_h[i, j])) * k_sqr
+                else: 
+                    ## Update spectrum sum for current mode
+                    energy_spec[spec_indx] += 2. * np.absolute(w_h[i, j] * np.conjugate(w_h[i, j])) * k_sqr
+
+    return 4. * np.pi * np.pi * energy_spec * 0.5 / ((Nx * Ny) ** 2), np.sum(4. * np.pi * np.pi * energy_spec * 0.5 / ((Nx * Ny) ** 2))
+
+@njit
+def energy_spectrum_vel(w_h, kx, ky, Nx, Ny):
+
+    """
+    Computes the energy spectrum from the Fourier vorticity in terms of the Fourier velocities
 
     w_h : 2d complex array
           - Contains the Fourier vorticity
@@ -544,7 +743,7 @@ def energy_spectrum(w_h, kx, ky, Nx, Ny):
                 v_hat = -kx[i] * k_sqr * w_h[i, j]
 
             ## Compute the mode
-            spec_indx = int(np.sqrt(kx[i] * kx[i] + ky[j] * ky[j]))
+            spec_indx = int(np.round(np.sqrt(kx[i] * kx[i] + ky[j] * ky[j])))
 
             if j == 0 or j == w_h.shape[0] - 1:
                 ## Update spectrum sum for current mode
@@ -553,46 +752,73 @@ def energy_spectrum(w_h, kx, ky, Nx, Ny):
                 ## Update spectrum sum for current mode
                 energy_spec[spec_indx] += 2. * np.absolute(u_hat * np.conjugate(u_hat)) + np.absolute(v_hat * np.conjugate(v_hat))
 
-    return 4. * np.pi * np.pi * energy_spec * 0.5 / (Nx * Ny ** 2), np.sum(4. * np.pi * np.pi * energy_spec * 0.5 / (Nx * Ny ** 2))
+    return 4. * np.pi * np.pi * energy_spec * 0.5 / ((Nx * Ny) ** 2), np.sum(4. * np.pi * np.pi * energy_spec * 0.5 / ((Nx * Ny) ** 2))
 
 @njit
 def enstrophy_spectrum(w_h, kx, ky, Nx, Ny):
 
-    """
-    Computes the enstrophy spectrum from the Fourier vorticity
+    # """
+    # Computes the enstrophy spectrum from the Fourier vorticity
 
-    w_h : 2d complex array
-          - Contains the Fourier vorticity
-    kx  : int array 
-          - The wavenumbers in the first dimension
-    ky  : int array 
-          - The wavenumbers in the second dimension
-    Nx  : int
-          - Number of collocations in the first dimension 
-    Ny  : int
-          - Number of collocations in the second dimension
-    """
+    # w_h : 2d complex array
+    #       - Contains the Fourier vorticity
+    # kx  : int array 
+    #       - The wavenumbers in the first dimension
+    # ky  : int array 
+    #       - The wavenumbers in the second dimension
+    # Nx  : int
+    #       - Number of collocations in the first dimension 
+    # Ny  : int
+    #       - Number of collocations in the second dimension
+    # """
+
+    # ## Spectrum size
+    # spec_size = int(np.sqrt((Nx / 2) * (Nx / 2) + (Ny / 2) * (Ny / 2)) + 1)
+
+    # ## Velocity arrays
+    # enstrophy_spec = np.zeros(spec_size)
+
+    # for i in range(w_h.shape[0]):
+    #     for j in range(w_h.shape[1]):
+
+    #         ## Compute the indx
+    #         spec_indx = int(np.round(np.sqrt(kx[i] * kx[i] + ky[j] * ky[j])))
+            
+    #         if j == 0 or j == w_h.shape[0] - 1:
+    #             ## Update the spectrum sum for the current mode
+    #             enstrophy_spec[spec_indx] += np.absolute(w_h[i, j] * np.conjugate(w_h[i, j]))
+    #         else:
+    #             ## Update the spectrum sum for the current mode
+    #             enstrophy_spec[spec_indx] += 2. * np.absolute(w_h[i, j] * np.conjugate(w_h[i, j]))
+
+    # return 4. * np.pi * np.pi * enstrophy_spec * 0.5 / (Nx * Ny)**2, np.sum(4. * np.pi * np.pi * enstrophy_spec * 0.5 / (Nx * Ny)**2)
 
     ## Spectrum size
     spec_size = int(np.sqrt((Nx / 2) * (Nx / 2) + (Ny / 2) * (Ny / 2)) + 1)
 
     ## Velocity arrays
-    enstrophy_spec = np.zeros(spec_size)
+    energy_spec = np.zeros(spec_size)
 
     for i in range(w_h.shape[0]):
         for j in range(w_h.shape[1]):
-
-            ## Compute the indx
+            
+            ## Compute the mode
             spec_indx = int(np.round(np.sqrt(kx[i] * kx[i] + ky[j] * ky[j])))
             
-            if j == 0 or j == w_h.shape[0] - 1:
-                ## Update the spectrum sum for the current mode
-                enstrophy_spec[spec_indx] += np.absolute(w_h[i, j] * np.conjugate(w_h[i, j]))
+            if kx[i] == 0.0 and ky[i] == 0.0:
+                continue
             else:
-                ## Update the spectrum sum for the current mode
-                enstrophy_spec[spec_indx] += 2. * np.absolute(w_h[i, j] * np.conjugate(w_h[i, j]))
+                ## Compute prefactor
+                k_sqr = 1.0 / (kx[i] ** 2 + ky[j] ** 2)
 
-    return 4. * np.pi * np.pi * enstrophy_spec * 0.5 / (Nx * Ny)**2, np.sum(4. * np.pi * np.pi * enstrophy_spec * 0.5 / (Nx * Ny)**2)
+                if j == 0 or j == w_h.shape[0] - 1:
+                    ## Update spectrum sum for current mode
+                    energy_spec[spec_indx] += np.absolute(w_h[i, j] * np.conjugate(w_h[i, j]))
+                else: 
+                    ## Update spectrum sum for current mode
+                    energy_spec[spec_indx] += 2. * np.absolute(w_h[i, j] * np.conjugate(w_h[i, j]))
+
+    return 4. * np.pi * np.pi * energy_spec * 0.5 / ((Nx * Ny) ** 2), np.sum(4. * np.pi * np.pi * energy_spec * 0.5 / ((Nx * Ny) ** 2))
 
 
 

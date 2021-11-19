@@ -71,6 +71,11 @@ void SpectralSolve(void) {
 	// -------------------------------
 	// Initialize the System
 	// -------------------------------
+	// If in testing / debug mode - create/ open test file
+	#ifdef DEBUG
+	OpenTestingFile();
+	#endif
+
 	// Initialize the collocation points and wavenumber space 
 	InitializeSpaceVariables(run_data->x, run_data->k, N);
 
@@ -95,7 +100,7 @@ void SpectralSolve(void) {
 	// -------------------------------
 	// Inialize system measurables
 	InitializeSystemMeasurables(RK_data);
-
+    
 	// Create and open the output file - also write initial conditions to file
 	CreateOutputFilesWriteICs(N, dt);
 
@@ -113,9 +118,10 @@ void SpectralSolve(void) {
 	try = 1;
 	double dt_new;
 	#endif
+	t 				   += dt;
 	int iters          = 1;
 	int save_data_indx = 1;
-	while (t < T) {
+	while (t <= T) {
 
 		// -------------------------------	
 		// Integration Step
@@ -175,20 +181,17 @@ void SpectralSolve(void) {
 		// Update & System Check
 		// -------------------------------
 		// Update timestep & iteration counter
+		iters++;
 		#if defined(__ADAPTIVE_STEP) 
 		GetTimestep(&dt);
 		t += dt; 
 		#elif !defined(__DPRK5) && !defined(__ADAPTIVE_STEP)
 		t = iters * dt;
 		#endif
-		iters++;
 
 		// Check System: Determine if system has blown up or integration limits reached
 		SystemCheck(dt, iters);
 	}
-	// Record total iterations
-	sys_vars->tot_iters      = (long int)iters - 1;
-	sys_vars->tot_save_steps = (long int)save_data_indx - 1;
 	//////////////////////////////
 	// End Integration
 	//////////////////////////////
@@ -197,7 +200,7 @@ void SpectralSolve(void) {
 	// ------------------------------- 
 	// Final Writes to Output File
 	// -------------------------------
-	FinalWriteAndCloseOutputFile(N);
+	FinalWriteAndCloseOutputFile(N, iters, save_data_indx);
 	
 
 	// -------------------------------
@@ -802,7 +805,11 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 
 	// Initialize local variables 
 	ptrdiff_t local_Nx = sys_vars->local_Nx;
-	
+
+    // ------------------------------------------------
+    // Set Seed for RNG
+    // ------------------------------------------------
+    srand(123456789);
 
 	if(!(strcmp(sys_vars->u0, "TG_VEL"))) {
 		// ------------------------------------------------
@@ -877,9 +884,9 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 		// ---------------------------------------
 		fftw_mpi_execute_dft_r2c((sys_vars->fftw_2d_dft_r2c), run_data->w, w_hat);
 	}
-	else if (!(strcmp(sys_vars->u0, "DECAY_TURB")) || !(strcmp(sys_vars->u0, "DECAY_TURB"))) {
+	else if (!(strcmp(sys_vars->u0, "DECAY_TURB")) || !(strcmp(sys_vars->u0, "DECAY_TURB_II")) || !(strcmp(sys_vars->u0, "DECAY_TURB_EXP")) || !(strcmp(sys_vars->u0, "DECAY_TURB_EXP_II"))) {
 		// --------------------------------------------------------
-		// McWilliams 2000 - Decaying Turbulence ICs
+		// Decaying Turbulence ICs
 		// --------------------------------------------------------
 		// Initialize variables
 		double sqrt_k;
@@ -887,16 +894,16 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 		double u1;
 		double spec_1d;
 
-		// ---------------------------------------
-		// Initialize Gaussian Vorticity
-		// ---------------------------------------
+		#ifdef DEBUG
+		double* rand_u = (double*)fftw_malloc(sizeof(double) * Nx * Ny_Fourier);
+		#endif
+		// ---------------------------------------------------------------
+		// Initialize Vorticity with Specific Spectrum and Random Phases
+		// ---------------------------------------------------------------
 		for (int i = 0; i < local_Nx; ++i) {	
 			tmp = i * (Ny_Fourier);
 			for (int j = 0; j < Ny_Fourier; ++j) {
 				indx = tmp + j;	
-
-				// Generate uniform random number between 0, 1
-				u1 = (double)rand() / (double) RAND_MAX;
 
 				if (run_data->k[0][i] == 0.0 && run_data->k[1][j] == 0.0) {
 					// Compute the energy
@@ -916,14 +923,40 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 					} 
 					else if (!(strcmp(sys_vars->u0, "DECAY_TURB_II"))) {
 						// Compute the Narrow Band initial spectrum
-						spec_1d = pow(sqrt_k, 6.0) / pow((1.0 + sqrt_k / (2.0 * DT2_K0)), 18.0);
+						spec_1d = pow(sqrt_k, 8.0) / pow((1.0 + sqrt_k / (2.0 * DT2_K0)), 18.0);
 					}
+					else if (!(strcmp(sys_vars->u0, "DECAY_TURB_EXP"))) {
+						// Computet the Broad band initial spectrum
+						spec_1d = pow(sqrt_k, 7.0) / pow(DTEXP_K0, 8.0) * cexp( - 3.5 * pow(sqrt_k / DTEXP_K0, 2.0));
+					} 
+					else if (!(strcmp(sys_vars->u0, "DECAY_TURB_EXP_II"))) {
+						// Computet the Broad band initial spectrum
+						// spec_1d = pow(sqrt_k, 7.0) / pow(DTEXP_K0, 8.0) * cexp( - 3.5 * pow(sqrt_k / DTEXP_K0, 2.0));
+					} 
 					
-					// Fill the vorticity	
-					w_hat[indx] = sqrt_k * sqrt(spec_1d / (2.0 * M_PI)) * cexp(2.0 * M_PI * u1 * I); // sqrt_k pow(sqrt_k, 2.0) *
+					// Generate uniform random number between 0, 1
+					u1 = (double)rand() / (double) RAND_MAX;
+					#ifdef DEBUG
+					rand_u[indx] = u1;
+					#endif
+
+					if (!(strcmp(sys_vars->u0, "DECAY_TURB_EXP"))) {
+						// Fill the vorticity	
+						w_hat[indx] = sqrt(sqrt_k * spec_1d / (M_PI)) * cexp(2.0 * M_PI * u1 * I); 
+					}
+					else {
+						// Fill the vorticity	
+						w_hat[indx] = sqrt(sqrt_k * spec_1d / (2.0 * M_PI)) * cexp(2.0 * M_PI * u1 * I);  /// (2.0 * M_PI)
+					}
 				}
 			}
 		}
+		#ifdef DEBUG
+		int dims[2] = {Nx, Ny_Fourier};
+		WriteTestDataReal(rand_u, "rand_u", 2, dims, local_Nx);
+		WriteTestDataFourier(w_hat, "w_hat", Nx, Ny_Fourier, local_Nx);
+		fftw_free(rand_u);
+		#endif
 
 		// ---------------------------------------
 		// Compute the Initial Energy
@@ -969,31 +1002,195 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 					// Compute the Fouorier vorticity
 					w_hat[indx] *= sqrt(DT2_E0 / enrg);
 				}
+				else if (!(strcmp(sys_vars->u0, "DECAY_TURB_EXP"))) {
+					// Compute the Fouorier vorticity
+					w_hat[indx] *= sqrt(DTEXP_E0 / enrg);
+				}
 			}
 		}
 	}
-	else if (!(strcmp(sys_vars->u0, "GAUSS_DECAY_TURB"))) {
+	else if (!(strcmp(sys_vars->u0, "DECAY_TURB_ALT"))) {
 		// ---------------------------------------------
 		// Gaussian IC with Prescribed initial Spectrum
 		// ---------------------------------------------
-		double k_sqr;
-		double inv_k_sqr;
-		double u1, u2;
-		double rand1, rand2;
+		double k_sqrt;
+		double k_sqrd;
+		double u1, u2, z1, z2;
+		double spec_1d;
+
+		#ifdef DEBUG
+		fftw_complex* rand_u = (fftw_complex*)fftw_malloc(sizeof(fftw_complex) * Nx * Ny_Fourier);
+		#endif
+
+		// Allocate memory for the stream function
+		double* psi = (double* )fftw_malloc(sizeof(double) * 2 * sys_vars->alloc_local);
+		if (psi == NULL) {
+			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Real Stream Function");
+			exit(1);
+		}	
+		fftw_complex* psi_hat = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->alloc_local);
+		if (psi_hat == NULL) {
+			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Fourier Stream Function");
+			exit(1);
+		}	
 
 		for (int i = 0; i < local_Nx; ++i) {	
 			tmp = i * (Ny_Fourier);
 			for (int j = 0; j < Ny_Fourier; ++j) {
 				indx = tmp + j;	
 
-				// Generate two standard normal variables using Box-Muller transform
-				u1 = (double)rand() / (double) RAND_MAX;
-				u2 = (double)rand() / (double) RAND_MAX;
-				rand1 = sqrt(-2.0 * log(u1)) * cos(2.0 * M_PI * u2);
-				rand2 = sqrt(-2.0 * log(u1)) * sin(2.0 * M_PI * u2);
+				// Generate Standard normal random variable
+				u1 = (double) rand() / (double) RAND_MAX;
+				u2 = (double) rand() / (double) RAND_MAX;
+				z1 = sqrt(-2.0 * log(u1)) * cos(2.0 * M_PI * u2);
+				z2 = sqrt(-2.0 * log(u1)) * sin(2.0 * M_PI * u2);
 
-				// Fill the Fourier vorticity with Gaussian data
-				w_hat[indx] = rand1 + rand2 * I;
+				#ifdef DEBUG
+				rand_u[indx] = (z1  + z2 * I);
+				#endif
+
+				if (run_data->k[0][i] == 0 && run_data->k[1][j] == 0) {
+					psi_hat[indx] = 0.0 + 0.0 * I;
+				}
+				else {
+					// Compute the mod of k -> |k|
+					k_sqrt = sqrt((double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]));
+
+					// Get the initial form
+					spec_1d = sqrt(1.0 / (k_sqrt * (1.0 + pow(k_sqrt / 6.0, 4.0))));
+					
+					// Fill the stream function
+					psi_hat[indx] = (z1  + z2 * I) * spec_1d;
+				}
+
+			}
+		}
+		#ifdef DEBUG
+		WriteTestDataFourier(rand_u, "rand_u", Nx, Ny_Fourier, local_Nx);
+		WriteTestDataFourier(psi_hat, "psi_hat", Nx, Ny_Fourier, local_Nx);
+		fftw_free(rand_u);
+		#endif
+		
+		// ---------------------------------------------
+		// Ensure Zero Mean Field
+		// ---------------------------------------------
+		// Variable to compute the mean
+		double mean = 0.0;
+
+		// Transform and Normalize while also gathering the mean
+		fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_c2r), psi_hat, psi);
+		for (int i = 0; i < local_Nx; ++i) {	
+			tmp = i * (Ny + 2);
+			for (int j = 0; j < Ny; ++j) {
+				indx = tmp + j;	
+
+				// Normalize
+				psi[indx] /= (Nx * Ny);
+
+				// Update the sum for the mean
+				mean += psi[indx];
+			}
+		}
+		
+
+		// Reduce all local mean sums and broadcast back to each process
+		MPI_Allreduce(MPI_IN_PLACE, &mean, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+
+		// Enforce the zero mean of the stream function field
+		for (int i = 0; i < local_Nx; ++i) {	
+			tmp = i * (Ny + 2);
+			for (int j = 0; j < Ny; ++j) {
+				indx = tmp + j;	
+
+				// Normalize
+				psi[indx] -=  (mean / (Nx * Ny));
+			}
+		}
+
+		// Transform zero mean field back to Fourier space
+		fftw_mpi_execute_dft_r2c((sys_vars->fftw_2d_dft_r2c), psi, psi_hat);
+
+		
+		// ---------------------------------------------
+		// Compute the Energy
+		// ---------------------------------------------
+		double enrg = 0.0;
+		for (int i = 0; i < local_Nx; ++i) {
+			tmp = i * Ny_Fourier;
+			for (int j = 0; j < Ny_Fourier; ++j) {
+				indx = tmp + j;
+
+				// Wavenumber prefactor -> |k|^2
+				k_sqrd = (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
+
+				if ((j == 0) || (j == Ny_Fourier - 1)) {
+					enrg += k_sqrd * cabs(psi_hat[indx] * conj(psi_hat[indx]));
+				}
+				else {
+					enrg += 2.0 * k_sqrd * cabs(psi_hat[indx] * conj(psi_hat[indx]));
+				}
+			}
+		}
+		// Normalize the energy
+		enrg *= 4.0 * pow(M_PI, 2.0) * (0.5 / pow(Nx * Ny, 2.0));
+		
+		// Reduce all local energy sums and broadcast back to each process
+		MPI_Allreduce(MPI_IN_PLACE, &enrg, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+
+		// ---------------------------------------------
+		// Normalize Initial Condition - Compute the Vorticity
+		// ---------------------------------------------
+		for (int i = 0; i < local_Nx; ++i) {
+			tmp = i * Ny_Fourier;
+			for (int j = 0; j < Ny_Fourier; ++j) {
+				indx = tmp + j;
+
+				// Normalize the initial condition
+				psi_hat[indx] *= sqrt(0.5 / enrg);
+
+				// Get |k|^2
+				k_sqrd = (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
+
+				// Compute the vorticity 
+				w_hat[indx] = k_sqrd * psi_hat[indx];
+			}
+		}
+        
+
+		// Free memory
+		fftw_free(psi_hat);
+		fftw_free(psi);
+	}
+	else if (!(strcmp(sys_vars->u0, "GAUSS_DECAY_TURB"))) {
+		// ---------------------------------------------
+		// Gaussian IC with Prescribed initial Spectrum
+		// ---------------------------------------------
+		double k_sqrt;
+		double k_sqrd;
+		double u1;
+		double spec_1d;
+
+		// Allocate memory for the stream function
+		fftw_complex* psi_hat = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->alloc_local);
+
+		for (int i = 0; i < local_Nx; ++i) {	
+			tmp = i * (Ny_Fourier);
+			for (int j = 0; j < Ny_Fourier; ++j) {
+				indx = tmp + j;	
+
+				if (run_data->k[0][i] == 0 && run_data->k[1][j] == 0) {
+					psi_hat[indx] = 0.0 + 0.0 * I;
+				}
+				else {
+					k_sqrt = sqrt((double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]));
+
+					// spec_1d = k_sqrt / (1.0 + pow(k_sqrt, 4.0) / 6.0);
+					spec_1d = pow(k_sqrt, 6.0) / pow((1.0 + k_sqrt / 60.0), 18.0);
+
+					// Fill the Fourier vorticity with Gaussian data
+					u1 = (double) rand() / (double) RAND_MAX;
+					psi_hat[indx] = sqrt(spec_1d * (1.0 / k_sqrt)) * cexp(I * 2.0 * M_PI * u1); //  * 
+				}
 			}
 		}
 
@@ -1007,40 +1204,46 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 				indx = tmp + j;
 
 				if (run_data->k[0][i] != 0 || run_data->k[1][j] != 0) {
-					// Wavenumber prefactor -> 1 / |k|^2
-					inv_k_sqr = 1.0 / (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
+					// Wavenumber prefactor -> |k|^2
+					k_sqrd = (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 
 					if ((j == 0) || (j == Ny_Fourier - 1)) {
-						enrg += inv_k_sqr * cabs(w_hat[indx] * conj(w_hat[indx]));
+						enrg += k_sqrd * cabs(psi_hat[indx] * conj(psi_hat[indx]));
 					}
 					else {
-						enrg += 2.0 * inv_k_sqr * cabs(w_hat[indx] * conj(w_hat[indx]));
+						enrg += 2.0 * k_sqrd * cabs(psi_hat[indx] * conj(psi_hat[indx]));
 					}
 				}
 			}
 		}
-		// // Normalize the energy
-		// enrg *= 4.0 * pow(M_PI, 2.0) * (0.5 / pow(Nx * Ny, 2.0));
+		// Normalize the energy
+		enrg *= 4.0 * pow(M_PI, 2.0) * (0.5 / pow(Nx * Ny, 2.0));
 		
 		// Reduce all local energy sums and broadcast back to each process
 		MPI_Allreduce(MPI_IN_PLACE, &enrg, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
 		// ---------------------------------------------
-		// Normalize Initial Condition with 
+		// Normalize Initial Condition - Compute the Vorticity
 		// ---------------------------------------------
 		for (int i = 0; i < local_Nx; ++i) {
 			tmp = i * Ny_Fourier;
 			for (int j = 0; j < Ny_Fourier; ++j) {
 				indx = tmp + j;
 
-				// Get |k|^2
-				k_sqr = (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
-
 				// Normalize the initial condition
-				w_hat[indx] /=  sqrt(enrg);
-				w_hat[indx] *=  sqrt(GDT_C0 * k_sqr * exp(-pow(k_sqr / GDT_K0, 2.0)));
+				psi_hat[indx] /=  sqrt(enrg);
+				psi_hat[indx] *=  sqrt(0.5);
+
+				// Get |k|^2
+				k_sqrd = (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
+
+				// Compute the vorticity 
+				w_hat[indx] = k_sqrd * psi_hat[indx];
 			}
 		}
+
+		// Free memory
+		fftw_free(psi_hat);
 	}
 	else if (!(strcmp(sys_vars->u0, "GAUSS_BLOB"))) {
 	
@@ -1129,12 +1332,14 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 	// Initialize the Dealiasing
 	// -------------------------------------------------
 	ApplyDealiasing(w_hat, 1, N);
-
+    
+    
 	// -------------------------------------------------
 	// Initialize the Forcing
 	// -------------------------------------------------
 	ApplyForcing(w_hat, N);
-
+   
+   
 	// -------------------------------------------------
 	// Initialize Taylor Green Vortex Soln 
 	// -------------------------------------------------
@@ -1428,13 +1633,13 @@ void PrintUpdateToTerminal(int iters, double t, double dt, double T, int save_da
 
 		// Print Update to screen
 		if( !(sys_vars->rank) ) {	
-			printf("Iter: %d\tt: %1.6lf\tdt: %g\t Max Vort: %1.4lf\tKE: %1.5lf\tENS: %1.5lf\tPAL: %1.5lf\tL2: %g\tLinf: %g\n", iters, t, dt, max_vort, run_data->tot_energy[save_data_indx], run_data->tot_enstr[save_data_indx], run_data->tot_palin[save_data_indx], norms[0], norms[1]);
+			printf("Iter: %d\tt: %1.6lf/%1.3lf\tdt: %g\t Max Vort: %1.4lf\tKE: %1.5lf\tENS: %1.5lf\tPAL: %1.5lf\tL2: %g\tLinf: %g\n", iters, t, dt, T, max_vort, run_data->tot_energy[save_data_indx], run_data->tot_enstr[save_data_indx], run_data->tot_palin[save_data_indx], norms[0], norms[1]);
 		}
 	}
 	else {
 		// Print Update to screen
 		if( !(sys_vars->rank) ) {	
-			printf("Iter: %d\tt: %1.6lf\tdt: %g\t Max Vort: %1.4lf\tTKE: %1.8lf\tENS: %1.8lf\tPAL: %g\tE_Diss: %g\tEns_Diss: %g\n", iters, t, dt, max_vort, run_data->tot_energy[save_data_indx], run_data->tot_enstr[save_data_indx], run_data->tot_palin[save_data_indx], run_data->enrg_diss[save_data_indx], run_data->enst_diss[save_data_indx]);
+			printf("Iter: %d\tt: %1.6lf/%1.3lf\tdt: %g\t Max Vort: %1.4lf\tTKE: %1.8lf\tENS: %1.8lf\tPAL: %g\tE_Diss: %g\tEns_Diss: %g\n", iters, t, T, dt, max_vort, run_data->tot_energy[save_data_indx], run_data->tot_enstr[save_data_indx], run_data->tot_palin[save_data_indx], run_data->enrg_diss[save_data_indx], run_data->enst_diss[save_data_indx]);
 		}
 	}
 	#else
@@ -1453,14 +1658,13 @@ void PrintUpdateToTerminal(int iters, double t, double dt, double T, int save_da
  */
 void GetTimestep(double* dt) {
 
-	// Initialize variables
-	int tmp;
-	int indx;
-	
 	// -------------------------------
 	// Compute New Timestep
 	// -------------------------------
 	#ifdef __CFL_STEP
+	// Initialize variables
+	int tmp;
+	int indx;
 	fftw_complex I_over_k_sqr;
 	const long int Nx = sys_vars->N[0];
 	const long int Ny = sys_vars->N[1];
@@ -1676,10 +1880,8 @@ void TaylorGreenSoln(const double t, const long int* N) {
 /**
  * Function used to compute the energy spectrum of the current iteration. The energy spectrum is defined as all(sum) of the energy contained in concentric annuli in
  * wavenumber space. 	
- * @param  spectrum_size Variable used to store the size of the spectrum
- * @return               Pointer to the computed spectrum
  */
-double* EnergySpectrum(int* spectrum_size) {
+void EnergySpectrum(void) {
 
 	// Initialize variables
 	int tmp;
@@ -1691,21 +1893,12 @@ double* EnergySpectrum(int* spectrum_size) {
 	const long int Ny         = sys_vars->N[1];
 	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
 	double norm_fac = 0.5 / pow(Nx * Ny, 2.0);
-
+    double const_fac = 4.0 * pow(M_PI, 2.0);
 	// ------------------------------------
-	// Allocate Memory
+	// Initialize Spectrum Array
 	// ------------------------------------
-	// Size of the spectrum
-	(* spectrum_size) = (int) sqrt((double) ((sys_vars->N[0] / 2) * (sys_vars->N[0] / 2) + (sys_vars->N[1] / 2) * (sys_vars->N[1] / 2))) + 1; // plus 1 for the 0 mode
-	
-	// Allocate memory and initialize
-	double* spectrum = (double* )fftw_malloc(sizeof(double) * (* spectrum_size));
-	if (spectrum == NULL) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the spectrum array ["CYAN"%s"RESET"] \n-->> Exiting!!!\n", "Energy Spectrum");
-		exit(1);
-	}
-	for (int i = 0; i < (* spectrum_size); ++i) {
-		spectrum[i] = 0.0;
+	for (int i = 0; i < sys_vars->n_spect; ++i) {
+		run_data->enrg_spect[i] = 0.0;
 	}
 
 	// ------------------------------------
@@ -1717,62 +1910,88 @@ double* EnergySpectrum(int* spectrum_size) {
 			indx = tmp + j;
 
 			// Get spectrum index -> spectrum is computed by summing over the energy contained in concentric annuli in wavenumber space
-			spec_indx = (int) round(sqrt((double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j])));
+			spec_indx = (int) round( sqrt( (double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]) ) );
 
 			if ((run_data->k[0][i] == 0) && (run_data->k[1][j] == 0)) {
-				spectrum[spec_indx] += 0.0;
+				run_data->enrg_spect[spec_indx] += 0.0;
 			}
 			else {
 				// Compute |k|^2
-				k_sqr = (double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
+				k_sqr = 1.0 / ((double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]));
 
-				if ((j == 0) || (j = Ny_Fourier - 1)) {
+				if ((j == 0) || (j == Ny_Fourier - 1)) {
 					// Update the current bin for mode
-					spectrum[spec_indx] += 4.0 * M_PI * M_PI * (cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) / k_sqr) * norm_fac;
+					run_data->enrg_spect[spec_indx] += const_fac * norm_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * k_sqr;
 				}
 				else {
 					// Update the energy sum for the current mode
-					spectrum[spec_indx] += 2.0 * 4.0 * M_PI * M_PI * (cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) / k_sqr) * norm_fac;
+					run_data->enrg_spect[spec_indx] += 2.0 * const_fac * norm_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * k_sqr;
 				}
 			}
 		}
 	}
-
-	// Return spectrum
-	return spectrum;
 }
 /**
  * Function used to compute the enstrophy spectrum for the current iteration. The enstrophy spectrum is defined as the total enstrophy contained in concentric annuli 
  * in wavenumber space
- * @param  spectrum_size The size of the enstrophy spectrum
- * @return               A pointer to the enstrophy spectrum
  */
-double* EnstrophySpectrum(int* spectrum_size) {
+void EnstrophySpectrum(void) {
 
+	// // Initialize variables
+	// int tmp;
+	// int indx;
+	// int spec_indx;
+	// ptrdiff_t local_Nx 		  = sys_vars->local_Nx;
+	// const long int Nx         = sys_vars->N[0];
+	// const long int Ny         = sys_vars->N[1];
+	// const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
+	// double norm_fac = 0.5 / pow(Nx * Ny, 2.0);
+
+	// // ------------------------------------
+	// // Initialize Spectrum Array
+	// // ------------------------------------
+	// for (int i = 0; i < sys_vars->n_spect; ++i) {
+	// 	run_data->enst_spect[i] = 0.0;
+	// }
+
+	// // ------------------------------------
+	// // Compute Spectrum
+	// // ------------------------------------
+	// for (int i = 0; i < local_Nx; ++i) {
+	// 	tmp = i * Ny_Fourier;
+	// 	for (int j = 0; j < Ny_Fourier; ++j) {
+	// 		indx = tmp + j;
+
+	// 		// Get spectrum index -> spectrum is computed by summing over the energy contained in concentric annuli in wavenumber space
+	// 		spec_indx = (int) round( sqrt((double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]) ) );
+
+	// 		if ((j == 0)|| (j == Ny_Fourier - 1)) {
+	// 			// Update the sum of the enstrophy in the current mode
+	// 			run_data->enst_spect[spec_indx] += norm_fac * 4.0 * pow(M_PI, 2.0) * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])); // * norm_fac * 4.0 * pow(M_PI, 2..0) 
+				
+	// 		}
+	// 		else {
+	// 			// Update the sum of the enstrophy in the current mode
+	// 			run_data->enst_spect[spec_indx] += 2.0 * norm_fac * 4.0 * pow(M_PI, 2.0) * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+	// 		}
+	// 	}
+	// }
 	// Initialize variables
 	int tmp;
 	int indx;
 	int spec_indx;
+	double k_sqr;
 	ptrdiff_t local_Nx 		  = sys_vars->local_Nx;
 	const long int Nx         = sys_vars->N[0];
 	const long int Ny         = sys_vars->N[1];
 	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
 	double norm_fac = 0.5 / pow(Nx * Ny, 2.0);
-
+    double const_fac = 4.0 * pow(M_PI, 2.0);
 	// ------------------------------------
-	// Allocate Memory
+	// Initialize Spectrum Array
 	// ------------------------------------
-	// Size of the spectrum
-	(* spectrum_size) = (int) sqrt((double) ((sys_vars->N[0] / 2) * (sys_vars->N[0] / 2) + (sys_vars->N[1] / 2) * (sys_vars->N[1] / 2))) + 1; // plus 1 for the 0 mode
-	
-	// Allocate memory and initialize
-	double* spectrum = (double* )fftw_malloc(sizeof(double) * (* spectrum_size));
-	if (spectrum == NULL) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the spectrum array ["CYAN"%s"RESET"] \n-->> Exiting!!!\n", "Enstrophy Spectrum");
-		exit(1);
-	}
-	for (int i = 0; i < (* spectrum_size); ++i) {
-		spectrum[i] = 0.0;
+	for (int i = 0; i < sys_vars->n_spect; ++i) {
+		run_data->enst_spect[i] = 0.0;
 	}
 
 	// ------------------------------------
@@ -1784,21 +2003,26 @@ double* EnstrophySpectrum(int* spectrum_size) {
 			indx = tmp + j;
 
 			// Get spectrum index -> spectrum is computed by summing over the energy contained in concentric annuli in wavenumber space
-			spec_indx = (int) round(sqrt((double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j])));
+			spec_indx = (int) round( sqrt( (double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]) ) );
 
-			if ((j == 0) || (j == Ny_Fourier - 1)) {
-				// Update the sum of the enstrophy in the current mode
-				spectrum[spec_indx] += 4.0 * M_PI * M_PI * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * norm_fac;
+			if ((run_data->k[0][i] == 0) && (run_data->k[1][j] == 0)) {
+				run_data->enst_spect[spec_indx] += 0.0;
 			}
 			else {
-				// Update the sum of the enstrophy in the current mode
-				spectrum[spec_indx] += 2.0 * 4.0 * M_PI * M_PI * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * norm_fac;
+				// Compute |k|^2
+				k_sqr = 1.0 / ((double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]));
+
+				if ((j == 0) || (j == Ny_Fourier - 1)) {
+					// Update the current bin for mode
+					run_data->enst_spect[spec_indx] += const_fac * norm_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) ;
+				}
+				else {
+					// Update the energy sum for the current mode
+					run_data->enst_spect[spec_indx] += 2.0 * const_fac * norm_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) ;
+				}
 			}
 		}
 	}
-
-	// Return the spectrum
-	return spectrum;
 }
 /**
  * Function to compute the total energy in the system at the current timestep
@@ -2282,11 +2506,9 @@ void EnergyFlux(double* enrg_flux, double* enrg_diss, RK_data_struct* RK_data) {
 /**
  * Function to compute the energy flux spectrum for the current iteration on the local processes
  * The results of the complete spectrum will be gathered on the master rank before writing to file
- * @param  n_spect The size of the spectrum
  * @param  RK_data The struct containing the Runge-Kutta arrays needed for computing the nonlinear term
- * @return         Returns a pointer to the computed energy flux spectrum
  */
-double* EnergyFluxSpectrum(int* n_spect, RK_data_struct* RK_data) {
+void EnergyFluxSpectrum(RK_data_struct* RK_data) {
 
 	// Initialize variables
 	int tmp;
@@ -2301,19 +2523,10 @@ double* EnergyFluxSpectrum(int* n_spect, RK_data_struct* RK_data) {
 	double norm_fac = 0.5 / pow(Nx * Ny, 2.0);
 
 	// ------------------------------------
-	// Allocate Memory
+	// Initialize Spectrum Array
 	// ------------------------------------
-	// Size of the spectrum
-	(* n_spect) = (int) sqrt((double) ((sys_vars->N[0] / 2) * (sys_vars->N[0] / 2) + (sys_vars->N[1] / 2) * (sys_vars->N[1] / 2))) + 1; // plus 1 for the 0 mode
-	
-	// Allocate memory & initialize
-	double* spectrum = (double* )fftw_malloc(sizeof(double) * (* n_spect));
-	if (spectrum == NULL) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the spectrum array ["CYAN"%s"RESET"] \n-->> Exiting!!!\n", "Energy Flux Spectrum");
-		exit(1);
-	}
-	for (int i = 0; i < (* n_spect); ++i) {
-		spectrum[i] = 0.0;
+	for (int i = 0; i < sys_vars->n_spect; ++i) {
+		run_data->enrg_flux_spect[i] = 0.0;
 	}
 
 	// -----------------------------------
@@ -2363,11 +2576,11 @@ double* EnergyFluxSpectrum(int* n_spect, RK_data_struct* RK_data) {
 				// Update spectrum bin
 				if ((j == 0) || (Ny_Fourier - 1)) {
 					// Update the running sum for the flux of energy
-					spectrum[spec_indx] += 4.0 * M_PI * M_PI * norm_fac * creal(run_data->w_hat[indx] * conj(dwhat_dt[indx]) + conj(run_data->w_hat[indx]) * dwhat_dt[indx]) / k_sqr;
+					run_data->enrg_flux_spect[spec_indx] += 4.0 * M_PI * M_PI * norm_fac * creal(run_data->w_hat[indx] * conj(dwhat_dt[indx]) + conj(run_data->w_hat[indx]) * dwhat_dt[indx]) / k_sqr;
 				}
 				else {
 					// Update the running sum for the flux of energy
-					spectrum[spec_indx] += 2.0 * 4.0 * M_PI * M_PI * norm_fac * creal(run_data->w_hat[indx] * conj(dwhat_dt[indx]) + conj(run_data->w_hat[indx]) * dwhat_dt[indx]) / k_sqr;
+					run_data->enrg_flux_spect[spec_indx] += 2.0 * 4.0 * M_PI * M_PI * norm_fac * creal(run_data->w_hat[indx] * conj(dwhat_dt[indx]) + conj(run_data->w_hat[indx]) * dwhat_dt[indx]) / k_sqr;
 				}
 			}
 		}
@@ -2377,20 +2590,13 @@ double* EnergyFluxSpectrum(int* n_spect, RK_data_struct* RK_data) {
 	// Free Temp Memory
 	// -------------------------------------
 	fftw_free(dwhat_dt);
-
-	// -------------------------------------
-	// Return Spectrum
-	// -------------------------------------
-	return spectrum;
 }
 /**
  * Function to compute the enstrophy flux spectrum for the current iteration on the local processes
  * The results are gathered on the master rank before being written to file
- * @param  n_spect The size of the spectrum
  * @param  RK_data The struct containing the Runge-Kutta arrays for computing the nonlinear term
- * @return         Returns a pointer to the computed spectrum
  */
-double* EnstrophyFluxSpectrum(int* n_spect, RK_data_struct* RK_data) {
+void EnstrophyFluxSpectrum(RK_data_struct* RK_data) {
 
 	// Initialize variables
 	int tmp;
@@ -2405,21 +2611,12 @@ double* EnstrophyFluxSpectrum(int* n_spect, RK_data_struct* RK_data) {
 	double norm_fac = 0.5 / pow(Nx * Ny, 2.0);
 
 	// ------------------------------------
-	// Allocate Memory
+	// Initialize Spectrum Array
 	// ------------------------------------
-	// Size of the spectrum
-	(* n_spect) = (int) sqrt((double) ((sys_vars->N[0] / 2) * (sys_vars->N[0] / 2) + (sys_vars->N[1] / 2) * (sys_vars->N[1] / 2))) + 1; // plus 1 for the 0 mode
-	
-	// Allocate memory & initialize
-	double* spectrum = (double* )fftw_malloc(sizeof(double) * (* n_spect));
-	if (spectrum == NULL) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the spectrum array ["CYAN"%s"RESET"] \n-->> Exiting!!!\n", "Enstrophy Flux Spectrum");
-		exit(1);
-	}
-	for (int i = 0; i < (* n_spect); ++i) {
-		spectrum[i] = 0.0;
-	}
+	for (int i = 0; i < sys_vars->n_spect; ++i) {
+		run_data->enst_flux_spect[i] = 0.0;
 
+	}
 	// -----------------------------------
 	// Compute the Derivative
 	// -----------------------------------
@@ -2467,11 +2664,11 @@ double* EnstrophyFluxSpectrum(int* n_spect, RK_data_struct* RK_data) {
 				// Update spectrum bin
 				if ((j == 0) || (Ny_Fourier - 1)) {
 					// Update the current bin sum 
-					spectrum[spec_indx] += 4.0 * M_PI * M_PI * norm_fac * creal(run_data->w_hat[indx] * conj(dwhat_dt[indx]) + conj(run_data->w_hat[indx]) * dwhat_dt[indx]);
+					run_data->enst_flux_spect[spec_indx] += 4.0 * M_PI * M_PI * norm_fac * creal(run_data->w_hat[indx] * conj(dwhat_dt[indx]) + conj(run_data->w_hat[indx]) * dwhat_dt[indx]);
 				}
 				else {
 					// Update the running sum for the flux of energy
-					spectrum[spec_indx] += 2.0 * 4.0 * M_PI * M_PI * norm_fac * creal(run_data->w_hat[indx] * conj(dwhat_dt[indx]) + conj(run_data->w_hat[indx]) * dwhat_dt[indx]);
+					run_data->enst_flux_spect[spec_indx] += 2.0 * 4.0 * M_PI * M_PI * norm_fac * creal(run_data->w_hat[indx] * conj(dwhat_dt[indx]) + conj(run_data->w_hat[indx]) * dwhat_dt[indx]);
 				}
 			}
 		}
@@ -2481,11 +2678,6 @@ double* EnstrophyFluxSpectrum(int* n_spect, RK_data_struct* RK_data) {
 	// Free Temp Memory
 	// -------------------------------------
 	fftw_free(dwhat_dt);
-
-	// -------------------------------------
-	// Return Spectrum
-	// -------------------------------------
-	return spectrum;
 }
 /**
  * Function to record the system measures for the current timestep 
@@ -2531,18 +2723,18 @@ void RecordSystemMeasures(double t, int print_indx, RK_data_struct* RK_data) {
 	// -------------------------------
 	// Record the Spectra 
 	// -------------------------------
-	#ifdef __ENST_SPECT 
 	// Call spectra functions
-	run_data->enst_spect = (double* )EnstrophySpectrum(&(sys_vars->n_spect));
+	#ifdef __ENST_SPECT 
+	EnstrophySpectrum();
 	#endif
 	#ifdef __ENRG_SPECT
-	run_data->enrg_spect = (double* )EnergySpectrum(&(sys_vars->n_spect));
+	EnergySpectrum();
 	#endif
 	#ifdef __ENRG_FLUX_SPECT
-	run_data->enrg_flux_spect = (double* )EnergyFluxSpectrum(&(sys_vars->n_spect), RK_data);
+	EnergyFluxSpectrum(RK_data);
 	#endif
 	#ifdef __ENST_FLUX_SPECT
-	run_data->enst_flux_spect = (double* )EnstrophyFluxSpectrum(&(sys_vars->n_spect), RK_data);
+	EnstrophyFluxSpectrum(RK_data);
 	#endif
 }
 /**
@@ -2813,6 +3005,15 @@ void InitializeSystemMeasurables(RK_data_struct* RK_data) {
 	sys_vars->num_print_steps = sys_vars->num_print_steps;
 	#endif
 	int print_steps = sys_vars->num_print_steps;
+
+	// Get the size of the spectrum arrays
+	#if defined(__ENST_SPECT) || defined(__ENRG_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__ENRG_FLUX_SPECT)
+	const long int Nx = sys_vars->N[0];
+	const long int Ny = sys_vars->N[1];
+
+	sys_vars->n_spect = (int) sqrt(pow((double)Nx / 2.0, 2.0) + pow((double)Ny / 2.0, 2.0)) + 1;
+	int n_spect = sys_vars->n_spect;
+	#endif
 		
 	// ------------------------
 	// Allocate Memory
@@ -2850,6 +3051,22 @@ void InitializeSystemMeasurables(RK_data_struct* RK_data) {
 	run_data->enst_diss = (double* )fftw_malloc(sizeof(double) * print_steps);
 	if (run_data->enst_diss == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Enstrophy Dissipation Rate");
+		exit(1);
+	}	
+	#endif
+	#ifdef __ENST_SPECT 
+	// Enstrophy Spectrum
+	run_data->enst_spect = (double* )fftw_malloc(sizeof(double) * n_spect);
+	if (run_data->enst_spect == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Enstrophy Spectrum");
+		exit(1);
+	}	
+	#endif
+	#ifdef __ENRG_SPECT 
+	// Energy Spectrum
+	run_data->enrg_spect = (double* )fftw_malloc(sizeof(double) * n_spect);
+	if (run_data->enrg_spect == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Energy Spectrum");
 		exit(1);
 	}	
 	#endif
@@ -2893,6 +3110,22 @@ void InitializeSystemMeasurables(RK_data_struct* RK_data) {
 		}	
 	}
 	#endif
+	#ifdef __ENST_FLUX_SPECT 
+	// Enstrophy Spectrum
+	run_data->enst_flux_spect = (double* )fftw_malloc(sizeof(double) * n_spect);
+	if (run_data->enst_flux_spect == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Enstrophy Flux Spectrum");
+		exit(1);
+	}	
+	#endif
+	#ifdef __ENRG_FLUX_SPECT 
+	// Energy Spectrum
+	run_data->enrg_flux_spect = (double* )fftw_malloc(sizeof(double) * n_spect);
+	if (run_data->enrg_flux_spect == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Energy Flux Spectrum");
+		exit(1);
+	}	
+	#endif
 
 	// ----------------------------
 	// Get Measurables of the ICs
@@ -2933,16 +3166,16 @@ void InitializeSystemMeasurables(RK_data_struct* RK_data) {
 	// ----------------------------
 	// Call spectra functions
 	#ifdef __ENST_SPECT
-	run_data->enst_spect = (double* )EnstrophySpectrum(&(sys_vars->n_spect));
+	EnstrophySpectrum();
 	#endif
 	#ifdef __ENRG_SPECT
-	run_data->enrg_spect = (double* )EnergySpectrum(&(sys_vars->n_spect));
+	EnergySpectrum();
 	#endif
 	#ifdef __ENRG_FLUX_SPECT
-	run_data->enrg_flux_spect = (double* )EnergyFluxSpectrum(&(sys_vars->n_spect), RK_data);
+	EnergyFluxSpectrum(RK_data);
 	#endif
 	#ifdef __ENST_FLUX_SPECT
-	run_data->enst_flux_spect = (double* )EnstrophyFluxSpectrum(&(sys_vars->n_spect), RK_data);
+	EnstrophyFluxSpectrum(RK_data);
 	#endif
 }
 /**
@@ -2984,6 +3217,18 @@ void FreeMemory(RK_data_struct* RK_data) {
 	#ifdef __ENRG_FLUX
 	fftw_free(run_data->enrg_flux_sbst);
 	fftw_free(run_data->enrg_diss_sbst);
+	#endif
+	#ifdef __ENRG_SPECT
+	fftw_free(run_data->enrg_spect);
+	#endif
+	#ifdef __ENRG_FLUX_SPECT
+	fftw_free(run_data->enrg_flux_spect);
+	#endif
+	#ifdef __ENST_SPECT
+	fftw_free(run_data->enst_spect);
+	#endif
+	#ifdef __ENST_FLUX_SPECT
+	fftw_free(run_data->enst_flux_spect);
 	#endif
 	#ifdef TESTING
 	fftw_free(run_data->tg_soln);
