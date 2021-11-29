@@ -103,7 +103,7 @@ if __name__ == '__main__':
     ## --------  Plot Data
     # -----------------------------------------
     ## System Measures plot
-    fig = plt.figure(figsize = (16, 8))
+    fig = plt.figure(figsize = (32, 8))
     kmax = int(sys_vars.Nx/3 + 1)
     kk = np.arange(1, kmax)
     gs  = GridSpec(1, 2)
