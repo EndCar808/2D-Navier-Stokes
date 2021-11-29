@@ -250,7 +250,7 @@ if __name__ == '__main__':
         start = TIME.perf_counter()
 
         if cmdargs.full_snap:
-            framesPerSec = 15
+            framesPerSec = 30
             inputFile    = cmdargs.out_dir + "Decay2_SNAP_%05d.png"
             videoName    = cmdargs.out_dir + "2D_FULL_NavierStokes_N[{},{}]_u0[{}].mp4".format(sys_params.Nx, sys_params.Ny, sys_params.u0)
             cmd = "ffmpeg -y -r {} -f image2 -s 1920x1080 -i {} -vf 'pad=ceil(iw/2)*2:ceil(ih/2)*2' -vcodec libx264 -crf 25 -pix_fmt yuv420p {}".format(framesPerSec, inputFile, videoName)
@@ -267,7 +267,7 @@ if __name__ == '__main__':
             print("Video Location: " + tc.C + videoName + tc.Rst + "\n")
 
         if cmdargs.base_snap:
-            framesPerSec = 15
+            framesPerSec = 30
             inputFile    = cmdargs.out_dir + "Decay_SNAP_%05d.png"
             videoName    = cmdargs.out_dir + "2D_BASE_NavierStokes_N[{},{}]_u0[{}].mp4".format(sys_params.Nx, sys_params.Ny, sys_params.u0)
             cmd = "ffmpeg -y -r {} -f image2 -s 1920x1080 -i {} -vf 'pad=ceil(iw/2)*2:ceil(ih/2)*2' -vcodec libx264 -crf 25 -pix_fmt yuv420p {}".format(framesPerSec, inputFile, videoName)

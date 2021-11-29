@@ -57,7 +57,7 @@ def plot_summary_snaps(out_dir, i, w, w_hat, x, y, w_min, w_max, kx, ky, kx_max,
     ## Plot vorticity   
     ##-------------------------
     ax1 = fig.add_subplot(gs[0:2, 0:1])
-    im1 = ax1.imshow(w, extent = (y[0], y[-1], x[-1], x[0]), cmap = "RdBu", vmin = w_min, vmax = w_max) 
+    im1 = ax1.imshow(w, extent = (y[0], y[-1], x[-1], x[0]), cmap = "RdBu") # , vmin = w_min, vmax = w_max 
     ax1.set_xlabel(r"$y$")
     ax1.set_ylabel(r"$x$")
     ax1.set_xlim(0.0, y[-1])
@@ -81,11 +81,11 @@ def plot_summary_snaps(out_dir, i, w, w_hat, x, y, w_min, w_max, kx, ky, kx_max,
     ax2 = fig.add_subplot(gs[0, 1])
     # kpower = (1 / (kx[11:61] ** 4))
     # ax2.plot(kx[11:61], kpower , linestyle = ':', linewidth = 0.5, color = 'black')
-    ax2.plot(enrg_spec[:kindx] / np.sum(enrg_spec[:kindx]))
+    ax2.plot(enrg_spec[:kindx]) #  / np.sum(enrg_spec[:kindx])
     ax2.set_xlabel(r"$|k|$")
-    ax2.set_ylabel(r"$\mathcal{K}(|k|) / \sum \mathcal{K}(|k|)$")
+    ax2.set_ylabel(r"$\mathcal{K}(| \mathbf{k} |)$") #  / \sum \mathcal{K}(|k|)
     ax2.set_title(r"Energy Spectrum")
-    ax2.set_ylim(1e-20, 10)
+    # ax2.set_ylim(1e-20, 10)
     ax2.set_yscale('log')
     ax2.set_xscale('log')
     # ax2.text(x = kx[61],  y = kpower[-1], s = r"$k^{-4}$")
@@ -96,11 +96,11 @@ def plot_summary_snaps(out_dir, i, w, w_hat, x, y, w_min, w_max, kx, ky, kx_max,
     ax3 = fig.add_subplot(gs[1, 1]) 
     # kpower = (1 / (np.power(kx[11:61], 5 / 3)))
     # ax3.plot(kx[11:61], kpower, linestyle = ':', linewidth = 0.5, color = 'black')
-    ax3.plot(enst_spec[:kindx] / np.sum(enst_spec[:kindx]))
+    ax3.plot(enst_spec[:kindx]) # / np.sum(enst_spec[:kindx])
     ax3.set_xlabel(r"$|k|$")
-    ax3.set_ylabel(r"$\mathcal{E}(|k|) / \sum \mathcal{E}(|k|)$")
+    ax3.set_ylabel(r"$\mathcal{E}(|\mathbf{k}|)") #/ \sum \mathcal{E}(|k|)$
     ax3.set_title(r"Enstrophy Spectrum")
-    ax3.set_ylim(1e-20, 10)
+    # ax3.set_ylim(1e-20, 10)
     ax3.set_yscale('log')
     ax3.set_xscale('log')
     # ax3.text(x = kx[61],  y = kpower[-1], s = r"$k^{-5/3}$")
@@ -196,7 +196,7 @@ def plot_phase_snaps(out_dir, i, w, phases, enrg_spec, enst_spec, spec_lims, w_m
     ## Plot vorticity   
     ##-------------------------
     ax1 = fig.add_subplot(gs[0, 0])
-    im1 = ax1.imshow(w, extent = (y[0], y[-1], x[-1], x[0]), cmap = "RdBu", vmin = w_min, vmax = w_max) 
+    im1 = ax1.imshow(w, extent = (y[0], y[-1], x[-1], x[0]), cmap = "RdBu") #, vmin = w_min, vmax = w_max 
     ax1.set_xlabel(r"$y$")
     ax1.set_ylabel(r"$x$")
     ax1.set_xlim(0.0, y[-1])
@@ -218,7 +218,7 @@ def plot_phase_snaps(out_dir, i, w, phases, enrg_spec, enst_spec, spec_lims, w_m
     #--------------------------
     ## Generate colour map
     my_hsv = cm.jet
-    my_hsv.set_bad(color = "white")
+    my_hsv.set_under(color = "white")
 
     ax2  = fig.add_subplot(gs[0, 1])
     im2  = ax2.imshow(phases, extent = (Ny / 3, -Ny / 3 + 1, -Nx / 3 + 1, Nx / 3), cmap = my_hsv, vmin = 0., vmax = 2. * np.pi)
@@ -240,7 +240,7 @@ def plot_phase_snaps(out_dir, i, w, phases, enrg_spec, enst_spec, spec_lims, w_m
     # Plot 2D Enstrophy Spectra   
     #--------------------------
     ax3  = fig.add_subplot(gs[1, 0])
-    im3  = ax3.imshow(enst_spec, extent = (Ny / 3, -Ny / 3 + 1, -Nx / 3 + 1, Nx / 3), cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1]), norm = mpl.colors.LogNorm(), vmin = spec_lims[3], vmax = spec_lims[2])
+    im3  = ax3.imshow(enst_spec, extent = (Ny / 3, -Ny / 3 + 1, -Nx / 3 + 1, Nx / 3), cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1]), norm = mpl.colors.LogNorm()) # , vmin = spec_lims[3], vmax = spec_lims[2]
     ax3.set_xlabel(r"$k_y$")
     ax3.set_ylabel(r"$k_x$")
     ax3.set_title("Enstrophy Spectrum")
@@ -257,7 +257,7 @@ def plot_phase_snaps(out_dir, i, w, phases, enrg_spec, enst_spec, spec_lims, w_m
     ## Plot 2D Energy Spectra  
     ##-------------------------
     ax4  = fig.add_subplot(gs[1, 1])
-    im4  = ax4.imshow(enrg_spec, extent = (Ny / 3, -Ny / 3 + 1, -Nx / 3 + 1, Nx / 3), cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1]), norm = mpl.colors.LogNorm(), vmin = spec_lims[1], vmax = spec_lims[0])
+    im4  = ax4.imshow(enrg_spec, extent = (Ny / 3, -Ny / 3 + 1, -Nx / 3 + 1, Nx / 3), cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1]), norm = mpl.colors.LogNorm()) # , vmin = spec_lims[1], vmax = spec_lims[0]
     ax4.set_xlabel(r"$k_y$")
     ax4.set_ylabel(r"$k_x$")
     ax4.set_title("Energy Spectrum")
@@ -424,10 +424,12 @@ def plot_decay_snaps_2(out_dir, i, w, w_min, w_max, measure_min, measure_max, x,
        if u0 == "DECAY_TURB_II":
               p1, = ax3.plot(kk, (kk**6 /(1 + kk/60.)**18 )/ 10**7.5)
        elif u0 == "DECAY_TURB":
-              p1, = ax3.plot(kk, (kk /(1 + (kk**4)/6.))/ 10**0.25)              
+              p1, = ax3.plot(kk, (kk /(1 + (kk**4)/6.))/ 10**0.25) 
+       elif u0 == "DECAY_TURB_ALT":
+              p1, = ax3.plot(kk, (kk /(1 + (kk/6.)**4)/ 10**0.25))              
        line_color.append(p1.get_color())
        for j in range(enrg_spec.shape[0]):
-              spec_enrg = enrg_spec[j, 1:kindx] / np.sum(enrg_spec[j, 1:kindx])
+              spec_enrg = enrg_spec[j, 1:kindx]  #  / np.sum(enrg_spec[j, 1:kindx])
               if j == 0:
                      p2, = ax3.plot(kk, spec_enrg, color = 'y')
                      line_color.append(p2.get_color())
@@ -437,7 +439,7 @@ def plot_decay_snaps_2(out_dir, i, w, w_min, w_max, measure_min, measure_max, x,
               # else:                     
               #        ax3.plot(kk, spec, linestyle = ':', color = 'k', linewidth = 0.5, alpha = 0.02)
        ax3.set_xlabel(r"$|k|$")
-       ax3.set_ylabel(r"$\mathcal{K}(|k|) / \sum \mathcal{K}(|k|)$")
+       ax3.set_ylabel(r"$\mathcal{K}(|\mathbf{k}|)$") # / \sum \mathcal{K}(|k|)
        ax3.set_title(r"Energy Spectrum")
        # ax3.set_ylim(1e-10, 10)
        ax3.set_yscale('log')
@@ -456,19 +458,21 @@ def plot_decay_snaps_2(out_dir, i, w, w_min, w_max, measure_min, measure_max, x,
               p1, = ax4.plot(kk, (kk**8 /(1 + kk/60.)**18 )/ 10**7.5)
        elif u0 == "DECAY_TURB":
               p1, = ax4.plot(kk, ((kk**3) /(1 + (kk**4)/6.))/ 10**2.5)
+       elif u0 == "DECAY_TURB_ALT":
+              p1, = ax4.plot(kk**3, (kk /(1 + (kk/6.)**4)/ 10**0.25))  
        line_color.append(p1.get_color())
        for j in range(enst_spec.shape[0]):
-              spec_enst = enst_spec[j, 1:kindx] / np.sum(enst_spec[j, 1:kindx])
+              spec_enst = enst_spec[j, 1:kindx] #  / np.sum(enst_spec[j, 1:kindx])
               if j == 0:
                      p2, = ax4.plot(kk, spec_enst, color = 'y')
                      line_color.append(p2.get_color())
               elif j == enst_spec.shape[0] - 1:
                      p3, = ax4.plot(kk, spec_enst,  color = 'b')
                      line_color.append(p3.get_color())
-              else:                     
-                     ax4.plot(kk, spec_enst, linestyle = ':', color = 'k', linewidth = 0.5, alpha = 0.02)
+              # else:                     
+              #        ax4.plot(kk, spec_enst, linestyle = ':', color = 'k', linewidth = 0.5, alpha = 0.02)
        ax4.set_xlabel(r"$|k|$")
-       ax4.set_ylabel(r"$\mathcal{E}(|k|) / \sum \mathcal{E}(|k|)$")
+       ax4.set_ylabel(r"$\mathcal{E}(|\mathbf{k}|)$")  #/ \sum \mathcal{E}(|k|)
        ax4.set_title(r"Enstrophy Spectrum")
        # ax4.set_ylim(1e-10, 10)
        ax4.set_yscale('log')

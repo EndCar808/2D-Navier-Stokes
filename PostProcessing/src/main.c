@@ -604,7 +604,6 @@ void EnergySpectrum(void) {
             
             // Compute the spectral index
             spec_indx = (int) round(sqrt((double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j])));
-            // spec_indx = (int ) round(sqrt(pow((double) run_data->k[0][i], 2.0) + pow((double) run_data->k[1][j], 2.0)));
             
             if ((run_data->k[0][i] == 0) && (run_data->k[1][j] == 0)) {
 				proc_data->enrg_spec[spec_indx] += 0.0;
@@ -612,14 +611,11 @@ void EnergySpectrum(void) {
 			else {
                 // Compute the normalization factor 1.0 / |k|^2
                 k_sqr = 1.0 / ((double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]));
-				// k_sqr = 1.0 / ((double) (pow((double) run_data->k[0][i], 2.0) + pow((double) run_data->k[1][j], 2.0)));
             
                 if ((j == 0) || (j == Ny_Fourier - 1)) {
-                	// printf("sp: %d\ti: %d j: %d - ", spec_indx, i, j);
                     proc_data->enrg_spec[spec_indx] += const_fac * norm_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * k_sqr;
                 }
                 else {
-                	// printf("sp: %d\ti: %d j: %d - ", spec_indx, i, j);
                     proc_data->enrg_spec[spec_indx] += 2.0 * const_fac * norm_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * k_sqr;
                 }
             }

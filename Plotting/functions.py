@@ -120,7 +120,7 @@ def sim_data(input_dir, method = "default"):
         """
 
         ## Initialize class
-        def __init__(self, Nx = 0, Ny = 0, Nk = 0, nu = 0.0, t0 = 0.0, T = 0.0, ndata = 0, u0 = "TG_VORT", cfl = 0.0, spec_size = 0):
+        def __init__(self, Nx = 0, Ny = 0, Nk = 0, nu = 0.0, t0 = 0.0, T = 0.0, ndata = 0, u0 = "TG_VORT", cfl = 0.0, spec_size = 0, dt = 0., dx = 0., dy = 0.):
             self.Nx     = int(Nx)
             self.Ny     = int(Ny)
             self.Nk     = int(Nk)
@@ -130,6 +130,9 @@ def sim_data(input_dir, method = "default"):
             self.ndata  = int(ndata)
             self.u0     = str(u0)
             self.cfl    = float(cfl)
+            self.dt     = float(dt)
+            self.dx     = float(dx)
+            self.dy     = float(dy)
             self.spec_size = int(spec_size)
             
 
@@ -168,6 +171,15 @@ def sim_data(input_dir, method = "default"):
                 ## Parse the initial condition
                 if line.startswith('Initial Conditions'):
                     data.u0 = str(line.split()[-1])
+
+                ## Parse the timestep
+                if line.startswith('Finishing Timestep'):
+                    data.dt = float(line.split()[-1])
+
+                ## Parse the spatial increment
+                if line.startswith('Spatial Increment'):
+                    data.dy = float(line.split()[-1].rstrip(']'))
+                    data.dx = float(line.split()[-2].rstrip(',').lstrip('['))
 
             ## Get spectrum size
             data.spec_size = int(np.sqrt((data.Nx / 2)**2 + (data.Ny / 2)**2) + 1)            

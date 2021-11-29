@@ -396,11 +396,11 @@ if __name__ == '__main__':
     ax1.plot(kk, post_data.enrg_spectrum_1d[0, 1:kmax], '.-')
     ax1.plot(kk, post_data.enrg_spectrum_1d_alt[0, 1:kmax])
     if sys_vars.u0 == "DECAY_TURB_II" or sys_vars.u0 == "GAUSS_DECAY_TURB":
-        spec_ic = (kk**6) / ((1 + kk/60)**18) / (10**9.5)
+        spec_ic = (kk**6) / ((1 + kk/60)**18) / (10**7.6)
     elif sys_vars.u0 == "DECAY_TURB" :
-        spec_ic = (kk) / ((1 + (kk**4)/6)) / (10**1.1)
+        spec_ic = (kk) / ((1 + (kk**4)/6)) / (10**0.7)
     elif sys_vars.u0 == "DECAY_TURB_ALT":
-        spec_ic = kk / (((1.0 + ((kk/6)**4)))) / (10**2.95)
+        spec_ic = kk / (((1.0 + ((kk/6)**4)))) / (10**1.8)
     elif sys_vars.u0 == "DECAY_TURB_EXP":
         kp = 8.0
         spec_ic = (kk**7 / kp**8) * np.exp(-3.5 * (kk / kp)**2)
@@ -416,12 +416,12 @@ if __name__ == '__main__':
     ax2.plot(kk, post_data.enst_spectrum_1d[0, 1:kmax], '.-')
     ax2.plot(kk, post_data.enst_spectrum_1d_alt[0, 1:kmax])
     if sys_vars.u0 == "DECAY_TURB_II" or sys_vars.u0 == "GAUSS_DECAY_TURB":
-        spec_ic = (kk**8) / ((1 + kk/60)**18) / (10**9.5)
+        spec_ic = (kk**8) / ((1 + kk/60)**18) / (10**7.6)
     elif sys_vars.u0 == "DECAY_TURB" :
-        spec_ic = (kk**3) / ((1 + (kk**4)/6)) / (10**1)
+        spec_ic = (kk**3) / ((1 + (kk**4)/6)) / (10**0.6)
     elif sys_vars.u0 == "DECAY_TURB_ALT":
         indx = kk != 0
-        spec_ic[indx] = (kk[indx]**3) / ( (1 + (kk[indx]/6)**4)) / (10**2)
+        spec_ic[indx] = (kk[indx]**3) / ( (1 + (kk[indx]/6)**4)) / (10**1.8)
     elif sys_vars.u0 == "DECAY_TURB_EXP":
         kp = 8.0
         indx = kk_spec != 0
@@ -435,7 +435,6 @@ if __name__ == '__main__':
     plt.savefig(cmdargs.out_dir + "Initial_SpectraMethods_Test.png", bbox_inches = 'tight') 
     plt.close()
         
-    ## Energy Spectrum Test Initial Condition
     ## Energy Spectrum Test Initial Condition
     fig = plt.figure(figsize = (16, 8))
     gs  = GridSpec(1, 1)
@@ -454,18 +453,16 @@ if __name__ == '__main__':
             spec_indx_arr_int[i, j] = int(spec_indx)            
             if int(spec_indx) < kmax - 1:
                 kk_spec[int(spec_indx)] = spec_indx
-    print(spec_indx_arr)
-    print(spec_indx_arr_int)
     if sys_vars.u0 == "DECAY_TURB_II" or sys_vars.u0 == "GAUSS_DECAY_TURB":
-        spec_ic = (kk**6) / ((1 + kk/60)**18) / (10**9.5)
-        spec_kk = (kk_spec**6) / ((1 + (kk_spec)/60)**18) / (10**9.5)
+        spec_ic = (kk**6) / ((1 + kk/60)**18) / (10**7.6)
+        spec_kk = (kk_spec**6) / ((1 + (kk_spec)/60)**18) / (10**7.6)
     elif sys_vars.u0 == "DECAY_TURB" :
-        spec_ic = (kk) / ((1 + (kk**4)/6)) / (10**1.1)
+        spec_ic = (kk) / ((1 + (kk**4)/6)) / (10**0.7)
         spec_kk = (kk_spec) / ((1 + (kk_spec**4)/6)) / (10**1.1)
     elif sys_vars.u0 == "DECAY_TURB_ALT":
         indx = kk_spec != 0
-        spec_ic = kk / (((1.0 + ((kk/6)**4)))) / (10**2.95)
-        spec_kk[indx] = kk_spec[indx] / ( ((1.0 + ((kk_spec[indx]/6)**4)))) / (10**2.95)
+        spec_ic = kk / (((1.0 + ((kk/6)**4)))) / (10**1.8)
+        spec_kk[indx] = kk_spec[indx] / ( ((1.0 + ((kk_spec[indx]/6)**4)))) / (10**1.8)
     elif sys_vars.u0 == "DECAY_TURB_EXP":
         kp = 8.0
         spec_ic = (kk**7 / kp**8) * np.exp(-3.5 * (kk / kp)**2)
@@ -473,20 +470,20 @@ if __name__ == '__main__':
         spec_kk[indx] = (kk_spec[indx]**7 / kp**8) * np.exp(-3.5 * (kk_spec[indx] / kp)**2)
     ax1.plot(kk, spec_ic, '--')
     ax1.plot(kk, post_data.enrg_spectrum_1d[0, 1:kmax], '.-' )
-    ax1.plot(kk, spec_data.enrg_spectrum[0, 1:kmax], ':')
-    ax1.plot(kk, spec_kk[1:])
+    ax1.plot(kk, spec_data.enrg_spectrum[0, 1:kmax], '*')
     spec, _  = energy_spectrum(run_data.w_hat[0, :, :], run_data.kx, run_data.ky, sys_vars.Nx, sys_vars.Ny)
     ax1.plot(kk, spec[1:kmax], 'o')    
-    enrg_spec_alt, k = enrg_spec(run_data.w_hat[1, :, :], run_data.k2, run_data.k2Inv)
-    ax1.plot(k, enrg_spec_alt / 10**5.5, '*-')
+    # enrg_spec_alt, k = enrg_spec(run_data.w_hat[1, :, :], run_data.k2, run_data.k2Inv)
+    # ax1.plot(k, enrg_spec_alt / 10**5.5, '*-')
+    # ax1.plot(kk, spec_kk[1:])
     # iso_enrg, k_rad = iso_enrg_spec(run_data.w_hat[0, :, :], 2.0 * np.pi / sys_vars.Nx, 2.0 * np.pi / sys_vars.Ny, run_data.k2, run_data.k2Inv)
     # ax1.plot(k_rad, iso_enrg / 10**9)
-    ax1.plot(kk, post_data.enrg_spectrum_1d_alt[0, 1:kmax], '*-')
+    # ax1.plot(kk, post_data.enrg_spectrum_1d_alt[0, 1:kmax], '*-')
     ax1.set_xlabel(r"$|\mathbf{k}|$")
     ax1.set_ylabel(r"$\mathcal{K}(|\mathbf{k}|)$")
     ax1.set_xscale('log')
     ax1.set_yscale('log')
-    ax1.legend([r"Paper", r"Post", r"IC", r"Sqrt_k", r"Py", "Alt", "Isotropic", r"Post Alt"])
+    ax1.legend([r"Paper", r"Post", r"IC", r"Py", r"Sqrt_k", r"Alt", r"Isotropic", r"Post Alt"])
     plt.savefig(cmdargs.out_dir + "DecayTurb_EnergySpectrum_TEST_IC.png", bbox_inches = 'tight') 
     plt.close()
 
@@ -498,12 +495,12 @@ if __name__ == '__main__':
     kk = np.arange(1, kmax)
     spec_ic = np.ones((kmax - 1, ))
     if sys_vars.u0 == "DECAY_TURB_II" or sys_vars.u0 == "GAUSS_DECAY_TURB":
-        spec_ic = (kk**8) / ((1 + kk/60)**18) / (10**9.5)
+        spec_ic = (kk**8) / ((1 + kk/60)**18) / (10**7.6)
     elif sys_vars.u0 == "DECAY_TURB" :
-        spec_ic = (kk**3) / ((1 + (kk**4)/6)) / (10**1)
+        spec_ic = (kk**3) / ((1 + (kk**4)/6)) / (10**0.6)
     elif sys_vars.u0 == "DECAY_TURB_ALT":
         indx = kk != 0
-        spec_ic[indx] = (kk[indx]**3) / ( (1 + (kk[indx]/6)**4)) / (10**2)
+        spec_ic[indx] = (kk[indx]**3) / ( (1 + (kk[indx]/6)**4)) / (10**1.8)
     elif sys_vars.u0 == "DECAY_TURB_EXP":
         kp = 8.0
         indx = kk_spec != 0
@@ -512,12 +509,12 @@ if __name__ == '__main__':
     ax1.plot(kk, spec_data.enst_spectrum[0, 1:kmax], '.-')
     spec, _  = enstrophy_spectrum(run_data.w_hat[0, :, :], run_data.kx, run_data.ky, sys_vars.Nx, sys_vars.Ny)
     ax1.plot(kk, spec[1:kmax], 'o')
-    ax1.plot(kk, post_data.enst_spectrum_1d[0, 1:kmax], ':')
-    enst_spec_alt, k = enst_spec(run_data.w_hat[0, :, :], run_data.k2)
-    ax1.plot(k, enst_spec_alt / 10**5)
+    ax1.plot(kk, post_data.enst_spectrum_1d[0, 1:kmax], '*')
+    # enst_spec_alt, k = enst_spec(run_data.w_hat[0, :, :], run_data.k2)
+    # ax1.plot(k, enst_spec_alt / 10**5)
     # iso_enst, k_rad = iso_enst_spec(run_data.w_hat[0, :, :], 2.0 * np.pi / sys_vars.Nx, 2.0 * np.pi / sys_vars.Ny, run_data.k2)
     # ax1.plot(k_rad, iso_enrg / 10**9)
-    ax1.plot(kk, post_data.enst_spectrum_1d_alt[0, 1:kmax], '*-')
+    # ax1.plot(kk, post_data.enst_spectrum_1d_alt[0, 1:kmax], '*-')
     ax1.set_xlabel(r"$|\mathbf{k}|$")
     ax1.set_ylabel(r"$\mathcal{E}(|\mathbf{k}|)$")
     ax1.set_xscale('log')

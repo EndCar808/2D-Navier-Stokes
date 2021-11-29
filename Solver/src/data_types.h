@@ -112,6 +112,7 @@
 // ---------------------------------------------------------------------
 // These definitions define some of the solver parameters.
 #define SYS_DIM 2 				// The system dimension i.e., 2D
+#define TRANS_FRAC 0.2          // Fraction of time(steps) to ignore before saving to file
 // Dormand Prince integrator parameters
 #define DP_ABS_TOL 1e-7		    // The absolute error tolerance for the Dormand Prince Scheme
 #define DP_REL_TOL 1e-7         // The relative error tolerance for the Dormand Prince Scheme

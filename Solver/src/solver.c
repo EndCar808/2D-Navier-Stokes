@@ -1056,13 +1056,12 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 					// Compute the mod of k -> |k|
 					k_sqrt = sqrt((double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]));
 
-					// Get the initial form
-					spec_1d = sqrt(1.0 / (k_sqrt * (1.0 + pow(k_sqrt / 6.0, 4.0))));
+					// Get the initial form of the fourier stream function sqrd -> definition in the paper
+					spec_1d = 1.0 / (k_sqrt * (1.0 + pow(k_sqrt / 6.0, 4.0)));
 					
-					// Fill the stream function
-					psi_hat[indx] = (z1  + z2 * I) * spec_1d;
+					// Fill the stream function -> spec_1d * k_sqrt^2 is the form of the initial energy spectrum
+					psi_hat[indx] = (z1  + z2 * I) * sqrt(spec_1d * pow(k_sqrt, 2.0) / (pow(k_sqrt, 3.0) * 2.0 * M_PI));
 				}
-
 			}
 		}
 		#ifdef DEBUG
@@ -1937,50 +1936,10 @@ void EnergySpectrum(void) {
  */
 void EnstrophySpectrum(void) {
 
-	// // Initialize variables
-	// int tmp;
-	// int indx;
-	// int spec_indx;
-	// ptrdiff_t local_Nx 		  = sys_vars->local_Nx;
-	// const long int Nx         = sys_vars->N[0];
-	// const long int Ny         = sys_vars->N[1];
-	// const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
-	// double norm_fac = 0.5 / pow(Nx * Ny, 2.0);
-
-	// // ------------------------------------
-	// // Initialize Spectrum Array
-	// // ------------------------------------
-	// for (int i = 0; i < sys_vars->n_spect; ++i) {
-	// 	run_data->enst_spect[i] = 0.0;
-	// }
-
-	// // ------------------------------------
-	// // Compute Spectrum
-	// // ------------------------------------
-	// for (int i = 0; i < local_Nx; ++i) {
-	// 	tmp = i * Ny_Fourier;
-	// 	for (int j = 0; j < Ny_Fourier; ++j) {
-	// 		indx = tmp + j;
-
-	// 		// Get spectrum index -> spectrum is computed by summing over the energy contained in concentric annuli in wavenumber space
-	// 		spec_indx = (int) round( sqrt((double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]) ) );
-
-	// 		if ((j == 0)|| (j == Ny_Fourier - 1)) {
-	// 			// Update the sum of the enstrophy in the current mode
-	// 			run_data->enst_spect[spec_indx] += norm_fac * 4.0 * pow(M_PI, 2.0) * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])); // * norm_fac * 4.0 * pow(M_PI, 2..0) 
-				
-	// 		}
-	// 		else {
-	// 			// Update the sum of the enstrophy in the current mode
-	// 			run_data->enst_spect[spec_indx] += 2.0 * norm_fac * 4.0 * pow(M_PI, 2.0) * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
-	// 		}
-	// 	}
-	// }
 	// Initialize variables
 	int tmp;
 	int indx;
 	int spec_indx;
-	double k_sqr;
 	ptrdiff_t local_Nx 		  = sys_vars->local_Nx;
 	const long int Nx         = sys_vars->N[0];
 	const long int Ny         = sys_vars->N[1];
@@ -2009,16 +1968,13 @@ void EnstrophySpectrum(void) {
 				run_data->enst_spect[spec_indx] += 0.0;
 			}
 			else {
-				// Compute |k|^2
-				k_sqr = 1.0 / ((double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]));
-
 				if ((j == 0) || (j == Ny_Fourier - 1)) {
 					// Update the current bin for mode
-					run_data->enst_spect[spec_indx] += const_fac * norm_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) ;
+					run_data->enst_spect[spec_indx] += const_fac * norm_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
 				}
 				else {
-					// Update the energy sum for the current mode
-					run_data->enst_spect[spec_indx] += 2.0 * const_fac * norm_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) ;
+					// Update the enstrophy sum for the current mode
+					run_data->enst_spect[spec_indx] += 2.0 * const_fac * norm_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
 				}
 			}
 		}

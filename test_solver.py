@@ -35,12 +35,12 @@ if __name__ == '__main__':
 	t0  = 0.0
 	T   = 0.01
 	dt  = 0.0001
-	tag = "DECAY-TURB-TEST"
-	u0  = "DECAY_TURB"
+	tag = "DECAY-TURB-ALT-TEST"
+	u0  = "DECAY_TURB_ALT"
 	nu  = 3.5e-9
 	num_procs    = 4
 	test_res_dir = "/home/ecarroll/PhD/2D_Navier_Stokes/Data/Test"
-	test_res_folder = test_res_dir + "/" + tag + "/" 
+	test_res_folder = test_res_dir + "/" + tag + "/"
 
 	## Make sub directory to store results and run commands
 	if not os.path.isdir(test_res_folder):
@@ -65,20 +65,20 @@ if __name__ == '__main__':
 		groups = [(Popen(cmd, shell = True, stdout = PIPE, stdin = PIPE, stderr = PIPE, universal_newlines = True) for cmd in cmd_list)] * 1
 
 		## Loop through grouped iterable
-		for processes in zip_longest(*groups): 
-		    for proc in filter(None, processes): # filters out 'None' fill values if proc_limit does not divide evenly into cmd_list
-		        ## Print command to screen
-		        print("\nExecuting the following command:\n\t" + tc.C + "{}".format(proc.args[0]) + tc.Rst)
-		        
-		        ## Communicate with process to retrive output and error
-		        [run_CodeOutput, run_CodeErr] = proc.communicate()
-		        
-		        ## Print both to screen
-		        print(run_CodeOutput)
-		        print(run_CodeErr)
+		for processes in zip_longest(*groups):
+                    for proc in filter(None, processes): # filters out 'None' fill values if proc_limit does not divide evenly into cmd_list
+                        ## Print command to screen
+                        print("\nExecuting the following command:\n\t" + tc.C + "{}".format(proc.args[0]) + tc.Rst)
 
-		        ## Wait until all finished
-		        proc.wait()
+                        ## Communicate with process to retrive output and error
+                        [run_CodeOutput, run_CodeErr] = proc.communicate()
+
+                        ## Print both to screen
+                        print(run_CodeOutput)
+                        print(run_CodeErr)
+
+                        ## Wait until all finished
+                        proc.wait()
 
 	if os.path.isdir(test_res_folder):
 
@@ -97,7 +97,7 @@ if __name__ == '__main__':
 				bren_code_folder = test_res_folder + f  + '/'
 			if "Python_Data" in f:
 				py_code_folder = test_res_folder + f + '/'
-		
+
 		if not my_code_folder:
 			print("Missing results from 2D NS in: " + tc.C + test_res_folder + tc.Rst)
 		else:
@@ -124,11 +124,11 @@ if __name__ == '__main__':
 				nn = 0
 				# Read in the spectra
 				for group in globalf.keys():
-				    if "Timestep" in group:
-				    	if "W_hat" in list(globalf[group].keys()):
-				    		b_w_hat[nn, :, :] = globalf[group]["W_hat"][:, :]
-				    	b_solv_time[nn] = globalf[group].attrs["TimeValue"]
-				    	nn += 1
+                                    if "Timestep" in group:
+                                        if "W_hat" in list(globalf[group].keys()):
+                                            b_w_hat[nn, :, :] = globalf[group]["W_hat"][:, :]
+                                        b_solv_time[nn] = globalf[group].attrs["TimeValue"]
+                                        nn += 1
 				if "kx" in list(globalf["Timestep_0000"].keys()):
 					b_kx = globalf["Timestep_0000"]["kx"][:]
 				if "ky" in list(globalf["Timestep_0000"].keys()):
@@ -141,7 +141,7 @@ if __name__ == '__main__':
 				b_max_vort      = localf["MaxVorticity"][:]
 				b_time     		= localf["TimeValues"][:]
 				b_tot_enrg 		= localf["TotEnergy"][:]
-				b_tot_enst 		= localf["TotEnstrophy"][:]			
+				b_tot_enst 		= localf["TotEnstrophy"][:]
 				b_tot_enst_diss = localf["TotEnstrophyDissapation"][:]
 				b_tot_enrg_diss = localf["TotEnergyDissapation"][:]
 
@@ -200,7 +200,7 @@ if __name__ == '__main__':
 		if not py_code_folder:
 			print("Missing results from Python code in: " + tc.C + test_res_folder + tc.Rst)
 
-	
+
 
 		################################
 		##       PLOTTING DATA        ##
@@ -212,22 +212,22 @@ if __name__ == '__main__':
 		gs  = GridSpec(1, 3, wspace = 0.2)
 		indexes = [0, int(ndata/2), run_data.w_hat.shape[0] - 1]
 		for i, indx in enumerate(indexes):
-		    ax = fig.add_subplot(gs[0, i])
-		    im = ax.imshow(np.absolute(run_data.w[indx, :, :] - np.fft.irfft2(b_w_hat[i, :, :])), extent = (run_data.y[0], run_data.y[-1], run_data.x[-1], run_data.x[0]), cmap = "jet")
-		    ax.set_xlabel(r"$y$")
-		    ax.set_ylabel(r"$x$")
-		    ax.set_xlim(0.0, run_data.y[-1])
-		    ax.set_ylim(0.0, run_data.x[-1])
-		    ax.set_xticks([0.0, np.pi/2.0, np.pi, 1.5*np.pi, run_data.y[-1]])
-		    ax.set_xticklabels([r"$0$", r"$\frac{\pi}{2}$", r"$\pi$", r"$\frac{3\pi}{2}$", r"$2 \pi$"])
-		    ax.set_yticks([0.0, np.pi/2.0, np.pi, 1.5*np.pi, run_data.x[-1]])
-		    ax.set_yticklabels([r"$0$", r"$\frac{\pi}{2}$", r"$\pi$", r"$\frac{3\pi}{2}$", r"$2 \pi$"])
-		    ax.set_title(r"$t = {:0.5f}$".format(run_data.time[indx]))
-		    div  = make_axes_locatable(ax)
-		    cbax = div.append_axes("right", size = "10%", pad = 0.05)
-		    cb   = plt.colorbar(im, cax = cbax)
-		    cb.set_label(r"$|\omega - \omega_b|$")
-		plt.savefig(test_res_folder + "VorticityFieldError.png", bbox_inches = 'tight') 
+                    ax = fig.add_subplot(gs[0, i])
+                    im = ax.imshow(np.absolute(run_data.w[indx, :, :] - np.fft.irfft2(b_w_hat[i, :, :])), extent = (run_data.y[0], run_data.y[-1], run_data.x[-1], run_data.x[0]), cmap = "jet")
+                    ax.set_xlabel(r"$y$")
+                    ax.set_ylabel(r"$x$")
+                    ax.set_xlim(0.0, run_data.y[-1])
+                    ax.set_ylim(0.0, run_data.x[-1])
+                    ax.set_xticks([0.0, np.pi/2.0, np.pi, 1.5*np.pi, run_data.y[-1]])
+                    ax.set_xticklabels([r"$0$", r"$\frac{\pi}{2}$", r"$\pi$", r"$\frac{3\pi}{2}$", r"$2 \pi$"])
+                    ax.set_yticks([0.0, np.pi/2.0, np.pi, 1.5*np.pi, run_data.x[-1]])
+                    ax.set_yticklabels([r"$0$", r"$\frac{\pi}{2}$", r"$\pi$", r"$\frac{3\pi}{2}$", r"$2 \pi$"])
+                    ax.set_title(r"$t = {:0.5f}$".format(run_data.time[indx]))
+                    div  = make_axes_locatable(ax)
+                    cbax = div.append_axes("right", size = "10%", pad = 0.05)
+                    cb   = plt.colorbar(im, cax = cbax)
+                    cb.set_label(r"$|\omega - \omega_b|$")
+		plt.savefig(test_res_folder + "VorticityFieldError.png", bbox_inches = 'tight')
 		plt.close()
 
 
@@ -266,7 +266,7 @@ if __name__ == '__main__':
 		ax4.set_xlim(run_data.time[0], run_data.time[-1])
 		ax4.legend([r"My Code", r"Brendan's Code", "Python"])
 		ax4.set_title(r"Enstrophy Dissipation")
-		plt.savefig(test_res_folder + "System_Measures.png", bbox_inches = 'tight') 
+		plt.savefig(test_res_folder + "System_Measures.png", bbox_inches = 'tight')
 		plt.close()
 
 		## Initial Spectra
@@ -292,7 +292,7 @@ if __name__ == '__main__':
 		ax2.set_yscale('log')
 		ax2.legend([r"My Code", r"Brendan's Code", "Python"])
 		ax2.set_title(r"Enstrophy Spectrum")
-		plt.savefig(test_res_folder + "InitialSpectra.png", bbox_inches='tight') 
+		plt.savefig(test_res_folder + "InitialSpectra.png", bbox_inches='tight')
 		plt.close()
 
 		print(b_spec_time)
@@ -312,7 +312,7 @@ if __name__ == '__main__':
 		ax2.set_title(r"Enstrophy Flux Spectra")
 		ax2.set_xlabel(r"$|\mathbf{k}|$")
 		ax2.set_ylabel(r"$\Pi(|\mathbf{k}|)$")
-		plt.savefig(test_res_folder + "FluxSpectra.png", bbox_inches='tight') 
+		plt.savefig(test_res_folder + "FluxSpectra.png", bbox_inches='tight')
 		plt.close()
 
 		#################################
@@ -334,7 +334,7 @@ if __name__ == '__main__':
 			bren_passed = 0
 			for i in range(len(run_data.time)):
 				if np.isclose(b_time[i], run_data.time[i], rtol = 1e-10):
-					bren_passed += 1 
+					bren_passed += 1
 					continue
 				else:
 					print(tc.R + "[TEST FAILURE]: " + tc.Rst + "Time data at iteration " + tc.C + "[{}]".format(i) + tc.Rst + " ---- My code value: " + tc.C + "[{}]".format(run_data.time[i]) + tc.Rst + " Brendan's code value: "  + tc.C + "[{}]".format(b_time[i]) + tc.Rst)
@@ -349,14 +349,15 @@ if __name__ == '__main__':
 				for i in range(run_data.w_hat.shape[0]):
 					if np.isclose(b_solv_time[i], run_data.time[i], rtol = 1e-10):
 						if np.allclose(run_data.w_hat[i, :, :], b_w_hat[i, :, :]):
-							bren_passed += 1 
+							bren_passed += 1
 							continue
 						else:
 							print(tc.R + "[TEST FAILURE]: " + tc.Rst + "Fourier Vorticity data at iteration " + tc.C + "[{}]".format(i) + tc.Rst + " ---- L2 Error: " + tc.C + "[{}]".format(np.linalg.norm(run_data.w_hat[i, :, :] - b_w_hat[i, :, :])) + tc.Rst + " Linf Error: "  + tc.C + "[{}]".format(np.max(np.sum(np.absolute(run_data.w_hat[i, :, :] - b_w_hat[i, :, :]), axis = 1))) + tc.Rst)
 							break
-						
+
 				if bren_passed == len(run_data.time):
 					print(tc.G + "[TEST PASSED]: " + tc.Rst + "Solver" + tc.C + "[Fourier Vorticity]" + tc.Rst + " data matches Brendan's code")
 	else:
 		print(tc.R + "[ERROR]: " + tc.Rst + "Double check parameters in python script / solvers are made correctly and working")
 		sys.exit()
+
