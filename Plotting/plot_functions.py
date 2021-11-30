@@ -221,7 +221,7 @@ def plot_phase_snaps(out_dir, i, w, phases, enrg_spec, enst_spec, spec_lims, w_m
     my_hsv.set_under(color = "white")
 
     ax2  = fig.add_subplot(gs[0, 1])
-    im2  = ax2.imshow(phases, extent = (Ny / 3, -Ny / 3 + 1, -Nx / 3 + 1, Nx / 3), cmap = my_hsv, vmin = 0., vmax = 2. * np.pi)
+    im2  = ax2.imshow(phases, extent = (-Ny / 3 + 1, Ny / 3, -Nx / 3 + 1, Nx / 3), cmap = my_hsv, vmin = 0., vmax = 2. * np.pi)
     ax2.set_xlabel(r"$k_y$")
     ax2.set_ylabel(r"$k_x$")
     ax2.set_title(r"Phases")
@@ -240,7 +240,7 @@ def plot_phase_snaps(out_dir, i, w, phases, enrg_spec, enst_spec, spec_lims, w_m
     # Plot 2D Enstrophy Spectra   
     #--------------------------
     ax3  = fig.add_subplot(gs[1, 0])
-    im3  = ax3.imshow(enst_spec, extent = (Ny / 3, -Ny / 3 + 1, -Nx / 3 + 1, Nx / 3), cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1]), norm = mpl.colors.LogNorm()) # , vmin = spec_lims[3], vmax = spec_lims[2]
+    im3  = ax3.imshow(enst_spec, extent = (-Ny / 3 + 1, Ny / 3, -Nx / 3 + 1, Nx / 3), cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1]), norm = mpl.colors.LogNorm()) # , vmin = spec_lims[3], vmax = spec_lims[2]
     ax3.set_xlabel(r"$k_y$")
     ax3.set_ylabel(r"$k_x$")
     ax3.set_title("Enstrophy Spectrum")
@@ -257,7 +257,7 @@ def plot_phase_snaps(out_dir, i, w, phases, enrg_spec, enst_spec, spec_lims, w_m
     ## Plot 2D Energy Spectra  
     ##-------------------------
     ax4  = fig.add_subplot(gs[1, 1])
-    im4  = ax4.imshow(enrg_spec, extent = (Ny / 3, -Ny / 3 + 1, -Nx / 3 + 1, Nx / 3), cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1]), norm = mpl.colors.LogNorm()) # , vmin = spec_lims[1], vmax = spec_lims[0]
+    im4  = ax4.imshow(enrg_spec, extent = (-Ny / 3 + 1, Ny / 3, -Nx / 3 + 1, Nx / 3), cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1]), norm = mpl.colors.LogNorm()) # , vmin = spec_lims[1], vmax = spec_lims[0]
     ax4.set_xlabel(r"$k_y$")
     ax4.set_ylabel(r"$k_x$")
     ax4.set_title("Energy Spectrum")
@@ -485,6 +485,85 @@ def plot_decay_snaps_2(out_dir, i, w, w_min, w_max, measure_min, measure_max, x,
        ## Save figure
        plt.savefig(out_dir + "Decay2_SNAP_{:05d}.png".format(i), bbox_inches='tight') 
        plt.close()
+
+
+def plot_sector_phase_sync_snaps(i, out_dir, phases, theta, phase_order, t, Nx, Ny):
+
+       """
+       Plots the phases and average phase and sync per sector of the phases
+
+       i       : int
+               - The current snap
+       out_dir : str
+               - Path to the output folder
+       phases  : ndarray, float64
+               - 2D array of the Fourier phases, only ky > section 
+       theta   : array, float64
+               - 1D Array containing the angles of the sector boundaries
+       phase_order : array, complex128
+               - Array of the phase order parameter for each sector
+       t       : float64
+               - The current time 
+       Nx      : int
+               - Size of the first dimension
+       Ny      : int
+               - Size of the second dimension
+       """
+
+       ## Print Update
+       print("SNAP: {}".format(i))
+
+       ## Set up figure
+       fig = plt.figure(figsize = (16, 9))
+       gs  = GridSpec(2, 2)
+       
+       ## Generate colour map
+       my_hsv = cm.jet
+       my_hsv.set_under(color = "white")
+
+       #--------------------------
+       # Plot Phases  
+       #--------------------------
+       ax1 = fig.add_subplot(gs[0:2, 0])
+       im1 = ax1.imshow(phases, extent = (0, int(Ny / 3), int(-Nx / 3 + 1), int(Nx / 3)), cmap = my_hsv, vmin = 0., vmax = 2. * np.pi)
+       ax1.set_xlabel(r"$k_y$")
+       ax1.set_ylabel(r"$k_x$")
+       ax1.set_ylim(-int(Nx / 3), int(Nx / 3))
+       ax1.set_xlim(0, int(Nx / 3))
+       div1  = make_axes_locatable(ax1)
+       cbax1 = div1.append_axes("right", size = "10%", pad = 0.05)
+       cb1   = plt.colorbar(im1, cax = cbax1)
+       cb1.set_label(r"$\phi_{\mathbf{k}}$")
+       cb1.set_ticks([0.0, np.pi/2.0, np.pi, 3.0*np.pi/2.0, 2.0*np.pi])
+       cb1.set_ticklabels([r"$0$", r"$\frac{\pi}{2}$", r"$\pi$", r"$\frac{3\pi}{2}$", r"$2\pi$"])
+
+       #--------------------------
+       # Plot Phase Sync Per Sector  
+       #--------------------------
+       ax2 = fig.add_subplot(gs[0, 1])
+       ax2.plot(theta, np.absolute(phase_order))
+       ax2.set_xlim(-np.pi/2, np.pi/2)
+       ax2.set_ylim(0, 1.)
+       ax2.set_xlabel(r"$\theta$")
+       ax2.set_ylabel(r"$\mathcal{R}$")
+
+       #--------------------------
+       # Plot Avg Phase Per Sector  
+       #--------------------------
+       ax3 = fig.add_subplot(gs[1, 1])
+       ax3.plot(theta, np.angle(phase_order))
+       ax3.set_xlim(-np.pi/2, np.pi/2)
+       ax3.set_xlabel(r"$\theta$")
+       ax3.set_ylabel(r"$\Phi$")
+       ax3.set_ylim(-np.pi, np.pi)
+       ax3.set_yticks([-np.pi, -np.pi/2.0, 0., np.pi/2, np.pi])
+       ax3.set_yticklabels([r"$-\pi$", r"$-\frac{\pi}{2}$", r"$0$", r"$\frac{\pi}{2}$", r"$\pi$"])
+       
+       ## Add title and save fig
+       plt.suptitle(r"$t = {}$".format(t))
+       plt.savefig(out_dir + "/Phase_Sync_SNAP_{:05d}.png".format(i), bbox_inches = 'tight')
+       plt.close()
+
 
 #############################
 ##       COLOURMAPS        ##

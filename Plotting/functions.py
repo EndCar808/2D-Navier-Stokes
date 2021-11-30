@@ -68,7 +68,7 @@ def run_commands_parallel(cmd_lsit, proc_limit):
 
     """
     Runs commands in parallel.
-    
+
     Input Parameters:
         cmd_list    : list
                      - List of commands to run
@@ -77,17 +77,17 @@ def run_commands_parallel(cmd_lsit, proc_limit):
     """
 
     ## Create grouped iterable of subprocess calls to Popen() - see grouper recipe in itertools
-    groups = [(Popen(cmd, shell = True, stdout = PIPE, stdin = PIPE, stderr = PIPE, universal_newlines = True) for cmd in cmd_list)] * proc_limit 
+    groups = [(Popen(cmd, shell = True, stdout = PIPE, stdin = PIPE, stderr = PIPE, universal_newlines = True) for cmd in cmd_list)] * proc_limit
 
     ## Loop through grouped iterable
-    for processes in zip_longest(*groups): 
+    for processes in zip_longest(*groups):
         for proc in filter(None, processes): # filters out 'None' fill values if proc_limit does not divide evenly into cmd_list
             ## Print command to screen
             print("\nExecuting the following command:\n\t" + tc.C + "{}".format(proc.args[0]) + tc.Rst)
-            
+
             # Communicate with process to retrive output and error
             [run_CodeOutput, run_CodeErr] = proc.communicate()
-            
+
             ## Print both to screen
             print(run_CodeOutput)
             print(run_CodeErr)
@@ -105,10 +105,10 @@ def sim_data(input_dir, method = "default"):
 
     Input Parameters:
         input_dir : string
-                    - If method == "defualt" is True then this will be the path to 
+                    - If method == "defualt" is True then this will be the path to
                     the input folder. if not then this will be the input folder
         method    : string
-                    - Determines whether the data is to be read in from a file or 
+                    - Determines whether the data is to be read in from a file or
                     from an input folder
     """
 
@@ -134,7 +134,7 @@ def sim_data(input_dir, method = "default"):
             self.dx     = float(dx)
             self.dy     = float(dy)
             self.spec_size = int(spec_size)
-            
+
 
     ## Create instance of class
     data = SimulationData()
@@ -142,7 +142,7 @@ def sim_data(input_dir, method = "default"):
     if method == "default":
         ## Read in simulation data from file
         with open(input_dir + "SimulationDetails.txt") as f:
-            
+
             ## Loop through lines and parse data
             for line in f.readlines():
 
@@ -182,11 +182,11 @@ def sim_data(input_dir, method = "default"):
                     data.dx = float(line.split()[-2].rstrip(',').lstrip('['))
 
             ## Get spectrum size
-            data.spec_size = int(np.sqrt((data.Nx / 2)**2 + (data.Ny / 2)**2) + 1)            
+            data.spec_size = int(np.sqrt((data.Nx / 2)**2 + (data.Ny / 2)**2) + 1)
     else:
-    
+
         for term in input_dir.split('_'):
-    
+
             ## Parse Viscosity
             if term.startswith("NU"):
                 data.nu = float(term.split('[')[-1].rstrip(']'))
@@ -229,18 +229,18 @@ def import_data(input_file, sim_data, method = "default"):
     Reads in run data from main HDF5 file.
 
     input_dir : string
-                - If method == "defualt" is True then this will be the path to 
+                - If method == "defualt" is True then this will be the path to
                the input folder. if not then this will be the input folder
     method    : string
-                - Determines whether the data is to be read in from a file or 
+                - Determines whether the data is to be read in from a file or
                from an input folder
-    sim_data  : class 
+    sim_data  : class
                 - object containing the simulation parameters
     """
 
 
     ## Define a data class for the solver data
-    class SolverData: 
+    class SolverData:
 
         """
         Class for the run data.
@@ -278,15 +278,15 @@ def import_data(input_file, sim_data, method = "default"):
     ## Depending on the output mmode of the solver the input files will be named differently
     if method == "default":
         in_file = input_file + "Main_HDF_Data.h5"
-    else: 
+    else:
         in_file = input_file
 
     ## Open file and read in the data
     with h5py.File(in_file, 'r') as file:
-        
+
         ## Initialize counter
         nn = 0
-        
+
         # Read in the vorticity
         for group in file.keys():
             if "Iter" in group:
@@ -304,7 +304,7 @@ def import_data(input_file, sim_data, method = "default"):
                 nn += 1
             else:
                 continue
-  
+
         ## Read in the space arrays
         if 'kx' in list(file.keys()):
             data.kx = file["kx"][:]
@@ -314,7 +314,7 @@ def import_data(input_file, sim_data, method = "default"):
             data.x  = file["x"][:]
         if 'y' in list(file.keys()):
             data.y  = file["y"][:]
-        
+
         ## Read system measures
         if 'TotalEnergy' in list(file.keys()):
             data.tot_enrg = file['TotalEnergy'][:]
@@ -349,17 +349,17 @@ def import_spectra_data(input_file, sim_data, method = "default"):
     Reads in run data from main HDF5 file.
 
     input_dir : string
-                - If method == "defualt" is True then this will be the path to 
+                - If method == "defualt" is True then this will be the path to
                the input folder. if not then this will be the input folder
     method    : string
-                - Determines whether the data is to be read in from a file or 
-               from an input folder
-    sim_data  : class 
+                - Determines whether the data is to be read in from a file or
+                from an input folder
+    sim_data  : class
                 - object containing the simulation parameters
     """
 
     ## Define a data class for the solver data
-    class SpectraData: 
+    class SpectraData:
 
         """
         Class for the run data.
@@ -380,12 +380,12 @@ def import_spectra_data(input_file, sim_data, method = "default"):
     ## Depending on the output mmode of the solver the input files will be named differently
     if method == "default":
         file = input_file + "Spectra_HDF_Data.h5"
-    else: 
+    else:
         file = input_file
 
     ## Open file and read in the data
     with h5py.File(file, 'r') as file:
-        
+
         ## Initialze counter
         nn = 0
 
@@ -413,17 +413,17 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
     Reads in post processing data from HDF5 file.
 
     input_dir : string
-                - If method == "defualt" is True then this will be the path to 
+                - If method == "defualt" is True then this will be the path to
                the input folder. if not then this will be the input folder
     method    : string
-                - Determines whether the data is to be read in from a file or 
+                - Determines whether the data is to be read in from a file or
                from an input folder
-    sim_data  : class 
+    sim_data  : class
                 - object containing the simulation parameters
     """
 
     ## Define a data class for the solver data
-    class PostProcessData: 
+    class PostProcessData:
 
         """
         Class for the run data.
@@ -455,7 +455,7 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
     ## Depending on the output mmode of the solver the input files will be named differently
     if method == "default":
         file = input_file + "PostProcessing_HDF_Data.h5"
-    else: 
+    else:
         file = input_file
 
     ## Open file and read in the data
@@ -535,7 +535,7 @@ def fft_ishift_freq(w_h, axes = None):
 # @njit
 def ZeroCentredField(w_h):
 
-    """ 
+    """
     Returns the zero centred full field in Fourier space.
 
     Input Parameters:
@@ -569,7 +569,7 @@ def fftw_init_2D(Nx, Ny):
     pyfftw.interfaces.cache.enable()
 
     ## Create class for forward transform
-    class fftw_2D: 
+    class fftw_2D:
 
         """
         Class for forward transform.
@@ -581,12 +581,12 @@ def fftw_init_2D(Nx, Ny):
             self.dummy_in  = self._in
             self._out      = empty_complex_array(nx, int(ny / 2 + 1))
             self.dummy_out = self._out
-       
+
             # dummy ffts 
             self.fft = pyfftw.FFTW(self._in, self._out, threads = 1, direction = 'FFTW_FORWARD', axes = (-2,-1))
 
     ## Create class for backward transform
-    class ifftw_2D: 
+    class ifftw_2D:
 
         """
         Class for backward transform.
@@ -613,18 +613,18 @@ def empty_real_array(nx, ny):
     """
     Allocate a space-grid-sized variable for use with fftw transformations.
     """
-    
+
     ## Get the shape of the array
     shape = (nx, ny)
-    
+
     ## Allocate array and initialize
     out        = pyfftw.empty_aligned(shape, dtype = "float64")
     out.flat[:] = 0.
-       
+
     return out
 
 def empty_complex_array(nx, nk):
-    
+
     """
     Allocate a Fourier-grid-sized variable for use with fftw transformations.
     """
@@ -636,35 +636,35 @@ def empty_complex_array(nx, nk):
     out.flat[:] = 0. + 0. * 1.j
 
     return out
-    
+
 def fft(fftw, v):
-    
+
     """"
     Generic FFT function for real grid-sized variables.
     """
-    
+
     ## Get copy of input array
     v_view = v
-    
+
     # copy input into memory view
     fftw.dummy_in[:] = v_view
     fftw.fft()
-    
+
     # return a copy of the output
     return np.asarray(fftw.dummy_out).copy()
 
 def ifft(ifftw, v):
-    
+
     """"
     Generic IFFT function for complex grid-sized variables.
     """
     ## Get copy of input array
     v_view = v
-    
+
     # copy input into memory view
     ifftw.dummy_in[:] = v_view
     ifftw.ifft()
-    
+
     return np.asarray(ifftw.dummy_out).copy()
 
 ###################################
@@ -678,12 +678,12 @@ def energy_spectrum(w_h, kx, ky, Nx, Ny):
 
     w_h : 2d complex array
           - Contains the Fourier vorticity
-    kx  : int array 
+    kx  : int array
           - The wavenumbers in the first dimension
-    ky  : int array 
+    ky  : int array
           - The wavenumbers in the second dimension
     Nx  : int
-          - Number of collocations in the first dimension 
+          - Number of collocations in the first dimension
     Ny  : int
           - Number of collocations in the second dimension
     """
@@ -696,10 +696,10 @@ def energy_spectrum(w_h, kx, ky, Nx, Ny):
 
     for i in range(w_h.shape[0]):
         for j in range(w_h.shape[1]):
-            
+
             ## Compute the mode
             spec_indx = int(np.round(np.sqrt(kx[i] * kx[i] + ky[j] * ky[j])))
-            
+
             if kx[i] == 0.0 and ky[i] == 0.0:
                 continue
             else:
@@ -723,12 +723,12 @@ def energy_spectrum_vel(w_h, kx, ky, Nx, Ny):
 
     w_h : 2d complex array
           - Contains the Fourier vorticity
-    kx  : int array 
+    kx  : int array
           - The wavenumbers in the first dimension
-    ky  : int array 
+    ky  : int array
           - The wavenumbers in the second dimension
     Nx  : int
-          - Number of collocations in the first dimension 
+          - Number of collocations in the first dimension
     Ny  : int
           - Number of collocations in the second dimension
     """
@@ -787,21 +787,21 @@ def enstrophy_spectrum(w_h, kx, ky, Nx, Ny):
     # ## Spectrum size
     # spec_size = int(np.sqrt((Nx / 2) * (Nx / 2) + (Ny / 2) * (Ny / 2)) + 1)
 
-    # ## Velocity arrays
+     ## Velocity arrays
     # enstrophy_spec = np.zeros(spec_size)
 
     # for i in range(w_h.shape[0]):
     #     for j in range(w_h.shape[1]):
 
-    #         ## Compute the indx
-    #         spec_indx = int(np.round(np.sqrt(kx[i] * kx[i] + ky[j] * ky[j])))
-            
-    #         if j == 0 or j == w_h.shape[0] - 1:
-    #             ## Update the spectrum sum for the current mode
-    #             enstrophy_spec[spec_indx] += np.absolute(w_h[i, j] * np.conjugate(w_h[i, j]))
-    #         else:
-    #             ## Update the spectrum sum for the current mode
-    #             enstrophy_spec[spec_indx] += 2. * np.absolute(w_h[i, j] * np.conjugate(w_h[i, j]))
+             ## Compute the indx
+     #        spec_indx = int(np.round(np.sqrt(kx[i] * kx[i] + ky[j] * ky[j])))
+
+      #       if j == 0 or j == w_h.shape[0] - 1:
+                 ## Update the spectrum sum for the current mode
+     #            enstrophy_spec[spec_indx] += np.absolute(w_h[i, j] * np.conjugate(w_h[i, j]))
+     #        else:
+     #            ## Update the spectrum sum for the current mode
+     #             enstrophy_spec[spec_indx] += 2. * np.absolute(w_h[i, j] * np.conjugate(w_h[i, j]))
 
     # return 4. * np.pi * np.pi * enstrophy_spec * 0.5 / (Nx * Ny)**2, np.sum(4. * np.pi * np.pi * enstrophy_spec * 0.5 / (Nx * Ny)**2)
 
@@ -813,10 +813,10 @@ def enstrophy_spectrum(w_h, kx, ky, Nx, Ny):
 
     for i in range(w_h.shape[0]):
         for j in range(w_h.shape[1]):
-            
+
             ## Compute the mode
             spec_indx = int(np.round(np.sqrt(kx[i] * kx[i] + ky[j] * ky[j])))
-            
+
             if kx[i] == 0.0 and ky[i] == 0.0:
                 continue
             else:
@@ -826,7 +826,7 @@ def enstrophy_spectrum(w_h, kx, ky, Nx, Ny):
                 if j == 0 or j == w_h.shape[0] - 1:
                     ## Update spectrum sum for current mode
                     energy_spec[spec_indx] += np.absolute(w_h[i, j] * np.conjugate(w_h[i, j]))
-                else: 
+                else:
                     ## Update spectrum sum for current mode
                     energy_spec[spec_indx] += 2. * np.absolute(w_h[i, j] * np.conjugate(w_h[i, j]))
 
@@ -845,12 +845,12 @@ def total_energy(w_h, kx, ky, Nx, Ny):
 
     w_h : 2d complex array
           - Contains the Fourier vorticity
-    kx  : int array 
+    kx  : int array
           - The wavenumbers in the first dimension
-    ky  : int array 
+    ky  : int array
           - The wavenumbers in the second dimension
     Nx  : int
-          - Number of collocations in the first dimension 
+          - Number of collocations in the first dimension
     Ny  : int
           - Number of collocations in the second dimension
     """
@@ -882,7 +882,7 @@ def total_enstrophy(w_h, Nx, Ny):
     w_h : 2d complex array
           - Contains the Fourier vorticity
     Nx  : int
-          - Number of collocations in the first dimension 
+          - Number of collocations in the first dimension
     Ny  : int
           - Number of collocations in the second dimension
     """
@@ -896,7 +896,7 @@ def total_enstrophy(w_h, Nx, Ny):
             ## Update running sum
             if k_sqr != 0:
                 if j == 0 or j == w_h.shape[1] - 1:
-                    tot_enst += np.absolute(w_h[i, j] * np.conjugate(w_h[i, j])) 
+                    tot_enst += np.absolute(w_h[i, j] * np.conjugate(w_h[i, j]))
                 else:
                     tot_enst += 2. * np.absolute(w_h[i, j] * np.conjugate(w_h[i, j]))
 
@@ -911,12 +911,12 @@ def total_palinstrophy(w_h, kx, ky, Nx, Ny):
 
     w_h : 2d complex array
           - Contains the Fourier vorticity
-    kx  : int array 
+    kx  : int array
           - The wavenumbers in the first dimension
-    ky  : int array 
+    ky  : int array
           - The wavenumbers in the second dimension
     Nx  : int
-          - Number of collocations in the first dimension 
+          - Number of collocations in the first dimension
     Ny  : int
           - Number of collocations in the second dimension
     """

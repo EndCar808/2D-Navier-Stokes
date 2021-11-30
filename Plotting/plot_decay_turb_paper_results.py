@@ -103,6 +103,7 @@ if __name__ == '__main__':
     ## --------  Plot Data
     # -----------------------------------------
     ## System Measures plot
+    print(run_data.tot_enrg[0])
     fig = plt.figure(figsize = (32, 8))
     kmax = int(sys_vars.Nx/3 + 1)
     kk = np.arange(1, kmax)
@@ -212,23 +213,25 @@ if __name__ == '__main__':
     plt.close()
 
     ## McWilliams System Measurables
-    fig = plt.figure(figsize = (10, 8))
+    fig = plt.figure(figsize = (32, 8))
     gs  = GridSpec(1, 3)
     ax1 = fig.add_subplot(gs[0, 0])
     ax1.plot(run_data.time, run_data.tot_enrg[:])
     ax1.set_xlabel(r"$t$")
     ax1.set_ylabel(r"$\mathcal{K}(t)$")
     ax1.set_xlim(run_data.time[0], run_data.time[-1])
-    ax1.set_ylim(0.4, run_data.tot_enrg[0])
+    ax1.set_ylim(0.45, 0.5)
     ax2 = fig.add_subplot(gs[0, 1])
     ax2.plot(run_data.time, run_data.tot_enst[:])
     ax2.set_xlabel(r"$t$")
     ax2.set_ylabel(r"$\mathcal{E}(t)$")
     ax2.set_xlim(run_data.time[0], run_data.time[-1])
+    ax2.set_ylim(0, 150)
     # ax2.set_yscale('log')
     # ax2.set_xscale('log')
     ax3 = fig.add_subplot(gs[0, 2])
     ax3.plot(run_data.time, np.sum(np.arange(1, spec_data.enrg_spectrum.shape[1]) * spec_data.enrg_spectrum[:, 1:], axis = -1) / run_data.tot_enrg[:])
+    ax3.set_ylim(0, 10)
     ax3.set_xlabel(r"$t$")
     ax3.set_ylabel(r"$\bar{k}$")
     ax3.set_xlim(run_data.time[0], run_data.time[-1])

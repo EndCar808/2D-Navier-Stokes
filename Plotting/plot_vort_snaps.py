@@ -357,7 +357,7 @@ if __name__ == '__main__':
         
     #------------------------------------
     # ----- Make Video
-    #-------------------------------------
+    #------------------------------------
     if cmdargs.video:
 
         ## Start timer
@@ -385,7 +385,7 @@ if __name__ == '__main__':
             framesPerSec = 30
             inputFile    = cmdargs.phase_dir + "Phase_SNAP_%05d.png"
             if cmdargs.use_post:
-                videoName    = cmdargs.phase_dir + "2D_POSTDATA_NavierStokes_N[{},{}]_u0[{}]_Phases.mp4".format(sys_vars.Nx, sys_vars.Ny, sys_vars.u0)
+                videoName    = cmdargs.phase_dir + "2D_POSTDATA_NavierStokes_N[{},{}]_u0[{}]_Phases_new.mp4".format(sys_vars.Nx, sys_vars.Ny, sys_vars.u0)
             else:
                 videoName    = cmdargs.phase_dir + "2D_NavierStokes_N[{},{}]_u0[{}]_Phases.mp4".format(sys_vars.Nx, sys_vars.Ny, sys_vars.u0)
             cmd = "ffmpeg -y -r {} -f image2 -s 1920x1080 -i {} -vf 'pad=ceil(iw/2)*2:ceil(ih/2)*2' -vcodec libx264 -crf 25 -pix_fmt yuv420p {}".format(framesPerSec, inputFile, videoName)

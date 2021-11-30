@@ -734,7 +734,7 @@ void ApplyDealiasing(fftw_complex* array, int array_dim, const long int* N) {
 			else {
 				for (int l = 0; l < array_dim; ++l) {
 					// Apply DFT normaliztin to undealiased modes
-					array[indx + l] = array[indx];	
+					array[indx + l] = array[indx + l];	
 				}				
 			}
 			#elif __DEALIAS_HOU_LI
@@ -1151,7 +1151,7 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 				k_sqrd = (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 
 				// Compute the vorticity 
-				w_hat[indx] = k_sqrd * psi_hat[indx];
+				w_hat[indx] = -k_sqrd * psi_hat[indx];
 			}
 		}
         

@@ -189,7 +189,7 @@ int main(int argc, char** argv) {
 							k_sqr_fac = 0.0;	
 						}
 
-						// Compute data
+						// Pre-compute data
 						phase = fmod(carg(run_data->w_hat[indx]) + 2.0 * M_PI, 2.0 * M_PI);
 						amp   = cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
 
