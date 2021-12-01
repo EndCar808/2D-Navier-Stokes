@@ -21,7 +21,7 @@ void OpenOutputFile(void);
 void ReadInData(int snap_indx);
 void WriteDataToFile(double t, long int snap);
 hid_t CreateGroup(hid_t file_handle, char* filename, char* group_name, double t, long int snap);
-void CloseFiles(void);
+void FinalWriteAndClose(void);
 // ---------------------------------------------------------------------
 //  End of File
 // ---------------------------------------------------------------------

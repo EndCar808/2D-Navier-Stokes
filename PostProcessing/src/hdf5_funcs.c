@@ -576,6 +576,20 @@ void WriteDataToFile(double t, long int snap) {
         exit(1);
     }
 	#endif
+
+	#ifdef __SEC_PHASE_SYNC
+    dset_dims_1d[0] = N_SECTORS;
+    status = H5LTmake_dataset(group_id, "PhaseSync", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, proc_data->R);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Phase Sync Parameter", t, snap);
+        exit(1);
+    }
+    status = H5LTmake_dataset(group_id, "AverageAngle", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, proc_data->Phi);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Average Angle", t, snap);
+        exit(1);
+    }
+	#endif
 	
 	// -------------------------------
 	// Close HDF5 Identifiers
@@ -695,15 +709,53 @@ hid_t CreateComplexDatatype(void) {
   	return dtype;
 }
 /**
- * Function to close output and input files
- */
-void CloseFiles(void) {
+* Wrapper function for writing any remaining data to output file
+*/
+void FinalWriteAndClose(void) {
 
-	// --------------------------------
-	//  Close Input File
-	// --------------------------------
-	H5Fclose(file_info->input_file_handle);
+	// Initialize variables
+	herr_t status;
+	static const hsize_t Dims1D = 1;
+	hsize_t dset_dims_1d[Dims1D];        // array to hold dims of the dataset to be created
 
+	// -------------------------------
+	// Check for Output File
+	// -------------------------------
+	// Check if output file exist if not create it
+	if (access(file_info->output_file_name, F_OK) != 0) {
+		file_info->output_file_handle = H5Fcreate(file_info->output_file_name, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+		if (file_info->output_file_handle < 0) {
+			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to create output file ["CYAN"%s"RESET"] at final write\n-->> Exiting...\n", file_info->output_file_name);
+			exit(1);
+		}
+	}
+	else {
+		// Open file with default I/O access properties
+		file_info->output_file_handle = H5Fopen(file_info->output_file_name, H5F_ACC_RDWR, H5P_DEFAULT);
+		if (file_info->output_file_handle < 0) {
+			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to open output file ["CYAN"%s"RESET"] at final write\n-->> Exiting...\n", file_info->output_file_name);
+			exit(1);
+		}
+	}
+
+	// -------------------------------
+	// Write Datasets
+	// -------------------------------
+    dset_dims_1d[0] = N_SECTORS;
+	status = H5LTmake_dataset(file_info->output_file_handle, "SectorAngles", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, proc_data->theta);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Sector Angles");
+        exit(1);
+    }	
+
+    // -------------------------------
+    // Close HDF5 Identifiers
+    // -------------------------------
+    status = H5Fclose(file_info->output_file_handle);
+    if (status < 0) {
+    	fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close output file ["CYAN"%s"RESET"] at final write\n-->> Exiting...\n", file_info->output_file_name);
+    	exit(1);
+    }
 }
 // ---------------------------------------------------------------------
 //  Function Definitions

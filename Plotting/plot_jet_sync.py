@@ -23,6 +23,8 @@ import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import getopt
+from itertools import zip_longest
+import multiprocessing as mprocs
 import time as TIME
 from subprocess import Popen, PIPE
 from matplotlib.pyplot import cm
@@ -44,16 +46,19 @@ def parse_cml(argv):
         Class for command line arguments
         """
 
-        def __init__(self, in_dir = None, out_dir = None):
+        def __init__(self, in_dir = None, out_dir = None, parallel = False, plotting = False, video = False):
             self.in_dir     = in_dir
             self.out_dir    = out_dir
+            self.parallel   = parallel
+            self.plotting   = plotting
+            self.video      = video 
 
     ## Initialize class
     cargs = cmd_args()
 
     try:
         ## Gather command line arguments
-        opts, args = getopt.getopt(argv, "i:o")
+        opts, args = getopt.getopt(argv, "i:o", ["par", "plot", "vid"])
     except:
         print("[" + tc.R + "ERROR" + tc.Rst + "] ---> Incorrect Command Line Arguements.")
         sys.exit()
@@ -69,6 +74,17 @@ def parse_cml(argv):
             cargs.out_dir = str(arg)
             print("Output Folder: " + tc.C + "{}".format(cargs.out_dir) + tc.Rst)
 
+        elif opt in ['--par']:
+            ## Read in parallel indicator
+            cargs.parallel = True
+
+        elif opt in ['--plot']:
+            ## Read in plotting indicator
+            cargs.plotting = True
+
+        elif opt in ['--vid']:
+            ## Read in spectra file
+            cargs.video = True
 
     return cargs
 
@@ -145,63 +161,82 @@ if __name__ == '__main__':
     # -----------------------------------------
     # # --------  Plot Data
     # -----------------------------------------
-    ## Define a wedge increments
-    Nwedge = 40
-    dtheta = np.pi / Nwedge
-    theta  = np.arange(-np.pi / 2., np.pi / 2., dtheta)
+    # ## Define a wedge increments
+    # Nwedge = 40
+    # dtheta = np.pi / Nwedge
+    # theta  = np.arange(-np.pi / 2., np.pi / 2., dtheta)
 
-    ## Define the Radius
-    r = int(sys_vars.Nx / 3)
+    # ## Define the Radius
+    # r = int(sys_vars.Nx / 3)
 
-    ## Define the wavenumbers
-    ky = np.arange(0, r + 1)
-    kx = np.arange(-r + 1, r + 1)
+    # ## Define the wavenumbers
+    # ky = np.arange(0, r + 1)
+    # kx = np.arange(-r + 1, r + 1)
 
-    ## Start timer
-    start = TIME.perf_counter()
-    print("\n" + tc.Y + "Printing Snaps..." + tc.Rst + "Total Snaps to Print: [" + tc.C + "{}".format(sys_vars.ndata) + tc.Rst + "]")
+    if cmdargs.plotting:
+
+        ## Start timer
+        start = TIME.perf_counter()
+        print("\n" + tc.Y + "Printing Snaps..." + tc.Rst + "Total Snaps to Print: [" + tc.C + "{}".format(sys_vars.ndata) + tc.Rst + "]")
+
+        if cmdargs.parallel:
+            ## No. of processes
+            proc_lim = 10
+
+            ## Create tasks for the process pool
+            groups_args = [(mprocs.Process(target = plot_sector_phase_sync_snaps, args = (i, cmdargs.out_dir, post_data.phases[i, :, int(sys_vars.Nx/3 - 1):], post_data.theta, post_data.R[i, :], post_data.Phi[i, :], run_data.time[i], sys_vars.Nx, sys_vars.Ny)) for i in range(sys_vars.ndata))] * proc_lim
+
+            ## Loop of grouped iterable
+            for procs in zip_longest(*groups_args): 
+                pipes     = []
+                processes = []
+                for p in filter(None, procs):
+                    recv, send = mprocs.Pipe(False)
+                    processes.append(p)
+                    pipes.append(recv)
+                    p.start()
+
+                for process in processes:
+                    process.join()
+        else:
+            ## Loop through simulation and plot data
+            for i in range(sys_vars.ndata):
+                ## Plot the data
+                plot_sector_phase_sync_snaps(i, cmdargs.out_dir, post_data.phases[i, :, int(sys_vars.Nx/3 - 1):], post_data.theta, post_data.R[i, :], post_data.Phi[i, :], run_data.time[i], sys_vars.Nx, sys_vars.Ny)
 
 
-    ## Loop through simulation and plot data
-    for i in range(sys_vars.ndata):
-        ## Get the phase order parameter for each sector in wavenumber space
-        phase_order = jet_phase_order(post_data.phases[i, :, :], theta, kx, ky)
-
-        ## Plot the data
-        plot_sector_phase_sync_snaps(i, cmdargs.out_dir, post_data.phases[i, :, int(sys_vars.Nx/3 - 1):], theta, phase_order, run_data.time[i], sys_vars.Nx, sys_vars.Ny)
-
-
-    ## End timer
-    end       = TIME.perf_counter()
-    plot_time = end - start
-    print("\n" + tc.Y + "Finished Plotting..." + tc.Rst)
-    print("\n\nPlotting Time: " + tc.C + "{:5.8f}s\n\n".format(plot_time) + tc.Rst)
+        ## End timer
+        end       = TIME.perf_counter()
+        plot_time = end - start
+        print("\n" + tc.Y + "Finished Plotting..." + tc.Rst)
+        print("\n\nPlotting Time: " + tc.C + "{:5.8f}s\n\n".format(plot_time) + tc.Rst)
 
 
     #------------------------------------
     # # ----- Make Video
     #------------------------------------
+    if cmdargs.video:
 
-    ## Start timer
-    start = TIME.perf_counter()
+        ## Start timer
+        start = TIME.perf_counter()
 
-    ## Video variables
-    framesPerSec = 30
-    inputFile    = cmdargs.out_dir + "Phase_Sync_SNAP_%05d.png"
-    videoName    = cmdargs.out_dir + "PhaseSync_N[{},{}]_u0[{}].mp4".format(sys_vars.Nx, sys_vars.Ny, sys_vars.u0)
-    cmd = "ffmpeg -y -r {} -f image2 -s 1920x1080 -i {} -vf 'pad=ceil(iw/2)*2:ceil(ih/2)*2' -vcodec libx264 -crf 25 -pix_fmt yuv420p {}".format(framesPerSec, inputFile, videoName)
-    # cmd = "ffmpeg -r {} -f image2 -s 1280×720 -i {} -vcodec libx264 -preset ultrafast -crf 35 -pix_fmt yuv420p {}".format(framesPerSec, inputFile, videoName)
+        ## Video variables
+        framesPerSec = 30
+        inputFile    = cmdargs.out_dir + "Phase_Sync_SNAP_%05d.png"
+        videoName    = cmdargs.out_dir + "PhaseSync_N[{},{}]_u0[{}].mp4".format(sys_vars.Nx, sys_vars.Ny, sys_vars.u0)
+        cmd = "ffmpeg -y -r {} -f image2 -s 1920x1080 -i {} -vf 'pad=ceil(iw/2)*2:ceil(ih/2)*2' -vcodec libx264 -crf 25 -pix_fmt yuv420p {}".format(framesPerSec, inputFile, videoName)
+        # cmd = "ffmpeg -r {} -f image2 -s 1280×720 -i {} -vcodec libx264 -preset ultrafast -crf 35 -pix_fmt yuv420p {}".format(framesPerSec, inputFile, videoName)
 
-    process = Popen(cmd, shell = True, stdout = PIPE, stdin = PIPE, universal_newlines = True)
-    [runCodeOutput, runCodeErr] = process.communicate()
-    print(runCodeOutput)
-    print(runCodeErr)
-    process.wait()
+        process = Popen(cmd, shell = True, stdout = PIPE, stdin = PIPE, universal_newlines = True)
+        [runCodeOutput, runCodeErr] = process.communicate()
+        print(runCodeOutput)
+        print(runCodeErr)
+        process.wait()
 
-    ## Prin summary of timmings to screen
-    print("\n" + tc.Y + "Finished making video..." + tc.Rst)
-    print("Video Location: " + tc.C + videoName + tc.Rst + "\n")
+        ## Prin summary of timmings to screen
+        print("\n" + tc.Y + "Finished making video..." + tc.Rst)
+        print("Video Location: " + tc.C + videoName + tc.Rst + "\n")
 
-    ## Start timer
-    end = TIME.perf_counter()
-    print("Movie Time:" + tc.C + " {:5.8f}s\n\n".format(end - start) + tc.Rst)
+        ## Start timer
+        end = TIME.perf_counter()
+        print("Movie Time:" + tc.C + " {:5.8f}s\n\n".format(end - start) + tc.Rst)

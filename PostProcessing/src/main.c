@@ -40,6 +40,10 @@ int main(int argc, char** argv) {
 	double k_sqr, k_sqr_fac, phase, amp;
 	double w_max, w_min;
 	double u_max, u_min;
+	#if defined(__SEC_PHASE_SYNC)
+	double r;
+	double angle;
+	#endif
 
 	
 	// --------------------------------
@@ -170,7 +174,7 @@ int main(int argc, char** argv) {
 		// --------------------------------
 		//  Full Field Data
 		// --------------------------------
-		#ifdef __FULL_FIELD
+		#if defined(__FULL_FIELD) 
 		for (int i = 0; i < Nx; ++i) {
 			if (abs(run_data->k[0][i]) < sys_vars->kmax) {
 				tmp  = i * Ny_Fourier;	
@@ -178,9 +182,9 @@ int main(int argc, char** argv) {
 				tmp2 = (sys_vars->kmax - 1 - run_data->k[0][i]) * (2 * sys_vars->kmax - 1);
 				for (int j = 0; j < Ny_Fourier; ++j) {
 					indx = tmp + j;
-					if (abs(run_data->k[1][j] < sys_vars->kmax)) {
+					if (abs(run_data->k[1][j]) < sys_vars->kmax) {
 
-						// Compute |k|^2
+						// Compute |k|^2 and 1 / |k|^2
 						k_sqr = (double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]); 
 						if (run_data->k[0][i] != 0 || run_data->k[1][j] != 0) {
 							k_sqr_fac = 1.0 / k_sqr;
@@ -233,6 +237,56 @@ int main(int argc, char** argv) {
 			}
 		}
 		#endif
+
+		// --------------------------------
+		//  Phase Sync
+		// --------------------------------
+		#if defined(__SEC_PHASE_SYNC) 
+		int num_phases;
+		for (int a = 0; a < (int) (N_SECTORS / 2); ++a) { // N_SECTORS - 1
+			// Initialize counter
+			num_phases = 0;
+			for (int i = 0; i < Nx; ++i) {
+				if (abs(run_data->k[0][i]) < sys_vars->kmax) {
+					tmp  = i * Ny_Fourier;	
+					tmp1 = (sys_vars->kmax - 1 + run_data->k[0][i]) * (2 * sys_vars->kmax - 1);
+					tmp2 = (sys_vars->kmax - 1 - run_data->k[0][i]) * (2 * sys_vars->kmax - 1);
+					for (int j = 0; j < Ny_Fourier; ++j) {
+						indx = tmp + j;
+						if ((abs(run_data->k[1][j]) < sys_vars->kmax) && (run_data->k[1][j] != 0)) {
+
+							// Compute the polar coords
+			 				r     = (double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
+			 				angle = atan(run_data->k[0][i] / run_data->k[1][j]);
+							
+							// Update the phase order parameter for the current sector
+			 				if ((r < pow(sys_vars->kmax, 2.0)) && (angle >= proc_data->theta[a] && angle < proc_data->theta[a + 1])) {
+								// // Pre-compute phase data
+								// phase = fmod(carg(run_data->w_hat[indx]) + 2.0 * M_PI, 2.0 * M_PI);
+
+								// Update the phase order sum
+								proc_data->phase_order[a] 	          += cexp(I * proc_data->phases[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]);
+								proc_data->phase_order[N_SECTORS - a] += cexp(I * proc_data->phases[tmp2 + sys_vars->kmax - 1 - run_data->k[1][j]]);
+			 					
+			 					// Update counter
+			 					num_phases++;
+			 				}
+			 			}
+			 		}
+			 	}
+			}
+
+			// Normalize the phase order parameter
+			proc_data->phase_order[a] 			  /= num_phases;
+			proc_data->phase_order[N_SECTORS - a] /= num_phases;
+
+			// Record the phase sync and average phase
+			proc_data->R[a]   			  = cabs(proc_data->phase_order[a]);
+			proc_data->R[N_SECTORS - a]   = cabs(proc_data->phase_order[N_SECTORS - a]);
+			proc_data->Phi[a] 			  = carg(proc_data->phase_order[a]);
+			proc_data->Phi[N_SECTORS - a] = carg(proc_data->phase_order[N_SECTORS - a]);
+		}
+		#endif
 		// --------------------------------
 		//  Write Data to File
 		// --------------------------------
@@ -242,6 +296,12 @@ int main(int argc, char** argv) {
 	// End Snapshot Processing
 	//////////////////////////////
 	
+	// ---------------------------------
+	//  Final Write of Data and Close 
+	// ---------------------------------
+	// Write any remaining datasets to output file
+	FinalWriteAndClose();
+
 	// --------------------------------
 	//  Clean Up
 	// --------------------------------
@@ -370,6 +430,47 @@ void AllocateMemory(const long int* N) {
 	}
 	#endif
 
+	// --------------------------------	
+	//  Allocate Phase Sync Data
+	// --------------------------------
+	#ifdef __SEC_PHASE_SYNC
+	// Allocate the array of sector angles
+	proc_data->theta = (double* )fftw_malloc(sizeof(double) * N_SECTORS);
+	if (proc_data->theta == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Phase Sync Sector Angles");
+		exit(1);
+	}
+
+	// Allocate memory for the phase order parameter
+	proc_data->phase_order = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * N_SECTORS);
+	if (proc_data->phase_order == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Phase Sync Phase Order Parameter");
+		exit(1);
+	}
+
+	// Allocate the array of phase sync per sector
+	proc_data->R = (double* )fftw_malloc(sizeof(double) * N_SECTORS);
+	if (proc_data->R == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Phase Sync Parameter");
+		exit(1);
+	}
+
+	// Allocate the array of average phase per sector
+	proc_data->Phi = (double* )fftw_malloc(sizeof(double) * N_SECTORS);
+	if (proc_data->Phi == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Average Phase");
+		exit(1);
+	}
+
+	// Initialize arrays
+	double dtheta = M_PI / (double )N_SECTORS;
+	for (int i = 0; i < N_SECTORS; ++i) {
+		proc_data->R[i]           = 0.0;
+		proc_data->Phi[i]         = 0.0;
+		proc_data->theta[i]       = -M_PI /2 + i * dtheta;
+		proc_data->phase_order[i] = 0.0 + 0.0 * I;
+	}
+	#endif
 	// --------------------------------	
 	//  Allocate Stats Data
 	// --------------------------------
@@ -696,6 +797,12 @@ void FreeMemoryAndCleanUp(void) {
     fftw_free(proc_data->enrg_spec);
     fftw_free(proc_data->enst_alt);
     fftw_free(proc_data->enrg_alt);
+	#endif
+	#ifdef __SEC_PHASE_SYNC
+	fftw_free(proc_data->phase_order);
+	fftw_free(proc_data->theta);
+	fftw_free(proc_data->R);
+	fftw_free(proc_data->Phi);
 	#endif
 	for (int i = 0; i < SYS_DIM; ++i) {
 		fftw_free(run_data->x[i]);

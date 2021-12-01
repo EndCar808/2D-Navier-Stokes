@@ -448,6 +448,10 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
             self.enrg_spectrum_1d_alt = np.zeros((sim_data.ndata, sim_data.spec_size))
             ## Allocate solver data arrays
             self.w_hat = np.ones((sim_data.ndata, sim_data.Nx, sim_data.Nk)) * np.complex(0.0, 0.0)
+            ## Phase Sync arrays
+            self.theta = np.zeros((40))
+            self.R     = np.zeros((sim_data.ndata, 40))
+            self.Phi   = np.zeros((sim_data.ndata, 40))
 
     ## Create instance of data class
     data = PostProcessData()
@@ -489,9 +493,15 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                     data.enst_spectrum_1d_alt[nn, :] = file[group]["EnstrophySpectrumAlt"][:]
                 if 'EnergySpectrumAlt' in list(file[group].keys()):
                     data.enrg_spectrum_1d_alt[nn, :] = file[group]["EnergySpectrumAlt"][:]
+                if 'PhaseSync' in list(file[group].keys()):
+                    data.R[nn, :] = file[group]["PhaseSync"][:]
+                if 'AverageAngle' in list(file[group].keys()):
+                    data.Phi[nn, :] = file[group]["AverageAngle"][:]
                 if 'w_hat' in list(file[group].keys()):
                     data.w_hat[nn, :, :] = file[group]["w_hat"][:, :]
                 nn += 1
+            if 'SectorAngles' in list(file.keys()):
+                data.theta[:] = file["SectorAngles"][:]
             else:
                 continue
 

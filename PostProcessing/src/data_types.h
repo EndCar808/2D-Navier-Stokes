@@ -65,6 +65,7 @@
 #define __FULL_FIELD
 #define __SPECTRA
 #define __VORT
+#define __SEC_PHASE_SYNC
 // ---------------------------------------------------------------------
 //  Global Variables
 // ---------------------------------------------------------------------
@@ -72,6 +73,8 @@
 #define SYS_DIM 2 				// The system dimension i.e., 2D
 // Statistics definitions
 #define N_BINS 1000				// The number of histogram bins to use
+// Phase sync 
+#define N_SECTORS 40		 // The number of phase sectors
 // ---------------------------------------------------------------------
 //  Global Struct Definitions
 // ---------------------------------------------------------------------
@@ -124,13 +127,17 @@ typedef struct runtime_data_struct {
 
 // Post processing data struct
 typedef struct postprocess_data_struct {
-	double* phases;			// Array to hold the full field zero centred phases
-	double* enrg;			// Array to hold the full field zero centred energy
-	double* enst;			// Array to hold the full field zero centred enstrophy
-	double* enst_spec; 		// Array to hold the enstrophy spectrum
-    double* enrg_spec; 		// Array to hold the energy spectrum
-    double* enst_alt;
-    double* enrg_alt;
+	double* phases;			   // Array to hold the full field zero centred phases
+	double* enrg;			   // Array to hold the full field zero centred energy
+	double* enst;			   // Array to hold the full field zero centred enstrophy
+	double* enst_spec; 		   // Array to hold the enstrophy spectrum
+    double* enrg_spec; 		   // Array to hold the energy spectrum
+    double* enst_alt;		   // Array to hold the data for enstrophy spectrum computed using stream func
+    double* enrg_alt;		   // Array to hold the data for energy spectrum computed using stream func
+    double* theta;             // Array to hold the angles for the sector boundaries
+    fftw_complex* phase_order; // Array to hold the phase order parameter for each sector
+    double* R;				   // Array to hold the phase sync per sector
+    double* Phi;               // Array to hold the average phase per sector
 } postprocess_data_struct;
 
 // Post processing stats data struct

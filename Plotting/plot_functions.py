@@ -487,7 +487,7 @@ def plot_decay_snaps_2(out_dir, i, w, w_min, w_max, measure_min, measure_max, x,
        plt.close()
 
 
-def plot_sector_phase_sync_snaps(i, out_dir, phases, theta, phase_order, t, Nx, Ny):
+def plot_sector_phase_sync_snaps(i, out_dir, phases, theta, R, Phi, t, Nx, Ny):
 
        """
        Plots the phases and average phase and sync per sector of the phases
@@ -500,8 +500,10 @@ def plot_sector_phase_sync_snaps(i, out_dir, phases, theta, phase_order, t, Nx, 
                - 2D array of the Fourier phases, only ky > section 
        theta   : array, float64
                - 1D Array containing the angles of the sector boundaries
-       phase_order : array, complex128
-               - Array of the phase order parameter for each sector
+       R       : array, float64
+               - Array of the phase sync parameter for each sector
+       Phi     : array, float64
+               - Array of the average phase for each sector
        t       : float64
                - The current time 
        Nx      : int
@@ -541,7 +543,7 @@ def plot_sector_phase_sync_snaps(i, out_dir, phases, theta, phase_order, t, Nx, 
        # Plot Phase Sync Per Sector  
        #--------------------------
        ax2 = fig.add_subplot(gs[0, 1])
-       ax2.plot(theta, np.absolute(phase_order))
+       ax2.plot(theta, R)
        ax2.set_xlim(-np.pi/2, np.pi/2)
        ax2.set_ylim(0, 1.)
        ax2.set_xlabel(r"$\theta$")
@@ -551,7 +553,7 @@ def plot_sector_phase_sync_snaps(i, out_dir, phases, theta, phase_order, t, Nx, 
        # Plot Avg Phase Per Sector  
        #--------------------------
        ax3 = fig.add_subplot(gs[1, 1])
-       ax3.plot(theta, np.angle(phase_order))
+       ax3.plot(theta, Phi)
        ax3.set_xlim(-np.pi/2, np.pi/2)
        ax3.set_xlabel(r"$\theta$")
        ax3.set_ylabel(r"$\Phi$")
@@ -560,7 +562,7 @@ def plot_sector_phase_sync_snaps(i, out_dir, phases, theta, phase_order, t, Nx, 
        ax3.set_yticklabels([r"$-\pi$", r"$-\frac{\pi}{2}$", r"$0$", r"$\frac{\pi}{2}$", r"$\pi$"])
        
        ## Add title and save fig
-       plt.suptitle(r"$t = {}$".format(t))
+       plt.suptitle(r"$t = {:.5f}$".format(t))
        plt.savefig(out_dir + "/Phase_Sync_SNAP_{:05d}.png".format(i), bbox_inches = 'tight')
        plt.close()
 
