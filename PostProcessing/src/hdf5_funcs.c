@@ -412,7 +412,6 @@ void OpenOutputFile(void) {
 		exit(1);
 	}
 
-	
 	// --------------------------------
 	//  Create Output File
 	// --------------------------------
@@ -443,9 +442,11 @@ void WriteDataToFile(double t, long int snap) {
 	herr_t status;
 	hid_t group_id;
 	static const hsize_t Dims1D = 1;
-	hsize_t dset_dims_1d[Dims1D];        // array to hold dims of the dataset to be created
+	hsize_t dset_dims_1d[Dims1D];       
 	static const hsize_t Dims2D = 2;
-	hsize_t dset_dims_2d[Dims2D];        
+	hsize_t dset_dims_2d[Dims2D];   
+	static const hsize_t Dims3D = 3;
+	hsize_t dset_dims_3d[Dims3D];     
 	
 
 	// -------------------------------
@@ -501,6 +502,15 @@ void WriteDataToFile(double t, long int snap) {
 	status = H5LTmake_dataset(group_id, "FullFieldPhases", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, proc_data->phases);	
 	if (status < 0) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Full Field Phases", t, snap);
+		exit(1);
+	}
+
+	// The full field amplitudes
+	dset_dims_2d[0] = 2 * sys_vars->kmax - 1;
+	dset_dims_2d[1] = 2 * sys_vars->kmax - 1;
+	status = H5LTmake_dataset(group_id, "FullFieldAmplitudes", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, proc_data->amps);	
+	if (status < 0) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Full Field Amplitudes", t, snap);
 		exit(1);
 	}
 
@@ -578,17 +588,129 @@ void WriteDataToFile(double t, long int snap) {
 	#endif
 
 	#ifdef __SEC_PHASE_SYNC
-    dset_dims_1d[0] = N_SECTORS;
-    status = H5LTmake_dataset(group_id, "PhaseSync", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, proc_data->R);
+	/// ----------------------- Phase Order Data
+	// Write the phase order data for the individual phases
+    dset_dims_1d[0] = sys_vars->num_sect;
+    status = H5LTmake_dataset(group_id, "PhaseSync", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, proc_data->phase_R);
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Phase Sync Parameter", t, snap);
         exit(1);
     }
-    status = H5LTmake_dataset(group_id, "AverageAngle", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, proc_data->Phi);
+    status = H5LTmake_dataset(group_id, "AverageAngle", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, proc_data->phase_Phi);
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Average Angle", t, snap);
         exit(1);
     }
+
+    // Write the phase order data for the triad phases
+    dset_dims_2d[0] = NUM_TRIAD_TYPES + 1;
+    dset_dims_2d[1] = sys_vars->num_sect;
+	status = H5LTmake_dataset(group_id, "TriadPhaseSync", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, proc_data->triad_R);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file  at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Triad Sync Parameter", t, snap);
+        exit(1);
+    }
+    status = H5LTmake_dataset(group_id, "TriadAverageAngle", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, proc_data->triad_Phi);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file  at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Triad Average Angle", t, snap);
+        exit(1);
+    }
+
+
+    /// ------------------------ Phase Order Stats Data
+	// Allocate temporary memory for the phases pdfs
+	double* ranges = (double*) fftw_malloc(sizeof(double) * sys_vars->num_sect * (proc_data->phase_sect_pdf_t[0]->n + 1));
+	double* counts = (double*) fftw_malloc(sizeof(double) * sys_vars->num_sect * proc_data->phase_sect_pdf_t[0]->n);
+
+	// Save phase data in temporary memory for writing to file
+	for (int i = 0; i < sys_vars->num_sect; ++i) {
+		for (int j = 0; j < (int) proc_data->phase_sect_pdf_t[0]->n + 1; ++j) {
+			ranges[i * ((int)proc_data->phase_sect_pdf_t[0]->n + 1) + j] = proc_data->phase_sect_pdf_t[i]->range[j];
+			if (j < (int) proc_data->phase_sect_pdf_t[0]->n) {
+				counts[i * ((int)proc_data->phase_sect_pdf_t[0]->n) + j] = proc_data->phase_sect_pdf_t[i]->bin[j];
+			}
+		}
+	}
+
+    dset_dims_2d[0] = sys_vars->num_sect;
+    dset_dims_2d[1] = (int) proc_data->phase_sect_pdf_t[0]->n + 1;
+	status = H5LTmake_dataset(group_id, "SectorPhasePDF_InTime_Ranges", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, ranges);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file  at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Sector Phases PDF In Time Ranges", t, snap);
+        exit(1);
+    }
+    dset_dims_2d[1] = proc_data->phase_sect_pdf_t[0]->n;
+	status = H5LTmake_dataset(group_id, "SectorPhasePDF_InTime_Counts", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, counts);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file  at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Sector Phases PDF In Time Counts", t, snap);
+        exit(1);
+    }
+
+    // Free temporary memory
+    fftw_free(ranges);
+    fftw_free(counts);
+
+    // Allocate temporary memory for the triad phases pdfs
+    double* triad_ranges = (double*) fftw_malloc(sizeof(double) * (NUM_TRIAD_TYPES + 1) * sys_vars->num_sect * (proc_data->phase_sect_pdf_t[0]->n + 1));
+    double* triad_counts = (double*) fftw_malloc(sizeof(double) * (NUM_TRIAD_TYPES + 1) * sys_vars->num_sect * proc_data->phase_sect_pdf_t[0]->n);
+
+    // Save triad phase data in temporary memory for writing to file
+	for (int i = 0; i < sys_vars->num_sect; ++i) {
+    	for (int j = 0; j < (int) proc_data->phase_sect_pdf_t[0]->n + 1; ++j) {
+    		for (int q = 0; q < NUM_TRIAD_TYPES + 1; ++q) {
+	    		triad_ranges[(NUM_TRIAD_TYPES + 1) * (i * (proc_data->triad_sect_pdf_t[q][0]->n + 1) + j) + q] = proc_data->triad_sect_pdf_t[q][i]->range[j];
+	    		if (j < (int) proc_data->triad_sect_pdf_t[q][0]->n) {
+	    			triad_counts[(NUM_TRIAD_TYPES + 1) * (i * (proc_data->triad_sect_pdf_t[q][0]->n) + j) + q] = proc_data->triad_sect_pdf_t[q][i]->bin[j];
+	    		}
+	    	}
+	    }
+    }
+    
+    dset_dims_3d[0] = sys_vars->num_sect;
+    dset_dims_3d[1] = proc_data->triad_sect_pdf_t[0][0]->n + 1;
+    dset_dims_3d[2] = NUM_TRIAD_TYPES + 1;
+	status = H5LTmake_dataset(group_id, "SectorTriadPhasePDF_InTime_Ranges", Dims3D, dset_dims_3d, H5T_NATIVE_DOUBLE, triad_ranges);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file  at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Sector Triad Phases PDF In Time Ranges", t, snap);
+        exit(1);
+    }
+    dset_dims_3d[1] = proc_data->triad_sect_pdf_t[0][0]->n;
+	status = H5LTmake_dataset(group_id, "SectorTriadPhasePDF_InTime_Counts", Dims3D, dset_dims_3d, H5T_NATIVE_DOUBLE, triad_counts);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file  at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Sector Triad Phases PDF In Time Counts", t, snap);
+        exit(1);
+    }
+
+    // Save triad phase data in temporary memory for writing to file
+	for (int i = 0; i < sys_vars->num_sect; ++i) {
+    	for (int j = 0; j < (int) proc_data->phase_sect_pdf_t[0]->n + 1; ++j) {
+    		for (int q = 0; q < NUM_TRIAD_TYPES + 1; ++q) {
+	    		triad_ranges[(NUM_TRIAD_TYPES + 1) * (i * (proc_data->triad_sect_pdf_t[q][0]->n + 1) + j) + q] = proc_data->triad_sect_wghtd_pdf_t[q][i]->range[j];
+	    		if (j < (int) proc_data->triad_sect_pdf_t[q][0]->n) {
+	    			triad_counts[(NUM_TRIAD_TYPES + 1) * (i * (proc_data->triad_sect_pdf_t[q][0]->n) + j) + q] = proc_data->triad_sect_wghtd_pdf_t[q][i]->bin[j];
+	    		}
+	    	}
+	    }
+    }
+    
+    dset_dims_3d[0] = sys_vars->num_sect;
+    dset_dims_3d[1] = proc_data->triad_sect_pdf_t[0][0]->n + 1;
+    dset_dims_3d[2] = NUM_TRIAD_TYPES + 1;
+	status = H5LTmake_dataset(group_id, "SectorTriadPhaseWeightedPDF_InTime_Ranges", Dims3D, dset_dims_3d, H5T_NATIVE_DOUBLE, triad_ranges);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file  at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Sector Triad Phases Weighted PDF In Time Ranges", t, snap);
+        exit(1);
+    }
+    dset_dims_3d[1] = proc_data->triad_sect_pdf_t[0][0]->n;
+	status = H5LTmake_dataset(group_id, "SectorTriadPhaseWeightedPDF_InTime_Counts", Dims3D, dset_dims_3d, H5T_NATIVE_DOUBLE, triad_counts);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file  at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Sector Triad Phases Weighted PDF In Time Counts", t, snap);
+        exit(1);
+    }
+
+    // Free temporary memory
+    fftw_free(triad_ranges);
+    fftw_free(triad_counts);
 	#endif
 	
 	// -------------------------------
@@ -717,6 +839,10 @@ void FinalWriteAndClose(void) {
 	herr_t status;
 	static const hsize_t Dims1D = 1;
 	hsize_t dset_dims_1d[Dims1D];        // array to hold dims of the dataset to be created
+	static const hsize_t Dims2D = 2;
+	hsize_t dset_dims_2d[Dims2D];
+	static const hsize_t Dims3D = 3;
+	hsize_t dset_dims_3d[Dims3D];
 
 	// -------------------------------
 	// Check for Output File
@@ -741,13 +867,86 @@ void FinalWriteAndClose(void) {
 	// -------------------------------
 	// Write Datasets
 	// -------------------------------
-    dset_dims_1d[0] = N_SECTORS;
+	#if defined(__SEC_PHASE_SYNC)
+	/// ------------------------- Sector Angles
+	// Convert theta array back to angles before printing
+	for (int i = 0; i < sys_vars->num_sect + 1; ++i) {
+		proc_data->theta[i] = atan(proc_data->theta[i]);
+	}
+    dset_dims_1d[0] = sys_vars->num_sect + 1;
 	status = H5LTmake_dataset(file_info->output_file_handle, "SectorAngles", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, proc_data->theta);
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Sector Angles");
         exit(1);
     }	
 
+    /// ------------------------- Sector Phase PDFs
+    // Allocate temporary memory
+	double* ranges = (double*) fftw_malloc(sizeof(double) * sys_vars->num_sect * (proc_data->phase_sect_pdf[0]->n + 1));
+	double* counts = (double*) fftw_malloc(sizeof(double) * sys_vars->num_sect * proc_data->phase_sect_pdf[0]->n);
+    
+    // Save phase data in temporary memory for writing to file
+    for (int i = 0; i < sys_vars->num_sect; ++i) {
+    	for (int j = 0; j < (int) proc_data->phase_sect_pdf[0]->n + 1; ++j) {
+    		ranges[i * (proc_data->phase_sect_pdf[0]->n + 1) + j] = proc_data->phase_sect_pdf[i]->range[j];
+    		if (j < (int) proc_data->phase_sect_pdf[0]->n) {
+    			counts[i * (proc_data->phase_sect_pdf[0]->n) + j] = proc_data->phase_sect_pdf[i]->bin[j];
+    		}
+    	}
+    }
+    dset_dims_2d[0] = sys_vars->num_sect;
+    dset_dims_2d[1] = proc_data->phase_sect_pdf[0]->n + 1;
+	status = H5LTmake_dataset(file_info->output_file_handle, "SectorPhasePDFRanges", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, ranges);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Sector Phases PDF Ranges");
+        exit(1);
+    }
+    dset_dims_2d[1] = proc_data->phase_sect_pdf[0]->n;
+	status = H5LTmake_dataset(file_info->output_file_handle, "SectorPhasePDFCounts", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, counts);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Sector Phases PDF Counts");
+        exit(1);
+    }
+
+    // Free temporary memory
+    fftw_free(ranges);
+    fftw_free(counts);
+
+    /// ------------------------- Sector Triad Phase PDFs
+    // Allocate temporary memory
+	double* triad_ranges = (double*) fftw_malloc(sizeof(double) * (NUM_TRIAD_TYPES + 1) * sys_vars->num_sect * (proc_data->phase_sect_pdf[0]->n + 1));
+	double* triad_counts = (double*) fftw_malloc(sizeof(double) * (NUM_TRIAD_TYPES + 1) * sys_vars->num_sect * proc_data->phase_sect_pdf[0]->n);
+    
+    // Save phase data in temporary memory for writing to file
+    for (int i = 0; i < sys_vars->num_sect; ++i) {
+    	for (int j = 0; j < (int) proc_data->triad_sect_pdf[0][0]->n + 1; ++j) {
+    		for (int q = 0; q < NUM_TRIAD_TYPES + 1; ++q) {
+				triad_ranges[(NUM_TRIAD_TYPES + 1) * (i * (proc_data->triad_sect_pdf[q][0]->n + 1) + j) + q] = proc_data->triad_sect_pdf[q][i]->range[j];
+	    		if (j < (int) proc_data->triad_sect_pdf[q][0]->n) {
+	    			triad_counts[(NUM_TRIAD_TYPES + 1) * (i * proc_data->triad_sect_pdf[q][0]->n + j) + q] = proc_data->triad_sect_pdf[q][i]->bin[j];
+	    		}
+       		}
+       	}
+    }
+    dset_dims_3d[0] = sys_vars->num_sect;
+    dset_dims_3d[1] = proc_data->triad_sect_pdf[0][0]->n + 1;
+    dset_dims_3d[2] = NUM_TRIAD_TYPES + 1;
+	status = H5LTmake_dataset(file_info->output_file_handle, "SectorTriadPhasePDFRanges", Dims3D, dset_dims_3d, H5T_NATIVE_DOUBLE, triad_ranges);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Sector Triad Phases PDF Ranges");
+        exit(1);
+    }
+    dset_dims_3d[1] = proc_data->triad_sect_pdf[0][0]->n;
+	status = H5LTmake_dataset(file_info->output_file_handle, "SectorTriadPhasePDFCounts", Dims3D, dset_dims_3d, H5T_NATIVE_DOUBLE, triad_counts);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Sector Triad Phases PDF Counts");
+        exit(1);
+    }	
+
+    // Free temporary memory
+    fftw_free(triad_ranges);
+    fftw_free(triad_counts);
+    #endif
     // -------------------------------
     // Close HDF5 Identifiers
     // -------------------------------

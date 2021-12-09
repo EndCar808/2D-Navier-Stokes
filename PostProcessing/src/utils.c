@@ -47,11 +47,12 @@ int GetCMLArgs(int argc, char** argv) {
 	strncpy(file_info->output_tag, "NO_TAG", 64);
 	file_info->input_file_only = 0; // used to indicate if input file was file only i.e., not output folder
 	file_info->output_file_only = 0; // used to indicate if output file should be file only i.e., not output folder
-
+	// Number of wavevector space sectors
+	sys_vars->num_sect = 40;
 	// -------------------------------
 	// Parse CML Arguments
 	// -------------------------------
-	while ((c = getopt(argc, argv, "o:h:n:s:e:t:v:i:c:p:f:z:")) != -1) {
+	while ((c = getopt(argc, argv, "a:o:h:n:s:e:t:v:i:c:p:f:z:")) != -1) {
 		switch(c) {
 			case 'o':
 				if (output_dir_flag == 0) {
@@ -73,6 +74,14 @@ int GetCMLArgs(int argc, char** argv) {
 				else if (input_dir_flag == 1) {
 					// Input file only indicated
 					file_info->input_file_only = 1;
+				}
+				break;
+			case 'a':
+				// Get the number of sectors to use
+				sys_vars->num_sect = atoi(optarg); 
+				if (sys_vars->num_sect <= 0) {
+					fprintf(stderr, "\n["RED"ERROR"RESET"]: Error in reading in command line agument ["CYAN"%s"RESET"], number of sector angles must be strictly positive, number provided ["CYAN"%d"RESET"]\n--->> Now Exiting!\n", "sys_vars->num_sect", sys_vars->num_sect);
+					exit(1);
 				}
 				break;
 			default:

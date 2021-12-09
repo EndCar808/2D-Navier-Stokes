@@ -157,7 +157,7 @@ if __name__ == '__main__':
     gs  = GridSpec(1, 1)
     ax1 = fig.add_subplot(gs[0, 0])
     for i in [0, int(sys_vars.ndata/2), sys_vars.ndata - 1]:
-        ax1.plot(spec_data.enrg_spectrum[i, 1:kmax])
+        ax1.plot(np.arange(1, kmax), spec_data.enrg_spectrum[i, 1:kmax])
     ax1.set_xlabel(r"$|\mathbf{k}|$")
     ax1.set_ylabel(r"$\mathcal{K}(|\mathbf{k}|)$")
     ax1.set_xscale('log')

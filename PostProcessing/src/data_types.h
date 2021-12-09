@@ -25,7 +25,7 @@
 #include <gsl/gsl_histogram.h> 
 #include <gsl/gsl_statistics_double.h>
 #include <gsl/gsl_rstat.h>
-
+#include <gsl/gsl_math.h>
 // ---------------------------------------------------------------------
 //  Compile Time Macros and Definitions
 // ---------------------------------------------------------------------
@@ -74,7 +74,10 @@
 // Statistics definitions
 #define N_BINS 1000				// The number of histogram bins to use
 // Phase sync 
-#define N_SECTORS 40		 // The number of phase sectors
+// #define N_SECTORS 40		 	// The number of phase sectors
+#define N_BINS_SEC 1000         // The number of bins in the sector pdfs
+#define N_BINS_SEC_INTIME 200   // The number of bins in the sector pdfs in time
+#define NUM_TRIAD_TYPES 4 		// The number of triad types contributing to the flux
 // ---------------------------------------------------------------------
 //  Global Struct Definitions
 // ---------------------------------------------------------------------
@@ -93,6 +96,8 @@ typedef struct system_vars_struct {
 	ptrdiff_t local_Nx_start;			// Position where the local arrays start in the undistributed array
 	long int num_snaps;					// Number of snapshots in the input data file
 	long int kmax; 						// The largest dealiased wavenumber
+	double kmax_sqr;                    // The largest dealiased wavenumber squared
+	int num_sect;						// The number of sectors in wavenumber space to be used when computing the Kuramoto order parameter 
 	double t0;							// Intial time
 	double T;							// Final time
 	double t;							// Time variable
@@ -127,17 +132,28 @@ typedef struct runtime_data_struct {
 
 // Post processing data struct
 typedef struct postprocess_data_struct {
-	double* phases;			   // Array to hold the full field zero centred phases
-	double* enrg;			   // Array to hold the full field zero centred energy
-	double* enst;			   // Array to hold the full field zero centred enstrophy
-	double* enst_spec; 		   // Array to hold the enstrophy spectrum
-    double* enrg_spec; 		   // Array to hold the energy spectrum
-    double* enst_alt;		   // Array to hold the data for enstrophy spectrum computed using stream func
-    double* enrg_alt;		   // Array to hold the data for energy spectrum computed using stream func
-    double* theta;             // Array to hold the angles for the sector boundaries
-    fftw_complex* phase_order; // Array to hold the phase order parameter for each sector
-    double* R;				   // Array to hold the phase sync per sector
-    double* Phi;               // Array to hold the average phase per sector
+	double* amps;												 // Array to hold the full field zero centred amplitudes
+	double* phases;			   		 							 // Array to hold the full field zero centred phases
+	double* enrg;			   		 							 // Array to hold the full field zero centred energy
+	double* enst;			   		 							 // Array to hold the full field zero centred enstrophy
+	double* enst_spec; 		   		 							 // Array to hold the enstrophy spectrum
+    double* enrg_spec; 		   		 							 // Array to hold the energy spectrum
+    double* enst_alt;		         							 // Array to hold the data for enstrophy spectrum computed using stream func
+    double* enrg_alt;		         							 // Array to hold the data for energy spectrum computed using stream func
+    double* theta;                   							 // Array to hold the angles for the sector boundaries
+    fftw_complex* phase_order;       							 // Array to hold the phase order parameter for each sector for the individual phases
+    fftw_complex* triad_phase_order[NUM_TRIAD_TYPES + 1]; 		 // Array to hold the phase order parameter for each sector for each of the triad phase types including all together
+    double* phase_R;				 							 // Array to hold the phase sync per sector for the individual phases
+    double* phase_Phi;               							 // Array to hold the average phase per sector for the individual phases
+    double* triad_R[NUM_TRIAD_TYPES + 1];						 // Array to hold the phase sync per sector for each of the triad phase types including all together
+    double* triad_Phi[NUM_TRIAD_TYPES + 1];     				 // Array to hold the average phase per sector for each of the triad phase types including all together
+    gsl_histogram** phase_sect_pdf;			    				 // Struct for the histogram of the individual phases in each sector over the simulation
+    gsl_histogram** phase_sect_pdf_t;							 // Struct for the histogram of the individual phases in each sector over time
+    gsl_histogram** triad_sect_pdf[NUM_TRIAD_TYPES + 1];  		 // Struct for the histogram of each triad phase type in each sector over the simulation
+    gsl_histogram** triad_sect_pdf_t[NUM_TRIAD_TYPES + 1];		 // Struct for the histogram of each triad phase type in each sector over time
+    gsl_histogram** phase_sect_wghtd_pdf_t;						 // Struct for the weighted histogram of the individual phases in each sector over time
+	gsl_histogram** triad_sect_wghtd_pdf_t[NUM_TRIAD_TYPES + 1]; // Struct for the weighted histogram of each triad phase type in each sector over time
+
 } postprocess_data_struct;
 
 // Post processing stats data struct

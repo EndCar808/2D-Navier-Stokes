@@ -422,6 +422,12 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                 - object containing the simulation parameters
     """
 
+    ## Depending on the output mmode of the solver the input files will be named differently
+    if method == "default":
+        file = input_file + "PostProcessing_HDF_Data.h5"
+    else:
+        file = input_file
+
     ## Define a data class for the solver data
     class PostProcessData:
 
@@ -429,7 +435,7 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
         Class for the run data.
         """
 
-        def __init__(self):
+        def __init__(self, in_file = file):
             ## Get the max wavenumber
             self.kmax = int(sim_data.Nx / 3)
             ## Allocate spectra aarrays
@@ -448,19 +454,21 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
             self.enrg_spectrum_1d_alt = np.zeros((sim_data.ndata, sim_data.spec_size))
             ## Allocate solver data arrays
             self.w_hat = np.ones((sim_data.ndata, sim_data.Nx, sim_data.Nk)) * np.complex(0.0, 0.0)
+            ## Get the number of sectors
+            with h5py.File(in_file, 'r') as file:
+                if 'SectorAngles' in list(file.keys()):
+                    self.theta = file["SectorAngles"][:]
+            self.num_sect = self.theta.shape[0] - 1
             ## Phase Sync arrays
-            self.theta = np.zeros((40))
-            self.R     = np.zeros((sim_data.ndata, 40))
-            self.Phi   = np.zeros((sim_data.ndata, 40))
+            self.phase_R       = np.zeros((sim_data.ndata, self.num_sect))
+            self.phase_Phi     = np.zeros((sim_data.ndata, self.num_sect))
+            self.triad_R       = np.zeros((sim_data.ndata, self.num_sect))
+            self.triad_Phi     = np.zeros((sim_data.ndata, self.num_sect))
+            self.ord_triad_R   = np.zeros((sim_data.ndata, self.num_sect))
+            self.ord_triad_Phi = np.zeros((sim_data.ndata, self.num_sect))
 
     ## Create instance of data class
     data = PostProcessData()
-
-    ## Depending on the output mmode of the solver the input files will be named differently
-    if method == "default":
-        file = input_file + "PostProcessing_HDF_Data.h5"
-    else:
-        file = input_file
 
     ## Open file and read in the data
     with h5py.File(file, 'r') as file:
@@ -494,14 +502,20 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                 if 'EnergySpectrumAlt' in list(file[group].keys()):
                     data.enrg_spectrum_1d_alt[nn, :] = file[group]["EnergySpectrumAlt"][:]
                 if 'PhaseSync' in list(file[group].keys()):
-                    data.R[nn, :] = file[group]["PhaseSync"][:]
+                    data.phase_R[nn, :] = file[group]["PhaseSync"][:]
                 if 'AverageAngle' in list(file[group].keys()):
-                    data.Phi[nn, :] = file[group]["AverageAngle"][:]
+                    data.phase_Phi[nn, :] = file[group]["AverageAngle"][:]
+                if 'TriadPhaseSync' in list(file[group].keys()):
+                    data.triad_R[nn, :] = file[group]["TriadPhaseSync"][:]
+                if 'TriadAverageAngle' in list(file[group].keys()):
+                    data.triad_Phi[nn, :] = file[group]["TriadAverageAngle"][:]
+                if 'OrderedTriadPhaseSync' in list(file[group].keys()):
+                    data.ord_triad_R[nn, :] = file[group]["OrderedTriadPhaseSync"][:]
+                if 'OrderedTriadAverageAngle' in list(file[group].keys()):
+                    data.ord_triad_Phi[nn, :] = file[group]["OrderedTriadAverageAngle"][:]
                 if 'w_hat' in list(file[group].keys()):
                     data.w_hat[nn, :, :] = file[group]["w_hat"][:, :]
                 nn += 1
-            if 'SectorAngles' in list(file.keys()):
-                data.theta[:] = file["SectorAngles"][:]
             else:
                 continue
 

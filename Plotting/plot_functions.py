@@ -528,10 +528,24 @@ def plot_sector_phase_sync_snaps(i, out_dir, phases, theta, R, Phi, t, Nx, Ny):
        #--------------------------
        ax1 = fig.add_subplot(gs[0:2, 0])
        im1 = ax1.imshow(phases, extent = (0, int(Ny / 3), int(-Nx / 3 + 1), int(Nx / 3)), cmap = my_hsv, vmin = 0., vmax = 2. * np.pi)
+       ang = np.arange(-np.pi/2, np.pi/2 + np.pi / 100, np.pi / 100)
+       angticks      = [-np.pi/2, -3*np.pi/8, -np.pi/4.0, -np.pi/8, 0.0, np.pi/8, np.pi/4.0, 3*np.pi/8, np.pi/2.0]
+       angtickLabels = [r"$-\frac{\pi}{2}$", r"$-\frac{3\pi}{8}$", r"$-\frac{\pi}{4}$", r"$-\frac{\pi}{8}$", r"$0$", r"$\frac{\pi}{8}$", r"$\frac{\pi}{4}$", r"$\frac{3\pi}{8}$", r"$\frac{\pi}{2}$"]
+       rmax_ext = int(Nx / 3 + 20)
+       for tick, label in zip(angticks, angtickLabels):
+              if abs(tick) == np.pi/2:
+                     ax1.text(x = (rmax_ext - 7.5) * np.cos(tick) + 0.1, y = (rmax_ext - 7.5) * np.sin(tick), s = label) ## shift the +-pi/2 to the right 
+              elif tick <= 0:
+                     ax1.text(x = (rmax_ext - 7.5) * np.cos(tick), y = (rmax_ext - 7.5) * np.sin(tick) - 0.25, s = label) ## shift the bottom quadrant ticks down
+              else:
+                     ax1.text(x = (rmax_ext - 7.5) * np.cos(tick), y = (rmax_ext - 7.5) * np.sin(tick) - 0.25, s = label)
+              ax1.plot([(rmax_ext - 15) * np.cos(tick), (rmax_ext - 11) * np.cos(tick)], [(rmax_ext - 15) * np.sin(tick), (rmax_ext - 11) * np.sin(tick)], color = 'k', linestyle = '-', linewidth = 0.5)
+       ax1.plot((rmax_ext - 15) * np.cos(ang), (rmax_ext - 15) * np.sin(ang), color = 'k', linestyle = '--', linewidth = 0.5)
        ax1.set_xlabel(r"$k_y$")
        ax1.set_ylabel(r"$k_x$")
-       ax1.set_ylim(-int(Nx / 3), int(Nx / 3))
-       ax1.set_xlim(0, int(Nx / 3))
+       ax1.set_ylim(-rmax_ext, rmax_ext)
+       ax1.set_xlim(0, rmax_ext)
+       ax1.set_title(r"Fourier Phases")
        div1  = make_axes_locatable(ax1)
        cbax1 = div1.append_axes("right", size = "10%", pad = 0.05)
        cb1   = plt.colorbar(im1, cax = cbax1)
@@ -543,24 +557,32 @@ def plot_sector_phase_sync_snaps(i, out_dir, phases, theta, R, Phi, t, Nx, Ny):
        # Plot Phase Sync Per Sector  
        #--------------------------
        ax2 = fig.add_subplot(gs[0, 1])
-       ax2.plot(theta, R)
+       ax2.plot(theta[:-1], R)
        ax2.set_xlim(-np.pi/2, np.pi/2)
+       ax2.set_xticks(angticks)
+       ax2.set_xticklabels(angtickLabels)
        ax2.set_ylim(0, 1.)
        ax2.set_xlabel(r"$\theta$")
        ax2.set_ylabel(r"$\mathcal{R}$")
+       ax2.grid(which = 'both', axis = 'both', linestyle = ':', linewidth = '0.6', alpha = 0.8)
+       ax2.set_title(r"Phase Synchronization Per Sector")
 
        #--------------------------
        # Plot Avg Phase Per Sector  
        #--------------------------
        ax3 = fig.add_subplot(gs[1, 1])
-       ax3.plot(theta, Phi)
+       ax3.plot(theta[:-1], Phi, '.-')
        ax3.set_xlim(-np.pi/2, np.pi/2)
+       ax3.set_xticks(angticks)
+       ax3.set_xticklabels(angtickLabels)
        ax3.set_xlabel(r"$\theta$")
        ax3.set_ylabel(r"$\Phi$")
        ax3.set_ylim(-np.pi, np.pi)
        ax3.set_yticks([-np.pi, -np.pi/2.0, 0., np.pi/2, np.pi])
        ax3.set_yticklabels([r"$-\pi$", r"$-\frac{\pi}{2}$", r"$0$", r"$\frac{\pi}{2}$", r"$\pi$"])
-       
+       ax3.grid(which = 'both', axis = 'both', linestyle = ':', linewidth = '0.6', alpha = 0.8)
+       ax3.set_title(r"Averager Phase Per Sector")
+
        ## Add title and save fig
        plt.suptitle(r"$t = {:.5f}$".format(t))
        plt.savefig(out_dir + "/Phase_Sync_SNAP_{:05d}.png".format(i), bbox_inches = 'tight')
