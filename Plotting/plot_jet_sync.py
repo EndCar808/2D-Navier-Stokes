@@ -46,17 +46,17 @@ def parse_cml(argv):
         Class for command line arguments
         """
 
-        def __init__(self, in_dir = None, out_dir = None, parallel = False, plotting = False, video = False, triads = False, phases = False, ord_triads = False):
-            self.in_dir             = in_dir
-            self.out_dir_phases     = out_dir
-            self.out_dir_triads     = out_dir
-            self.out_dir_ord_triads = out_dir
-            self.parallel           = parallel
-            self.plotting           = plotting
-            self.video              = video 
-            self.phases             = phases
-            self.triads             = triads
-            self.ord_triads         = ord_triads
+        def __init__(self, in_dir = None, out_dir = None, in_file = None, parallel = False, plotting = False, video = False, triads = False, phases = False, triad_type = None):
+            self.in_dir         = in_dir
+            self.out_dir_phases = out_dir
+            self.out_dir_triads = out_dir
+            self.in_file        = out_dir
+            self.parallel       = parallel
+            self.plotting       = plotting
+            self.video          = video 
+            self.phases         = phases
+            self.triads         = triads
+            self.triad_type     = triad_type
 
 
     ## Initialize class
@@ -64,7 +64,7 @@ def parse_cml(argv):
 
     try:
         ## Gather command line arguments
-        opts, args = getopt.getopt(argv, "i:o", ["par", "plot", "vid", "phase", "triads" , "ord_triads"])
+        opts, args = getopt.getopt(argv, "i:o:f:", ["par", "plot", "vid", "phase", "triads="])
     except:
         print("[" + tc.R + "ERROR" + tc.Rst + "] ---> Incorrect Command Line Arguements.")
         sys.exit()
@@ -80,6 +80,11 @@ def parse_cml(argv):
             cargs.out_dir = str(arg)
             print("Output Folder: " + tc.C + "{}".format(cargs.out_dir) + tc.Rst)
 
+        if opt in ['-f']:
+            ## Read input directory
+            cargs.in_file = str(arg)
+            print("Input Post Processing File: " + tc.C + "{}".format(cargs.in_file) + tc.Rst)
+
         elif opt in ['--par']:
             ## Read in parallel indicator
             cargs.parallel = True
@@ -89,20 +94,19 @@ def parse_cml(argv):
             cargs.plotting = True
 
         elif opt in ['--vid']:
-            ## Read in spectra file
+            ## If videos are to be made
             cargs.video = True
 
         elif opt in ['--phase']:
-            ## Read in plotting indicator
+            ## If phases are to be plotted
             cargs.phases = True
 
         elif opt in ['--triads']:
-            ## Read in spectra file
+            ## If triads are to be plotted
             cargs.triads = True
 
-        elif opt in ['--ord_triads']:
-            ## Read in spectra file
-            cargs.ord_triads = True
+            ## Read in the triad type
+            cargs.triad_type = str(arg)
 
     return cargs
 
@@ -152,39 +156,38 @@ if __name__ == '__main__':
     # # --------- Parse Commnad Line
     # -------------------------------------
     cmdargs = parse_cml(sys.argv[1:])
-    method  = "default"
-
+    if cmdargs.in_file is None:
+        method = "default"
+        post_file_path = cmdargs.in_dir
+    else: 
+        method = "file"
+        post_file_path = cmdargs.in_dir + cmdargs.in_file
     # -----------------------------------------
     # # --------  Read In data
     # -----------------------------------------
     ## Read in simulation parameters
-    sys_vars = sim_data(cmdargs.in_dir, method)
+    sys_vars = sim_data(cmdargs.in_dir)
 
     ## Read in solver data
-    run_data = import_data(cmdargs.in_dir, sys_vars, method)
+    run_data = import_data(cmdargs.in_dir, sys_vars)
 
     ## Read in spectra data
-    spec_data = import_spectra_data(cmdargs.in_dir, sys_vars, method)
+    spec_data = import_spectra_data(cmdargs.in_dir, sys_vars)
 
     ## Read in post processing data
-    post_data = import_post_processing_data(cmdargs.in_dir, sys_vars, method)
+    post_data = import_post_processing_data(post_file_path, sys_vars, method)
 
     ## Make output directory for snaps
     cmdargs.out_dir_phases     = cmdargs.out_dir + "PHASE_SYNC_SNAPS/"
     cmdargs.out_dir_triads     = cmdargs.out_dir + "TRIAD_PHASE_SYNC_SNAPS/"
-    cmdargs.out_dir_ord_triads = cmdargs.out_dir + "ORDER_TRIAD_PHASE_SYNC_SNAPS/"
     if os.path.isdir(cmdargs.out_dir_phases) != True:
         print("Making folder:" + tc.C + " PHASE_SYNC_SNAPS/" + tc.Rst)
         os.mkdir(cmdargs.out_dir_phases)
     if os.path.isdir(cmdargs.out_dir_triads) != True:
         print("Making folder:" + tc.C + " TRIAD_PHASE_SYNC_SNAPS/" + tc.Rst)
         os.mkdir(cmdargs.out_dir_triads)
-    if os.path.isdir(cmdargs.out_dir_ord_triads) != True:
-        print("Making folder:" + tc.C + " ORDER_TRIAD_PHASE_SYNC_SNAPS/" + tc.Rst)
-        os.mkdir(cmdargs.out_dir_ord_triads)
     print("Phases Output Folder: "+ tc.C + "{}".format(cmdargs.out_dir_phases) + tc.Rst)
     print("Triads Output Folder: "+ tc.C + "{}".format(cmdargs.out_dir_triads) + tc.Rst)
-    print("Ordered Triads Output Folder: "+ tc.C + "{}".format(cmdargs.out_dir_ord_triads) + tc.Rst)
     # -----------------------------------------
     # # --------  Plot Data
     # -----------------------------------------
@@ -239,53 +242,85 @@ if __name__ == '__main__':
                 ## No. of processes
                 proc_lim = 10
 
-                ## Create tasks for the process pool
-                groups_args = [(mprocs.Process(target = plot_sector_phase_sync_snaps, args = (i, cmdargs.out_dir_triads, post_data.phases[i, :, int(sys_vars.Nx/3 - 1):], post_data.theta, post_data.triad_R[i, :], post_data.triad_Phi[i, :], run_data.time[i], sys_vars.Nx, sys_vars.Ny)) for i in range(sys_vars.ndata))] * proc_lim
+                if cmdargs.triad_type != "all":
+                    ## Create tasks for the process pool
+                    groups_args = [(mprocs.Process(target = plot_sector_phase_sync_snaps, args = (i, cmdargs.out_dir_triads, post_data.phases[i, :, int(sys_vars.Nx/3 - 1):], post_data.theta, post_data.triad_R[i, int(cmdargs.triad_type), :], post_data.triad_Phi[i, int(cmdargs.triad_type), :], run_data.time[i], sys_vars.Nx, sys_vars.Ny)) for i in range(sys_vars.ndata))] * proc_lim
 
-                ## Loop of grouped iterable
-                for procs in zip_longest(*groups_args): 
-                    pipes     = []
-                    processes = []
-                    for p in filter(None, procs):
-                        recv, send = mprocs.Pipe(False)
-                        processes.append(p)
-                        pipes.append(recv)
-                        p.start()
+                    ## Loop of grouped iterable
+                    for procs in zip_longest(*groups_args): 
+                        pipes     = []
+                        processes = []
+                        for p in filter(None, procs):
+                            recv, send = mprocs.Pipe(False)
+                            processes.append(p)
+                            pipes.append(recv)
+                            p.start()
 
-                    for process in processes:
-                        process.join()
+                        for process in processes:
+                            process.join()
+                else:
+                    for t in range(5):
+                        ## Create tasks for the process pool
+                        groups_args = [(mprocs.Process(target = plot_sector_phase_sync_snaps, args = (i, cmdargs.out_dir_triads, post_data.phases[i, :, int(sys_vars.Nx/3 - 1):], post_data.theta, post_data.triad_R[i, t, :], post_data.triad_Phi[i, t, :], run_data.time[i], sys_vars.Nx, sys_vars.Ny)) for i in range(sys_vars.ndata))] * proc_lim
+
+                        ## Loop of grouped iterable
+                        for procs in zip_longest(*groups_args): 
+                            pipes     = []
+                            processes = []
+                            for p in filter(None, procs):
+                                recv, send = mprocs.Pipe(False)
+                                processes.append(p)
+                                pipes.append(recv)
+                                p.start()
+
+                            for process in processes:
+                                process.join()
+                    
+                        ## Video variables
+                        framesPerSec = 30
+                        inputFile    = cmdargs.out_dir_triads + "Phase_Sync_SNAP_%05d.png"
+                        videoName    = cmdargs.out_dir_triads + "TriadPhaseSync_N[{},{}]_u0[{}]_NSECT[{}]_TYPE[{}].mp4".format(sys_vars.Nx, sys_vars.Ny, sys_vars.u0, post_data.num_sect, t)
+                        cmd = "ffmpeg -y -r {} -f image2 -s 1920x1080 -i {} -vf 'pad=ceil(iw/2)*2:ceil(ih/2)*2' -vcodec libx264 -crf 25 -pix_fmt yuv420p {}".format(framesPerSec, inputFile, videoName)
+                        # cmd = "ffmpeg -r {} -f image2 -s 1280×720 -i {} -vcodec libx264 -preset ultrafast -crf 35 -pix_fmt yuv420p {}".format(framesPerSec, inputFile, videoName)
+
+                        process = Popen(cmd, shell = True, stdout = PIPE, stdin = PIPE, universal_newlines = True)
+                        [runCodeOutput, runCodeErr] = process.communicate()
+                        print(runCodeOutput)
+                        print(runCodeErr)
+                        process.wait()
+
+                        ## Prin summary of timmings to screen
+                        print("\n" + tc.Y + "Finished making video..." + tc.Rst)
+                        print("Video Location: " + tc.C + videoName + tc.Rst + "\n")
             else:
-                ## Loop through simulation and plot data
-                for i in range(sys_vars.ndata):
-                    ## Plot the data
-                    plot_sector_phase_sync_snaps(i, cmdargs.out_dir_triads, post_data.phases[i, :, int(sys_vars.Nx/3 - 1):], post_data.theta, post_data.triad_R[i, :], post_data.triad_Phi[i, :], run_data.time[i], sys_vars.Nx, sys_vars.Ny)
+                if cmdargs.triad_type != "all":
+                    ## Loop through simulation and plot data
+                    for i in range(sys_vars.ndata):
+                        ## Plot the data
+                        plot_sector_phase_sync_snaps(i, cmdargs.out_dir_triads, post_data.phases[i, :, int(sys_vars.Nx/3 - 1):], post_data.theta, post_data.triad_R[i, int(cmdargs.triad_type), :], post_data.triad_Phi[i, int(cmdargs.triad_type), :], run_data.time[i], sys_vars.Nx, sys_vars.Ny)
+                else:
+                    for t in range(5):
+                        ## Loop through simulation and plot data
+                        for i in range(sys_vars.ndata):
+                            ## Plot the data
+                            plot_sector_phase_sync_snaps(i, cmdargs.out_dir_triads, post_data.phases[i, :, int(sys_vars.Nx/3 - 1):], post_data.theta, post_data.triad_R[i, t, :], post_data.triad_Phi[i, t, :], run_data.time[i], sys_vars.Nx, sys_vars.Ny)
 
-        if cmdargs.ord_triads:
+                        ## Video variables
+                        framesPerSec = 30
+                        inputFile    = cmdargs.out_dir_triads + "Phase_Sync_SNAP_%05d.png"
+                        videoName    = cmdargs.out_dir_triads + "TriadPhaseSync_N[{},{}]_u0[{}]_NSECT[{}]_TYPE[{}].mp4".format(sys_vars.Nx, sys_vars.Ny, sys_vars.u0, post_data.num_sect, t)
+                        cmd = "ffmpeg -y -r {} -f image2 -s 1920x1080 -i {} -vf 'pad=ceil(iw/2)*2:ceil(ih/2)*2' -vcodec libx264 -crf 25 -pix_fmt yuv420p {}".format(framesPerSec, inputFile, videoName)
+                        # cmd = "ffmpeg -r {} -f image2 -s 1280×720 -i {} -vcodec libx264 -preset ultrafast -crf 35 -pix_fmt yuv420p {}".format(framesPerSec, inputFile, videoName)
 
-            if cmdargs.parallel:
-                ## No. of processes
-                proc_lim = 10
+                        process = Popen(cmd, shell = True, stdout = PIPE, stdin = PIPE, universal_newlines = True)
+                        [runCodeOutput, runCodeErr] = process.communicate()
+                        print(runCodeOutput)
+                        print(runCodeErr)
+                        process.wait()
 
-                ## Create tasks for the process pool
-                groups_args = [(mprocs.Process(target = plot_sector_phase_sync_snaps, args = (i, cmdargs.out_dir_ord_triads, post_data.phases[i, :, int(sys_vars.Nx/3 - 1):], post_data.theta, post_data.triad_R[i, :], post_data.triad_Phi[i, :], run_data.time[i], sys_vars.Nx, sys_vars.Ny)) for i in range(sys_vars.ndata))] * proc_lim
-
-                ## Loop of grouped iterable
-                for procs in zip_longest(*groups_args): 
-                    pipes     = []
-                    processes = []
-                    for p in filter(None, procs):
-                        recv, send = mprocs.Pipe(False)
-                        processes.append(p)
-                        pipes.append(recv)
-                        p.start()
-
-                    for process in processes:
-                        process.join()
-            else:
-                ## Loop through simulation and plot data
-                for i in range(sys_vars.ndata):
-                    ## Plot the data
-                    plot_sector_phase_sync_snaps(i, cmdargs.out_dir_ord_triads, post_data.phases[i, :, int(sys_vars.Nx/3 - 1):], post_data.theta, post_data.ord_triad_R[i, :], post_data.ord_triad_Phi[i, :], run_data.time[i], sys_vars.Nx, sys_vars.Ny)
+                        ## Prin summary of timmings to screen
+                        print("\n" + tc.Y + "Finished making video..." + tc.Rst)
+                        print("Video Location: " + tc.C + videoName + tc.Rst + "\n")
 
         ## End timer
         end       = TIME.perf_counter()
@@ -321,12 +356,12 @@ if __name__ == '__main__':
             print("\n" + tc.Y + "Finished making video..." + tc.Rst)
             print("Video Location: " + tc.C + videoName + tc.Rst + "\n")
 
-        if cmdargs.triads:
+        if cmdargs.triads and cmdargs.triad_type != "all":
 
             ## Video variables
             framesPerSec = 30
             inputFile    = cmdargs.out_dir_triads + "Phase_Sync_SNAP_%05d.png"
-            videoName    = cmdargs.out_dir_triads + "TriadPhaseSync_N[{},{}]_u0[{}]_NSECT[{}].mp4".format(sys_vars.Nx, sys_vars.Ny, sys_vars.u0, post_data.num_sect)
+            videoName    = cmdargs.out_dir_triads + "TriadPhaseSync_N[{},{}]_u0[{}]_NSECT[{}]_TYPE[{}].mp4".format(sys_vars.Nx, sys_vars.Ny, sys_vars.u0, post_data.num_sect, int(cmdargs.triad_type))
             cmd = "ffmpeg -y -r {} -f image2 -s 1920x1080 -i {} -vf 'pad=ceil(iw/2)*2:ceil(ih/2)*2' -vcodec libx264 -crf 25 -pix_fmt yuv420p {}".format(framesPerSec, inputFile, videoName)
             # cmd = "ffmpeg -r {} -f image2 -s 1280×720 -i {} -vcodec libx264 -preset ultrafast -crf 35 -pix_fmt yuv420p {}".format(framesPerSec, inputFile, videoName)
 
@@ -336,28 +371,6 @@ if __name__ == '__main__':
             print(runCodeErr)
             process.wait()
 
-            ## Prin summary of timmings to screen
-            print("\n" + tc.Y + "Finished making video..." + tc.Rst)
-            print("Video Location: " + tc.C + videoName + tc.Rst + "\n")
-
-        if cmdargs.ord_triads:
-
-            ## Video variables
-            framesPerSec = 30
-            inputFile    = cmdargs.out_dir_ord_triads + "Phase_Sync_SNAP_%05d.png"
-            videoName    = cmdargs.out_dir_ord_triads + "OrderedTriadPhaseSync_N[{},{}]_u0[{}]_NSECT[{}].mp4".format(sys_vars.Nx, sys_vars.Ny, sys_vars.u0, post_data.num_sect)
-            cmd = "ffmpeg -y -r {} -f image2 -s 1920x1080 -i {} -vf 'pad=ceil(iw/2)*2:ceil(ih/2)*2' -vcodec libx264 -crf 25 -pix_fmt yuv420p {}".format(framesPerSec, inputFile, videoName)
-            # cmd = "ffmpeg -r {} -f image2 -s 1280×720 -i {} -vcodec libx264 -preset ultrafast -crf 35 -pix_fmt yuv420p {}".format(framesPerSec, inputFile, videoName)
-
-            process = Popen(cmd, shell = True, stdout = PIPE, stdin = PIPE, universal_newlines = True)
-            [runCodeOutput, runCodeErr] = process.communicate()
-            print(runCodeOutput)
-            print(runCodeErr)
-            process.wait()
-
-            ## Prin summary of timmings to screen
-            print("\n" + tc.Y + "Finished making video..." + tc.Rst)
-            print("Video Location: " + tc.C + videoName + tc.Rst + "\n")
 
         ## Start timer
         end = TIME.perf_counter()

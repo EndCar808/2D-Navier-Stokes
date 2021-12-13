@@ -462,10 +462,15 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
             ## Phase Sync arrays
             self.phase_R       = np.zeros((sim_data.ndata, self.num_sect))
             self.phase_Phi     = np.zeros((sim_data.ndata, self.num_sect))
-            self.triad_R       = np.zeros((sim_data.ndata, self.num_sect))
-            self.triad_Phi     = np.zeros((sim_data.ndata, self.num_sect))
-            self.ord_triad_R   = np.zeros((sim_data.ndata, self.num_sect))
-            self.ord_triad_Phi = np.zeros((sim_data.ndata, self.num_sect))
+            self.triad_R       = np.zeros((sim_data.ndata, 5, self.num_sect))
+            self.triad_Phi     = np.zeros((sim_data.ndata, 5, self.num_sect))
+            ## Phase Sync Stats
+            self.phase_sector_counts = np.zeros((sim_data.ndata, self.num_sect, 200))
+            self.phase_sector_ranges = np.zeros((sim_data.ndata, self.num_sect, 201))
+            self.triad_sector_counts = np.zeros((sim_data.ndata, self.num_sect, 200, 5))
+            self.triad_sector_ranges = np.zeros((sim_data.ndata, self.num_sect, 201, 5))
+            self.triad_sector_wghtd_counts = np.zeros((sim_data.ndata, self.num_sect, 200, 5))
+            self.triad_sector_wghtd_ranges = np.zeros((sim_data.ndata, self.num_sect, 201, 5))
 
     ## Create instance of data class
     data = PostProcessData()
@@ -506,15 +511,23 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                 if 'AverageAngle' in list(file[group].keys()):
                     data.phase_Phi[nn, :] = file[group]["AverageAngle"][:]
                 if 'TriadPhaseSync' in list(file[group].keys()):
-                    data.triad_R[nn, :] = file[group]["TriadPhaseSync"][:]
+                    data.triad_R[nn, :, :] = file[group]["TriadPhaseSync"][:, :]
                 if 'TriadAverageAngle' in list(file[group].keys()):
-                    data.triad_Phi[nn, :] = file[group]["TriadAverageAngle"][:]
-                if 'OrderedTriadPhaseSync' in list(file[group].keys()):
-                    data.ord_triad_R[nn, :] = file[group]["OrderedTriadPhaseSync"][:]
-                if 'OrderedTriadAverageAngle' in list(file[group].keys()):
-                    data.ord_triad_Phi[nn, :] = file[group]["OrderedTriadAverageAngle"][:]
+                    data.triad_Phi[nn, :, :] = file[group]["TriadAverageAngle"][:, :]
                 if 'w_hat' in list(file[group].keys()):
                     data.w_hat[nn, :, :] = file[group]["w_hat"][:, :]
+                if 'SectorPhasePDF_InTime_Counts' in list(file[group].keys()):
+                    data.phase_sector_counts[nn, :, :] = file[group]["SectorPhasePDF_InTime_Counts"][:, :]
+                if 'SectorPhasePDF_InTime_Ranges' in list(file[group].keys()):
+                    data.phase_sector_ranges[nn, :, :] = file[group]["SectorPhasePDF_InTime_Ranges"][:, :]
+                if 'SectorTriadPhasePDF_InTime_Counts' in list(file[group].keys()):
+                    data.triad_sector_counts[nn, :, :, :] = file[group]["SectorTriadPhasePDF_InTime_Counts"][:, :, :]
+                if 'SectorTriadPhasePDF_InTime_Ranges' in list(file[group].keys()):
+                    data.triad_sector_ranges[nn, :, :, :] = file[group]["SectorTriadPhasePDF_InTime_Ranges"][:, :, :]
+                if 'SectorTriadPhaseWeightedPDF_InTime_Counts' in list(file[group].keys()):
+                    data.triad_sector_wghtd_counts[nn, :, :, :] = file[group]["SectorTriadPhaseWeightedPDF_InTime_Counts"][:, :, :]
+                if 'SectorTriadPhaseWeightedPDF_InTime_Ranges' in list(file[group].keys()):
+                    data.triad_sector_wghtd_ranges[nn, :, :, :] = file[group]["SectorTriadPhaseWeightedPDF_InTime_Ranges"][:, :, :]
                 nn += 1
             else:
                 continue

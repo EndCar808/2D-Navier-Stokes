@@ -46,8 +46,8 @@ int main(int argc, char** argv) {
 	int k_x, k1_x, k2_x, k2_y;
 	double k_angle, k1_sqr, k1_angle, k2_sqr, k2_angle;
 	int num_phases, num_triads[NUM_TRIAD_TYPES + 1];
-	int flux_pre_fac;
 	int tmp_k, tmp_k1, tmp_k2;
+	double flux_pre_fac;
 	double flux_wght;
 	#endif
 
@@ -101,7 +101,7 @@ int main(int argc, char** argv) {
 	// Begin Snapshot Processing
 	//////////////////////////////
 	printf("\nStarting Snapshot Processing:\n");
-	for (int s = 0; s < 10; ++s) { // sys_vars->num_snaps
+	for (int s = 0; s < sys_vars->num_snaps; ++s) {  // sys_vars->num_snaps
 		
 		// Print update to screen
 		printf("Snapshot: %d\n", s);
@@ -364,10 +364,12 @@ int main(int argc, char** argv) {
 													phase = fmod(phase + 2.0 * M_PI, 2.0 * M_PI) - M_PI;
 
 													// Get the wavevector prefactor
-													flux_pre_fac = (k1_x * k2_y - k2_x * k1_y) / (1 / k1_sqr - 1 / k2_sqr);
+													flux_pre_fac = (double)(k1_x * k2_y - k2_x * k1_y) / (1.0 / k1_sqr - 1.0 / k2_sqr);
 
-													// Get the weighting (modulus) of this term to the flux
-													flux_wght = (double )flux_pre_fac * proc_data->amps[tmp_k1 + sys_vars->kmax - 1 + k1_y] * proc_data->amps[tmp_k2 + sys_vars->kmax - 1 + k2_y] * proc_data->amps[tmp_k + sys_vars->kmax - 1 + k_y];
+													// Get the weighting (modulus) of this term to the contribution to the flux
+													flux_wght = flux_pre_fac * (proc_data->amps[tmp_k1 + sys_vars->kmax - 1 + k1_y] * proc_data->amps[tmp_k2 + sys_vars->kmax - 1 + k2_y] * proc_data->amps[tmp_k + sys_vars->kmax - 1 + k_y]);
+
+													// printf("Pre: %lf\t Wght: %lf\n", flux_pre_fac, flux_wght);
 
 													// Check for each type of triad contribution to the flux
 													if (GSL_SIGN(flux_pre_fac) > 0) {
@@ -522,7 +524,6 @@ int main(int argc, char** argv) {
 				}
 				
 			}
-			// printf("a: %d Num: %d\t triad_phase_order: %lf %lf I\n", a, num_phases, creal(proc_data->phase_order[a]), cimag(proc_data->phase_order[a]));
 
 			for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
 				// Normalize the phase order parameters
@@ -531,8 +532,12 @@ int main(int argc, char** argv) {
 				// Record the phase syncs and average phases
 				proc_data->triad_R[i][a]   = cabs(proc_data->triad_phase_order[i][a]);
 				proc_data->triad_Phi[i][a] = carg(proc_data->triad_phase_order[i][a]); 
+				// printf("a: %d type: %d Num: %d\t triad_phase_order: %lf %lf I\t\t R: %lf, Phi %lf\n", a, i, num_triads[i], creal(proc_data->triad_phase_order[i][a]), cimag(proc_data->triad_phase_order[i][a]), proc_data->triad_R[i][a], proc_data->triad_Phi[i][a]);
 			}
+			// printf("\n");
 
+			// printf("a: %d Num: %d\t triad_phase_order: %lf %lf I\t Num: %d\t triad_phase_order: %lf %lf I \t Num: %d\t triad_phase_order: %lf %lf I\n", a, num_triads[0], creal(proc_data->triad_phase_order[0][a]), cimag(proc_data->triad_phase_order[0][a]), num_triads[1], creal(proc_data->triad_phase_order[1][a]), cimag(proc_data->triad_phase_order[1][a]), num_triads[2], creal(proc_data->triad_phase_order[2][a]), cimag(proc_data->triad_phase_order[2][a]));
+			// printf("a: %d | Num: %d R0: %lf Phi0: %lf |\t Num: %d R1: %lf Phi1: %lf |\t Num: %d R2: %lf Phi2: %lf\n", a, num_triads[0], proc_data->triad_R[0][a], proc_data->triad_Phi[0][a], num_triads[1], proc_data->triad_R[1][a], proc_data->triad_Phi[1][a], num_triads[2], proc_data->triad_R[2][a], proc_data->triad_Phi[2][a]);
 
 			//------------------- Reset phase order arrays for next iteration
 			proc_data->phase_order[a] = 0.0 + 0.0 * I;
@@ -836,12 +841,11 @@ void AllocateMemory(const long int* N) {
 	
 	// Initialize arrays
 	double dtheta = M_PI / (double )sys_vars->num_sect;
-	for (int i = 0; i < (sys_vars->num_sect + 1); ++i) {
-		if (i > 0 && i < sys_vars->num_sect) {
+	for (int i = 0; i < sys_vars->num_sect; ++i) {
+		if (i > 0) {
 			// Precompute the tan(theta) here for efficiency - only fill internal angles
 			proc_data->theta[i] = tan(-M_PI / 2.0 + i * dtheta); 
 		}
-		if (i < sys_vars->num_sect) {
 			proc_data->phase_R[i]     = 0.0;
 			proc_data->phase_Phi[i]   = 0.0;
 			proc_data->phase_order[i] = 0.0 + 0.0 * I;
@@ -850,7 +854,6 @@ void AllocateMemory(const long int* N) {
 				proc_data->triad_Phi[j][i]         = 0.0;
 				proc_data->triad_phase_order[j][i] = 0.0 + 0.0 * I;
 			}
-		}
 	}
 	// Now fill angles at +-pi/2
 	proc_data->theta[0]  				 = proc_data->theta[1] - abs(proc_data->theta[2] - proc_data->theta[1]);              //tan(-M_PI / 2.0 + 2e-1 * dtheta);

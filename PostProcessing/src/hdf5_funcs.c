@@ -383,6 +383,7 @@ void ReadInData(int snap_indx) {
 void OpenOutputFile(void) {
 
 	// Initialize variables
+	char file_name[512];
 	herr_t status;
 	struct stat st = {0};	// this is used to check whether the output directories exist or not.
 
@@ -392,7 +393,8 @@ void OpenOutputFile(void) {
 	if (strcmp(file_info->output_dir, "NONE") == -1) {
 		// Construct pathh
 		strcpy(file_info->output_file_name, file_info->output_dir);
-		strcat(file_info->output_file_name, "PostProcessing_HDF_Data.h5");
+		sprintf(file_name, "PostProcessing_HDF_Data_SECTORS[%d].h5", sys_vars->num_sect);
+		strcat(file_info->output_file_name, file_name);
 
 		// Print output file path to screen
 		printf("Output File: "CYAN"%s"RESET"\n\n", file_info->output_file_name);	
@@ -402,7 +404,8 @@ void OpenOutputFile(void) {
 
 		// Construct pathh
 		strcpy(file_info->output_file_name, file_info->input_dir);
-		strcat(file_info->output_file_name, "PostProcessing_HDF_Data.h5");
+		sprintf(file_name, "PostProcessing_HDF_Data_SECTORS[%d].h5", sys_vars->num_sect);
+		strcat(file_info->output_file_name, file_name);
 
 		// Print output file path to screen
 		printf("Output File: "CYAN"%s"RESET"\n\n", file_info->output_file_name);	
@@ -602,20 +605,36 @@ void WriteDataToFile(double t, long int snap) {
         exit(1);
     }
 
+    // Allocate tmporary memory for writing the phase order data
+    double* tmp = (double*) fftw_malloc(sizeof(double) * sys_vars->num_sect * (NUM_TRIAD_TYPES + 1));
+    for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
+    	for (int a = 0; a < sys_vars->num_sect; ++a) {
+    		tmp[i * sys_vars->num_sect + a] = proc_data->triad_R[i][a];
+    	}
+    }
+    
     // Write the phase order data for the triad phases
     dset_dims_2d[0] = NUM_TRIAD_TYPES + 1;
     dset_dims_2d[1] = sys_vars->num_sect;
-	status = H5LTmake_dataset(group_id, "TriadPhaseSync", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, proc_data->triad_R);
+	status = H5LTmake_dataset(group_id, "TriadPhaseSync", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, tmp);
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file  at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Triad Sync Parameter", t, snap);
         exit(1);
     }
-    status = H5LTmake_dataset(group_id, "TriadAverageAngle", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, proc_data->triad_Phi);
+    for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
+    	for (int a = 0; a < sys_vars->num_sect; ++a) {
+    		tmp[i * sys_vars->num_sect + a] = proc_data->triad_Phi[i][a];
+    	}
+    }
+    status = H5LTmake_dataset(group_id, "TriadAverageAngle", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, tmp);
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file  at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Triad Average Angle", t, snap);
         exit(1);
     }
-
+    
+    // Free tmp memory
+    fftw_free(tmp);
+    
 
     /// ------------------------ Phase Order Stats Data
 	// Allocate temporary memory for the phases pdfs
