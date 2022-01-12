@@ -89,6 +89,8 @@
 \newcommand{\bfk}{\mathbf{k}}								% gradient operator
 \newcommand{\bfkn}[1]{\mathbf{k}_{#1}}								% gradient operator
 
+%-- COMMENTS / EDITING
+\newcommand{\TODO}[1]{\textcolor{red}{TODO: #1}}
 
 
 %-- CODE SNIPPETS
@@ -287,7 +289,7 @@ Using (\ref{eq:enstrophy_fourier}) we can find the rate of change of enstrophy a
 \begin{align}
 \der{\mathcal{E}}{t} = 2\pi^2 \sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}} \der{a_{\bfk}^2}{t}  = 2\pi^2 \sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}} 2 a_{\bfk} \dot{a}_{\bfk} = 4\pi^2 \sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}} a_{\bfk} \dot{a}_{\bfk}
 \end{align}
-or, noting that $a_{\bfk}^2 = |\hat{\omega}_{\bfk}|^2 = \hat{\omega}_{\bfk}\hat{\omega}_{\bfk}^{*}$, the rate of change of the enstrohpyh can be written in terms of the Fourier vorticity
+or, noting that $a_{\bfk}^2 = |\hat{\omega}_{\bfk}|^2 = \hat{\omega}_{\bfk}\hat{\omega}_{\bfk}^{*}$, the rate of change of the enstrohpy can be written in terms of the Fourier vorticity
 
 
 \begin{align}
@@ -303,8 +305,51 @@ Similarly, using the equation of motion for the Fourier vorticity in (\ref{eq:vo
 	&\qquad \qquad \qquad \qquad+ \sum_{\bfk}(\hat{f}_{\bfk} \omegahat{k}^* + c. c.)\notag \\
 	\der{\mathcal{E}}{t} &= 2\pi^2	\sum_{\bfk, \mathbf{k}_1, \mathbf{k}_2\in \mathbb{Z}^2\setminus \mathbf{0}}\left(k_{1x}k_{2y} - k_{1y}k_{2x}\right) \left(\frac{1}{|\bfkn{1}|^2} - \frac{1}{|\bfkn{2}|^2}\right) a_{\bfkn{1}} a_{\bfkn{2}} a_{\bfk} \cos(\phi_{\bfkn{1}} + \phi_{\bfkn{2}} - \phi_{\bfk}) \delta_{\bfkn{1}, \bfkn{2}}^{\bfk} \notag \\ & \qquad \qquad \qquad \qquad- 4\pi^2\nu \sum_{\bfk}|\bfk|^{2n} a_{\bfk}^2 - 4\pi^2\alpha\sum_{\bfk} a_{\bfk}^2 + 4\pi^2\sum_{\bfk}a_\bfk\Re\left\{\hat{f}_{\bfk} \e^{-\ii\phi_\bfk}\right\} \notag \\
 	&= \Pi - \epsilon + \mathcal{I}
+ \end{align}
+where $\Pi, \epsilon$ and $\mathcal{I}$ are the enstrophy flux in/out of the domain, enstrophy dissipation and forcing input respectively.
+
+\subsection{Enstrophy Flux Towards Small Scales}
+
+We consider dividing wavenumber space into sectors and examine the flux of enstrophy from large to small scales sector by sector. Without loss of generality we consider only the right-hand-half of wavenumber space $k_{y} > 0$ and divide this half circle into sectors where each sector is defined be an angle $\theta$, with $\theta \in [-\frac{\pi}{2}, \frac{\pi}{2}]$. Furthermore, we split each sector into two sets $\mathcal{C}$ and $\mathcal{C}{'}$ where $\mathcal{C}{'}$ defines the wavenumbers of the inner part of the sector, the large scales, and $\mathcal{C}$ represents the wavenumbers in the outer part of the sector, the small scales. In doing so, we consider the flux of enstrophy towards small scales using the expression derived above
+\TODO{Explain how the we arrived at the expression for the flux below}
+
+\begin{align}
+\Pi_{\mathcal{C}} &= \sum_{\substack{\bfkn{3} \in \mathcal{C} \\ \bfkn{1},  \bfkn{2} \in \mathcal{C}^{'} \\ \bfkn{1} + \bfkn{2} = \bfkn{3}}} \left(k_{1 x} k_{2 y}-k_{2 x} k_{1 y}\right)\left(\frac{1}{\left|\mathbf{k}_{1}\right|^{2}}-\frac{1}{\left|\mathbf{k}_{2}\right|^{2}}\right) a_{\mathbf{k}_{1}} a_{\mathbf{k}_{2}} a_{\mathbf{k}_{3}} \cos \left(\varphi_{\mathbf{k}_{1} \mathbf{k}_{2}}^{\mathbf{k}_{3}}\right) \\
+&\qquad \sum_{\substack{\bfkn{1}, \bfkn{2} \in \mathcal{C} \\ \bfkn{3} \in \mathcal{C}^{'} \\ \bfkn{1} + \bfkn{2} = \bfkn{3}}} \left(k_{3 x} k_{2 y}-k_{2 x} k_{3 y}\right)\left(\frac{1}{\left|\mathbf{k}_{3}\right|^{2}}-\frac{1}{\left|\mathbf{k}_{2}\right|^{2}}\right) a_{\mathbf{k}_{1}} a_{\mathbf{k}_{2}} a_{\mathbf{k}_{3}} \cos \left(\varphi_{\mathbf{k}_{1} \mathbf{k}_{2}}^{\mathbf{k}_{3}}\right)
 \end{align}
-where $\Pi, \epsilon$ and $\mathcal{I}$ are the enstrophy flux in/out of the domain enstrophy dissipation and forcing input.
+
+We can rearrange the second term by letting $\tilde{\bfk}_{2} = - \bfkn{2}$, which changes the triad condition to $\bfkn{1} = \bfkn{3} + \tilde{\bfk}_{2}$, leaving
+
+\begin{align}
+\Pi_{\mathcal{C}} &= \sum_{\substack{\bfkn{3} \in \mathcal{C} \\ \bfkn{1},  \bfkn{2} \in \mathcal{C}^{'} \\ \bfkn{1} + \bfkn{2} = \bfkn{3}}} \left(k_{1 x} k_{2 y}-k_{2 x} k_{1 y}\right)\left(\frac{1}{\left|\mathbf{k}_{1}\right|^{2}}-\frac{1}{\left|\mathbf{k}_{2}\right|^{2}}\right) a_{\mathbf{k}_{1}} a_{\mathbf{k}_{2}} a_{\mathbf{k}_{3}} \cos \left(\varphi_{\mathbf{k}_{1} \mathbf{k}_{2}}^{\mathbf{k}_{3}}\right) \\
+&\qquad - \sum_{\substack{\bfkn{1}, \tilde{\bfk}_{2} \in \mathcal{C} \\ \bfkn{3} \in \mathcal{C}^{'} \\ \bfkn{1}= \bfkn{3} + \tilde{\bfk}_{2}}} \left(k_{3 x} \tilde{k}_{2 y}-\tilde{k}_{2 x} k_{3 y}\right)\left(\frac{1}{\left|\mathbf{k}_{3}\right|^{2}}-\frac{1}{\left|\tilde{\mathbf{k}}_{2}\right|^{2}}\right) a_{\mathbf{k}_{1}} a_{\tilde{\mathbf{k}}_{2}} a_{\mathbf{k}_{3}} \cos \left(\varphi_{\mathbf{k}_{1} \tilde{\mathbf{k}}_{2}}^{\mathbf{k}_{3}}\right)
+\end{align}
+
+dropping the tilde and relabelling $\bfkn{3}$ with $\bfk{1}$ the second term becomes the same as the first except for the domain of summation. 
+
+\begin{align}
+\Pi_{\mathcal{C}} &= \sum_{\substack{\bfkn{3} \in \mathcal{C} \\ \bfkn{1},  \bfkn{2} \in \mathcal{C}^{'} \\ \bfkn{1} + \bfkn{2} = \bfkn{3}}} \left(k_{1 x} k_{2 y}-k_{2 x} k_{1 y}\right)\left(\frac{1}{\left|\mathbf{k}_{1}\right|^{2}}-\frac{1}{\left|\mathbf{k}_{2}\right|^{2}}\right) a_{\mathbf{k}_{1}} a_{\mathbf{k}_{2}} a_{\mathbf{k}_{3}} \cos \left(\varphi_{\mathbf{k}_{1} \mathbf{k}_{2}}^{\mathbf{k}_{3}}\right) \\
+&\qquad - \sum_{\substack{\bfkn{1}, \bfkn{2} \in \mathcal{C} \\ \bfkn{3} \in \mathcal{C}^{'} \\ \bfkn{1} + \bfkn{2} = \bfkn{3}}} \left(k_{1 x} k_{2 y}-k_{2 x} k_{1 y}\right)\left(\frac{1}{\left|\mathbf{k}_{1}\right|^{2}}-\frac{1}{\left|\mathbf{k}_{2}\right|^{2}}\right) a_{\mathbf{k}_{1}} a_{\mathbf{k}_{2}} a_{\mathbf{k}_{3}} \cos \left(\varphi_{\mathbf{k}_{1} \mathbf{k}_{2}}^{\mathbf{k}_{3}}\right)
+\end{align}
+
+Thus there are two main cases to consider when determining the contribution to the flux: the first case is when $\bfkn{1}, \bfkn{2} \in \mathcal{C}^{'}$ but $\bfkn{3} \in \mathcal{C}$ (denoted the postive term); the second is $\bfkn{3} \in \mathcal{C}^{'}$ but $\bfkn{1}, \bfkn{2} \in \mathcal{C}$ (denoted the negative term). Furthermore the sign of the contributions of each of these cases depends on the wavenumber prefactor in front of the amplitudes, the sign of the first term in the prefactor depends on the orientation of the wavevector $\bfkn{1}$ relative to $\bfkn{2}$ and the sign of the second term depends on the size of $\bfk{1}$ relative $\bfk{2}$. 
+
+In summary we have:
+
+\begin{itemize}
+\item Case 1: $\bfkn{1}, \bfkn{2} \in \mathcal{C}^{'}$ and $\bfkn{3} \in \mathcal{C}$ (Positive flux term)
+	\begin{itemize}
+		\item \textbf{Triad Type I}: $\arg{\bfkn{1}} < \arg{\bfkn{2}}$, but $|\bfkn{2}| < |\bfkn{1}|$ 
+		\item \textbf{Triad Type II}: $\arg{\bfkn{1}} < \arg{\bfkn{2}}$, but $|\bfkn{1}| < |\bfkn{2}| $
+	\end{itemize}
+\item Case 2: $\bfkn{3} \in \mathcal{C}^{'}$ and $\bfkn{1}, \bfkn{2} \in \mathcal{C}$ (Negative flux term)
+	\begin{itemize}
+		\item \textbf{Triad Type III}: $\arg{\bfkn{1}} < \arg{\bfkn{2}}$, but $|\bfkn{2}| < |\bfkn{1}|$ 
+		\item \textbf{Triad Type IV}: $\arg{\bfkn{1}} < \arg{\bfkn{2}}$, but $|\bfkn{1}| < |\bfkn{2}|$ 
+	\end{itemize}
+\end{itemize}
+
+
 
 
 	

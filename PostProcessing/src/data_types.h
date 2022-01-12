@@ -141,8 +141,12 @@ typedef struct postprocess_data_struct {
     double* enst_alt;		         							 // Array to hold the data for enstrophy spectrum computed using stream func
     double* enrg_alt;		         							 // Array to hold the data for energy spectrum computed using stream func
     double* theta;                   							 // Array to hold the angles for the sector boundaries
+    double* k_angle;											 // Array to hold the pre computed arctangents of the k3 wavevectors to speed up triad computation
+    double* k1_angle;											 // Array to hold the pre computed arctangents of the k1 wavevectors to speed up triad computation
+    double* k2_angle;											 // Array to hold the pre computed arctangents of the k2 wavevectors to speed up triad computation
+    double* k2_angle_neg;											 // Array to hold the pre computed arctangents of the negative k2 wavevectors to speed up triad computation    
     fftw_complex* phase_order;       							 // Array to hold the phase order parameter for each sector for the individual phases
-    fftw_complex* triad_phase_order[NUM_TRIAD_TYPES + 1]; 		 // Array to hold the phase order parameter for each sector for each of the triad phase types including all together
+    fftw_complex* triad_phase_order[NUM_TRIAD_TYPES + 1]; 		 // Array to hold the phase order parameter for each sector for each of the triad phase types including combined
     double* phase_R;				 							 // Array to hold the phase sync per sector for the individual phases
     double* phase_Phi;               							 // Array to hold the average phase per sector for the individual phases
     double* triad_R[NUM_TRIAD_TYPES + 1];						 // Array to hold the phase sync per sector for each of the triad phase types including all together

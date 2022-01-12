@@ -184,9 +184,9 @@ if __name__ == '__main__':
     triad_counts = np.sum(post_data.triad_sector_counts, axis = 1)
     bin_centres  = (post_data.triad_sector_ranges[0, 0, 1:, 0] + post_data.triad_sector_ranges[0, 0, :-1, 0]) * 0.5
     bin_width    = post_data.triad_sector_ranges[0, 0, 1, 0] - post_data.triad_sector_ranges[0, 0, 0, 0]
-    pdf = np.empty_like(triad_counts)
+    pdf = np.empty_like(triad_counts[:, :, 0])
     for i in range(triad_counts.shape[0]):
-        pdf[i, :] =  triad_counts[i, :] / (np.sum(triad_counts[i, :]) * bin_width)
+        pdf[i, :] =  triad_counts[i, :, 0] / (np.sum(triad_counts[i, :, 0]) * bin_width)
     
     ax1 = fig.add_subplot(gs[0, 0])
     im1 = ax1.imshow(pdf, extent = (-np.pi, np.pi, run_data.time[-1], run_data.time[0]), aspect = 'auto', cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1]))
@@ -201,26 +201,27 @@ if __name__ == '__main__':
     cb1   = plt.colorbar(im1, cax = cbax1)
     cb1.set_label(r"PDF")
 
-    # ## Compute weighted pdf
-    # triad_wghtd_counts = np.sum(post_data.triad_sector_wghtd_counts, axis = 1)
-    # bin_centres  = (post_data.triad_sector_wghtd_ranges[0, 0, 1:, 0] + post_data.triad_sector_wghtd_ranges[0, 0, :-1, 0]) * 0.5
-    # bin_width    = post_data.triad_sector_wghtd_ranges[0, 0, 1, 0] - post_data.triad_sector_wghtd_ranges[0, 0, 0, 0]
-    # pdf = np.empty_like(triad_wghtd_counts)
-    # for i in range(triad_wghtd_counts.shape[0]):
-    #     pdf[i, :] =  triad_wghtd_counts[i, :] / (np.sum(triad_wghtd_counts[i, :]) * bin_width)
+    ## Compute weighted pdf
+    triad_wghtd_counts = np.sum(post_data.triad_sector_wghtd_counts, axis = 1)
+    bin_centres  = (post_data.triad_sector_wghtd_ranges[0, 0, 1:, 0] + post_data.triad_sector_wghtd_ranges[0, 0, :-1, 0]) * 0.5
+    bin_width    = post_data.triad_sector_wghtd_ranges[0, 0, 1, 0] - post_data.triad_sector_wghtd_ranges[0, 0, 0, 0]
+    pdf = np.empty_like(triad_wghtd_counts[:, :, 0])
+    for i in range(triad_wghtd_counts.shape[0]):
+        pdf[i, :] =  triad_wghtd_counts[i, :, 0] / (np.sum(triad_wghtd_counts[i, :, 0]) * bin_width)
         
-    # ax2 = fig.add_subplot(gs[0, 1])
-    # im2 = ax2.imshow(pdf, extent = (-np.pi, np.pi, run_data.time[-1], run_data.time[0]), aspect = 'auto', cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1]))
-    # ax2.set_xticks([-np.pi, -np.pi/2, 0.0, np.pi/2.0, np.pi])
-    # ax2.set_xticklabels([r"$-\pi$", r"$-\frac{\pi}{2}$", r"$0$", r"$\frac{\pi}{2}$", r"$\pi$"])
-    # ax2.set_xlabel(r"$\phi_{\mathbf{k}}$")
-    # ax2.set_ylabel(r"$t$")
-    # ax2.set_title([r"Weighted PDF of The Triad Phases Over Time"])
-    # ax2.set_ylim(run_data.time[0], run_data.time[-1])
-    # div2  = make_axes_locatable(ax2)
-    # cbax2 = div2.append_axes("right", size = "10%", pad = 0.05)
-    # cb2   = plt.colorbar(im2, cax = cbax2)
-    # cb2.set_label(r"PDF")
+    print(pdf.shape)
+    ax2 = fig.add_subplot(gs[0, 1])
+    im2 = ax2.imshow(pdf, extent = (-np.pi, np.pi, run_data.time[-1], run_data.time[0]), aspect = 'auto', cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1]))
+    ax2.set_xticks([-np.pi, -np.pi/2, 0.0, np.pi/2.0, np.pi])
+    ax2.set_xticklabels([r"$-\pi$", r"$-\frac{\pi}{2}$", r"$0$", r"$\frac{\pi}{2}$", r"$\pi$"])
+    ax2.set_xlabel(r"$\phi_{\mathbf{k}}$")
+    ax2.set_ylabel(r"$t$")
+    ax2.set_title([r"Weighted PDF of The Triad Phases Over Time"])
+    ax2.set_ylim(run_data.time[0], run_data.time[-1])
+    div2  = make_axes_locatable(ax2)
+    cbax2 = div2.append_axes("right", size = "10%", pad = 0.05)
+    cb2   = plt.colorbar(im2, cax = cbax2)
+    cb2.set_label(r"PDF")
     
     plt.savefig(cmdargs.out_dir + "/TriadPhase_All_PDF_OverTime.png")
     plt.close()
