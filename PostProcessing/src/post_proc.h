@@ -15,6 +15,9 @@
 // ---------------------------------------------------------------------
 //  Function Prototpyes
 // ---------------------------------------------------------------------
+void RealSpaceStats(int s);
+void FullFieldData();
+void SectorPhaseOrder(int s);
 void AllocateMemory(const long int* N);
 void InitializeFFTWPlans(const long int* N);
 void FreeMemoryAndCleanUp(void);
