@@ -148,7 +148,9 @@ typedef struct postprocess_data_struct {
     fftw_complex* phase_order;       							 // Array to hold the phase order parameter for each sector for the individual phases
     fftw_complex* triad_phase_order[NUM_TRIAD_TYPES + 1]; 		 // Array to hold the phase order parameter for each sector for each of the triad phase types including combined
     double* phase_R;				 							 // Array to hold the phase sync per sector for the individual phases
+    double* enst_flux;											 // Array to hold the flux of enstrophy for each triad type for each sector
     double* phase_Phi;               							 // Array to hold the average phase per sector for the individual phases
+    int* num_triads[NUM_TRIAD_TYPES + 1];						 // Array to hold the number of triads for each triad type
     double* triad_R[NUM_TRIAD_TYPES + 1];						 // Array to hold the phase sync per sector for each of the triad phase types including all together
     double* triad_Phi[NUM_TRIAD_TYPES + 1];     				 // Array to hold the average phase per sector for each of the triad phase types including all together
     gsl_histogram** phase_sect_pdf;			    				 // Struct for the histogram of the individual phases in each sector over the simulation

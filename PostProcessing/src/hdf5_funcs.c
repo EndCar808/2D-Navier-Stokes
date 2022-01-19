@@ -612,7 +612,7 @@ void WriteDataToFile(double t, long int snap) {
     		tmp[i * sys_vars->num_sect + a] = proc_data->triad_R[i][a];
     	}
     }
-    
+
     // Write the phase order data for the triad phases
     dset_dims_2d[0] = NUM_TRIAD_TYPES + 1;
     dset_dims_2d[1] = sys_vars->num_sect;
@@ -631,10 +631,29 @@ void WriteDataToFile(double t, long int snap) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file  at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Triad Average Angle", t, snap);
         exit(1);
     }
+
+    // Write the number of triads per type per sector
+    for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
+    	for (int a = 0; a < sys_vars->num_sect; ++a) {
+    		tmp[i * sys_vars->num_sect + a] = proc_data->num_triads[i][a];
+    	}
+    }
+	status = H5LTmake_dataset(group_id, "NumTriadsPerSector", Dims2D, dset_dims_2d, H5T_NATIVE_INT, tmp);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file  at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "NumTriadsPerSector", t, snap);
+        exit(1);
+    }
     
     // Free tmp memory
     fftw_free(tmp);
-    
+
+    ///------------------------ Enstrophy Flux
+    dset_dims_1d[0] = sys_vars->num_sect;
+    status = H5LTmake_dataset(group_id, "EnstrophyFluxPerSector", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, proc_data->enst_flux);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "EnstrophyFluxPerSector", t, snap);
+        exit(1);
+    }
 
     /// ------------------------ Phase Order Stats Data
 	// Allocate temporary memory for the phases pdfs
@@ -890,7 +909,7 @@ void FinalWriteAndClose(void) {
 	/// ------------------------- Sector Angles
 	// Convert theta array back to angles before printing
 	for (int i = 0; i < sys_vars->num_sect + 1; ++i) {
-		proc_data->theta[i] = atan(proc_data->theta[i]);
+		proc_data->theta[i] = proc_data->theta[i];
 	}
     dset_dims_1d[0] = sys_vars->num_sect + 1;
 	status = H5LTmake_dataset(file_info->output_file_handle, "SectorAngles", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, proc_data->theta);

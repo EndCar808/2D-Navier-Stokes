@@ -459,6 +459,10 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                 if 'SectorAngles' in list(file.keys()):
                     self.theta = file["SectorAngles"][:]
             self.num_sect = self.theta.shape[0] - 1
+            ## Number of triads
+            self.num_triads = np.zeros((sim_data.ndata, 5, self.num_sect))
+            ## Enstrophy Flux Per Sector
+            self.enst_flux_per_sec = np.zeros((sim_data.ndata, self.num_sect))
             ## Phase Sync arrays
             self.phase_R       = np.zeros((sim_data.ndata, self.num_sect))
             self.phase_Phi     = np.zeros((sim_data.ndata, self.num_sect))
@@ -516,6 +520,10 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                     data.triad_Phi[nn, :, :] = file[group]["TriadAverageAngle"][:, :]
                 if 'w_hat' in list(file[group].keys()):
                     data.w_hat[nn, :, :] = file[group]["w_hat"][:, :]
+                if 'EnstrophyFluxPerSector' in list(file[group].keys()):
+                    data.enst_flux_per_sec[nn, :] = file[group]["EnstrophyFluxPerSector"][:]
+                if 'NumTriadsPerSector' in list(file[group].keys()):
+                    data.num_triads[nn, :, :] = file[group]["NumTriadsPerSector"][:, :]
                 if 'SectorPhasePDF_InTime_Counts' in list(file[group].keys()):
                     data.phase_sector_counts[nn, :, :] = file[group]["SectorPhasePDF_InTime_Counts"][:, :]
                 if 'SectorPhasePDF_InTime_Ranges' in list(file[group].keys()):
