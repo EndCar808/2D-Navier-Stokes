@@ -214,7 +214,7 @@ void SectorPhaseOrder(int s) {
 				if (abs(run_data->k[1][j]) < sys_vars->kmax) {
 					k_sqr = (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 					angle = atan2((double) run_data->k[0][i], (double) run_data->k[1][j]); 
-					if (k_sqr > 0 && k_sqr <= sys_vars->kmax_sqr && angle >= proc_data->theta[8] && angle < proc_data->theta[9]) {
+					if (k_sqr > 0 && k_sqr <= sys_vars->kmax_sqr && angle >= proc_data->theta[4] && angle < proc_data->theta[5] {
 						proc_data->phases[(sys_vars->kmax - 1 - run_data->k[0][i]) * (2 * sys_vars->kmax - 1) + (sys_vars->kmax - 1 + run_data->k[1][j])] = 0.0;
 						proc_data->phases[(sys_vars->kmax - 1 + run_data->k[0][i]) * (2 * sys_vars->kmax - 1) + (sys_vars->kmax - 1 - run_data->k[1][j])] = 0.0;
 					}
@@ -223,7 +223,7 @@ void SectorPhaseOrder(int s) {
 		}
 	}
 
-	printf("t1: %1.16lfa: %1.16lf\tt2: %1.16lf\n", proc_data->theta[8], angle, proc_data->theta[9]);
+	printf("t1: %1.16lfa: %1.16lf\tt2: %1.16lf\n", proc_data->theta[4], angle, proc_data->theta[5]);
 
 
 	// --------------------------------
