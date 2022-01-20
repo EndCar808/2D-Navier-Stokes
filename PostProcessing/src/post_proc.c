@@ -214,16 +214,16 @@ void SectorPhaseOrder(int s) {
 				if (abs(run_data->k[1][j]) < sys_vars->kmax) {
 					k_sqr = (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 					angle = atan2((double) run_data->k[0][i], (double) run_data->k[1][j]); 
-					// printf("kx: %d\tky: %d\tt1: %1.16lf\tangle: %1.16lf\tt2: %1.16lf\n", run_data->k[0][i], run_data->k[1][j], proc_data->theta[4], angle, proc_data->theta[5]);
-					if (k_sqr > 0 && k_sqr <= sys_vars->kmax_sqr && angle >= proc_data->theta[9] && angle < proc_data->theta[10]) {
-						printf("kx: %d\tky: %d\n", run_data->k[0][i], run_data->k[1][j]);
+					if (k_sqr > 0 && k_sqr <= sys_vars->kmax_sqr && angle >= proc_data->theta[8] && angle < proc_data->theta[9]) {
 						proc_data->phases[(sys_vars->kmax - 1 - run_data->k[0][i]) * (2 * sys_vars->kmax - 1) + (sys_vars->kmax - 1 + run_data->k[1][j])] = 0.0;
+						proc_data->phases[(sys_vars->kmax - 1 + run_data->k[0][i]) * (2 * sys_vars->kmax - 1) + (sys_vars->kmax - 1 - run_data->k[1][j])] = 0.0;
 					}
 				}
 			}
 		}
 	}
 
+	printf("t1: %1.16lfa: %1.16lf\tt2: %1.16lf\n", proc_data->theta[8], angle, proc_data->theta[9]);
 
 
 	// --------------------------------
@@ -241,52 +241,44 @@ void SectorPhaseOrder(int s) {
 
 		// Loop through the phases
 		for (int i = 0; i < Nx; ++i) {
-			// Only consider valid phases -> ignore zero and dealiased modes
-			if (abs(run_data->k[0][i]) < sys_vars->kmax && abs(run_data->k[0][i]) > 0) {
-				tmp  = i * Ny_Fourier;	
-				tmp1 = (sys_vars->kmax - 1 + run_data->k[0][i]) * (2 * sys_vars->kmax - 1);
-				for (int j = 0; j < Ny_Fourier; ++j) {
-					indx = tmp + j;
-		
-					// Only consider valid phases -> ignore zero and dealiased modes
-					if ((abs(run_data->k[1][j]) < sys_vars->kmax) && (run_data->k[1][j] != 0)) {
-						// Compute the polar coords for the current mode
-		 				r     = (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
-		 				angle = (double)run_data->k[0][i] / (double)run_data->k[1][j];
+			tmp  = i * Ny_Fourier;	
+			tmp1 = (sys_vars->kmax - 1 - run_data->k[0][i]) * (2 * sys_vars->kmax - 1); // correct indexing for the phases -> for kx > 0 use -kx
+			for (int j = 0; j < Ny_Fourier; ++j) {
+				indx = tmp + j;
+	
+				// Compute the polar coords for the current mode
+ 				r     = (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
+ 				angle = proc_data->phase_angle[tmp + j];
+				
+				// Update the phase order parameter for the current sector
+ 				if ((r < sys_vars->kmax_sqr) && (angle >= proc_data->theta[a] && angle < proc_data->theta[a + 1])) {
+					// Pre-compute phase data
+					phase = proc_data->phases[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]];
 
-		 				// printf("r: %lf - kmax: %.0lf t: %lf \t an: %lf\t t+1: %lf\t\t kx: %d, ky: %d, a: %lf\n", r, sys_vars->kmax_sqr, proc_data->theta[a], angle, proc_data->theta[a + 1], run_data->k[0][i], run_data->k[1][j], (double)run_data->k[0][i] / (double)run_data->k[1][j]);
-						
-						// Update the phase order parameter for the current sector
-		 				if ((r < sys_vars->kmax_sqr) && (angle >= proc_data->theta[a] && angle < proc_data->theta[a + 1])) {
-							// Pre-compute phase data
-							phase = proc_data->phases[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]];
+					// Update the phase order sum
+					proc_data->phase_order[a] += cexp(I * phase);
+ 					
+ 					// Update counter
+ 					num_phases++;
 
-							// Update the phase order sum
-							proc_data->phase_order[a] += cexp(I * phase);
-		 					
-		 					// Update counter
-		 					num_phases++;
-
-							// Update individual phases PDFs for this sector
-							gsl_status = gsl_histogram_increment(proc_data->phase_sect_pdf[a], phase - M_PI);
-							if (gsl_status != 0) {
-								fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", "Sector Phase PDF", a, s);
-								exit(1);
-							}
-							gsl_status = gsl_histogram_increment(proc_data->phase_sect_pdf_t[a], phase - M_PI);
-							if (gsl_status != 0) {
-								fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", "Sector Phase PDF In Time", a, s);
-								exit(1);
-							}
-							gsl_status = gsl_histogram_accumulate(proc_data->phase_sect_wghtd_pdf_t[a], phase - M_PI, proc_data->amps[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]);
-							if (gsl_status != 0) {
-								fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", "Sector Phase PDF In Time", a, s);
-								exit(1);
-							}
-		 				}
-		 			}
-		 		}
-		 	}
+					// Update individual phases PDFs for this sector
+					gsl_status = gsl_histogram_increment(proc_data->phase_sect_pdf[a], phase - M_PI);
+					if (gsl_status != 0) {
+						fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", "Sector Phase PDF", a, s);
+						exit(1);
+					}
+					gsl_status = gsl_histogram_increment(proc_data->phase_sect_pdf_t[a], phase - M_PI);
+					if (gsl_status != 0) {
+						fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", "Sector Phase PDF In Time", a, s);
+						exit(1);
+					}
+					gsl_status = gsl_histogram_accumulate(proc_data->phase_sect_wghtd_pdf_t[a], phase - M_PI, proc_data->amps[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]);
+					if (gsl_status != 0) {
+						fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", "Sector Phase PDF In Time", a, s);
+						exit(1);
+					}
+ 				}
+	 		}	
 		}
 
 		///-------------------- Record the individual phase data
@@ -296,8 +288,6 @@ void SectorPhaseOrder(int s) {
 		// Record the phase sync and average phase
 		proc_data->phase_R[a]   = cabs(proc_data->phase_order[a]);
 		proc_data->phase_Phi[a] = carg(proc_data->phase_order[a]);
-
-		// printf("Num: %d\t phase_order: %lf %lf I\n", num_phases, creal(proc_data->phase_order[a]), cimag(proc_data->phase_order[a]));
 
 		// --------------------------------
 		// Triad Phases
@@ -320,9 +310,6 @@ void SectorPhaseOrder(int s) {
 				// Get polar coords for the k wavevector
 				k_sqr   = (double) (k_x * k_x + k_y * k_y);
 				k_angle = proc_data->k_angle[tmp_k_x * (sys_vars->kmax + 1) + k_y]; 
-				// k_angle = atan2((double) k_x, (double) k_y); 
-
-				// printf("A1: %lf - %lf\t Eq: %1.16lf\n", k_angle, proc_data->k_angle[tmp_k_x * (sys_vars->kmax + 1) + k_y], k_angle - proc_data->k_angle[tmp_k_x * (sys_vars->kmax + 1) + k_y]);
 
 				// Check if the k wavevector is in the current sector
 				if ((k_sqr > 0 && k_sqr < sys_vars->kmax_sqr) && (k_angle >= proc_data->theta[a] && k_angle < proc_data->theta[a + 1])) {
@@ -336,9 +323,6 @@ void SectorPhaseOrder(int s) {
 							// Get polar coords for k1
 							k1_sqr   = (double) (k1_x * k1_x + k1_y * k1_y);
 							k1_angle = proc_data->k1_angle[tmp_k1_x * (sys_vars->kmax + 1) + k1_y];
-							// k1_angle = atan2((double) k1_x, (double) k1_y);
-
-							// printf("A2: %lf - %lf\t Eq: %1.16lf\n", k1_angle, proc_data->k1_angle[tmp_k1_x * (sys_vars->kmax + 1) + k1_y], k1_angle - proc_data->k1_angle[tmp_k1_x * (sys_vars->kmax + 1) + k1_y]);
 
 							// Check if k1 wavevector is in the current sector
 							if((k1_sqr > 0 && k1_sqr < sys_vars->kmax_sqr) && (k1_angle >= proc_data->theta[a] && k1_angle < proc_data->theta[a + 1])) {
@@ -350,24 +334,18 @@ void SectorPhaseOrder(int s) {
 								// Get polar coords for k2
 								k2_sqr   = (double) (k2_x * k2_x + k2_y * k2_y);
 								k2_angle = proc_data->k2_angle[(sys_vars->kmax + 1) * ((2 * sys_vars->kmax) * (tmp_k_x * (sys_vars->kmax + 1) + k_y) + tmp_k1_x) + k1_y];
-								// k2_angle = atan2((double) k2_x, (double) k2_y); 
-
 
 								if (k2_y < 0 || (k2_y == 0 && k2_x > 0)) {
 									// Get the angle of the negative wavevector k2 i.e., -k2 --> for checking the case if k2 is in the negative sector
 									k2_angle_neg = proc_data->k2_angle_neg[(sys_vars->kmax + 1) * ((2 * sys_vars->kmax) * (tmp_k_x * (sys_vars->kmax + 1) + k_y) + tmp_k1_x) + k1_y];
-									// k2_angle_neg = atan2((double) -k2_x, (double) -k2_y); 
 								}
-
-								// printf("A2: %lf - %lf\t Eq: %1.16lf\n", k2_angle_neg, proc_data->k2_angle_neg[(sys_vars->kmax + 1) * ((2 * sys_vars->kmax) * (tmp_k_x * (sys_vars->kmax + 1) + k_y) + tmp_k1_x) + k1_y], k2_angle_neg - proc_data->k2_angle_neg[(sys_vars->kmax + 1) * ((2 * sys_vars->kmax) * (tmp_k_x * (sys_vars->kmax + 1) + k_y) + tmp_k1_x) + k1_y]);
-								// printf("A1: %lf - %lf\tA2: %lf - %lf\tA2n: %lf - %lf\tA3: %lf - %lf\n", k1_angle, proc_data->k1_angle[tmp_k1_x * (sys_vars->kmax + 1) + k1_y], k2_angle, proc_data->k2_angle[tmp_k1_x * (sys_vars->kmax + 1) + k1_y], k2_angle_neg, proc_data->k2_angle_neg[tmp_k1_x * (sys_vars->kmax + 1) + k1_y], k_angle, proc_data->k_angle[tmp_k_x * (sys_vars->kmax + 1) + k_y]);
 
 								// Check if k2 is in the current positive sector or if k2 is in the negative sector
 								if ((k2_sqr > 0 && k2_sqr < sys_vars->kmax_sqr) &&  ((k2_angle >= proc_data->theta[a] && k2_angle < proc_data->theta[a + 1] && k2_sqr > k1_sqr) || ((k2_y < 0 || (k2_y == 0 && k2_x > 0)) && k2_angle_neg >= proc_data->theta[a] && k2_angle_neg < proc_data->theta[a + 1]))) {
-									// Get correct phase index
-									tmp_k  = (sys_vars->kmax - 1 + k_x) * (2 * sys_vars->kmax - 1);
-									tmp_k1 = (sys_vars->kmax - 1 + k1_x) * (2 * sys_vars->kmax - 1);
-									tmp_k2 = (sys_vars->kmax - 1 + k2_x) * (2 * sys_vars->kmax - 1);
+									// Get correct phase index -> recall that to access kx > 0, use -kx
+									tmp_k  = (sys_vars->kmax - 1 - k_x) * (2 * sys_vars->kmax - 1);
+									tmp_k1 = (sys_vars->kmax - 1 - k1_x) * (2 * sys_vars->kmax - 1);
+									tmp_k2 = (sys_vars->kmax - 1 - k2_x) * (2 * sys_vars->kmax - 1);
 
 									// Get the wavevector prefactor
 									flux_pre_fac = (double)(k1_x * k2_y - k2_x * k1_y) * (1.0 / k1_sqr - 1.0 / k2_sqr);
@@ -568,7 +546,7 @@ void SectorPhaseOrder(int s) {
 			// printf("a: %d type: %d Num: %d\t triad_phase_order: %lf %lf I\t\t R: %lf, Phi %lf\n", a, i, num_triads[i], creal(proc_data->triad_phase_order[i][a]), cimag(proc_data->triad_phase_order[i][a]), proc_data->triad_R[i][a], proc_data->triad_Phi[i][a]);
 			// printf("Num Triads Type %d: %d\n", i, num_triads[i]);
 		}
-		// printf("\n");
+		printf("a: %d\tR: %1.5lf\ttheta: %1.16lf\t||\tR: %1.5lf\n", a,  proc_data->triad_R[0][a], proc_data->theta[a], proc_data->phase_R[a]);
 
 		// printf("a: %d Num: %d\t triad_phase_order: %lf %lf I\t Num: %d\t triad_phase_order: %lf %lf I \t Num: %d\t triad_phase_order: %lf %lf I\n", a, num_triads[0], creal(proc_data->triad_phase_order[0][a]), cimag(proc_data->triad_phase_order[0][a]), num_triads[1], creal(proc_data->triad_phase_order[1][a]), cimag(proc_data->triad_phase_order[1][a]), num_triads[2], creal(proc_data->triad_phase_order[2][a]), cimag(proc_data->triad_phase_order[2][a]));
 		// printf("a: %d | Num: %d R0: %lf Phi0: %lf |\t Num: %d R1: %lf Phi1: %lf |\t Num: %d R2: %lf Phi2: %lf\n", a, num_triads[0], proc_data->triad_R[0][a], proc_data->triad_Phi[0][a], num_triads[1], proc_data->triad_R[1][a], proc_data->triad_Phi[1][a], num_triads[2], proc_data->triad_R[2][a], proc_data->triad_Phi[2][a]);	
@@ -583,6 +561,7 @@ void SectorPhaseOrder(int s) {
 			proc_data->triad_phase_order[i][a] = 0.0 + 0.0 * I;
 		}	
 	}
+	printf("\n");
 }
 /**
  * Wrapper function used to allocate the nescessary data objects
@@ -766,6 +745,11 @@ void AllocateMemory(const long int* N) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "ArcTangents of Negative k2");
 		exit(1);
 	}
+	proc_data->phase_angle = (double* )fftw_malloc(sizeof(double) * Nx * Ny_Fourier);
+	if (proc_data->phase_angle == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "ArcTangents of Negative k2");
+		exit(1);
+	}
 
 	// Fill the arrays with the pre-computed arctangents of the wavevectors
 	int k_x, k1_x, k2_x, k2_y;
@@ -792,6 +776,13 @@ void AllocateMemory(const long int* N) {
 					proc_data->k2_angle_neg[(sys_vars->kmax + 1) * ((2 * sys_vars->kmax) * (tmp_k_x * (sys_vars->kmax + 1) + k_y) + tmp_k1_x) + k1_y] = atan2((double) -k2_x, (double) -k2_y);
 				}
 			}
+		}
+	}
+
+	// Fill the array for the individual phases with the precomputed arctangents
+	for (int i = 0; i < Nx; ++i) {
+		for (int j = 0; j < Ny_Fourier; ++j) {
+			proc_data->phase_angle[i * Ny_Fourier + j] = atan2((double) run_data->k[0][i], (double)run_data->k[1][j]);
 		}
 	}
 
@@ -937,6 +928,7 @@ void AllocateMemory(const long int* N) {
 				proc_data->triad_phase_order[j][i] = 0.0 + 0.0 * I;
 			}
 		}
+		printf("theta: %1.16lf\n", proc_data->theta[i]);
 	}
 	#endif
 
@@ -1274,6 +1266,7 @@ void FreeMemoryAndCleanUp(void) {
 	fftw_free(proc_data->k1_angle);
 	fftw_free(proc_data->k2_angle);
 	fftw_free(proc_data->k2_angle_neg);
+	fftw_free(proc_data->phase_angle);
 	fftw_free(proc_data->phase_order);
 	fftw_free(proc_data->phase_R);
 	fftw_free(proc_data->phase_Phi);

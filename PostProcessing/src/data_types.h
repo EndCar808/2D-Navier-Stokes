@@ -145,6 +145,7 @@ typedef struct postprocess_data_struct {
     double* k1_angle;											 // Array to hold the pre computed arctangents of the k1 wavevectors to speed up triad computation
     double* k2_angle;											 // Array to hold the pre computed arctangents of the k2 wavevectors to speed up triad computation
     double* k2_angle_neg;										 // Array to hold the pre computed arctangents of the negative k2 wavevectors to speed up triad computation    
+    double* phase_angle;										 // Array to hold the pre computed arctangents of the wavevectors for the individual phases   
     fftw_complex* phase_order;       							 // Array to hold the phase order parameter for each sector for the individual phases
     fftw_complex* triad_phase_order[NUM_TRIAD_TYPES + 1]; 		 // Array to hold the phase order parameter for each sector for each of the triad phase types including combined
     double* phase_R;				 							 // Array to hold the phase sync per sector for the individual phases
