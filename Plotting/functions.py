@@ -454,13 +454,13 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
             self.enrg_spectrum_1d_alt = np.zeros((sim_data.ndata, sim_data.spec_size))
             ## Allocate solver data arrays
             self.w_hat = np.ones((sim_data.ndata, sim_data.Nx, sim_data.Nk)) * np.complex(0.0, 0.0)
-            ## Get the number of sectors
+            ## Get the number of sectors and the number of triads
             with h5py.File(in_file, 'r') as file:
                 if 'SectorAngles' in list(file.keys()):
                     self.theta = file["SectorAngles"][:]
+                if 'NumTriadsPerSector' in list(file.keys()):
+                    self.num_triads = file["NumTriadsPerSector"][:, :]
             self.num_sect = self.theta.shape[0] - 1
-            ## Number of triads
-            self.num_triads = np.zeros((sim_data.ndata, 5, self.num_sect))
             ## Enstrophy Flux Per Sector
             self.enst_flux_per_sec = np.zeros((sim_data.ndata, self.num_sect))
             ## Phase Sync arrays
@@ -522,8 +522,6 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                     data.w_hat[nn, :, :] = file[group]["w_hat"][:, :]
                 if 'EnstrophyFluxPerSector' in list(file[group].keys()):
                     data.enst_flux_per_sec[nn, :] = file[group]["EnstrophyFluxPerSector"][:]
-                if 'NumTriadsPerSector' in list(file[group].keys()):
-                    data.num_triads[nn, :, :] = file[group]["NumTriadsPerSector"][:, :]
                 if 'SectorPhasePDF_InTime_Counts' in list(file[group].keys()):
                     data.phase_sector_counts[nn, :, :] = file[group]["SectorPhasePDF_InTime_Counts"][:, :]
                 if 'SectorPhasePDF_InTime_Ranges' in list(file[group].keys()):

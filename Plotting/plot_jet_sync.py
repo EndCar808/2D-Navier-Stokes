@@ -316,10 +316,9 @@ if __name__ == '__main__':
                     for t in range(5):
                         ## Loop through simulation and plot data
                         for i in range(sys_vars.ndata):
-                            print(post_data.triad_R[i, t, :])
                             ## Plot the data
                             if cmdargs.full: 
-                                plot_sector_phase_sync_snaps_full(i, cmdargs.out_dir_triads, run_data.w[i, :, :], post_data.enst_spectrum[i, :, :], post_data.enst_flux_per_sec[i, :], post_data.phases[i, :, :], post_data.theta, post_data.triad_R[i, t, :], post_data.triad_Phi[i, t, :], flux_min, flux_max, run_data.time[i], run_data.x, run_data.y, sys_vars.Nx, sys_vars.Ny)
+                                plot_sector_phase_sync_snaps_full(i, cmdargs.out_dir_triads, run_data.w[i, :, :], post_data.enst_spectrum[i, :, :], post_data.enst_flux_per_sec[i, :], post_data.phases[i, :, int(sys_vars.Nx/3 - 1):], post_data.theta, post_data.triad_R[i, t, :], post_data.triad_Phi[i, t, :], flux_min, flux_max, run_data.time[i], run_data.x, run_data.y, sys_vars.Nx, sys_vars.Ny)
                             else:
                                 plot_sector_phase_sync_snaps(i, cmdargs.out_dir_triads, post_data.phases[i, :, int(sys_vars.Nx/3 - 1):], post_data.theta, post_data.triad_R[i, t, :], post_data.triad_Phi[i, t, :], run_data.time[i], sys_vars.Nx, sys_vars.Ny)
 

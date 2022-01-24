@@ -146,12 +146,6 @@ void FullFieldData() {
 	 					else {
 	 						// Fill data and its conjugate
 	 						proc_data->phases[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]] = phase;
-	 						// if (run_data->k[0][i] > 0 && run_data-> k[1][j] > 0) {
-	 						// 	proc_data->phases[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]] = 0.0;	 							
-	 						// }
-	 						// if (run_data->k[0][i] < 0 && run_data-> k[1][j] > 0) {
-	 						// 	proc_data->phases[tmp1 + sys_vars->kmax - 1 - run_data->k[1][j]] = 2.0 * M_PI;	 							
-	 						// }
 	 						proc_data->phases[tmp2 + sys_vars->kmax - 1 - run_data->k[1][j]] = fmod(-phase + 2.0 * M_PI, 2.0 * M_PI);
 	 						proc_data->amps[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]] 	 = cabs(run_data->w_hat[indx]);
 	 						proc_data->amps[tmp2 + sys_vars->kmax - 1 - run_data->k[1][j]]   = cabs(run_data->w_hat[indx]);
@@ -166,18 +160,18 @@ void FullFieldData() {
 						if (run_data->k[1][j] == 0) {
 	 						proc_data->phases[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]] = -50.0;
 	 						proc_data->amps[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = -50.0;
-	 						proc_data->enrg[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = 0.0;
-	 						proc_data->enst[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = 0.0;
+	 						proc_data->enrg[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = -50.0;
+	 						proc_data->enst[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = -50.0;
 	 					}
 	 					else {	
 	 						proc_data->phases[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]] = -50.0;
 	 						proc_data->phases[tmp2 + sys_vars->kmax - 1 - run_data->k[1][j]] = -50.0;
 	 						proc_data->amps[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = -50.0;
 	 						proc_data->amps[tmp2 + sys_vars->kmax - 1 - run_data->k[1][j]]   = -50.0;
-	 						proc_data->enrg[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = 0.0;
-	 						proc_data->enrg[tmp2 + sys_vars->kmax - 1 - run_data->k[1][j]]   = 0.0;
-	 						proc_data->enst[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = 0.0;
-	 						proc_data->enst[tmp2 + sys_vars->kmax - 1 - run_data->k[1][j]]   = 0.0;
+	 						proc_data->enrg[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = -50.0;
+	 						proc_data->enrg[tmp2 + sys_vars->kmax - 1 - run_data->k[1][j]]   = -50.0;
+	 						proc_data->enst[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = -50.0;
+	 						proc_data->enst[tmp2 + sys_vars->kmax - 1 - run_data->k[1][j]]   = -50.0;
 	 					}
 	 				}
 				}	
@@ -207,24 +201,20 @@ void SectorPhaseOrder(int s) {
 	const long int Nx 		  = sys_vars->N[0];
 	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
 
-
-	for (int i = 0; i < sys_vars->N[0]; ++i) {
-		if (abs(run_data->k[0][i]) < sys_vars->kmax) {
-			for (int j = 0; j < sys_vars->N[1] / 2 + 1; ++j) {
-				if (abs(run_data->k[1][j]) < sys_vars->kmax) {
-					k_sqr = (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
-					angle = atan2((double) run_data->k[0][i], (double) run_data->k[1][j]); 
-					if (k_sqr > 0 && k_sqr <= sys_vars->kmax_sqr && angle >= proc_data->theta[4] && angle < proc_data->theta[5] {
-						proc_data->phases[(sys_vars->kmax - 1 - run_data->k[0][i]) * (2 * sys_vars->kmax - 1) + (sys_vars->kmax - 1 + run_data->k[1][j])] = 0.0;
-						proc_data->phases[(sys_vars->kmax - 1 + run_data->k[0][i]) * (2 * sys_vars->kmax - 1) + (sys_vars->kmax - 1 - run_data->k[1][j])] = 0.0;
-					}
-				}
-			}
-		}
-	}
-
-	printf("t1: %1.16lfa: %1.16lf\tt2: %1.16lf\n", proc_data->theta[4], angle, proc_data->theta[5]);
-
+	// for (int i = 0; i < sys_vars->N[0]; ++i) {
+	// 	if (abs(run_data->k[0][i]) < sys_vars->kmax) {
+	// 		for (int j = 0; j < sys_vars->N[1] / 2 + 1; ++j) {
+	// 			if (abs(run_data->k[1][j]) < sys_vars->kmax) {
+	// 				k_sqr = (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
+	// 				angle = atan2((double) run_data->k[0][i], (double) run_data->k[1][j]); 
+	// 				if (k_sqr > 0 && k_sqr <= sys_vars->kmax_sqr && angle >= proc_data->theta[9] && angle < proc_data->theta[10]) {
+	// 					proc_data->phases[(sys_vars->kmax - 1 - run_data->k[0][i]) * (2 * sys_vars->kmax - 1) + (sys_vars->kmax - 1 + run_data->k[1][j])] = 0.0;
+	// 					proc_data->phases[(sys_vars->kmax - 1 + run_data->k[0][i]) * (2 * sys_vars->kmax - 1) + (sys_vars->kmax - 1 - run_data->k[1][j])] = 0.0;
+	// 				}
+	// 			}
+	// 		}
+	// 	}
+	// }
 
 	// --------------------------------
 	// Phase Sync Sector by Sector
@@ -366,10 +356,10 @@ void SectorPhaseOrder(int s) {
 										gen_triad_phase = fmod(triad_phase + 2.0 * M_PI, 2.0 * M_PI) - M_PI;
 									}
 
-							
+
 									///------------------ Determine which flux contribution we are dealing with -> the postive case (when k1 & k2 in C^' and k3 in C) or the negative case (when k3 in C^' and k1 and k2 in C)
 									// The postive case
-									if (k_sqr > k1_sqr && k_sqr > k2_sqr && flux_wght > 1e-5) {
+									if (k_sqr > k1_sqr && k_sqr > k2_sqr && fabs(flux_wght) > 1e-5) { //  
 
 										// Update the combined triad phase order parameter with the appropriate contribution
 										proc_data->triad_phase_order[0][a] += cexp(I * gen_triad_phase) * GSL_SIGN(flux_pre_fac);
@@ -405,6 +395,8 @@ void SectorPhaseOrder(int s) {
 											proc_data->triad_phase_order[1][a] += cexp(I * gen_triad_phase);
 											proc_data->num_triads[1][a]++;
 
+											// printf("ord: %lf %lf I\t term: %lf %lf I\n", creal(proc_data->triad_phase_order[1][a]), cimag(proc_data->triad_phase_order[1][a]), creal(cexp(I * gen_triad_phase)), cimag(cexp(I * gen_triad_phase)));
+
 											// Update the PDFs
 											gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf[1][a], gen_triad_phase);
 											if (gsl_status != 0) {
@@ -427,6 +419,7 @@ void SectorPhaseOrder(int s) {
 											proc_data->triad_phase_order[2][a] += cexp(I * gen_triad_phase);
 											proc_data->num_triads[2][a]++;
 
+
 											// Update the PDFs
 											gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf[2][a], gen_triad_phase);
 											if (gsl_status != 0) {
@@ -447,7 +440,7 @@ void SectorPhaseOrder(int s) {
 
 									}
 									// The negative case
-									else if (k_sqr < k1_sqr && k_sqr < k2_sqr && flux_wght > 1e-5) {
+									else if (k_sqr < k1_sqr && k_sqr < k2_sqr && fabs(flux_wght) > 1e-5) { // 
 
 										// Update the combined triad phase order parameter with the appropriate contribution
 										proc_data->triad_phase_order[0][a] += - 1.0 * cexp(I * gen_triad_phase) * GSL_SIGN(flux_pre_fac);
@@ -545,9 +538,9 @@ void SectorPhaseOrder(int s) {
 			proc_data->triad_Phi[i][a] = carg(proc_data->triad_phase_order[i][a]); 
 			// printf("a: %d type: %d Num: %d\t triad_phase_order: %lf %lf I\t\t R: %lf, Phi %lf\n", a, i, num_triads[i], creal(proc_data->triad_phase_order[i][a]), cimag(proc_data->triad_phase_order[i][a]), proc_data->triad_R[i][a], proc_data->triad_Phi[i][a]);
 			// printf("Num Triads Type %d: %d\n", i, num_triads[i]);
+			// printf("a = %d\t ord: %lf %lf I\t num: %d\tR: %lf\n", a, creal(proc_data->triad_phase_order[i][a]), cimag(proc_data->triad_phase_order[i][a]), proc_data->num_triads[i][a], proc_data->triad_R[i][a]);
 		}
-		printf("a: %d\tR: %1.5lf\ttheta: %1.16lf\t||\tR: %1.5lf\n", a,  proc_data->triad_R[0][a], proc_data->theta[a], proc_data->phase_R[a]);
-
+		// printf("\n");
 		// printf("a: %d Num: %d\t triad_phase_order: %lf %lf I\t Num: %d\t triad_phase_order: %lf %lf I \t Num: %d\t triad_phase_order: %lf %lf I\n", a, num_triads[0], creal(proc_data->triad_phase_order[0][a]), cimag(proc_data->triad_phase_order[0][a]), num_triads[1], creal(proc_data->triad_phase_order[1][a]), cimag(proc_data->triad_phase_order[1][a]), num_triads[2], creal(proc_data->triad_phase_order[2][a]), cimag(proc_data->triad_phase_order[2][a]));
 		// printf("a: %d | Num: %d R0: %lf Phi0: %lf |\t Num: %d R1: %lf Phi1: %lf |\t Num: %d R2: %lf Phi2: %lf\n", a, num_triads[0], proc_data->triad_R[0][a], proc_data->triad_Phi[0][a], num_triads[1], proc_data->triad_R[1][a], proc_data->triad_Phi[1][a], num_triads[2], proc_data->triad_R[2][a], proc_data->triad_Phi[2][a]);	
 	}
@@ -561,7 +554,6 @@ void SectorPhaseOrder(int s) {
 			proc_data->triad_phase_order[i][a] = 0.0 + 0.0 * I;
 		}	
 	}
-	printf("\n");
 }
 /**
  * Wrapper function used to allocate the nescessary data objects
@@ -928,7 +920,6 @@ void AllocateMemory(const long int* N) {
 				proc_data->triad_phase_order[j][i] = 0.0 + 0.0 * I;
 			}
 		}
-		printf("theta: %1.16lf\n", proc_data->theta[i]);
 	}
 	#endif
 

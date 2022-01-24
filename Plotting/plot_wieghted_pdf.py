@@ -2,8 +2,7 @@
 
 ## Author: Enda Carroll
 ## Date: Sept 2021
-## Info: Script to compare solver results with decaying turbulence papers
-#        Solver data
+## Info: Script to plot the weighted PDFs of triad phase types
 
 #######################
 ##  Library Imports  ##

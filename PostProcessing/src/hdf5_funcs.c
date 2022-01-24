@@ -632,18 +632,6 @@ void WriteDataToFile(double t, long int snap) {
         exit(1);
     }
 
-    // Write the number of triads per type per sector
-    for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
-    	for (int a = 0; a < sys_vars->num_sect; ++a) {
-    		tmp[i * sys_vars->num_sect + a] = proc_data->num_triads[i][a];
-    	}
-    }
-	status = H5LTmake_dataset(group_id, "NumTriadsPerSector", Dims2D, dset_dims_2d, H5T_NATIVE_INT, tmp);
-	if (status < 0) {
-        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file  at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "NumTriadsPerSector", t, snap);
-        exit(1);
-    }
-    
     // Free tmp memory
     fftw_free(tmp);
 
@@ -917,6 +905,25 @@ void FinalWriteAndClose(void) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Sector Angles");
         exit(1);
     }	
+
+    ///------------------------- Number of Triads Per Sector
+    double* tmp = (double*) fftw_malloc(sizeof(double) * sys_vars->num_sect * (NUM_TRIAD_TYPES + 1));
+    for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
+    	for (int a = 0; a < sys_vars->num_sect; ++a) {
+    		tmp[i * sys_vars->num_sect + a] = proc_data->num_triads[i][a];
+    	}
+    }
+    dset_dims_2d[0] = NUM_TRIAD_TYPES + 1;
+    dset_dims_2d[1] = sys_vars->num_sect;
+	status = H5LTmake_dataset(file_info->output_file_handle, "NumTriadsPerSector", Dims2D, dset_dims_2d, H5T_NATIVE_INT, tmp);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!!!\n-->> Exiting...\n", "Number of Triads Per Sector");
+        exit(1);
+    }
+
+    // free temporary memory
+    fftw_free(tmp);
+    
 
     /// ------------------------- Sector Phase PDFs
     // Allocate temporary memory
