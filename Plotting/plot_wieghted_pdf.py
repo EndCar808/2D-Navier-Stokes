@@ -134,7 +134,6 @@ if __name__ == '__main__':
 
     ## Read in post processing data
     post_data = import_post_processing_data(post_file_path, sys_vars, method)
-
     # -----------------------------------------
     # # --------  Make Output Folder
     # -----------------------------------------
@@ -226,7 +225,7 @@ if __name__ == '__main__':
                 pdf[i, :] =  triad_wghtd_counts[i, :, 0] / (np.sum(triad_wghtd_counts[i, :, 0]) * bin_width)
                 
             ax2 = fig.add_subplot(gs[0, 1])
-            im2 = ax2.imshow(pdf, extent = (-np.pi, np.pi, run_data.time[-1], run_data.time[0]), aspect = 'auto', cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1]))
+            im2 = ax2.imshow(pdf, extent = (-np.pi, np.pi, run_data.time[-1], run_data.time[0]), aspect = 'auto', cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1]), norm = mpl.colors.LogNorm())
             ax2.set_xticks([-np.pi, -np.pi/2, 0.0, np.pi/2.0, np.pi])
             ax2.set_xticklabels([r"$-\pi$", r"$-\frac{\pi}{2}$", r"$0$", r"$\frac{\pi}{2}$", r"$\pi$"])
             ax2.set_xlabel(r"$\phi_{\mathbf{k}}$")

@@ -35,8 +35,13 @@ void RealSpaceStats(int s) {
 	int gsl_status;
 	double w_max, w_min;
 	double u_max, u_min;
-	const long int Nx 		  = sys_vars->N[0];
-	const long int Ny 		  = sys_vars->N[1];
+	const long int Nx = sys_vars->N[0];
+	const long int Ny = sys_vars->N[1];
+	#if defined(__VEL_INC_STATS)
+	int r
+	int increment[NUM_INCR] = {1, (int) (GSL_MIN(Nx, Ny) / 2)};
+	#endif
+
 
 	// --------------------------------
 	// Get Histogram Limits
@@ -93,6 +98,45 @@ void RealSpaceStats(int s) {
 				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", "Real Velocity", s);
 				exit(1);
 			}
+
+			#if defined(__VEL_INC_STATS)
+			// Compute velocity increments and update histograms
+			for (int r_indx = 0; r_indx < NUM_INCR; ++r_indx) {
+				// Get the current increment
+				r = increment[r_indx];
+
+				// Get the longitudinal and transverse increments
+				long_increment  = run_data->w[((i + r) % Nx) * Ny + j] - run_data->w[i * Ny + j];
+				trans_increment = run_data->w[i * Ny + ((j + r) % Ny)] - run_data->w[i * Ny + j];
+
+				// Update the histograms
+				gsl_status = gsl_histogram_increment(stats_data->vel[0][r_indx], long_increment);
+				if (gsl_status != 0) {
+					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", "Longitudinal Increment", s);
+					exit(1);
+				}
+				gsl_status = gsl_histogram_increment(stats_data->vel[1][r_indx], trans_increment);
+				if (gsl_status != 0) {
+					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", "Transverse Increment", s);
+					exit(1);
+				}
+			}
+			#endif		
+			#if defined(__STR_FUNC_STATS)
+			for (int p = 2; p < STR_FUNC_MAX_POW; ++p) {
+				for (int r_inc = 1; r_inc <= GSL_MIN(Nx, Ny) / 2; ++r_inc) {
+					// Get increments
+					long_increment  = run_data->w[((i + r_inc) % Nx) * Ny + j] - run_data->w[i * Ny + j];
+					trans_increment = run_data->w[i * Ny + ((j + r_inc) % Ny)] - run_data->w[i * Ny + j];
+
+					// Compute str function
+					stats_data->str_func[0][p - 2][r_inc] += pow(long_increment, p);	
+					stats_data->str_func[1][p - 2][r_inc] += pow(trans_increment, p);
+
+					// Normalize increment
+				}
+			}
+			#endif	
 		}
 	}
 }
@@ -537,7 +581,7 @@ void SectorPhaseOrder(int s) {
 			proc_data->triad_R[i][a]   = cabs(proc_data->triad_phase_order[i][a]);
 			proc_data->triad_Phi[i][a] = carg(proc_data->triad_phase_order[i][a]); 
 			// printf("a: %d type: %d Num: %d\t triad_phase_order: %lf %lf I\t\t R: %lf, Phi %lf\n", a, i, num_triads[i], creal(proc_data->triad_phase_order[i][a]), cimag(proc_data->triad_phase_order[i][a]), proc_data->triad_R[i][a], proc_data->triad_Phi[i][a]);
-			// printf("Num Triads Type %d: %d\n", i, num_triads[i]);
+			// printf("Num Triads Type %d: %d\tord: %lf %lf I\tR: %lf\tPhi: %lf\n", i, proc_data->num_triads[i][a], creal(proc_data->triad_phase_order[i][a]), cimag(proc_data->triad_phase_order[i][a]), proc_data->triad_R[i][a], proc_data->triad_Phi[i][a]);
 			// printf("a = %d\t ord: %lf %lf I\t num: %d\tR: %lf\n", a, creal(proc_data->triad_phase_order[i][a]), cimag(proc_data->triad_phase_order[i][a]), proc_data->num_triads[i][a], proc_data->triad_R[i][a]);
 		}
 		// printf("\n");
@@ -588,14 +632,16 @@ void AllocateMemory(const long int* N) {
 		exit(1);
 	}
 
-	#ifdef __REAL_STATS
+	#if defined(__REAL_STATS) || defined(__FULL_FIELD) || defined(__SEC_PHASE_SYNC)
 	// Allocate current Fourier vorticity
 	run_data->w = (double* )fftw_malloc(sizeof(double) * Nx * Ny);
 	if (run_data->w == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Vorticity");
 		exit(1);
 	}
+	#endif
 
+	#if defined(__REAL_STATS) || defined(__VEL_INC_STATS) || defined(__STR_FUNC_STATS)
 	// Allocate current Fourier vorticity
 	run_data->u_hat = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * Nx * Ny_Fourier * SYS_DIM);
 	if (run_data->u_hat == NULL) {
@@ -609,6 +655,34 @@ void AllocateMemory(const long int* N) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Velocity");
 		exit(1);
 	}
+
+	#if defined(__VEL_INC_STATS)
+	// Initialize a histogram object for each increment for each direction	
+	for (int i = 0; i < INCR_TYPES; ++i) {
+		for (int j = 0; j < NUM_INCR; ++j) {
+			stats_data->vel_inc[i][j] = gsl_histogram_alloc(N_BINS);
+		}
+	}
+
+	// Set the bin limits for the velocity increments
+	for (int i = 0; i < INCR_TYPES; ++i) {
+		for (int j = 0; j < NUM_INCR; ++j) {
+			gsl_status = gsl_histogram_set_ranges_uniform(stats_data->vel_inc[i][j], -BIN_LIM - 0.5, BIN_LIM + 0.5);
+			if (gsl_status != 0) {
+				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set bin ranges for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Velocity Increments");
+				exit(1);
+			}
+		}
+	}
+	#endif
+	#if defined(__STR_FUNC_STATS)
+	// Allocate memory for each structure function for each of the increment directions
+	for (int i = 0; i < INCR_TYPES; ++i) {
+		for (int j = 2; j < STR_FUNC_MAX_POW; ++j) {
+			stats_data->str_funcs[i][j - 2] = (double* )fftw_malloc(sizeof(double) * (GSL_MIN(Nx, Ny) / 2));
+		}
+	}
+	#endif
 	#endif
 	
 	#ifdef __FULL_FIELD
@@ -1234,24 +1308,30 @@ void FreeMemoryAndCleanUp(void) {
 	fftw_free(run_data->w_hat);
 	fftw_free(run_data->time);
 	fftw_free(run_data->psi_hat);
-	#ifdef __REAL_STATS
+	#if defined(__REAL_STATS) || defined(__VEL_INC_STATS) || defined(__STR_FUNC_STATS)
 	fftw_free(run_data->w);
 	fftw_free(run_data->u);
 	fftw_free(run_data->u_hat);
+	#if defined(__STR_FUNC_STATS)
+	for (int i = 2; i < STR_FUNC_MAX_POW; ++i) {
+		fftw_free(stats_data->str_funcs[0][i - 2]);
+		fftw_free(stats_data->str_funcs[1][i - 2]);
+	}
 	#endif
-	#ifdef __FULL_FIELD
+	#endif
+	#if defined(__FULL_FIELD) || defined(__SEC_PHASE_SYNC)
 	fftw_free(proc_data->phases);
 	fftw_free(proc_data->amps);
 	fftw_free(proc_data->enrg);
 	fftw_free(proc_data->enst);
 	#endif
-	#ifdef __SPECTRA
+	#if defined(__SPECTRA)
 	fftw_free(proc_data->enst_spec);
     fftw_free(proc_data->enrg_spec);
     fftw_free(proc_data->enst_alt);
     fftw_free(proc_data->enrg_alt);
 	#endif
-	#ifdef __SEC_PHASE_SYNC
+	#if defined(__SEC_PHASE_SYNC)
 	fftw_free(proc_data->theta);
 	fftw_free(proc_data->k_angle);
 	fftw_free(proc_data->k1_angle);
@@ -1277,12 +1357,14 @@ void FreeMemoryAndCleanUp(void) {
 	// --------------------------------
 	//  Free GSL objects
 	// --------------------------------
-	#ifdef __REAL_STATS
 	// Free histogram structs
+	#if defined(__REAL_STATS)
 	gsl_histogram_free(stats_data->w_pdf);
 	gsl_histogram_free(stats_data->u_pdf);
 	#endif
-	#ifdef __SEC_PHASE_SYNC
+	#if defined(__VEL_INC_STATS)
+	#endif
+	#if defined(__SEC_PHASE_SYNC)
 	for (int i = 0; i < sys_vars->num_sect; ++i) {
 		gsl_histogram_free(proc_data->phase_sect_pdf[i]);
 		gsl_histogram_free(proc_data->phase_sect_pdf_t[i]);
@@ -1298,7 +1380,7 @@ void FreeMemoryAndCleanUp(void) {
 	// --------------------------------
 	//  Free FFTW Plans
 	// --------------------------------
-	#ifdef __REAL_STATS
+	#if defined(__REAL_STATS)
 	// Destroy FFTW plans
 	fftw_destroy_plan(sys_vars->fftw_2d_dft_c2r);
 	fftw_destroy_plan(sys_vars->fftw_2d_dft_batch_c2r);

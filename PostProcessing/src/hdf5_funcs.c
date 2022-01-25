@@ -907,7 +907,7 @@ void FinalWriteAndClose(void) {
     }	
 
     ///------------------------- Number of Triads Per Sector
-    double* tmp = (double*) fftw_malloc(sizeof(double) * sys_vars->num_sect * (NUM_TRIAD_TYPES + 1));
+    int* tmp = (int*) fftw_malloc(sizeof(int) * sys_vars->num_sect * (NUM_TRIAD_TYPES + 1));
     for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
     	for (int a = 0; a < sys_vars->num_sect; ++a) {
     		tmp[i * sys_vars->num_sect + a] = proc_data->num_triads[i][a];

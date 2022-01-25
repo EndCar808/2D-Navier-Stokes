@@ -62,6 +62,8 @@
 
 // Post processing Modes
 #define __REAL_STATS
+// #define __VEL_INC_STATS
+// #define __STR_FUNC_STATS
 #define __FULL_FIELD
 #define __SPECTRA
 #define __VORT
@@ -73,6 +75,10 @@
 #define SYS_DIM 2 				// The system dimension i.e., 2D
 // Statistics definitions
 #define N_BINS 1000				// The number of histogram bins to use
+#define NUM_INCR 2              // The number of increment length scales
+#define INCR_TYPES 2 			// The number of increment directions i.e., longitudinal and transverse
+#define STR_FUNC_MAX_POW 6      // The maximum pow of the structure functions to compute
+#define BIN_LIM 20              // The limit of the bins for the velocity increments
 // Phase sync 
 // #define N_SECTORS 40		 	// The number of phase sectors
 #define N_BINS_SEC 1000         // The number of bins in the sector pdfs
@@ -165,9 +171,11 @@ typedef struct postprocess_data_struct {
 
 // Post processing stats data struct
 typedef struct stats_data_struct {
-	gsl_rstat_workspace r_stat;  // Workplace for the running stats
-	gsl_histogram* w_pdf;		 // Histogram struct for the vorticity distribution
-	gsl_histogram* u_pdf;		 // Histrogam struct for the velocity distribution
+	gsl_rstat_workspace r_stat;  										// Workplace for the running stats
+	gsl_histogram* w_pdf;		 										// Histogram struct for the vorticity distribution
+	gsl_histogram* u_pdf;		  										// Histrogam struct for the velocity distribution
+	gsl_histogram* vel_inc[INCR_TYPES][NUM_INCR]; 						// Array to hold the PDFs of the longitudinal and transverse velocity increments for each increment
+	double* str_funcs[INCR_TYPES][STR_FUNC_MAX_POW - 2];				// Array to hold the structure functions longitudinal and transverse velocity increments for each increment
 } stats_data_struct;
 
 // HDF5 file info struct
@@ -186,8 +194,8 @@ typedef struct HDF_file_info_struct {
 
 // Complex datatype struct for HDF5
 typedef struct complex_type_tmp {
-	double re;   			 // real part 
-	double im;   			 // imaginary part 
+	double re;   		// real part 
+	double im;   		// imaginary part 
 } complex_type_tmp;
 
 

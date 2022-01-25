@@ -120,20 +120,52 @@ if __name__ == '__main__':
         method = "file"
         post_file_path = cmdargs.in_dir + cmdargs.in_file
 
-
     # -----------------------------------------
     # # --------  Read In data
     # -----------------------------------------
-    ## Read in simulation parameters
-    sys_vars = sim_data(cmdargs.in_dir)
+    ## Get the number of sectors
+    num_sects = [5, 10, 50, 100, 200]
 
-    ## Read in solver data
-    run_data = import_data(cmdargs.in_dir, sys_vars)
+    avg_num_triads = []
+    for s in num_sects:
 
-    ## Read in spectra data
-    spec_data = import_spectra_data(cmdargs.in_dir, sys_vars)
+        print("S = {}".format(s))
 
-    ## Read in post processing data
-    post_data = import_post_processing_data(post_file_path, sys_vars, method)
+        ## Get the file path for the current number of sectors
+        post_file_path = cmdargs.in_dir + "PostProcessing_HDF_Data_SECTORS[{}].h5".format(s)
 
+        ## Read in simulation parameters
+        sys_vars = sim_data(cmdargs.in_dir)
+
+        ## Read in solver data
+        run_data = import_data(cmdargs.in_dir, sys_vars)
+
+        ## Read in spectra data
+        spec_data = import_spectra_data(cmdargs.in_dir, sys_vars)
+
+        ## Read in post processing data
+        post_data = import_post_processing_data(post_file_path, sys_vars, method)
+
+        ## Compute the average number of triads per sector
+        avg_num_triads.append(np.mean(post_data.num_triads[0, :]))
+
+        print("Avg: {}\nNum: {}\n".format(np.mean(post_data.num_triads[0, :]), post_data.num_triads[0, :]))
     
+
+    # -----------------------------------------
+    # # --------  Plot data
+    # -----------------------------------------
+    ## Create Figure
+    fig = plt.figure(figsize = (16, 8))
+    gs  = GridSpec(1, 1)
+    ax1 = fig.add_subplot(gs[0, 0])
+    ax1.plot(num_sects, avg_num_triads)
+    ax1.set_xlabel(r"Number of Sectors")
+    ax1.set_ylabel(r"Average Number of Triads Per Sector")
+    ax1.set_xticks(num_sects)
+    ax1.set_xticklabels([r"$5$", r"$10$", r"$50$", r"$100$", r"$200$"])
+    ax1.set_yscale('log')
+    # ax1.set_xscale('log')
+    ax1.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+    plt.savefig(cmdargs.out_dir + "AverageNumberOfTriads.png")
+    plt.close()
