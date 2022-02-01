@@ -722,7 +722,7 @@ void NonlinearRHS(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* nonlinte
 	//  Multiply in Real Space
 	// ----------------------------------
 	for (int i = 0; i < Nx; ++i) {
-		tmp = i * (Ny + 2);
+		tmp = i * Ny;
 		for (int j = 0; j < Ny; ++j) {
 			indx = tmp + j; 
  			
@@ -825,6 +825,7 @@ void EnstrophyFluxSpectrum(int snap) {
 					// Update the running sum for the flux of energy
 					proc_data->enst_flux_spec[spec_indx] += 2.0 * 4.0 * M_PI * M_PI * norm_fac * creal(run_data->w_hat[indx] * conj(proc_data->dw_hat_dt[indx]) + conj(run_data->w_hat[indx]) * proc_data->dw_hat_dt[indx]);
 				}
+
 			}
 		}
 	}
@@ -874,16 +875,23 @@ void AllocateMemory(const long int* N) {
 		exit(1);
 	}
 
-	#if defined(__REAL_STATS) || defined(__FULL_FIELD) || defined(__SEC_PHASE_SYNC)
+	// Initialize arrays
+	for (int i = 0; i < Nx; ++i) {
+		tmp2 = i * (Ny_Fourier);
+		for (int j = 0; j < Ny_Fourier; ++j) {
+			run_data->w_hat[tmp2 + j]   = 0.0 + 0.0 * I;
+			run_data->psi_hat[tmp2 + j] = 0.0 + 0.0 * I;
+		}
+	}
+
+	#if defined(__REAL_STATS) || defined(__ENST_FLUX) || defined(__SEC_PHASE_SYNC) || defined(__VEL_INC_STATS) || defined(__STR_FUNC_STATS)
 	// Allocate current Fourier vorticity
 	run_data->w = (double* )fftw_malloc(sizeof(double) * Nx * Ny);
 	if (run_data->w == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Vorticity");
 		exit(1);
 	}
-	#endif
 
-	#if defined(__REAL_STATS) || defined(__VEL_INC_STATS) || defined(__STR_FUNC_STATS)
 	// Allocate current Fourier vorticity
 	run_data->u_hat = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * Nx * Ny_Fourier * SYS_DIM);
 	if (run_data->u_hat == NULL) {
@@ -944,6 +952,7 @@ void AllocateMemory(const long int* N) {
 				run_data->u_hat[SYS_DIM * (tmp2 + j) + 0] = 0.0 + 0.0 * I;
 				run_data->u_hat[SYS_DIM * (tmp2 + j) + 1] = 0.0 + 0.0 * I;
 			}
+			run_data->w[tmp2 + j] = 0.0;
 			run_data->u[SYS_DIM * (tmp1 + j) + 0] = 0.0;
 			run_data->u[SYS_DIM * (tmp1 + j) + 1] = 0.0;
 		}
@@ -980,7 +989,18 @@ void AllocateMemory(const long int* N) {
 	if (proc_data->enrg == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Full Field Energy");
 		exit(1);
-	}		
+	}	
+
+	// Initialize arrays
+	for (int i = 0; i < (2 * sys_vars->kmax - 1); ++i) {
+		tmp3 = i * (2 * sys_vars->kmax - 1);
+		for (int j = 0; j < (2 * sys_vars->kmax - 1); ++j) {
+			proc_data->phases[tmp3 + j] = 0.0;
+			proc_data->enst[tmp3 + j]   = 0.0;
+			proc_data->enrg[tmp3 + j]   = 0.0;
+			proc_data->amps[tmp3 + j]   = 0.0;
+		}
+	}	
 	#endif
 
 
@@ -1060,6 +1080,8 @@ void AllocateMemory(const long int* N) {
 			}
 			proc_data->nabla_w[SYS_DIM * (i * Ny + j) + 0] = 0.0;
 			proc_data->nabla_w[SYS_DIM * (i * Ny + j) + 1] = 0.0;
+			proc_data->nabla_psi[SYS_DIM * (i * Ny + j) + 0] = 0.0;
+			proc_data->nabla_psi[SYS_DIM * (i * Ny + j) + 1] = 0.0;
 			proc_data->nonlinterm[i * Ny + j] = 0.0;
 		}
 	}
@@ -1329,29 +1351,6 @@ void AllocateMemory(const long int* N) {
 		exit(1);
 	}	
 	#endif
-
-	// --------------------------------
-	//  Initialize Arrays
-	// --------------------------------
-	for (int i = 0; i < Nx; ++i) {
-		tmp1 = i * Ny;
-		tmp2 = i * (Ny_Fourier);
-		tmp3 = i * (2 * sys_vars->kmax - 1);
-		for (int j = 0; j < Ny; ++j) {
-			if (j < Ny_Fourier) {
-				run_data->w_hat[tmp2 + j] = 0.0 + 0.0 * I;
-			}
-			if ((i < 2 * sys_vars->kmax - 1) && (j < 2 * sys_vars->kmax - 1)) {
-				#if defined(__FULL_FIELD) || defined(__SEC_PHASE_SYNC)
-				proc_data->phases[tmp3 + j] = 0.0;
-				proc_data->enst[tmp3 + j]   = 0.0;
-				proc_data->enrg[tmp3 + j]   = 0.0;
-				proc_data->amps[tmp3 + j]   = 0.0;
-				#endif
-			}
-			run_data->w[tmp1 + j] = 0.0;
-		}
-	}
 }
 /**
  * Wrapper function for initializing FFTW plans
@@ -1388,7 +1387,6 @@ void InitializeFFTWPlans(const long int* N) {
 		exit(1);
 	}
 	#endif
-
 }
 /**
 * Function to compute 1Denergy spectrum from the Fourier vorticity
@@ -1500,7 +1498,7 @@ void FreeMemoryAndCleanUp(void) {
 	fftw_free(run_data->w_hat);
 	fftw_free(run_data->time);
 	fftw_free(run_data->psi_hat);
-	#if defined(__REAL_STATS) || defined(__VEL_INC_STATS) || defined(__STR_FUNC_STATS)
+	#if defined(__REAL_STATS) || defined(__VEL_INC_STATS) || defined(__STR_FUNC_STATS) || defined(__ENST_FLUX) || defined(__SEC_PHASE_SYNC)
 	fftw_free(run_data->w);
 	fftw_free(run_data->u);
 	fftw_free(run_data->u_hat);
@@ -1551,7 +1549,6 @@ void FreeMemoryAndCleanUp(void) {
 		fftw_free(run_data->x[i]);
 		fftw_free(run_data->k[i]);
 	}
-
 	// --------------------------------
 	//  Free GSL objects
 	// --------------------------------
@@ -1578,9 +1575,14 @@ void FreeMemoryAndCleanUp(void) {
 	// --------------------------------
 	//  Free FFTW Plans
 	// --------------------------------
-	#if defined(__REAL_STATS)
 	// Destroy FFTW plans
+	#if defined(__REAL_STATS) || defined(__VEL_INC_STATS) || defined(__STR_FUNC_STATS)
 	fftw_destroy_plan(sys_vars->fftw_2d_dft_c2r);
+	#endif
+	#if defined(__ENST_FLUX) || defined(__SEC_PHASE_SYNC)
+	fftw_destroy_plan(sys_vars->fftw_2d_dft_r2c);
+	#endif
+	#if defined(__ENST_FLUX) || defined(__SEC_PHASE_SYNC) || defined(__REAL_STATS)	
 	fftw_destroy_plan(sys_vars->fftw_2d_dft_batch_c2r);
 	#endif
 

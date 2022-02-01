@@ -696,6 +696,7 @@ void WriteDataToFile(double t, long int snap) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Enstrophy Flux in C", t, snap);
         exit(1);
     }
+    #if defined(__NONLIN)
     // Write the nonlinear term in Fourier space
     dset_dims_2d[0] = sys_vars->N[0];
     dset_dims_2d[1] = sys_vars->N[1];
@@ -704,8 +705,8 @@ void WriteDataToFile(double t, long int snap) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file  at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Nonlinear Term", t, snap);
         exit(1);
     }
+    #endif
 	#endif
-
 
 
     // -------------------------------
@@ -764,6 +765,8 @@ void WriteDataToFile(double t, long int snap) {
         exit(1);
     }
 
+
+
     /// ------------------------ Phase Order Stats Data
 	// Allocate temporary memory for the phases pdfs
 	double* ranges = (double*) fftw_malloc(sizeof(double) * sys_vars->num_sect * (proc_data->phase_sect_pdf_t[0]->n + 1));
@@ -812,7 +815,7 @@ void WriteDataToFile(double t, long int snap) {
 	    	}
 	    }
     }
-    
+
     dset_dims_3d[0] = sys_vars->num_sect;
     dset_dims_3d[1] = proc_data->triad_sect_pdf_t[0][0]->n + 1;
     dset_dims_3d[2] = NUM_TRIAD_TYPES + 1;
@@ -859,7 +862,7 @@ void WriteDataToFile(double t, long int snap) {
     fftw_free(triad_ranges);
     fftw_free(triad_counts);
 	#endif
-	
+
 	// -------------------------------
 	// Close HDF5 Identifiers
 	// -------------------------------

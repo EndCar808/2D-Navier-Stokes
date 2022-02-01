@@ -47,26 +47,24 @@
 // These definitions control which datasets are to be computed and written to file
 // Turning these on in this file means that they WILL be on at compilation time
 
-// Choose whether to save the Real Space or Fourier Space vorticity
-// #define __VORT_REAL
-// #define __VORT_FOUR
-// Choose whether to save the Real or Fourier space velocitites
-// #define __MODES
-// #define __REALSPACE
-// Choose whether to save the time, collocation points and wavenumbers
-#define __TIME
-#define __COLLOC_PTS
-#define __WAVELIST
-
 // Post processing Modes
 // #define __REAL_STATS
 // #define __VEL_INC_STATS
 // #define __STR_FUNC_STATS
 #define __FULL_FIELD
 // #define __SPECTRA
-// #define __VORT
 #define __SEC_PHASE_SYNC
 #define __ENST_FLUX
+
+// Postprocessing data sets
+// #define __VORT
+// #define __MODES
+// #define __REALSPACE
+// #define __NONLIN
+#define __TIME
+#define __COLLOC_PTS
+#define __WAVELIST
+
 #define __DEALIAS_23
 // #define __DEALIAS_HOU_LI
 // ---------------------------------------------------------------------
