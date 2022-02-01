@@ -2,7 +2,7 @@
 # line above specifies which program should be called to run this script - called shebang
 # the way it is called above (and not #!/user/bin/python) ensures portability amongst Unix distros
 ######################
-##  Library Imports ##
+##  Library Imports ##  
 ######################
 import matplotlib as mpl
 # mpl.use('TkAgg') # Use this backend for displaying plots in window
@@ -43,9 +43,10 @@ def parse_cml(argv):
         Class for command line arguments
         """
         
-        def __init__(self, in_dir = None, out_dir = None, phase_dir = None, main_file = None, spec_file = None, summ_snap = False, phase_snap = False, parallel = False, plotting = False, video = False, use_post = False):
+        def __init__(self, in_dir = None, out_dir = None, phase_dir = None, main_file = None, spec_file = None, summ_snap = False, phase_snap = False, parallel = False, plotting = False, video = False, use_post = False, post_file = None):
             self.spec_file  = spec_file
             self.main_file  = main_file
+            self.post_file  = post_file
             self.in_dir     = in_dir
             self.out_dir    = out_dir
             self.phase_dir  = phase_dir
@@ -61,7 +62,7 @@ def parse_cml(argv):
 
     try:
         ## Gather command line arguments
-        opts, args = getopt.getopt(argv, "i:o:m:s:", ["s_snap", "p_snap", "par", "plot", "vid", "use_post"])
+        opts, args = getopt.getopt(argv, "i:o:m:s:f:", ["s_snap", "p_snap", "par", "plot", "vid", "use_post"])
     except:
         print("[" + tc.R + "ERROR" + tc.Rst + "] ---> Incorrect Command Line Arguements.")
         sys.exit()
@@ -115,6 +116,12 @@ def parse_cml(argv):
         elif opt in ['--use_post']:
             ## Read in use of post processing indicator
             cargs.use_post = True
+
+        elif opt in ['-f']:
+            ## Read post processing file
+            cargs.post_file = str(arg)
+
+            print("Post Processing File: "+ tc.C + "{}".format(cargs.post_file) + tc.Rst)
 
         elif opt in ['--par']:
             ## Read in parallel indicator
@@ -231,31 +238,29 @@ if __name__ == '__main__':
     run_data = import_data(cmdargs.in_dir, sys_vars, method)
 
     ## Read in spectra data
-    if cmdargs.spec_file == None:
+    if cmdargs.spec_file == None and os.path.isdir(cmdargs.in_dir + "Spectra_HDF_Data.h5:") == True:
         spec_data = import_spectra_data(cmdargs.in_dir, sys_vars, method)
+    elif os.path.isdir(cmdargs.in_dir + "Spectra_HDF_Data.h5:") != True:
+        pass
     else:
         spec_data = import_spectra_data(cmdargs.spec_file, sys_vars, method)
 
     if cmdargs.use_post:
         ## Read in post processing data
-        post_data = import_post_processing_data(cmdargs.in_dir, sys_vars, method)
+        post_data = import_post_processing_data(cmdargs.in_dir + cmdargs.post_file, sys_vars, "alt")
 
         if cmdargs.phase_snap:
             phases        = post_data.phases
-            enrg_spectrum = post_data.enrg_spectrum * 4.0 * np.pi**2 * (0.5 / (sys_vars.Nx * sys_vars.Ny)**2)
-            enst_spectrum = post_data.enst_spectrum * 4.0 * np.pi**2 * (0.5 / (sys_vars.Nx * sys_vars.Ny)**2)
-
-            print(post_data.kmax)
-            print(enrg_spectrum.shape)
-            print(FullFieldMask(post_data.kmax, post_data.kmax, post_data.kmax).shape)
-
+            enrg_spectrum = post_data.enrg_spectrum
+            enst_spectrum = post_data.enst_spectrum
+            
             ## Spectrum limits for plotting
-            min_enrg = 0.0 #np.amin(enrg_spectrum[:, FullFieldMask(post_data.kmax, post_data.kmax, post_data.kmax)])
-            max_enrg = 10. #np.amax(enrg_spectrum[:, FullFieldMask(post_data.kmax, post_data.kmax, post_data.kmax)])
-            min_enst = 0.0 #np.amin(enst_spectrum[:, FullFieldMask(post_data.kmax, post_data.kmax, post_data.kmax)])
-            max_enst = 10. #np.amax(enst_spectrum[:, FullFieldMask(post_data.kmax, post_data.kmax, post_data.kmax)])
+            min_enrg = np.amin(np.delete(enrg_spectrum.flatten(), np.where(enrg_spectrum.flatten() == -50.0)))
+            max_enrg = np.amax(np.delete(enrg_spectrum.flatten(), np.where(enrg_spectrum.flatten() == -50.0)))
+            min_enst = np.amin(np.delete(enst_spectrum.flatten(), np.where(enst_spectrum.flatten() == -50.0)))
+            max_enst = np.amax(np.delete(enst_spectrum.flatten(), np.where(enst_spectrum.flatten() == -50.0)))
             spec_limits = np.array([min_enrg, max_enrg, min_enst, max_enst])
-            spec_limits[spec_limits[:] == 0.0] = 1e-6   ## If the limits are zero set to non-zero
+            spec_limits[spec_limits[:] == 0.0] = 1e-12  ## If the limits are zero set to non-zero
             print(spec_limits)
 
     ## If not using post processing data and phase snaps are needed precompute data
@@ -300,7 +305,7 @@ if __name__ == '__main__':
             print("\n" + tc.Y + "Printing Summary Snaps..." + tc.Rst)
             if cmdargs.parallel:
                 ## No. of processes
-                proc_lim = 10
+                proc_lim = 20
 
                 ## Create tasks for the process pool
                 groups_args = [(mprocs.Process(target = plot_summary_snaps, args = (cmdargs.out_dir, i, run_data.w[i, :, :], run_data.w_hat[i, :, :], run_data.x, run_data.y, wmin, wmax, run_data.kx, run_data.ky, int(sys_vars.Nx / 3), run_data.tot_enrg[:i], run_data.tot_enst[:i], run_data.tot_palin[:i], spec_data.enrg_spectrum[i, :], spec_data.enst_spectrum[i, :], run_data.enrg_diss[:i], run_data.enst_diss[:i], run_data.enrg_flux_sbst[:i], run_data.enrg_diss_sbst[:i], run_data.enst_flux_sbst[:i], run_data.enst_diss_sbst[:i], run_data.time, sys_vars.Nx, sys_vars.Ny)) for i in range(run_data.w.shape[0]))] * proc_lim
@@ -327,10 +332,11 @@ if __name__ == '__main__':
             print("\n" + tc.Y + "Printing Phase Snaps..." + tc.Rst)
             if cmdargs.parallel:
                 ## No. of processes
-                proc_lim = 10
+                proc_lim = 20
 
                 ## Create tasks for the process pool
-                groups_args = [(mprocs.Process(target = plot_phase_snaps, args = (cmdargs.phase_dir, i, run_data.w[i, :, :], phases[i, :, :], enrg_spectrum[i, :, :], enst_spectrum[i, :, :], spec_limits, wmin, wmax, run_data.x, run_data.y, run_data.time, sys_vars.Nx, sys_vars.Nx, run_data.kx, run_data.ky)) for i in range(run_data.w.shape[0]))] * proc_lim
+                vort = np.fft.irfft2(run_data.w_hat[:, :])
+                groups_args = [(mprocs.Process(target = plot_phase_snaps, args = (cmdargs.phase_dir, i, np.fft.irfft2(run_data.w_hat[i, :, :]), phases[i, :, :], enrg_spectrum[i, :, :], enst_spectrum[i, :, :], spec_limits, wmin, wmax, run_data.x, run_data.y, run_data.time, sys_vars.Nx, sys_vars.Nx, run_data.kx, run_data.ky)) for i in range(run_data.w.shape[0]))] * proc_lim
 
                 ## Loop of grouped iterable
                 for procs in zip_longest(*groups_args): 

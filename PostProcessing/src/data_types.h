@@ -49,25 +49,26 @@
 
 // Choose whether to save the Real Space or Fourier Space vorticity
 // #define __VORT_REAL
-#define __VORT_FOUR
+// #define __VORT_FOUR
 // Choose whether to save the Real or Fourier space velocitites
 // #define __MODES
 // #define __REALSPACE
-// Choose whether to compute the Energy and Enstrophy spectra and flux spectra
-#define __SPECT
 // Choose whether to save the time, collocation points and wavenumbers
 #define __TIME
 #define __COLLOC_PTS
 #define __WAVELIST
 
 // Post processing Modes
-#define __REAL_STATS
+// #define __REAL_STATS
 // #define __VEL_INC_STATS
 // #define __STR_FUNC_STATS
 #define __FULL_FIELD
-#define __SPECTRA
-#define __VORT
+// #define __SPECTRA
+// #define __VORT
 #define __SEC_PHASE_SYNC
+#define __ENST_FLUX
+#define __DEALIAS_23
+// #define __DEALIAS_HOU_LI
 // ---------------------------------------------------------------------
 //  Global Variables
 // ---------------------------------------------------------------------
@@ -102,6 +103,7 @@ typedef struct system_vars_struct {
 	ptrdiff_t local_Nx_start;			// Position where the local arrays start in the undistributed array
 	long int num_snaps;					// Number of snapshots in the input data file
 	long int kmax; 						// The largest dealiased wavenumber
+	double kmax_frac;					// Fraction of the maximum wavevector to consider for phase sync and enstrophy flux
 	double kmax_sqr;                    // The largest dealiased wavenumber squared
 	int num_sect;						// The number of sectors in wavenumber space to be used when computing the Kuramoto order parameter 
 	double t0;							// Intial time
@@ -144,9 +146,13 @@ typedef struct postprocess_data_struct {
 	double* enst;			   		 							 // Array to hold the full field zero centred enstrophy
 	double* enst_spec; 		   		 							 // Array to hold the enstrophy spectrum
     double* enrg_spec; 		   		 							 // Array to hold the energy spectrum
-    double* enst_alt;		         							 // Array to hold the data for enstrophy spectrum computed using stream func
-    double* enrg_alt;		         							 // Array to hold the data for energy spectrum computed using stream func
-    double* theta;                   							 // Array to hold the angles for the sector boundaries
+    double* enst_flux_spec;										 // Array to hold the enstrophy flux spectrum
+    double* enst_flux_C;										 // Array to hold the enstrophy flux out of the set C defined by radius sys_vars->kmax_frac * sys_vars->kmax
+    fftw_complex* dw_hat_dt; 									 // Array to hold the RHS of the vorticity equation
+    double* nonlinterm;											 // Array to hold the nonlinear term after multiplication in real space -> for nonlinear RHS funciotn
+    double* nabla_w;											 // Array to hold the gradient of the real space vorticity -> for nonlinear RHS function
+    double* nabla_psi;											 // Array to hold the gradient of the real space stream function -> for nonlinear RHS function
+	double* theta;                   							 // Array to hold the angles for the sector boundaries
     double* k_angle;											 // Array to hold the pre computed arctangents of the k3 wavevectors to speed up triad computation
     double* k1_angle;											 // Array to hold the pre computed arctangents of the k1 wavevectors to speed up triad computation
     double* k2_angle;											 // Array to hold the pre computed arctangents of the k2 wavevectors to speed up triad computation
@@ -171,11 +177,11 @@ typedef struct postprocess_data_struct {
 
 // Post processing stats data struct
 typedef struct stats_data_struct {
-	gsl_rstat_workspace r_stat;  										// Workplace for the running stats
-	gsl_histogram* w_pdf;		 										// Histogram struct for the vorticity distribution
-	gsl_histogram* u_pdf;		  										// Histrogam struct for the velocity distribution
-	gsl_histogram* vel_inc[INCR_TYPES][NUM_INCR]; 						// Array to hold the PDFs of the longitudinal and transverse velocity increments for each increment
-	double* str_funcs[INCR_TYPES][STR_FUNC_MAX_POW - 2];				// Array to hold the structure functions longitudinal and transverse velocity increments for each increment
+	gsl_rstat_workspace r_stat;  									// Workplace for the running stats
+	gsl_histogram* w_pdf;		 									// Histogram struct for the vorticity distribution
+	gsl_histogram* u_pdf;		  									// Histrogam struct for the velocity distribution
+	gsl_histogram* vel_incr[INCR_TYPES][NUM_INCR]; 					// Array to hold the PDFs of the longitudinal and transverse velocity increments for each increment
+	double* str_func[INCR_TYPES][STR_FUNC_MAX_POW - 2];				// Array to hold the structure functions longitudinal and transverse velocity increments for each increment
 } stats_data_struct;
 
 // HDF5 file info struct

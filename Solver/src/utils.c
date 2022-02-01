@@ -768,7 +768,7 @@ void WriteTestDataReal(double* data, char* dset_name, int dset_rank, int* dset_d
     
     // Allocate array for gathering full dataset on root process
     int mem_size = 1;
-    for (int i = 0; i < rank; ++i) {
+    for (int i = 0; i < (int)rank; ++i) {
     	mem_size *= dset_dims[i];
     }
 	double* full_data = (double* )fftw_malloc(sizeof(double) * mem_size);
@@ -779,14 +779,14 @@ void WriteTestDataReal(double* data, char* dset_name, int dset_rank, int* dset_d
 
 	// Gather full dataset on root process
 	int local_size = local_dim_x;
-	for (int i = 1; i < rank; ++i) {
+	for (int i = 1; i < (int)rank; ++i) {
 		local_size *= dset_dims[i];
 	}
 	MPI_Gather(data, local_size, MPI_DOUBLE, full_data, local_size, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 	
 	// Write data to file on root process
 	if (!sys_vars->rank) {   
-	    for (int i = 0; i < rank; ++i) {
+	    for (int i = 0; i < (int)rank; ++i) {
 	    	Dims[i] = dset_dims[i];
 	    }
 	    status = H5LTmake_dataset(file_info->test_file_handle, dset_name, rank, Dims, H5T_NATIVE_DOUBLE, full_data);

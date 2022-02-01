@@ -73,6 +73,10 @@
 #if defined(__PHASE_ONLY)		// Turn on phase only mode if called for at compilation
 #define PHASE_ONLY
 #endif
+// For allow transient dynamics
+#if defined(__TRANSIENTS)
+#define TRANSIENTS
+#endif
 // Testing the solver will be decided at compilation
 #if defined(__TESTING)
 #define TESTING
@@ -90,9 +94,12 @@
 // Choose whether to save the Real Space or Fourier Space vorticity
 // #define __VORT_REAL
 #define __VORT_FOUR
+// Choose whether to save the Nonlinear term or RHS of equation of motion
+// #define __RHS
+// #define __NONLIN
 // Choose whether to save the Real or Fourier space velocitites
-#define __MODES
-#define __REALSPACE
+// #define __MODES
+// #define __REALSPACE
 // Choose whether to compute system measures
 #define __SYS_MEASURES
 // Choose whether to compute the fluxes
@@ -112,7 +119,7 @@
 // ---------------------------------------------------------------------
 // These definitions define some of the solver parameters.
 #define SYS_DIM 2 				// The system dimension i.e., 2D
-#define TRANS_FRAC 0.2          // Fraction of time(steps) to ignore before saving to file
+#define TRANS_FRAC 0.2          // Fraction of time to ignore before saving to file
 // Dormand Prince integrator parameters
 #define DP_ABS_TOL 1e-7		    // The absolute error tolerance for the Dormand Prince Scheme
 #define DP_REL_TOL 1e-7         // The relative error tolerance for the Dormand Prince Scheme
@@ -162,6 +169,7 @@ typedef struct system_vars_struct {
 	long int num_print_steps;           // Number of times system was saved to file
 	long int tot_iters;					// Records the total executed iterations
 	long int tot_save_steps;			// Records the total saving iterations
+	long int trans_iters;				// The number of transients iterations to perform before printing to file
 	double t0;							// Intial time
 	double T;							// Final time
 	double t;							// Time variable
@@ -186,10 +194,12 @@ typedef struct runtime_data_struct {
 	int* k[SYS_DIM];		  // Array to hold wavenumbers
 	fftw_complex* w_hat;      // Fourier space vorticity
 	fftw_complex* u_hat;      // Fourier space velocity
+	fftw_complex* rhs; 		  // Array to hold the RHS of the equation of motion
+	fftw_complex* nonlinterm; // Array to hold the nonlinear term
 	double* w;				  // Real space vorticity
 	double* u;				  // Real space velocity
 	double* a_k;			  // Fourier vorticity amplitudes
-	double* tmp_a_k;
+	double* tmp_a_k;		  // Array to hold the amplitudes of the fourier vorticity before marching forward in time
 	double* phi_k;			  // Fourier vorticity phases
 	double* tot_energy;       // Array to hold the total energy over the simulation
 	double* tot_enstr;		  // Array to hold the total entrophy over the simulation

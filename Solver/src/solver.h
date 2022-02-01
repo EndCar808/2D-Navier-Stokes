@@ -37,7 +37,7 @@ void ApplyDealiasing(fftw_complex* array, int array_dim, const long int* N);
 void ApplyForcing(fftw_complex* w_hat, const long int* N);
 // Initialize the system functions
 void InitializeSpaceVariables(double** x, int** k, const long int* N);
-void InitializeIntegrationVariables(double* t0, double* t, double* dt, double* T, int* print_update);
+void InitializeIntegrationVariables(double* t0, double* t, double* dt, double* T, long int* trans_steps);
 void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, const long int* N);
 double GetMaxData(char* dtype);
 void InitializeSystemMeasurables(RK_data_struct* RK_data);

@@ -42,19 +42,19 @@ endif
 #  Executable flags
 # ---------------------------------------------------------------------
 # Flags to be passed to the solver for normal runs
-SOLVER_FLAGS := -D__NAVIER -D__ADAPTIVE_STEP -D__CFL_STEP # -D__HYPER -D__EKMN_DRAG
+SOLVER_FLAGS := -D__NAVIER -D__HYPER -D__TRANSIENTS #-D__ADAPTIVE_STEP -D__CFL_STEP -D__EKMN_DRAG
 
 # Phase only flags to be passed to solver
-PHASE_ONLY := -D__NAVIER -D__HYPER -__PHASE_ONLY
+PHASE_ONLY := -D__NAVIER -D__HYPER -D__PHASE_ONLY -D__TRANSIENTS
 
 # Dataset Flags to be passed to the solver
-DSET_FLAGS := -D__VORT_REAL -D__SYS_MEASURES -D__ENST_FLUX -D__ENRG_FLUX -D__ENST_SPECT -D__ENRG_SPECT -D__ENST_FLUX_SPECT -D__ENRG_FLUX_SPECT # -D__MODES -D__REALSPACE 
+DSET_FLAGS := -D__SYS_MEASURES -D__ENST_FLUX -D__ENRG_FLUX -D__ENST_SPECT -D__ENRG_SPECT -D__ENST_FLUX_SPECT -D__ENRG_FLUX_SPECT # -D__VORT_REAL #-D__REALSPACE # -D__MODES  
  
 # Flags to be passed to the solver for testing
-TG_TEST_FLAGS    := -D__NAVIER -D__TESTING -D__DEBUG #-D__ADAPTIVE_STEP -D__CFL_STEP 
-DT_TEST_FLAGS    := -D__NAVIER -D__TESTING -D__DEBUG -D__HYPER #-D__ADAPTIVE_STEP -D__CFL_STEP 
-DT2_TEST_FLAGS   := -D__NAVIER -D__TESTING -D__DEBUG -D__HYPER #-D__ADAPTIVE_STEP -D__CFL_STEP 
-DB_SL_TEST_FLAGS := -D__EULER -D__TESTING -D__DEBUG #-D__ADAPTIVE_STEP -D__CFL_STEP 
+TG_TEST_FLAGS    := -D__NAVIER -D__TESTING -D__DEBUG #-D__ADAPTIVE_STEP -D__CFL_STEP -D__TRANSIENTS
+DT_TEST_FLAGS    := -D__NAVIER -D__TESTING -D__DEBUG -D__HYPER #-D__ADAPTIVE_STEP -D__CFL_STEP -D__TRANSIENTS
+DT2_TEST_FLAGS   := -D__NAVIER -D__TESTING -D__DEBUG -D__HYPER #-D__ADAPTIVE_STEP -D__CFL_STEP -D__TRANSIENTS
+DB_SL_TEST_FLAGS := -D__EULER -D__TESTING -D__DEBUG #-D__ADAPTIVE_STEP -D__CFL_STEP -D__TRANSIENTS
 # ---------------------------------------------------------------------
 #  Directory creation
 # ---------------------------------------------------------------------
@@ -95,21 +95,21 @@ all: $(BIN)/solver $(BIN)/solver_phase_only $(BIN)/solver_TG_test $(BIN)/solver_
 solver: $(BIN)/solver 
 
 $(BIN)/solver: $(SRCOBJ) $(DEPS)
-	$(GCC) $(CCFLAG) $(SOLVER_FLAGS) -o $@ $^ ${INCDIR} ${LIBDIR} $(LIBFLAG) $(GSLFLAG)
+	$(GCC) $(CCFLAG) $(SOLVER_FLAGS) $(DSET_FLAGS) -o $@ $^ ${INCDIR} ${LIBDIR} $(LIBFLAG) $(GSLFLAG)
 
 $(OBJBIN)/%.o: $(SRCDIR)/%.c $(DEPS)
-	$(GCC) $(CCFLAG) $(SOLVER_FLAGS) -c $^ -o $@ ${INCDIR} ${LIBDIR} $(LIBFLAG) $(GSLFLAG)
+	$(GCC) $(CCFLAG) $(SOLVER_FLAGS) $(DSET_FLAGS) -c $^ -o $@ ${INCDIR} ${LIBDIR} $(LIBFLAG) $(GSLFLAG)
 
 ####-----------
-#  Phase Only
+#  Phase Only 
 ####-----------
-solver: $(BIN)/solver_phase_only 
+solver_phase_only: $(BIN)/solver_phase_only 
 
 $(BIN)/solver_phase_only: $(SRCOBJ) $(DEPS)
-	$(GCC) $(CCFLAG) $(SOLVER_FLAGS) -o $@ $^ ${INCDIR} ${LIBDIR} $(LIBFLAG) $(GSLFLAG)
+	$(GCC) $(CCFLAG) $(PHASE_ONLY_FLAGS) $(DSET_FLAGS) -o $@ $^ ${INCDIR} ${LIBDIR} $(LIBFLAG) $(GSLFLAG)
 
 $(OBJBIN)/%_phase_only.o: $(SRCDIR)/%.c $(DEPS)
-	$(GCC) $(CCFLAG) $(SOLVER_FLAGS) -c $^ -o $@ ${INCDIR} ${LIBDIR} $(LIBFLAG) $(GSLFLAG)
+	$(GCC) $(CCFLAG) $(PHASE_ONLY_FLAGS) $(DSET_FLAGS) -c $^ -o $@ ${INCDIR} ${LIBDIR} $(LIBFLAG) $(GSLFLAG)
 
 ####--------
 #  Testing

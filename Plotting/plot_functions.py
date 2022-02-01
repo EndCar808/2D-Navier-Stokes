@@ -188,6 +188,12 @@ def plot_phase_snaps(out_dir, i, w, phases, enrg_spec, enst_spec, spec_lims, w_m
     ## Print Update
     print("SNAP: {}".format(i))
 
+    ## Generate colour maps
+    my_hsv = cm.jet
+    my_hsv.set_under(color = "white")
+    my_magma = mpl.colors.ListedColormap(cm.magma.colors[::-1])
+    my_magma.set_under(color = "white")
+
     ## Create Figure
     fig = plt.figure(figsize = (16, 8))
     gs  = GridSpec(2, 2, hspace = 0.35, wspace = -0.45)
@@ -216,10 +222,6 @@ def plot_phase_snaps(out_dir, i, w, phases, enrg_spec, enst_spec, spec_lims, w_m
     #--------------------------
     # Plot Phases   
     #--------------------------
-    ## Generate colour map
-    my_hsv = cm.jet
-    my_hsv.set_under(color = "white")
-
     ax2  = fig.add_subplot(gs[0, 1])
     im2  = ax2.imshow(phases, extent = (-Ny / 3 + 1, Ny / 3, -Nx / 3 + 1, Nx / 3), cmap = my_hsv, vmin = 0., vmax = 2. * np.pi)
     ax2.set_xlabel(r"$k_y$")
@@ -240,7 +242,7 @@ def plot_phase_snaps(out_dir, i, w, phases, enrg_spec, enst_spec, spec_lims, w_m
     # Plot 2D Enstrophy Spectra   
     #--------------------------
     ax3  = fig.add_subplot(gs[1, 0])
-    im3  = ax3.imshow(enst_spec, extent = (-Ny / 3 + 1, Ny / 3, -Nx / 3 + 1, Nx / 3), cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1]), norm = mpl.colors.LogNorm()) # , vmin = spec_lims[3], vmax = spec_lims[2]
+    im3  = ax3.imshow(enst_spec, extent = (-Ny / 3 + 1, Ny / 3, -Nx / 3 + 1, Nx / 3), cmap = my_magma, norm = mpl.colors.LogNorm(), vmin = spec_lims[3], vmax = spec_lims[2]) # extent = (-Ny / 3 + 1, Ny / 3, -Nx / 3 + 1, Nx / 3), cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1]), 
     ax3.set_xlabel(r"$k_y$")
     ax3.set_ylabel(r"$k_x$")
     ax3.set_title("Enstrophy Spectrum")
@@ -254,7 +256,7 @@ def plot_phase_snaps(out_dir, i, w, phases, enrg_spec, enst_spec, spec_lims, w_m
     ## Plot 2D Energy Spectra  
     ##-------------------------
     ax4  = fig.add_subplot(gs[1, 1])
-    im4  = ax4.imshow(enrg_spec, extent = (-Ny / 3 + 1, Ny / 3, -Nx / 3 + 1, Nx / 3), cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1]), norm = mpl.colors.LogNorm()) # , vmin = spec_lims[1], vmax = spec_lims[0]
+    im4  = ax4.imshow(enrg_spec, extent = (-Ny / 3 + 1, Ny / 3, -Nx / 3 + 1, Nx / 3), cmap = my_magma, norm = mpl.colors.LogNorm(), vmin = spec_lims[1], vmax = spec_lims[0]) # , cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1]), 
     ax4.set_xlabel(r"$k_y$")
     ax4.set_ylabel(r"$k_x$")
     ax4.set_title("Energy Spectrum")

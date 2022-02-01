@@ -49,10 +49,12 @@ int GetCMLArgs(int argc, char** argv) {
 	file_info->output_file_only = 0; // used to indicate if output file should be file only i.e., not output folder
 	// Number of wavevector space sectors
 	sys_vars->num_sect = 40;
+	// Fraction of maximum wavevector
+	sys_vars->kmax_frac = 1.0;
 	// -------------------------------
 	// Parse CML Arguments
 	// -------------------------------
-	while ((c = getopt(argc, argv, "a:o:h:n:s:e:t:v:i:c:p:f:z:")) != -1) {
+	while ((c = getopt(argc, argv, "a:o:h:n:s:e:t:v:i:c:p:f:z:k:")) != -1) {
 		switch(c) {
 			case 'o':
 				if (output_dir_flag == 0) {
@@ -81,6 +83,14 @@ int GetCMLArgs(int argc, char** argv) {
 				sys_vars->num_sect = atoi(optarg); 
 				if (sys_vars->num_sect <= 0) {
 					fprintf(stderr, "\n["RED"ERROR"RESET"]: Error in reading in command line agument ["CYAN"%s"RESET"], number of sector angles must be strictly positive, number provided ["CYAN"%d"RESET"]\n--->> Now Exiting!\n", "sys_vars->num_sect", sys_vars->num_sect);
+					exit(1);
+				}
+				break;
+			case 'k':
+				// Get the fraction of kmax wavevectors to consider in the phase sync
+				sys_vars->kmax_frac = atof(optarg); 
+				if (sys_vars->kmax_frac <= 0 || sys_vars->kmax_frac > 1.0) {
+					fprintf(stderr, "\n["RED"ERROR"RESET"]: Error in reading in command line agument ["CYAN"%s"RESET"], the fraction of maximum wavevector must be in (0, 1], fraction provided ["CYAN"%lf"RESET"]\n--->> Now Exiting!\n", "sys_vars->kmax_frac", sys_vars->kmax_frac);
 					exit(1);
 				}
 				break;

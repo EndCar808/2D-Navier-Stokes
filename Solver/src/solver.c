@@ -72,7 +72,7 @@ void SpectralSolve(void) {
 	// Initialize the System
 	// -------------------------------
 	// If in testing / debug mode - create/ open test file
-	#ifdef DEBUG
+	#if defined(DEBUG)
 	OpenTestingFile();
 	#endif
 
@@ -90,10 +90,10 @@ void SpectralSolve(void) {
 	double t;
 	double dt;
 	double T;
-	int print_update;
+	long int trans_steps;
 
 	// Get timestep and other integration variables
-	InitializeIntegrationVariables(&t0, &t, &dt, &T, &print_update);
+	InitializeIntegrationVariables(&t0, &t, &dt, &T, &trans_steps);
 	
 	// -------------------------------
 	// Create & Open Output File
@@ -107,26 +107,30 @@ void SpectralSolve(void) {
 	// -------------------------------------------------
 	// Print IC to Screen 
 	// -------------------------------------------------
-	#ifdef __PRINT_SCREEN
+	#if defined(__PRINT_SCREEN)
 	PrintUpdateToTerminal(0, t0, dt, T, 0);
 	#endif	
 	
 	//////////////////////////////
 	// Begin Integration
 	//////////////////////////////
-	#ifdef __DPRK5
+	#if defined(__DPRK5)
 	try = 1;
 	double dt_new;
 	#endif
 	t 				   += dt;
 	int iters          = 1;
+	#if defined(TRANSIENTS)
+	int save_data_indx = 0;
+	#else
 	int save_data_indx = 1;
+	#endif
 	while (t <= T) {
 
 		// -------------------------------	
 		// Integration Step
 		// -------------------------------
-		#ifdef __RK4
+		#if defined(__RK4)
 		RK4Step(dt, N, sys_vars->local_Nx, RK_data);
 		#elif defined(__RK5)
 		RK5DPStep(dt, N, sys_vars->local_Nx, RK_data);
@@ -154,8 +158,8 @@ void SpectralSolve(void) {
 		// -------------------------------
 		// Write To File
 		// -------------------------------
-		if (iters % sys_vars->SAVE_EVERY == 0) {
-			#ifdef TESTING
+		if ((iters > trans_steps) && (iters % sys_vars->SAVE_EVERY == 0)) {
+			#if defined(TESTING)
 			TaylorGreenSoln(t, N);
 			#endif
 
@@ -171,8 +175,19 @@ void SpectralSolve(void) {
 		// -------------------------------
 		// Print Update To Screen
 		// -------------------------------
-		#ifdef __PRINT_SCREEN
+		#if defined(__PRINT_SCREEN)
+		#if defined(TRANSIENTS)
+		if (iters == trans_steps && !(sys_vars->rank)) {
+			printf("\n\n...Transient Iterations Complete!\n\n");
+		}
+		#endif
 		if (iters % sys_vars->SAVE_EVERY == 0) {
+			#if defined(TRANSIENTS)
+			if (iters <= sys_vars->trans_iters) {
+				// If currently performing transient iters, call system measure for printing to screen
+				RecordSystemMeasures(t, save_data_indx, RK_data);
+			}
+			#endif
 			PrintUpdateToTerminal(iters, t, dt, T, save_data_indx - 1);
 		}
 		#endif
@@ -222,16 +237,16 @@ void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdif
 	// Initialize vairables
 	int tmp;
 	int indx;
-	#ifdef __NAVIER
+	#if defined(__NAVIER)
 	double k_sqr;
 	double D_fac;
 	#endif
 	const long int Ny_Fourier = N[1] / 2 + 1;
-	#ifdef __DPRK5
+	#if defined(__DPRK5)
 	const long int Nx = N[0];
 	double dp_ho_step;
 	#endif
-	#ifdef PHASE_ONLY
+	#if defined(PHASE_ONLY)
 	// Pre-record the amplitudes so they can be reset after update step
 	for (int i = 0; i < local_Nx; ++i) {
 		tmp = i * Ny_Fourier;
@@ -305,7 +320,7 @@ void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdif
 	}
 	// ----------------------- Stage 6
 	NonlinearRHSBatch(RK_data->RK_tmp, RK_data->RK6, RK_data->nabla_psi, RK_data->nabla_w);
-	#ifdef __DPRK5
+	#if defined(__DPRK5)
 	for (int i = 0; i < local_Nx; ++i) {
 		tmp = i * Ny_Fourier;
 		for (int j = 0; j < Ny_Fourier; ++j) {
@@ -356,15 +371,15 @@ void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdif
 			// Complete the update step
 			run_data->w_hat[indx] = run_data->w_hat[indx] * ((2.0 - D_fac) / (2.0 + D_fac)) + (2.0 * dt / (2.0 + D_fac)) * (RK5_B1 * RK_data->RK1[indx] + RK5_B3 * RK_data->RK3[indx] + RK5_B4 * RK_data->RK4[indx] + RK5_B5 * RK_data->RK5[indx] + RK5_B6 * RK_data->RK6[indx]);
 			#endif
-			#ifdef PHASE_ONLY
+			#if defined(PHASE_ONLY)
 			// Reset the amplitudes
 			run_data->w_hat[indx] *= (tmp_a_k_norm / cabs(run_data->w_hat[indx]));
 			#endif
-			#ifdef __DPRK5
+			#if defined(__DPRK5)
 			if (iters > 1) {
 				// Get the higher order update step
 				dp_ho_step = run_data->w_hat[indx] + (dt * (RK5_Bs1 * RK_data->RK1[indx]) + dt * (RK5_Bs3 * RK_data->RK3[indx]) + dt * (RK5_Bs4 * RK_data->RK4[indx]) + dt * (RK5_Bs5 * RK_data->RK5[indx]) + dt * (RK5_Bs6 * RK_data->RK6[indx])) + dt * (RK5_Bs7 * RK_data->RK7[indx]));
-				#ifdef PHASE_ONLY
+				#if defined(PHASE_ONLY)
 				// Reset the amplitudes
 				dp_ho_step *= (tmp_a_k_norm / cabs(run_data->w_hat[indx]))
 				#endif
@@ -378,7 +393,11 @@ void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdif
 			#endif
 		}
 	}
-	#ifdef __DPRK5
+	#if defined(__NONLIN)
+	// Record the nonlinear for the updated Fourier vorticity
+	NonlinearRHSBatch(run_data->w_hat, run_data->nonlinterm, RK_data->nabla_psi, RK_data->nabla_w);
+	#endif
+	#if defined(__DPRK5)
 	if (iters > 1) {
 		// Reduce and sync the error sum across the processes
 		MPI_Allreduce(MPI_IN_PLACE, &err_sum, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
@@ -400,7 +419,7 @@ void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdif
 	#endif
 }
 #endif
-#ifdef __DPRK5
+#if defined(__DPRK5)
 /**
  * Function used to find the max between two numbers -> used in the Dormand Prince scheme
  * @param  a Double that will be used to find the max
@@ -452,18 +471,18 @@ double DPMin(double a, double b) {
  * @param local_Nx Int indicating the local size of the first dimension of the arrays	
  * @param RK_data  Struct pointing the Integration variables: stages, tmp arrays, rhs and arrays needed for NonlinearRHS function
  */
-#ifdef __RK4
+#if defined(__RK4)
 void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Nx, RK_data_struct* RK_data) {
 
 	// Initialize vairables
 	int tmp;
 	int indx;
-	#ifdef __NAVIER
+	#if defined(__NAVIER)
 	double k_sqr;
 	double D_fac;
 	#endif
 	const long int Ny_Fourier = N[1] / 2 + 1;
-	#ifdef PHASE_ONLY
+	#if defined(PHASE_ONLY)
 	// Pre-record the amplitudes so they can be reset after update step
 	for (int i = 0; i < local_Nx; ++i) {
 		tmp = i * Ny_Fourier;
@@ -552,7 +571,7 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Nx, RK_da
 			D_fac = dt * (sys_vars->NU * k_sqr); 
 			#endif
 
-			// Update temporary input for nonlinear term
+			// Update Fourier vorticity
 			run_data->w_hat[indx] = run_data->w_hat[indx] * ((2.0 - D_fac) / (2.0 + D_fac)) + (2.0 * dt / (2.0 + D_fac)) * (RK4_B1 * RK_data->RK1[indx] + RK4_B2 * RK_data->RK2[indx] + RK4_B3 * RK_data->RK3[indx] + RK4_B4 * RK_data->RK4[indx]);
 			#endif
 			#if defined(PHASE_ONLY)
@@ -560,6 +579,10 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Nx, RK_da
 			#endif
 		}
 	}
+	#if defined(__NONLIN)
+	// Record the nonlinear term with the updated Fourier vorticity
+	NonlinearRHSBatch(run_data->w_hat, run_data->nonlinterm, RK_data->nabla_psi, RK_data->nabla_w);
+	#endif
 }
 #endif
 /**
@@ -712,7 +735,7 @@ void ApplyDealiasing(fftw_complex* array, int array_dim, const long int* N) {
 	const long int Nx         = N[0];
 	const long int Ny         = N[1];
 	const long int Ny_Fourier = Ny / 2 + 1;
-	#ifdef __DEALIAS_HOU_LI
+	#if defined(__DEALIAS_HOU_LI)
 	double hou_li_filter;
 	#endif
 
@@ -724,7 +747,7 @@ void ApplyDealiasing(fftw_complex* array, int array_dim, const long int* N) {
 		for (int j = 0; j < Ny_Fourier; ++j) {
 			indx = array_dim * (tmp + j);
 
-			#ifdef __DEALIAS_23
+			#if defined(__DEALIAS_23)
 			if (sqrt((double) run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]) > Nx / 3) {
 				for (int l = 0; l < array_dim; ++l) {
 					// Set dealised modes to 0
@@ -894,7 +917,7 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 		double u1;
 		double spec_1d;
 
-		#ifdef DEBUG
+		#if defined(DEBUG)
 		double* rand_u = (double*)fftw_malloc(sizeof(double) * Nx * Ny_Fourier);
 		#endif
 		// ---------------------------------------------------------------
@@ -936,7 +959,7 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 					
 					// Generate uniform random number between 0, 1
 					u1 = (double)rand() / (double) RAND_MAX;
-					#ifdef DEBUG
+					#if defined(DEBUG)
 					rand_u[indx] = u1;
 					#endif
 
@@ -951,7 +974,7 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 				}
 			}
 		}
-		#ifdef DEBUG
+		#if defined(DEBUG)
 		int dims[2] = {Nx, Ny_Fourier};
 		WriteTestDataReal(rand_u, "rand_u", 2, dims, local_Nx);
 		WriteTestDataFourier(w_hat, "w_hat", Nx, Ny_Fourier, local_Nx);
@@ -1018,7 +1041,7 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 		double u1, u2, z1, z2;
 		double spec_1d;
 
-		#ifdef DEBUG
+		#if defined(DEBUG)
 		fftw_complex* rand_u = (fftw_complex*)fftw_malloc(sizeof(fftw_complex) * Nx * Ny_Fourier);
 		#endif
 
@@ -1045,7 +1068,7 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 				z1 = sqrt(-2.0 * log(u1)) * cos(2.0 * M_PI * u2);
 				z2 = sqrt(-2.0 * log(u1)) * sin(2.0 * M_PI * u2);
 
-				#ifdef DEBUG
+				#if defined(DEBUG)
 				rand_u[indx] = (z1  + z2 * I);
 				#endif
 
@@ -1064,7 +1087,7 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 				}
 			}
 		}
-		#ifdef DEBUG
+		#if defined(DEBUG)
 		WriteTestDataFourier(rand_u, "rand_u", Nx, Ny_Fourier, local_Nx);
 		WriteTestDataFourier(psi_hat, "psi_hat", Nx, Ny_Fourier, local_Nx);
 		fftw_free(rand_u);
@@ -1343,7 +1366,7 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 	// Initialize Taylor Green Vortex Soln 
 	// -------------------------------------------------
 	// If testing is enabled and TG initial condition selected -> compute TG solution for writing to file @ t = t0
-	#ifdef TESTING
+	#if defined(TESTING)
 	if(!(strcmp(sys_vars->u0, "TG_VEL")) || !(strcmp(sys_vars->u0, "TG_VORT"))) {
 		TaylorGreenSoln(0.0, N);
 	}
@@ -1409,14 +1432,14 @@ void InitializeSpaceVariables(double** x, int** k, const long int* N) {
  * @param t            The current time of the simulaiton
  * @param dt           The timestep
  * @param T            The final time of the simulation
- * @param print_update Variable to control the printing of updates to screen
+ * @param trans_steps  The number of iterations to perform before saving to file begins
  */
-void InitializeIntegrationVariables(double* t0, double* t, double* dt, double* T, int* print_update) {
+void InitializeIntegrationVariables(double* t0, double* t, double* dt, double* T, long int* trans_steps) {
 	
 	// -------------------------------
 	// Get the Timestep
 	// -------------------------------
-	#ifdef __ADAPTIVE_STEP
+	#if defined(__ADAPTIVE_STEP)
 	GetTimestep(&(sys_vars->dt));
 	#endif
 
@@ -1435,15 +1458,31 @@ void InitializeIntegrationVariables(double* t0, double* t, double* dt, double* T
 	// Integration Counters
 	// -------------------------------
 	// Number of time steps and saving steps
-	sys_vars->num_t_steps     = ((*T) - (*t0)) / (*dt);
+	sys_vars->num_t_steps = ((*T) - (*t0)) / (*dt);
+	#if defined(TRANSIENTS)
+	// Get the transient iterations
+	(* trans_steps)       = (long int)(TRANS_FRAC * sys_vars->num_t_steps);
+	sys_vars->trans_iters = (* trans_steps);
+
+	// Get the number of steps to perform before printing to file -> allowing for a transient fraction of these to be ignored
+	sys_vars->num_print_steps = (sys_vars->num_t_steps >= sys_vars->SAVE_EVERY ) ? (sys_vars->num_t_steps - sys_vars->trans_iters) / sys_vars->SAVE_EVERY : sys_vars->num_t_steps - sys_vars->trans_iters;	 
+	if (!(sys_vars->rank)){
+		printf("Total Iters: %ld\t Saving Iters: %ld\t Transient Steps: %ld\n", sys_vars->num_t_steps, sys_vars->num_print_steps, sys_vars->trans_iters);
+	}
+	#else
+	// Get the transient iterations
+	(* trans_steps)       = 0;
+	sys_vars->trans_iters = (* trans_steps);
+
+	// Get the number of steps to perform before printing to file
 	sys_vars->num_print_steps = (sys_vars->num_t_steps >= sys_vars->SAVE_EVERY ) ? sys_vars->num_t_steps / sys_vars->SAVE_EVERY + 1 : sys_vars->num_t_steps + 1; // plus one to include initial condition
 	if (!(sys_vars->rank)){
 		printf("Total Iters: %ld\t Saving Iters: %ld\n", sys_vars->num_t_steps, sys_vars->num_print_steps);
 	}
+	#endif
 
 	// Variable to control how ofter to print to screen -> set it to half the saving to file steps
-	(*print_update)       = (sys_vars->num_t_steps >= 10 ) ? (int)sys_vars->SAVE_EVERY : 1;
-	sys_vars->print_every = (*print_update);
+	sys_vars->print_every = (sys_vars->num_t_steps >= 10 ) ? (int)sys_vars->SAVE_EVERY : 1;
 }
 /**
  * Function used to compute of either the velocity or vorticity
@@ -1619,7 +1658,7 @@ void PrintUpdateToTerminal(int iters, double t, double dt, double T, int save_da
 	// Initialize variables
 	double max_vort;
 
-	#ifdef TESTING
+	#if defined(TESTING)
 	// Initialize norms array
 	double norms[2];
 	
@@ -1660,7 +1699,7 @@ void GetTimestep(double* dt) {
 	// -------------------------------
 	// Compute New Timestep
 	// -------------------------------
-	#ifdef __CFL_STEP
+	#if defined(__CFL_STEP)
 	// Initialize variables
 	int tmp;
 	int indx;
@@ -1762,7 +1801,7 @@ void GetTimestep(double* dt) {
 	// -------------------------------
 	// Record Min/Max Timestep
 	// -------------------------------
-	#ifndef __DPRK5
+	#if !defined(__DPRK5)
 	// Get min timestep
 	sys_vars->min_dt = fmin((*dt), sys_vars->min_dt);
 	// Get max timestep
@@ -2647,7 +2686,7 @@ void RecordSystemMeasures(double t, int print_indx, RK_data_struct* RK_data) {
 	// Record the System Measures 
 	// -------------------------------
 	// The integration time
-	#ifdef __TIME
+	#if defined(__TIME)
 	if (!(sys_vars->rank)) {
 		run_data->time[print_indx] = t;
 	}
@@ -2655,7 +2694,7 @@ void RecordSystemMeasures(double t, int print_indx, RK_data_struct* RK_data) {
 
 	// Check if within memory limits
 	if (print_indx < sys_vars->num_print_steps) {
-		#ifdef __SYS_MEASURES
+		#if defined(__SYS_MEASURES)
 		// Total Energy, enstrophy and palinstrophy
 		run_data->tot_enstr[print_indx]  = TotalEnstrophy();
 		run_data->tot_energy[print_indx] = TotalEnergy();
@@ -2664,11 +2703,11 @@ void RecordSystemMeasures(double t, int print_indx, RK_data_struct* RK_data) {
 		run_data->enrg_diss[print_indx] = EnergyDissipationRate();
 		run_data->enst_diss[print_indx] = EnstrophyDissipationRate();
 		#endif
-		#ifdef __ENST_FLUX
+		#if defined(__ENST_FLUX)
 		// Enstrophy and energy flux in/out and dissipation of a subset of modes
 		EnstrophyFlux(&(run_data->enst_flux_sbst[print_indx]), &(run_data->enst_diss_sbst[print_indx]), RK_data);
 		#endif
-		#ifdef __ENRG_FLUX
+		#if defined(__ENRG_FLUX)
 		EnergyFlux(&(run_data->enrg_flux_sbst[print_indx]), &(run_data->enrg_diss_sbst[print_indx]), RK_data);
 		#endif
 	}
@@ -2680,16 +2719,16 @@ void RecordSystemMeasures(double t, int print_indx, RK_data_struct* RK_data) {
 	// Record the Spectra 
 	// -------------------------------
 	// Call spectra functions
-	#ifdef __ENST_SPECT 
+	#if defined(__ENST_SPECT )
 	EnstrophySpectrum();
 	#endif
-	#ifdef __ENRG_SPECT
+	#if defined(__ENRG_SPECT)
 	EnergySpectrum();
 	#endif
-	#ifdef __ENRG_FLUX_SPECT
+	#if defined(__ENRG_FLUX_SPECT)
 	EnergyFluxSpectrum(RK_data);
 	#endif
-	#ifdef __ENST_FLUX_SPECT
+	#if defined(__ENST_FLUX_SPECT)
 	EnstrophyFluxSpectrum(RK_data);
 	#endif
 }
@@ -2759,7 +2798,7 @@ void AllocateMemory(const long int* NBatch, RK_data_struct* RK_data) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Fourier Space Velocities");
 		exit(1);
 	}
-	#ifdef PHASE_ONLY
+	#if defined(PHASE_ONLY)
 	// Allocate array for the Fourier amplitudes
 	run_data->a_k = (double* )fftw_malloc(sizeof(double) * sys_vars->alloc_local_batch);
 	if (run_data->a_k == NULL) {
@@ -2779,7 +2818,7 @@ void AllocateMemory(const long int* NBatch, RK_data_struct* RK_data) {
 		exit(1);
 	}
 	#endif
-	#ifdef TESTING
+	#if defined(TESTING)
 	// Allocate array for the taylor green solution
 	run_data->tg_soln = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->alloc_local);
 	if (run_data->tg_soln == NULL) {
@@ -2787,6 +2826,18 @@ void AllocateMemory(const long int* NBatch, RK_data_struct* RK_data) {
 		exit(1);
 	}
 	#endif
+	#if defined(__NONLIN)
+	// Allocate memory for recording the nonlinear term
+	run_data->nonlinterm = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->alloc_local_batch);
+	if (run_data->nonlinterm == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for Integration Array ["CYAN"%s"RESET"] \n-->> Exiting!!!\n", "Nonlinear Term");
+		exit(1);
+	}
+	#endif
+	#if defined(__RHS)
+	// Allocate memory for recording the RHS
+	#endif
+
 
 	// -------------------------------
 	// Allocate Integration Variables 
@@ -2827,7 +2878,7 @@ void AllocateMemory(const long int* NBatch, RK_data_struct* RK_data) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for Integration Array ["CYAN"%s"RESET"] \n-->> Exiting!!!\n", "RK_tmp");
 		exit(1);
 	}
-	#ifdef __RK5
+	#if defined(__RK5)
 	RK_data->RK5       = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->alloc_local_batch);
 	if (RK_data->RK5 == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for Integration Array ["CYAN"%s"RESET"] \n-->> Exiting!!!\n", "RK5");
@@ -2839,7 +2890,7 @@ void AllocateMemory(const long int* NBatch, RK_data_struct* RK_data) {
 		exit(1);
 	}
 	#endif
-	#ifdef __DPRK5
+	#if defined(__DPRK5)
 	RK_data->RK7       = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->alloc_local_batch);
 	if (RK_data->RK7 == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for Integration Array ["CYAN"%s"RESET"] \n-->> Exiting!!!\n", "RK7");
@@ -2871,38 +2922,40 @@ void AllocateMemory(const long int* NBatch, RK_data_struct* RK_data) {
 			RK_data->nabla_w[SYS_DIM * indx_real + 1] 	= 0.0;
 			RK_data->nabla_psi[SYS_DIM * indx_real + 0] = 0.0;
 			RK_data->nabla_psi[SYS_DIM * indx_real + 1] = 0.0;
-			#ifdef TESTING
+			#if defined(TESTING)
 			run_data->tg_soln[indx_real]                = 0.0;
 			#endif
 			run_data->w[indx_real]                      = 0.0;
 			if (j < Ny_Fourier) {
-				#ifdef PHASE_ONLY
-				run_data->a_k[indx_four] 				 = 0.0;
-				run_data->phi_k[indx_four]				 = 0.0;
-				run_data->tmp_a_k[indx_four] 			 = 0.0;
+				#if defined(PHASE_ONLY)
+				run_data->a_k[indx_four] 				= 0.0;
+				run_data->phi_k[indx_four]			    = 0.0;
+				run_data->tmp_a_k[indx_four] 			= 0.0;
 				#endif
-				run_data->w_hat[indx_four]               = 0.0 + 0.0 * I;
-				RK_data->RK_tmp[indx_four]    			 = 0.0 + 0.0 * I;
-				run_data->u_hat[SYS_DIM * indx_four + 0] = 0.0 + 0.0 * I;
-				run_data->u_hat[SYS_DIM * indx_four + 1] = 0.0 + 0.0 * I;
-				RK_data->RK1[SYS_DIM * indx_four + 0]    = 0.0 + 0.0 * I;
-				RK_data->RK1[SYS_DIM * indx_four + 1]    = 0.0 + 0.0 * I;
-				RK_data->RK2[SYS_DIM * indx_four + 0]    = 0.0 + 0.0 * I;
-				RK_data->RK2[SYS_DIM * indx_four + 1]    = 0.0 + 0.0 * I;
-				RK_data->RK3[SYS_DIM * indx_four + 0]    = 0.0 + 0.0 * I;
-				RK_data->RK3[SYS_DIM * indx_four + 1]    = 0.0 + 0.0 * I;
-				RK_data->RK4[SYS_DIM * indx_four + 0]    = 0.0 + 0.0 * I;
-				RK_data->RK4[SYS_DIM * indx_four + 1]    = 0.0 + 0.0 * I;
-				#ifdef __RK5
-				RK_data->RK5[SYS_DIM * indx_four + 0]    = 0.0 + 0.0 * I;
-				RK_data->RK5[SYS_DIM * indx_four + 1]    = 0.0 + 0.0 * I;
-				RK_data->RK6[SYS_DIM * indx_four + 0]    = 0.0 + 0.0 * I;
-				RK_data->RK6[SYS_DIM * indx_four + 1]    = 0.0 + 0.0 * I;
+				run_data->w_hat[indx_four]               	  = 0.0 + 0.0 * I;
+				RK_data->RK_tmp[indx_four]    			 	  = 0.0 + 0.0 * I;
+				run_data->u_hat[SYS_DIM * indx_four + 0] 	  = 0.0 + 0.0 * I;
+				run_data->u_hat[SYS_DIM * indx_four + 1] 	  = 0.0 + 0.0 * I;
+				RK_data->RK1[SYS_DIM * indx_four + 0]    	  = 0.0 + 0.0 * I;
+				RK_data->RK1[SYS_DIM * indx_four + 1]    	  = 0.0 + 0.0 * I;
+				RK_data->RK2[SYS_DIM * indx_four + 0]    	  = 0.0 + 0.0 * I;
+				RK_data->RK2[SYS_DIM * indx_four + 1]    	  = 0.0 + 0.0 * I;
+				RK_data->RK3[SYS_DIM * indx_four + 0]    	  = 0.0 + 0.0 * I;
+				RK_data->RK3[SYS_DIM * indx_four + 1]    	  = 0.0 + 0.0 * I;
+				RK_data->RK4[SYS_DIM * indx_four + 0]    	  = 0.0 + 0.0 * I;
+				RK_data->RK4[SYS_DIM * indx_four + 1]    	  = 0.0 + 0.0 * I;
+				run_data->nonlinterm[SYS_DIM * indx_four + 0] = 0.0 + 0.0 * I;
+				run_data->nonlinterm[SYS_DIM * indx_four + 1] = 0.0 + 0.0 * I;
+				#if defined(__RK5)
+				RK_data->RK5[SYS_DIM * indx_four + 0]    	  = 0.0 + 0.0 * I;
+				RK_data->RK5[SYS_DIM * indx_four + 1]    	  = 0.0 + 0.0 * I;
+				RK_data->RK6[SYS_DIM * indx_four + 0]    	  = 0.0 + 0.0 * I;
+				RK_data->RK6[SYS_DIM * indx_four + 1]    	  = 0.0 + 0.0 * I;
 				#endif
-				#ifdef __DPRK5
-				RK_data->RK7[SYS_DIM * indx_four + 0]    = 0.0 + 0.0 * I;
-				RK_data->RK7[SYS_DIM * indx_four + 1]    = 0.0 + 0.0 * I;
-				RK_data->w_hat_last[indx_four]			 = 0.0 + 0.0 * I;
+				#if defined(__DPRK5)
+				RK_data->RK7[SYS_DIM * indx_four + 0]    	 = 0.0 + 0.0 * I;
+				RK_data->RK7[SYS_DIM * indx_four + 1]    	 = 0.0 + 0.0 * I;
+				RK_data->w_hat_last[indx_four]			 	 = 0.0 + 0.0 * I;
 				#endif
 				if (i == 0) {
 					if (j < Ny_Fourier) {
@@ -2955,7 +3008,7 @@ void InitializeFFTWPlans(const long int* N) {
 void InitializeSystemMeasurables(RK_data_struct* RK_data) {
 
 	// Set the size of the arrays to twice the number of printing steps to account for extra steps due to adaptive stepping
-	#ifdef __ADAPTIVE_STEP
+	#if defined(__ADAPTIVE_STEP)
 	sys_vars->num_print_steps = 2 * sys_vars->num_print_steps;
 	#else
 	sys_vars->num_print_steps = sys_vars->num_print_steps;
@@ -2974,7 +3027,7 @@ void InitializeSystemMeasurables(RK_data_struct* RK_data) {
 	// ------------------------
 	// Allocate Memory
 	// ------------------------
-	#ifdef __SYS_MEASURES
+	#if defined(__SYS_MEASURES)
 	// Total Energy in the system
 	run_data->tot_energy = (double* )fftw_malloc(sizeof(double) * print_steps);
 	if (run_data->tot_energy == NULL) {
@@ -3010,7 +3063,7 @@ void InitializeSystemMeasurables(RK_data_struct* RK_data) {
 		exit(1);
 	}	
 	#endif
-	#ifdef __ENST_SPECT 
+	#if defined(__ENST_SPECT )
 	// Enstrophy Spectrum
 	run_data->enst_spect = (double* )fftw_malloc(sizeof(double) * n_spect);
 	if (run_data->enst_spect == NULL) {
@@ -3018,7 +3071,7 @@ void InitializeSystemMeasurables(RK_data_struct* RK_data) {
 		exit(1);
 	}	
 	#endif
-	#ifdef __ENRG_SPECT 
+	#if defined(__ENRG_SPECT )
 	// Energy Spectrum
 	run_data->enrg_spect = (double* )fftw_malloc(sizeof(double) * n_spect);
 	if (run_data->enrg_spect == NULL) {
@@ -3026,7 +3079,7 @@ void InitializeSystemMeasurables(RK_data_struct* RK_data) {
 		exit(1);
 	}	
 	#endif
-	#ifdef __ENST_FLUX
+	#if defined(__ENST_FLUX)
 	// Enstrophy flux
 	run_data->enst_flux_sbst = (double* )fftw_malloc(sizeof(double) * print_steps);
 	if (run_data->enst_flux_sbst == NULL) {
@@ -3041,7 +3094,7 @@ void InitializeSystemMeasurables(RK_data_struct* RK_data) {
 		exit(1);
 	}	
 	#endif
-	#ifdef __ENRG_FLUX
+	#if defined(__ENRG_FLUX)
 	// Energy Flux
 	run_data->enrg_flux_sbst = (double* )fftw_malloc(sizeof(double) * print_steps);
 	if (run_data->enrg_flux_sbst == NULL) {
@@ -3057,7 +3110,7 @@ void InitializeSystemMeasurables(RK_data_struct* RK_data) {
 	}
 	#endif
 	// Time
-	#ifdef __TIME
+	#if defined(__TIME)
 	if (!(sys_vars->rank)){
 		run_data->time = (double* )fftw_malloc(sizeof(double) * print_steps);
 		if (run_data->time == NULL) {
@@ -3066,7 +3119,7 @@ void InitializeSystemMeasurables(RK_data_struct* RK_data) {
 		}	
 	}
 	#endif
-	#ifdef __ENST_FLUX_SPECT 
+	#if defined(__ENST_FLUX_SPECT )
 	// Enstrophy Spectrum
 	run_data->enst_flux_spect = (double* )fftw_malloc(sizeof(double) * n_spect);
 	if (run_data->enst_flux_spect == NULL) {
@@ -3074,7 +3127,7 @@ void InitializeSystemMeasurables(RK_data_struct* RK_data) {
 		exit(1);
 	}	
 	#endif
-	#ifdef __ENRG_FLUX_SPECT 
+	#if defined(__ENRG_FLUX_SPECT )
 	// Energy Spectrum
 	run_data->enrg_flux_spect = (double* )fftw_malloc(sizeof(double) * n_spect);
 	if (run_data->enrg_flux_spect == NULL) {
@@ -3086,7 +3139,7 @@ void InitializeSystemMeasurables(RK_data_struct* RK_data) {
 	// ----------------------------
 	// Get Measurables of the ICs
 	// ----------------------------
-	#ifdef __SYS_MEASURES
+	#if defined(__SYS_MEASURES)
 	// Total Energy
 	run_data->tot_energy[0] = TotalEnergy();
 
@@ -3102,16 +3155,16 @@ void InitializeSystemMeasurables(RK_data_struct* RK_data) {
 	// Enstrophy dissipation rate
 	run_data->enst_diss[0] = EnstrophyDissipationRate();
 	#endif
-	#ifdef __ENST_FLUX
+	#if defined(__ENST_FLUX)
 	// Enstrophy Flux and dissipation from/to Subset of modes
 	EnstrophyFlux(&(run_data->enst_flux_sbst[0]), &(run_data->enst_diss_sbst[0]), RK_data);
 	#endif
-	#ifdef __ENRG_FLUX
+	#if defined(__ENRG_FLUX)
 	// Energy Flux and dissipation from/to a subset of modes
 	EnergyFlux(&(run_data->enrg_flux_sbst[0]), &(run_data->enrg_diss_sbst[0]), RK_data);
 	#endif
 	// Time
-	#ifdef __TIME
+	#if defined(__TIME)
 	if (!(sys_vars->rank)) {
 		run_data->time[0] = sys_vars->t0;
 	}
@@ -3121,16 +3174,16 @@ void InitializeSystemMeasurables(RK_data_struct* RK_data) {
 	// Get Spectra of the ICs
 	// ----------------------------
 	// Call spectra functions
-	#ifdef __ENST_SPECT
+	#if defined(__ENST_SPECT)
 	EnstrophySpectrum();
 	#endif
-	#ifdef __ENRG_SPECT
+	#if defined(__ENRG_SPECT)
 	EnergySpectrum();
 	#endif
-	#ifdef __ENRG_FLUX_SPECT
+	#if defined(__ENRG_FLUX_SPECT)
 	EnergyFluxSpectrum(RK_data);
 	#endif
-	#ifdef __ENST_FLUX_SPECT
+	#if defined(__ENST_FLUX_SPECT)
 	EnstrophyFluxSpectrum(RK_data);
 	#endif
 }
@@ -3154,42 +3207,45 @@ void FreeMemory(RK_data_struct* RK_data) {
 	fftw_free(run_data->u_hat);
 	fftw_free(run_data->w);
 	fftw_free(run_data->w_hat);
-	#ifdef PHASE_ONLY
+	#if defined(PHASE_ONLY)
 	fftw_free(run_data->a_k);
 	fftw_free(run_data->phi_k);
 	fftw_free(run_data->tmp_a_k);
 	#endif
-	#ifdef __SYS_MEASURES
+	#if defined(__NONLIN)
+	fftw_free(run_data->nonlinterm);
+	#endif
+	#if defined(__SYS_MEASURES)
 	fftw_free(run_data->tot_energy);
 	fftw_free(run_data->tot_enstr);
 	fftw_free(run_data->tot_palin);
 	fftw_free(run_data->enrg_diss);
 	fftw_free(run_data->enst_diss);
 	#endif
-	#ifdef __ENST_FLUX
+	#if defined(__ENST_FLUX)
 	fftw_free(run_data->enst_flux_sbst);
 	fftw_free(run_data->enst_diss_sbst);
 	#endif
-	#ifdef __ENRG_FLUX
+	#if defined(__ENRG_FLUX)
 	fftw_free(run_data->enrg_flux_sbst);
 	fftw_free(run_data->enrg_diss_sbst);
 	#endif
-	#ifdef __ENRG_SPECT
+	#if defined(__ENRG_SPECT)
 	fftw_free(run_data->enrg_spect);
 	#endif
-	#ifdef __ENRG_FLUX_SPECT
+	#if defined(__ENRG_FLUX_SPECT)
 	fftw_free(run_data->enrg_flux_spect);
 	#endif
-	#ifdef __ENST_SPECT
+	#if defined(__ENST_SPECT)
 	fftw_free(run_data->enst_spect);
 	#endif
-	#ifdef __ENST_FLUX_SPECT
+	#if defined(__ENST_FLUX_SPECT)
 	fftw_free(run_data->enst_flux_spect);
 	#endif
-	#ifdef TESTING
+	#if defined(TESTING)
 	fftw_free(run_data->tg_soln);
 	#endif
-	#ifdef __TIME
+	#if defined(__TIME)
 	if (!(sys_vars->rank)){
 		fftw_free(run_data->time);
 	}
@@ -3200,11 +3256,11 @@ void FreeMemory(RK_data_struct* RK_data) {
 	fftw_free(RK_data->RK2);
 	fftw_free(RK_data->RK3);
 	fftw_free(RK_data->RK4);
-	#ifdef __RK5
+	#if defined(__RK5)
 	fftw_free(RK_data->RK5);
 	fftw_free(RK_data->RK6);
 	#endif 
-	#ifdef __DPRK5
+	#if defined(__DPRK5)
 	fftw_free(RK_data->RK7);
 	fftw_free(RK_data->w_hat_last);
 	#endif

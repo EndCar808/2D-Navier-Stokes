@@ -88,7 +88,7 @@ int main(int argc, char** argv) {
 	// Begin Snapshot Processing
 	//////////////////////////////
 	printf("\nStarting Snapshot Processing:\n");
-	for (int s = 0; s < sys_vars->num_snaps; ++s) {
+	for (int s = 0; s < 5; ++s) { // sys_vars->num_snaps
 		
 		// Print update to screen
 		printf("Snapshot: %d\n", s);
@@ -112,8 +112,9 @@ int main(int argc, char** argv) {
 		// Compute the enstrophy spectrum
 		EnstrophySpectrum();
         EnergySpectrum();
-        EnstrophySpectrumAlt();
-        EnergySpectrumAlt();
+		#endif
+		#if defined(__ENST_FLUX) || defined(__SEC_PHASE_SYNC)
+        EnstrophyFluxSpectrum(s);
 		#endif
 
 		// --------------------------------

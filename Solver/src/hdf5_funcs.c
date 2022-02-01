@@ -112,6 +112,7 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 	// --------------------------------------
 	// Write Initial Conditions
 	// --------------------------------------
+	#if !defined(TRANSIENTS)
 	// Create dimension arrays
 	static const int d_set_rank2D = 2;
 	hsize_t dset_dims2D[d_set_rank2D];        // array to hold dims of the dataset to be created
@@ -125,7 +126,7 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 	#endif
 
 
-	#ifdef __VORT_REAL
+	#if defined(__VORT_REAL)
 	// Transform vorticity back to real space and normalize
 	fftw_mpi_execute_dft_c2r(sys_vars->fftw_2d_dft_c2r, run_data->w_hat, run_data->w);
 	for (int i = 0; i < sys_vars->local_Nx; ++i) {
@@ -149,7 +150,7 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 	// Write the real space vorticity
 	WriteDataReal(0.0, 0, main_group_id, "w", H5T_NATIVE_DOUBLE, d_set_rank2D, dset_dims2D, slab_dims2D, mem_space_dims2D, sys_vars->local_Nx_start, run_data->w);
 	#endif
-	#ifdef __VORT_FOUR
+	#if defined(__VORT_FOUR)
 	// Create dimension arrays
 	dset_dims2D[0] 	  = Nx;
 	dset_dims2D[1] 	  = Ny_Fourier;
@@ -185,7 +186,7 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 		}
 	}
 	#endif
-	#ifdef __MODES
+	#if defined(__MODES)
 	// Create dimension arrays
 	dset_dims3D[0] 	    = Nx;
 	dset_dims3D[1] 	    = Ny_Fourier;
@@ -200,7 +201,7 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 	// Write the real space vorticity
 	WriteDataFourier(0.0, 0, main_group_id, "u_hat", file_info->COMPLEX_DTYPE, d_set_rank3D, dset_dims3D, slab_dims3D, mem_space_dims3D, sys_vars->local_Nx_start, run_data->u_hat);
 	#endif
-	#ifdef __REALSPACE
+	#if defined(__REALSPACE)
 	// Transform velocities back to real space and normalize
 	fftw_mpi_execute_dft_c2r(sys_vars->fftw_2d_dft_batch_c2r, run_data->u_hat, run_data->u);
 	for (int i = 0; i < sys_vars->local_Nx; ++i) {
@@ -228,7 +229,7 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 	// Write the real space vorticity
 	WriteDataReal(0.0, 0, main_group_id, "u", H5T_NATIVE_DOUBLE, d_set_rank3D, dset_dims3D, slab_dims3D, mem_space_dims3D, sys_vars->local_Nx_start, run_data->u);
 	#endif
-	#ifdef PHASE_ONLY
+	#if defined(PHASE_ONLY)
 	// Record the Fourier amplitudes and phases
 	for (int i = 0; i < sys_vars->local_Nx; ++i) {
 		tmp = i * Ny_Fourier;
@@ -256,7 +257,7 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 	// Write the Fourier phases
 	WriteDataFourier(0.0, 0, main_group_id, "phi_k", H5T_NATIVE_DOUBLE, d_set_rank2D, dset_dims2D, slab_dims2D, mem_space_dims2D, sys_vars->local_Nx_start, run_data->phi_k);
 	#endif
-	#ifdef TESTING
+	#if defined(TESTING)
 	if (!(strcmp(sys_vars->u0, "TG_VEL")) || !(strcmp(sys_vars->u0, "TG_VORT"))) {
 		// Create dimension arrays
 		dset_dims2D[0] 	    = Nx;
@@ -274,38 +275,39 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 	// Gather Spectra data and write to file
 	if (!sys_vars->rank) {
 		// Gather spectra data on master process & write to file
-		#ifdef __ENST_SPECT
+		#if defined(__ENST_SPECT)
 		MPI_Reduce(MPI_IN_PLACE, run_data->enst_spect, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		WriteDataSpect(0.0, 0, spectra_group_id, sys_vars->n_spect, "EnstrophySpectrum", run_data->enst_spect);
 		#endif 
-		#ifdef __ENRG_SPECT
+		#if defined(__ENRG_SPECT)
 		MPI_Reduce(MPI_IN_PLACE, run_data->enrg_spect, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		WriteDataSpect(0.0, 0, spectra_group_id, sys_vars->n_spect, "EnergySpectrum", run_data->enrg_spect);
 		#endif
-		#ifdef __ENST_FLUX_SPECT
+		#if defined(__ENST_FLUX_SPECT)
 		MPI_Reduce(MPI_IN_PLACE, run_data->enst_flux_spect, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		WriteDataSpect(0.0, 0, spectra_group_id, sys_vars->n_spect, "EnstrophyFluxSpectrum", run_data->enst_flux_spect);
 		#endif
-		#ifdef __ENRG_FLUX_SPECT
+		#if defined(__ENRG_FLUX_SPECT)
 		MPI_Reduce(MPI_IN_PLACE, run_data->enrg_flux_spect, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		WriteDataSpect(0.0, 0, spectra_group_id, sys_vars->n_spect, "EnergyFluxSpectrum", run_data->enrg_flux_spect);
 		#endif
 	}
 	else {
 		// Reduce all other process to master rank
-		#ifdef __ENST_SPECT
+		#if defined(__ENST_SPECT)
 		MPI_Reduce(run_data->enst_spect, NULL,  sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		#endif
-		#ifdef __ENRG_SPECT
+		#if defined(__ENRG_SPECT)
 		MPI_Reduce(run_data->enrg_spect, NULL,  sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		#endif
-		#ifdef __ENST_FLUX_SPECT
+		#if defined(__ENST_FLUX_SPECT)
 		MPI_Reduce(run_data->enst_flux_spect, NULL,  sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		#endif
-		#ifdef __ENRG_FLUX_SPECT
+		#if defined(__ENRG_FLUX_SPECT)
 		MPI_Reduce(run_data->enrg_flux_spect, NULL,  sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		#endif
 	}
+	#endif
 	#endif
 
 	
@@ -587,7 +589,7 @@ void WriteDataToFile(double t, double dt, long int iters) {
 	// -------------------------------
 	// Write Data to File
 	// -------------------------------
-	#ifdef __VORT_REAL
+	#if defined(__VORT_REAL)
 	// Transform Fourier space vorticiy to real space and normalize
 	fftw_mpi_execute_dft_c2r(sys_vars->fftw_2d_dft_c2r, run_data->w_hat, run_data->w);
 	for (int i = 0; i < sys_vars->local_Nx; ++i) {
@@ -611,7 +613,7 @@ void WriteDataToFile(double t, double dt, long int iters) {
 	// Write the real space vorticity
 	WriteDataReal(t, (int)iters, main_group_id, "w", H5T_NATIVE_DOUBLE, d_set_rank2D, dset_dims2D, slab_dims2D, mem_space_dims2D, sys_vars->local_Nx_start, run_data->w);
 	#endif
-	#ifdef __VORT_FOUR
+	#if defined(__VORT_FOUR)
 	// Create dimension arrays
 	dset_dims2D[0] = Nx;
 	dset_dims2D[1] = Ny_Fourier;
@@ -645,7 +647,7 @@ void WriteDataToFile(double t, double dt, long int iters) {
 		}
 	}
 	#endif
-	#ifdef __MODES
+	#if defined(__MODES)
 	// Create dimension arrays
 	dset_dims3D[0] 	    = Nx;
 	dset_dims3D[1] 	    = Ny_Fourier;
@@ -660,7 +662,7 @@ void WriteDataToFile(double t, double dt, long int iters) {
 	// Write the real space vorticity
 	WriteDataFourier(t, (int)iters, main_group_id, "u_hat", file_info->COMPLEX_DTYPE, d_set_rank3D, dset_dims3D, slab_dims3D, mem_space_dims3D, sys_vars->local_Nx_start, run_data->u_hat);
 	#endif
-	#ifdef __REALSPACE
+	#if defined(__REALSPACE)
 	// Transform velocities back to real space and normalize
 	fftw_mpi_execute_dft_c2r(sys_vars->fftw_2d_dft_batch_c2r, run_data->u_hat, run_data->u);
 	for (int i = 0; i < sys_vars->local_Nx; ++i) {
@@ -688,17 +690,29 @@ void WriteDataToFile(double t, double dt, long int iters) {
 	// Write the real space vorticity
 	WriteDataReal(t, (int)iters, main_group_id, "u", H5T_NATIVE_DOUBLE, d_set_rank3D, dset_dims3D, slab_dims3D, mem_space_dims3D, sys_vars->local_Nx_start, run_data->u);
 	#endif
-	#ifdef PHASE_ONLY
+	#if defined(__NONLIN)
+	// Create dimension arrays for the Fourier nonlinear term
+	dset_dims2D[0] 	  = Nx;
+	dset_dims2D[1] 	  = Ny_Fourier;
+	slab_dims2D[0] 	  = sys_vars->local_Nx;
+	slab_dims2D[1] 	  = Ny_Fourier;
+	mem_space_dims2D[0] = sys_vars->local_Nx;
+	mem_space_dims2D[1] = Ny_Fourier;
+
+	// Write the Fourier nonlinear term
+	WriteDataFourier(t, (int)iters, main_group_id, "NonlinearTerm", file_info->COMPLEX_DTYPE, d_set_rank2D, dset_dims2D, slab_dims2D, mem_space_dims2D, sys_vars->local_Nx_start, run_data->nonlinterm);
+	#endif
+	#if defined(PHASE_ONLY)
 	// Record the Fourier amplitudes and phases
 	for (int i = 0; i < sys_vars->local_Nx; ++i) {
 		tmp = i * Ny_Fourier;
 		for (int j = 0; j < Ny_Fourier; ++j) {
 			indx = tmp + j;
 
-			//record the amplitudes
-			run_data->a_k = cabs(run_data->w_hat[indx]);
-			// record the phases 
-			run_data->phi_k = carg(run_data->w_hat[indx]);
+			// Record the amplitudes
+			run_data->a_k[indx] = cabs(run_data->w_hat[indx]);
+			// Record the phases 
+			run_data->phi_k[indx] = carg(run_data->w_hat[indx]);
 		}
 	}
 
@@ -716,7 +730,7 @@ void WriteDataToFile(double t, double dt, long int iters) {
 	// Write the Fourier phases
 	WriteDataFourier(t, (int)iters, main_group_id, "phi_k", H5T_NATIVE_DOUBLE, d_set_rank2D, dset_dims2D, slab_dims2D, mem_space_dims2D, sys_vars->local_Nx_start, run_data->phi_k);
 	#endif
-	#ifdef TESTING
+	#if defined(TESTING)
 	if (!(strcmp(sys_vars->u0, "TG_VEL")) || !(strcmp(sys_vars->u0, "TG_VORT"))) {
 		// Create dimension arrays
 		dset_dims2D[0] 	    = Nx;
@@ -734,35 +748,35 @@ void WriteDataToFile(double t, double dt, long int iters) {
 	// Gather Spectra data and write to file
 	if (!sys_vars->rank) {
 		// Gather spectra data on master process & write to file
-		#ifdef __ENST_SPECT
+		#if defined(__ENST_SPECT)
 		MPI_Reduce(MPI_IN_PLACE, run_data->enst_spect, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		WriteDataSpect(t, iters, spectra_group_id, sys_vars->n_spect, "EnstrophySpectrum", run_data->enst_spect);
 		#endif 
-		#ifdef __ENRG_SPECT
+		#if defined(__ENRG_SPECT)
 		MPI_Reduce(MPI_IN_PLACE, run_data->enrg_spect, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		WriteDataSpect(t, iters, spectra_group_id, sys_vars->n_spect, "EnergySpectrum", run_data->enrg_spect);
 		#endif
-		#ifdef __ENST_FLUX_SPECT
+		#if defined(__ENST_FLUX_SPECT)
 		MPI_Reduce(MPI_IN_PLACE, run_data->enst_flux_spect, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		WriteDataSpect(t, iters, spectra_group_id, sys_vars->n_spect, "EnstrophyFluxSpectrum", run_data->enst_flux_spect);
 		#endif
-		#ifdef __ENRG_FLUX_SPECT
+		#if defined(__ENRG_FLUX_SPECT)
 		MPI_Reduce(MPI_IN_PLACE, run_data->enrg_flux_spect, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		WriteDataSpect(t, iters, spectra_group_id, sys_vars->n_spect, "EnergyFluxSpectrum", run_data->enrg_flux_spect);
 		#endif
 	}
 	else {
 		// Reduce all other process to master rank
-		#ifdef __ENST_SPECT
+		#if defined(__ENST_SPECT)
 		MPI_Reduce(run_data->enst_spect, NULL, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		#endif
-		#ifdef __ENRG_SPECT
+		#if defined(__ENRG_SPECT)
 		MPI_Reduce(run_data->enrg_spect, NULL, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		#endif
-		#ifdef __ENST_FLUX_SPECT
+		#if defined(__ENST_FLUX_SPECT)
 		MPI_Reduce(run_data->enst_flux_spect, NULL, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		#endif
-		#ifdef __ENRG_FLUX_SPECT
+		#if defined(__ENRG_FLUX_SPECT)
 		MPI_Reduce(run_data->enrg_flux_spect, NULL, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		#endif
 	}
@@ -1138,7 +1152,7 @@ void FinalWriteAndCloseOutputFile(const long int* N, int iters, int save_data_in
 	// -------------------------------
 	// Write Wavenumbers
 	// -------------------------------
-	#ifdef __WAVELIST
+	#if defined(__WAVELIST)
 	// Allocate array to gather the wavenumbers from each of the local arrays - in the x direction
 	int* k0 = (int* )fftw_malloc(sizeof(int) * Nx);
 	MPI_Gather(run_data->k[0], sys_vars->local_Nx, MPI_INT, k0, sys_vars->local_Nx, MPI_INT, 0, MPI_COMM_WORLD); 
@@ -1160,7 +1174,7 @@ void FinalWriteAndCloseOutputFile(const long int* N, int iters, int save_data_in
 	// -------------------------------
 	// Write Collocation Points
 	// -------------------------------
-	#ifdef __COLLOC_PTS
+	#if defined(__COLLOC_PTS)
 	// Allocate array to gather the collocation points from each of the local arrays
 	double* x0 = (double* )fftw_malloc(sizeof(double) * Nx);
 	MPI_Gather(run_data->x[0], sys_vars->local_Nx, MPI_DOUBLE, x0, sys_vars->local_Nx, MPI_DOUBLE, 0, MPI_COMM_WORLD); 
@@ -1183,7 +1197,7 @@ void FinalWriteAndCloseOutputFile(const long int* N, int iters, int save_data_in
 	// Write System Measures
 	// -------------------------------
 	// Time
-	#ifdef __TIME
+	#if defined(__TIME)
 	// Time array only on rank 0
 	if (!(sys_vars->rank)) {
 		dims1D[0] = sys_vars->num_print_steps;
@@ -1197,18 +1211,18 @@ void FinalWriteAndCloseOutputFile(const long int* N, int iters, int save_data_in
 	// System measures -> need to reduce (in place on rank 0) all arrays across the processess
 	if (!(sys_vars->rank)) {
 		// Reduce on to rank 0
-		#ifdef __SYS_MEASURES
+		#if defined(__SYS_MEASURES)
 		MPI_Reduce(MPI_IN_PLACE, run_data->tot_energy, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		MPI_Reduce(MPI_IN_PLACE, run_data->tot_enstr, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		MPI_Reduce(MPI_IN_PLACE, run_data->tot_palin, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		MPI_Reduce(MPI_IN_PLACE, run_data->enrg_diss, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		MPI_Reduce(MPI_IN_PLACE, run_data->enst_diss, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		#endif
-		#ifdef __ENST_FLUX
+		#if defined(__ENST_FLUX)
 		MPI_Reduce(MPI_IN_PLACE, run_data->enst_flux_sbst, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		MPI_Reduce(MPI_IN_PLACE, run_data->enst_flux_sbst, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		#endif
-		#ifdef __ENRG_FLUX
+		#if defined(__ENRG_FLUX)
 		MPI_Reduce(MPI_IN_PLACE, run_data->enrg_flux_sbst, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		MPI_Reduce(MPI_IN_PLACE, run_data->enrg_flux_sbst, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		#endif
@@ -1216,7 +1230,7 @@ void FinalWriteAndCloseOutputFile(const long int* N, int iters, int save_data_in
 		// Dataset dims
 		dims1D[0] = sys_vars->num_print_steps;
 
-		#ifdef __SYS_MEASURES
+		#if defined(__SYS_MEASURES)
 		// Energy
 		if ( (H5LTmake_dataset(file_info->output_file_handle, "TotalEnergy", D1, dims1D, H5T_NATIVE_DOUBLE, run_data->tot_energy)) < 0) {
 			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "TotalEnergy");
@@ -1238,7 +1252,7 @@ void FinalWriteAndCloseOutputFile(const long int* N, int iters, int save_data_in
 			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "EnstrophyDissipation");
 		}
 		#endif
-		#ifdef __ENST_FLUX
+		#if defined(__ENST_FLUX)
 		// Enstrophy flux in/out of a subset of modes
 		if ( (H5LTmake_dataset(file_info->output_file_handle, "EnstrophyFluxSubset", D1, dims1D, H5T_NATIVE_DOUBLE, run_data->enst_flux_sbst)) < 0) {
 			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "EnstrophyFluxSubset");
@@ -1248,7 +1262,7 @@ void FinalWriteAndCloseOutputFile(const long int* N, int iters, int save_data_in
 			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "EnstrophyDissSubset");
 		}
 		#endif
-		#ifdef __ENRG_FLUX
+		#if defined(__ENRG_FLUX)
 		// Energy flux in/out of a subset of modes
 		if ( (H5LTmake_dataset(file_info->output_file_handle, "EnergyFluxSubset", D1, dims1D, H5T_NATIVE_DOUBLE, run_data->enrg_flux_sbst)) < 0) {
 			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "EnergyFluxSubset");
@@ -1261,18 +1275,18 @@ void FinalWriteAndCloseOutputFile(const long int* N, int iters, int save_data_in
 	}
 	else {
 		// Reduce all other process to rank 0
-		#ifdef __SYS_MEASURES
+		#if defined(__SYS_MEASURES)
 		MPI_Reduce(run_data->tot_energy, NULL,  sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		MPI_Reduce(run_data->tot_enstr, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		MPI_Reduce(run_data->tot_palin, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		MPI_Reduce(run_data->enrg_diss, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		MPI_Reduce(run_data->enst_diss, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		#endif
-		#ifdef __ENST_FLUX
+		#if defined(__ENST_FLUX)
 		MPI_Reduce(run_data->enst_flux_sbst, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		MPI_Reduce(run_data->enst_diss_sbst, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		#endif
-		#ifdef __ENRG_FLUX
+		#if defined(__ENRG_FLUX)
 		MPI_Reduce(run_data->enrg_flux_sbst, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		MPI_Reduce(run_data->enrg_diss_sbst, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		#endif
@@ -1288,7 +1302,7 @@ void FinalWriteAndCloseOutputFile(const long int* N, int iters, int save_data_in
 			exit(1);
 		}
 	}
-	#ifdef DEBUG
+	#if defined(DEBUG)
 	if (!sys_vars->rank) {
 		// Close test / debug file
 	    H5Fclose(file_info->test_file_handle);

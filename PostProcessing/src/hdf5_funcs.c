@@ -268,7 +268,7 @@ void ReadInData(int snap_indx) {
 	// --------------------------------
 	//  Read in Real Vorticity
 	// --------------------------------
-	#ifdef __REAL_STATS
+	#if defined(__REAL_STATS)
 	// If Real Space vorticity exists read it in
 	sprintf(group_string, "/Iter_%05d/w", snap_indx);	
 	if (H5Lexists(file_info->input_file_handle, group_string, H5P_DEFAULT) > 0 ) {
@@ -307,7 +307,7 @@ void ReadInData(int snap_indx) {
 	// --------------------------------
 	//  Read in Real Velocity
 	// --------------------------------
-	#ifdef __REAL_STATS
+	#if defined(__REAL_STATS)
 	// If Real Space Velocity exists read it in
 	sprintf(group_string, "/Iter_%05d/u", snap_indx);	
 	if (H5Lexists(file_info->input_file_handle, group_string, H5P_DEFAULT) > 0 ) {
@@ -393,7 +393,7 @@ void OpenOutputFile(void) {
 	if (strcmp(file_info->output_dir, "NONE") == -1) {
 		// Construct pathh
 		strcpy(file_info->output_file_name, file_info->output_dir);
-		sprintf(file_name, "PostProcessing_HDF_Data_SECTORS[%d].h5", sys_vars->num_sect);
+		sprintf(file_name, "PostProcessing_HDF_Data_SECTORS[%d]_KFRAC[%1.2lf].h5", sys_vars->num_sect, sys_vars->kmax_frac);
 		strcat(file_info->output_file_name, file_name);
 
 		// Print output file path to screen
@@ -486,9 +486,9 @@ void WriteDataToFile(double t, long int snap) {
 	}
 
 	// -------------------------------
-	// Write Datasets
+	// Write Vorticity
 	// -------------------------------
-	#ifdef __VORT
+	#if defined(__VORT)
 	// The full field phases
 	dset_dims_2d[0] = sys_vars->N[0];
 	dset_dims_2d[1] = sys_vars->N[1] / 2 + 1;
@@ -498,7 +498,13 @@ void WriteDataToFile(double t, long int snap) {
 		exit(1);
 	}
 	#endif
-	#ifdef __FULL_FIELD
+
+
+
+	// -------------------------------
+	// Write Full Field Data
+	// -------------------------------
+	#if defined(__FULL_FIELD)
 	// The full field phases
 	dset_dims_2d[0] = 2 * sys_vars->kmax - 1;
 	dset_dims_2d[1] = 2 * sys_vars->kmax - 1;
@@ -535,7 +541,12 @@ void WriteDataToFile(double t, long int snap) {
 		exit(1);
 	}
 	#endif
-	#ifdef __REAL_STATS
+
+
+	// -------------------------------
+	// Write Real Space Stats
+	// -------------------------------
+	#if defined(__REAL_STATS)
 	// The vorticity histogram bin ranges and bin counts
 	dset_dims_1d[0] = stats_data->w_pdf->n + 1;
 	status = H5LTmake_dataset(group_id, "VorticityPDFRanges", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, stats_data->w_pdf->range);
@@ -564,7 +575,99 @@ void WriteDataToFile(double t, long int snap) {
         exit(1);
     }	
 	#endif
-	#ifdef __SPECTRA
+	#if defined(__VEL_INC_STATS)
+	// Allocate temporary memory to record the histogram data contiguously
+    double* inc_range  = (double*) fftw_malloc(sizeof(double) * NUM_INCR * (N_BINS + 1));
+    double* inc_counts = (double*) fftw_malloc(sizeof(double) * NUM_INCR * (N_BINS));
+
+    //----------------------- Write the longitudinal increments
+   	for (int r = 0; r < NUM_INCR; ++r) {
+   		for (int b = 0; b < N_BINS + 1; ++b) {
+	   		inc_range[r * (N_BINS + 1) + b] = stats_data->vel_incr[0][r]->range[b];
+	   		if (b < N_BINS) {
+	   			inc_counts[r * (N_BINS) + b] = stats_data->vel_incr[0][r]->bin[b];	   			
+	   		}
+   		}
+   	}
+   	dset_dims_2d[0] = NUM_INCR;
+   	dset_dims_2d[1] = N_BINS + 1;
+   	status = H5LTmake_dataset(group_id, "LongitudinalVelIncrements_BinRanges", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, inc_range);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Longitudinal Velocity Increment PDF Bin Ranges", t, snap);
+        exit(1);
+    }		
+	dset_dims_2d[1] = N_BINS;
+	status = H5LTmake_dataset(group_id, "LongitudinalVelIncrements_BinCounts", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, inc_counts);	
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Longitudinal Velocity Increment PDF Bin Counts", t, snap);
+        exit(1);
+    }
+
+    //----------------------- Write the transverse increments
+    for (int r = 0; r < NUM_INCR; ++r) {
+   		for (int b = 0; b < N_BINS + 1; ++b) {
+	   		inc_range[r * (N_BINS + 1) + b] = stats_data->vel_incr[1][r]->range[b];
+	   		if (b < N_BINS) {
+	   			inc_counts[r * (N_BINS) + b] = stats_data->vel_incr[1][r]->bin[b];	   			
+	   		}
+   		}
+   	}
+   	dset_dims_2d[1] = N_BINS + 1;
+   	status = H5LTmake_dataset(group_id, "TransverseVelIncrements_BinRanges", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, inc_range);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Transverse Velocity Increment PDF Bin Ranges", t, snap);
+        exit(1);
+    }		
+	dset_dims_2d[1] = N_BINS;
+	status = H5LTmake_dataset(group_id, "TransverseVelIncrements_BinCounts", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, inc_counts);	
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Transverse Velocity Increment PDF Bin Counts", t, snap);
+        exit(1);
+    }
+
+    // Free temporary memory
+    fftw_free(inc_range);
+    fftw_free(inc_counts);
+	#endif
+    #if defined(__VEL_INC_STATS)
+    // Allocate temporary memory to record the histogram data contiguously
+    double* str_funcs = (double*) fftw_malloc(sizeof(double) * (STR_FUNC_MAX_POW - 2) * (GSL_MIN(sys_vars->N[0], sys_vars->N[1]) / 2));
+
+    //----------------------- Write the longitudinal structure functions
+   	for (int p = 0; p < STR_FUNC_MAX_POW - 2; ++p) {
+   		for (int r = 0; r < GSL_MIN(sys_vars->N[0], sys_vars->N[1]) / 2; ++r) {
+	   		str_funcs[p * (GSL_MIN(sys_vars->N[0], sys_vars->N[1]) / 2) + r] = stats_data->str_func[0][p][r];
+   		}
+   	}
+   	dset_dims_2d[0] = STR_FUNC_MAX_POW - 2;
+   	dset_dims_2d[1] = GSL_MIN(sys_vars->N[0], sys_vars->N[1]) / 2;
+   	status = H5LTmake_dataset(group_id, "LongitudinalStructureFunctions", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, str_funcs);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Longitudinal Structure Functions", t, snap);
+        exit(1);
+    }			
+
+    //----------------------- Write the transverse structure functions
+    for (int p = 0; p < STR_FUNC_MAX_POW - 2; ++p) {
+   		for (int r = 0; r < GSL_MIN(sys_vars->N[0], sys_vars->N[1]) / 2; ++r) {
+	   		str_funcs[p * (GSL_MIN(sys_vars->N[0], sys_vars->N[1]) / 2) + r] = stats_data->str_func[1][p][r];
+   		}
+   	}
+   	status = H5LTmake_dataset(group_id, "TransverseStructureFunctions", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, str_funcs);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Transverse Structure Funcitons", t, snap);
+        exit(1);
+    }		
+	
+    // Free temporary memory
+    fftw_free(str_funcs);
+    #endif
+
+
+    // -------------------------------
+    // Write Spectra Data
+    // -------------------------------
+	#if defined(__SPECTRA)
 	dset_dims_1d[0] = sys_vars->n_spec;
 	status = H5LTmake_dataset(group_id, "EnstrophySpectrum", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, proc_data->enst_spec);
 	if (status < 0) {
@@ -577,20 +680,38 @@ void WriteDataToFile(double t, long int snap) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "1D Energy Spectrum", t, snap);
         exit(1);
     }
-	status = H5LTmake_dataset(group_id, "EnstrophySpectrumAlt", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, proc_data->enst_alt);
+	#endif
+	#if defined(__ENST_FLUX)
+	// Write the enstrophy flux spectrum
+	dset_dims_1d[0] = sys_vars->n_spec;
+	status = H5LTmake_dataset(group_id, "EnstrophyFluxSpectrum", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, proc_data->enst_flux_spec);
 	if (status < 0) {
-        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Alternative 1D Enstrophy Spectrum", t, snap);
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Enstrophy Flux Spectrum", t, snap);
         exit(1);
     }
-    
-    status = H5LTmake_dataset(group_id, "EnergySpectrumAlt", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, proc_data->enrg_alt);
+	// Write the enstrophy flux out of the set C
+	dset_dims_1d[0] = sys_vars->num_snaps;
+	status = H5LTmake_dataset(group_id, "EnstrophyFluxC", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, proc_data->enst_flux_C);
 	if (status < 0) {
-        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Alternative 1D Energy Spectrum", t, snap);
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Enstrophy Flux in C", t, snap);
+        exit(1);
+    }
+    // Write the nonlinear term in Fourier space
+    dset_dims_2d[0] = sys_vars->N[0];
+    dset_dims_2d[1] = sys_vars->N[1];
+	status = H5LTmake_dataset(group_id, "NonlinearTerm", Dims2D, dset_dims_2d, file_info->COMPLEX_DTYPE, proc_data->dw_hat_dt);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file  at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Nonlinear Term", t, snap);
         exit(1);
     }
 	#endif
 
-	#ifdef __SEC_PHASE_SYNC
+
+
+    // -------------------------------
+    // Write Phase Sync Data
+    // -------------------------------
+	#if defined(__SEC_PHASE_SYNC)
 	/// ----------------------- Phase Order Data
 	// Write the phase order data for the individual phases
     dset_dims_1d[0] = sys_vars->num_sect;
