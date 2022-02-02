@@ -460,7 +460,9 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                     self.theta = file["SectorAngles"][:]
                 if 'NumTriadsPerSector' in list(file.keys()):
                     self.num_triads = file["NumTriadsPerSector"][:, :]
-            self.num_sect = self.theta.shape[0] - 1
+            self.num_sect  = self.theta.shape[0] - 1
+            self.kmax_frac = float(in_file.split('_')[-1].split("[")[-1].split("]")[0])
+            self.kmax_C    = int(self.kmax * self.kmax_frac)
             ## Enstrophy Flux Per Sector
             self.enst_flux_per_sec = np.zeros((sim_data.ndata, self.num_sect))
             ## Phase Sync arrays
