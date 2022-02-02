@@ -121,4 +121,23 @@ if __name__ == '__main__':
     # -----------------------------------------
     # # --------  Compare Data
     # -----------------------------------------
-    print(np.add.accumulate(spec_data.enst_flux_spectrum[10, :]) == post_data.enst_flux_spec[10, :])
+    # for i in range(sys_vars.ndata):
+    #     print(np.add.accumulate(spec_data.enst_flux_spectrum[i, :]))
+    #     print(post_data.enst_flux_spec[i, :])
+    #     print(np.allclose(np.add.accumulate(spec_data.enst_flux_spectrum[i, :]), post_data.enst_flux_spec[i, :], rtol = 1e-14, atol = 1e-14))
+    print(post_data.enst_flux_C[:])
+    print(post_data.enst_flux_spec[10, :])
+
+    fig = plt.figure(figsize = (16, 8))
+    gs  = GridSpec(1, 1)
+    ax1 = fig.add_subplot(gs[0, 0])
+    ax1.plot(run_data.time, np.sum(post_data.enst_flux_per_sec[:, :], axis = 1))
+    ax1.plot(run_data.time, post_data.enst_flux_C[:])
+    ax1.set_xlabel(r"$t$")
+    ax1.set_ylabel(r"\Pi_{\mathcal{C}}")
+    ax1.legend([r"$\Pi_{\mathcal{C}}$", r"$\sum_{\theta}\Pi_{\mathcal{C}_{\theta}}$"])
+    ax1.set_yscale('log')
+    # ax1.set_xscale('log')
+    ax1.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+    plt.savefig(cmdargs.out_dir + "EnstrophyFluxCompare.png")
+    plt.close()

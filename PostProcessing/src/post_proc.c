@@ -260,6 +260,18 @@ void SectorPhaseOrder(int s) {
 	// 	}
 	// }
 
+	// ----------------------------------
+	// Initialize Phase Order Parameters
+	// ----------------------------------
+	// Set parameters to 0 for current snapshot
+	for (int a = 0; a < sys_vars->num_sect; ++a) {
+		proc_data->phase_order[a] = 0.0 + 0.0 * I;
+		proc_data->enst_flux[a] = 0.0;
+		for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
+			proc_data->triad_phase_order[i][a] = 0.0 + 0.0 * I;
+		}	
+	}
+
 	// --------------------------------
 	// Phase Sync Sector by Sector
 	// --------------------------------
@@ -587,16 +599,6 @@ void SectorPhaseOrder(int s) {
 		// printf("\n");
 		// printf("a: %d Num: %d\t triad_phase_order: %lf %lf I\t Num: %d\t triad_phase_order: %lf %lf I \t Num: %d\t triad_phase_order: %lf %lf I\n", a, num_triads[0], creal(proc_data->triad_phase_order[0][a]), cimag(proc_data->triad_phase_order[0][a]), num_triads[1], creal(proc_data->triad_phase_order[1][a]), cimag(proc_data->triad_phase_order[1][a]), num_triads[2], creal(proc_data->triad_phase_order[2][a]), cimag(proc_data->triad_phase_order[2][a]));
 		// printf("a: %d | Num: %d R0: %lf Phi0: %lf |\t Num: %d R1: %lf Phi1: %lf |\t Num: %d R2: %lf Phi2: %lf\n", a, num_triads[0], proc_data->triad_R[0][a], proc_data->triad_Phi[0][a], num_triads[1], proc_data->triad_R[1][a], proc_data->triad_Phi[1][a], num_triads[2], proc_data->triad_R[2][a], proc_data->triad_Phi[2][a]);	
-	}
-
-	// --------------------------------
-	// Reset Phase Order Parameters
-	// --------------------------------
-	for (int a = 0; a < sys_vars->num_sect; ++a) {
-		proc_data->phase_order[a] = 0.0 + 0.0 * I;
-		for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
-			proc_data->triad_phase_order[i][a] = 0.0 + 0.0 * I;
-		}	
 	}
 }
 /**
