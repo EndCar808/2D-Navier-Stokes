@@ -458,8 +458,8 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                     self.theta = file["SectorAngles"][:]
                 if 'NumTriadsPerSector' in list(file.keys()):
                     self.num_triads = file["NumTriadsPerSector"][:, :]
-                if 'EnstrophyFluxC' in list(file[group].keys()):
-                    data.enst_flux_C = file[group]["EnstrophyFluxC"][:]
+                if 'EnstrophyFluxC' in list(.keys()):
+                    data.enst_flux_C = file["EnstrophyFluxC"][:]
             self.num_sect  = self.theta.shape[0] - 1
             ## Enstrophy Flux Spectrum
             self.enst_flux_spec = np.zeros((sim_data.ndata, sim_data.spec_size))
