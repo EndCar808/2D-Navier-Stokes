@@ -689,13 +689,6 @@ void WriteDataToFile(double t, long int snap) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Enstrophy Flux Spectrum", t, snap);
         exit(1);
     }
-	// Write the enstrophy flux out of the set C
-	dset_dims_1d[0] = sys_vars->num_snaps;
-	status = H5LTmake_dataset(group_id, "EnstrophyFluxC", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, proc_data->enst_flux_C);
-	if (status < 0) {
-        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Enstrophy Flux in C", t, snap);
-        exit(1);
-    }
     #if defined(__NONLIN)
     // Write the nonlinear term in Fourier space
     dset_dims_2d[0] = sys_vars->N[0];
@@ -1017,6 +1010,16 @@ void FinalWriteAndClose(void) {
 	// -------------------------------
 	// Write Datasets
 	// -------------------------------
+	#if defined(__ENST_FLUX)
+	// Write the enstrophy flux out of the set C
+	dset_dims_1d[0] = sys_vars->num_snaps;
+	status = H5LTmake_dataset(file_info->output_file_handle, "EnstrophyFluxC", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, proc_data->enst_flux_C);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!!!\n-->> Exiting...\n", "Enstrophy Flux in C");
+        exit(1);
+    }
+	#endif
+	
 	#if defined(__SEC_PHASE_SYNC)
 	/// ------------------------- Sector Angles
 	// Convert theta array back to angles before printing

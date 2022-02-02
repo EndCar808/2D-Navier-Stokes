@@ -450,8 +450,6 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
             ## Allocate spectra arrays
             self.enst_spectrum_1d = np.zeros((sim_data.ndata, sim_data.spec_size))
             self.enrg_spectrum_1d = np.zeros((sim_data.ndata, sim_data.spec_size))
-            self.enst_spectrum_1d_alt = np.zeros((sim_data.ndata, sim_data.spec_size))
-            self.enrg_spectrum_1d_alt = np.zeros((sim_data.ndata, sim_data.spec_size))
             ## Allocate solver data arrays
             self.w_hat = np.ones((sim_data.ndata, sim_data.Nx, sim_data.Nk)) * np.complex(0.0, 0.0)
             ## Get the number of sectors and the number of triads
@@ -460,9 +458,13 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                     self.theta = file["SectorAngles"][:]
                 if 'NumTriadsPerSector' in list(file.keys()):
                     self.num_triads = file["NumTriadsPerSector"][:, :]
+                if 'EnstrophyFluxC' in list(file[group].keys()):
+                    data.enst_flux_C = file[group]["EnstrophyFluxC"][:]
             self.num_sect  = self.theta.shape[0] - 1
-            self.kmax_frac = float(in_file.split('_')[-1].split("[")[-1].split("]")[0])
-            self.kmax_C    = int(self.kmax * self.kmax_frac)
+            ## Enstrophy Flux Spectrum
+            self.enst_flux_spec = np.zeros((sim_data.ndata, sim_data.spec_size))
+            self.kmax_frac      = float(in_file.split('_')[-1].split("[")[-1].split("]")[0])
+            self.kmax_C         = int(self.kmax * self.kmax_frac)
             ## Enstrophy Flux Per Sector
             self.enst_flux_per_sec = np.zeros((sim_data.ndata, self.num_sect))
             ## Phase Sync arrays
@@ -508,10 +510,6 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                     data.enst_spectrum_1d[nn, :] = file[group]["EnstrophySpectrum"][:]
                 if 'EnergySpectrum' in list(file[group].keys()):
                     data.enrg_spectrum_1d[nn, :] = file[group]["EnergySpectrum"][:]
-                if 'EnstrophySpectrumAlt' in list(file[group].keys()):
-                    data.enst_spectrum_1d_alt[nn, :] = file[group]["EnstrophySpectrumAlt"][:]
-                if 'EnergySpectrumAlt' in list(file[group].keys()):
-                    data.enrg_spectrum_1d_alt[nn, :] = file[group]["EnergySpectrumAlt"][:]
                 if 'PhaseSync' in list(file[group].keys()):
                     data.phase_R[nn, :] = file[group]["PhaseSync"][:]
                 if 'AverageAngle' in list(file[group].keys()):
@@ -522,6 +520,8 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                     data.triad_Phi[nn, :, :] = file[group]["TriadAverageAngle"][:, :]
                 if 'w_hat' in list(file[group].keys()):
                     data.w_hat[nn, :, :] = file[group]["w_hat"][:, :]
+                if 'EnstrophyFluxSpectrum' in list(file[group].keys()):
+                    data.enst_flux_spec[nn, :] = file[group]["EnstrophyFluxSpectrum"][:]
                 if 'EnstrophyFluxPerSector' in list(file[group].keys()):
                     data.enst_flux_per_sec[nn, :] = file[group]["EnstrophyFluxPerSector"][:]
                 if 'SectorPhasePDF_InTime_Counts' in list(file[group].keys()):
