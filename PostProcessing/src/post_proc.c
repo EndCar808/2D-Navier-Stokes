@@ -390,20 +390,47 @@ void SectorPhaseOrder(int s) {
 									// Get the triad phase and adjust to with the orientation of the phase - the generalized phase
 									triad_phase = proc_data->phases[tmp_k1 + sys_vars->kmax - 1 + k1_y] + proc_data->phases[tmp_k2 + sys_vars->kmax - 1 + k2_y] - proc_data->phases[tmp_k + sys_vars->kmax - 1 + k_y];
 									// triad_phase = fmod(triad_phase + 2.0 * M_PI, 2.0 * M_PI) - M_PI;
-									if (k_sqr > k1_sqr && k_sqr > k2_sqr) {
-										gen_triad_phase = fmod(triad_phase + 2.0 * M_PI + carg(flux_wght), 2.0 * M_PI) - M_PI;
+									
+									///----------------- Get the generalized triads and triad case conditions
+									// If the set C is the entire sector
+									if (sys_vars->kmax_frac == 1.0) {
+										// Get the generalize triad
+										if (k_sqr > k1_sqr && k_sqr > k2_sqr) {
+											gen_triad_phase = fmod(triad_phase + 2.0 * M_PI + carg(flux_wght), 2.0 * M_PI) - M_PI;
+										}
+										else if (k_sqr < k1_sqr && k_sqr < k2_sqr) {
+											gen_triad_phase = fmod(triad_phase + 2.0 * M_PI + carg(-flux_wght), 2.0 * M_PI) - M_PI;
+										}
+										else {
+											gen_triad_phase = fmod(triad_phase + 2.0 * M_PI, 2.0 * M_PI) - M_PI;
+										}	
+
+										// Get the wavevector conditions to both terms in the flux
+										proc_data->pos_flux_term_cond = k_sqr > k1_sqr && k_sqr > k2_sqr;
+										proc_data->neg_flux_term_cond = k_sqr < k1_sqr && k_sqr < k2_sqr;
 									}
-									else if (k_sqr < k1_sqr && k_sqr < k2_sqr) {
-										gen_triad_phase = fmod(triad_phase + 2.0 * M_PI + carg(-flux_wght), 2.0 * M_PI) - M_PI;
-									}
+									// Else if the set C is some fraction of the sector
 									else {
-										gen_triad_phase = fmod(triad_phase + 2.0 * M_PI, 2.0 * M_PI) - M_PI;
+										// Get the generalize triad
+										if (k_sqr > sys_vars->kmax_C_sqr && (k1_sqr <= sys_vars->kmax_C_sqr && k2_sqr <= sys_vars->kmax_C_sqr)) {
+											gen_triad_phase = fmod(triad_phase + 2.0 * M_PI + carg(flux_wght), 2.0 * M_PI) - M_PI;
+										}
+										else if (k_sqr <= sys_vars->kmax_C_sqr && (k1_sqr > sys_vars->kmax_C_sqr && k2_sqr > sys_vars->kmax_C_sqr)) {
+											gen_triad_phase = fmod(triad_phase + 2.0 * M_PI + carg(-flux_wght), 2.0 * M_PI) - M_PI;
+										}
+										else {
+											gen_triad_phase = fmod(triad_phase + 2.0 * M_PI, 2.0 * M_PI) - M_PI;
+										}	
+
+										// Get the wavevector conditions to both terms in the flux
+										proc_data->pos_flux_term_cond = k_sqr > sys_vars->kmax_C_sqr && (k1_sqr <= sys_vars->kmax_C_sqr && k2_sqr <= sys_vars->kmax_C_sqr);
+										proc_data->neg_flux_term_cond = k_sqr <= sys_vars->kmax_C_sqr && (k1_sqr > sys_vars->kmax_C_sqr && k2_sqr > sys_vars->kmax_C_sqr);
 									}
 
 
 									///------------------ Determine which flux contribution we are dealing with -> the postive case (when k1 & k2 in C^' and k3 in C) or the negative case (when k3 in C^' and k1 and k2 in C)
 									// The postive case
-									if (k_sqr > k1_sqr && k_sqr > k2_sqr && fabs(flux_wght) > 1e-5) {  
+									if (proc_data->pos_flux_term_cond && fabs(flux_wght) > 1e-5) {  
 
 										// Update the combined triad phase order parameter with the appropriate contribution
 										proc_data->triad_phase_order[0][a] += cexp(I * gen_triad_phase);
@@ -484,7 +511,7 @@ void SectorPhaseOrder(int s) {
 
 									}
 									// The negative case
-									else if (k_sqr < k1_sqr && k_sqr < k2_sqr && fabs(flux_wght) > 1e-5) {
+									else if (proc_data->neg_flux_term_cond && fabs(flux_wght) > 1e-5) {
 
 										// Update the combined triad phase order parameter with the appropriate contribution
 										proc_data->triad_phase_order[0][a] += cexp(I * gen_triad_phase);
@@ -575,7 +602,9 @@ void SectorPhaseOrder(int s) {
 		//------------------- Record the data for the triads
 		for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
 			// Normalize the phase order parameters
-			proc_data->triad_phase_order[i][a] /= proc_data->num_triads[i][a];
+			if (proc_data->num_triads[i][a] != 0) {
+				proc_data->triad_phase_order[i][a] /= proc_data->num_triads[i][a];
+			}
 			
 			// Record the phase syncs and average phases
 			proc_data->triad_R[i][a]   = cabs(proc_data->triad_phase_order[i][a]);
@@ -1099,8 +1128,10 @@ void AllocateMemory(const long int* N) {
 	//  Allocate Phase Sync Data
 	// --------------------------------
 	#if defined(__SEC_PHASE_SYNC)
-	// Get kmax ^2
-	sys_vars->kmax_sqr = pow(sys_vars->kmax_frac * sys_vars->kmax, 2.0);
+	// Get the various kmax variables
+	sys_vars->kmax_sqr   = pow(sys_vars->kmax, 2.0);
+	sys_vars->kmax_C   	 = (int) ceil(sys_vars->kmax_frac * sys_vars->kmax);
+	sys_vars->kmax_C_sqr = pow(sys_vars->kmax_C, 2.0);
 
 	///--------------- Sector Angles
 	// Allocate the array of sector angles

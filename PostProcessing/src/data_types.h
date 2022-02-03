@@ -102,6 +102,8 @@ typedef struct system_vars_struct {
 	long int num_snaps;					// Number of snapshots in the input data file
 	long int kmax; 						// The largest dealiased wavenumber
 	double kmax_frac;					// Fraction of the maximum wavevector to consider for phase sync and enstrophy flux
+	double kmax_C;						// The radius of the set C -> = kmax_frac * kmax
+	double kmax_C_sqr;					// The sqr of the radius for the set C
 	double kmax_sqr;                    // The largest dealiased wavenumber squared
 	int num_sect;						// The number of sectors in wavenumber space to be used when computing the Kuramoto order parameter 
 	double t0;							// Intial time
@@ -143,6 +145,8 @@ typedef struct postprocess_data_struct {
 	double* enrg;			   		 							 // Array to hold the full field zero centred energy
 	double* enst;			   		 							 // Array to hold the full field zero centred enstrophy
 	double* enst_spec; 		   		 							 // Array to hold the enstrophy spectrum
+	bool pos_flux_term_cond;									 // Boolean to store the condition on the wavevectors for the first (positive) term in the enstrophy flux
+	bool neg_flux_term_cond;									 // Boolean to store the condition on the wavevectors for the second (negative) term in the enstrophy flux
     double* enrg_spec; 		   		 							 // Array to hold the energy spectrum
     double* enst_flux_spec;										 // Array to hold the enstrophy flux spectrum
     double* enst_flux_C;										 // Array to hold the enstrophy flux out of the set C defined by radius sys_vars->kmax_frac * sys_vars->kmax
