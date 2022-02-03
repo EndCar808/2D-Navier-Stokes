@@ -250,7 +250,7 @@ void SectorPhaseOrder(int s) {
 	// 			if (abs(run_data->k[1][j]) < sys_vars->kmax) {
 	// 				k_sqr = (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 	// 				angle = atan2((double) run_data->k[0][i], (double) run_data->k[1][j]); 
-	// 				if (k_sqr > 0 && k_sqr <= sys_vars->kmax_sqr && angle >= proc_data->theta[5] && angle < proc_data->theta[6]) {
+	// 				if (k_sqr > 0 && k_sqr <= sys_vars->kmax_sqr && angle >= proc_data->theta[25] && angle < proc_data->theta[26]) {
 	// 					phase = 2.0;
 	// 					proc_data->phases[(sys_vars->kmax - 1 - run_data->k[0][i]) * (2 * sys_vars->kmax - 1) + (sys_vars->kmax - 1 + run_data->k[1][j])] = phase;
 	// 					proc_data->phases[(sys_vars->kmax - 1 + run_data->k[0][i]) * (2 * sys_vars->kmax - 1) + (sys_vars->kmax - 1 - run_data->k[1][j])] = -phase;
@@ -381,7 +381,7 @@ void SectorPhaseOrder(int s) {
 									tmp_k1 = (sys_vars->kmax - 1 - k1_x) * (2 * sys_vars->kmax - 1);
 									tmp_k2 = (sys_vars->kmax - 1 - k2_x) * (2 * sys_vars->kmax - 1);
 
-									// Get the wavevector prefactor
+									// Get the wavevector prefactor -> the sign of the determines triad type
 									flux_pre_fac = (double)(k1_x * k2_y - k2_x * k1_y) * (1.0 / k1_sqr - 1.0 / k2_sqr);
 
 									// Get the weighting (modulus) of this term to the contribution to the flux
@@ -427,6 +427,9 @@ void SectorPhaseOrder(int s) {
 										proc_data->neg_flux_term_cond = k_sqr <= sys_vars->kmax_C_sqr && (k1_sqr > sys_vars->kmax_C_sqr && k2_sqr > sys_vars->kmax_C_sqr);
 									}
 
+									// if (a == 25 && (proc_data->pos_flux_term_cond)) {
+									// 	printf("sgn: %d\tpre_fac: %lf\tflux_wght: %lf\tk1: (%d, %d)\tk2: (%d, %d)\tk_sqr: %lf\tk1_sqr: %lf\tk2_sqr: %lf\tkmax_C: %lf\tpos: %d\n", GSL_SIGN(flux_pre_fac), flux_pre_fac, flux_wght, k1_x, k1_y, k2_x, k2_y, k_sqr, k1_sqr, k2_sqr, sys_vars->kmax_C_sqr, proc_data->pos_flux_term_cond ? 1 : 0);
+									// }
 
 									///------------------ Determine which flux contribution we are dealing with -> the postive case (when k1 & k2 in C^' and k3 in C) or the negative case (when k3 in C^' and k1 and k2 in C)
 									// The postive case
@@ -434,14 +437,12 @@ void SectorPhaseOrder(int s) {
 
 										// Update the combined triad phase order parameter with the appropriate contribution
 										proc_data->triad_phase_order[0][a] += cexp(I * gen_triad_phase);
-										
+
 										// Update the triad counter for the combined triad type
 										proc_data->num_triads[0][a]++;
 
 										// Update the flux contribution
 										proc_data->enst_flux[a] += flux_wght * cos(triad_phase);
-
-										// printf("triad: %1.16lf\t gen: %1.16lf\t %1.16lf\t check = %d\t flux wght: %1.16lf, pre: %1.16lf\t k1_sqr: %1.0lf, k2_sqr: %1.0lf\t k1_x: %d, k1_y: %d \tk2_x: %d, k2_y: %d\n", triad_phase, gen_triad_phase, -M_PI, check, flux_wght, flux_pre_fac, k1_sqr, k2_sqr, k1_x, k1_y, k2_x, k2_y);
 
 										// ------ Update the PDFs of the combined triads
 										gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf[0][a], gen_triad_phase);
@@ -461,12 +462,10 @@ void SectorPhaseOrder(int s) {
 										}
 
 										// Update the triad types and their PDFs
-										if (GSL_SIGN(flux_pre_fac) < 0) {
+										if (flux_pre_fac < 0) {
 											// TYPE 1 ---> Positive flux term and when the k1 is orientated below k2 and magnitude of k2 < magnitude of k1
 											proc_data->triad_phase_order[1][a] += cexp(I * gen_triad_phase);
-											proc_data->num_triads[1][a]++;
-
-											// printf("ord: %lf %lf I\t term: %lf %lf I\n", creal(proc_data->triad_phase_order[1][a]), cimag(proc_data->triad_phase_order[1][a]), creal(cexp(I * gen_triad_phase)), cimag(cexp(I * gen_triad_phase)));
+											proc_data->num_triads[1][a]++;											
 
 											// Update the PDFs
 											gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf[1][a], gen_triad_phase);
@@ -485,7 +484,7 @@ void SectorPhaseOrder(int s) {
 												exit(1);
 											}
 										}
-										else if (GSL_SIGN(flux_pre_fac) > 0) {
+										else if (flux_pre_fac > 0) {
 											// TYPE 2 ---> Positive flux term and when the k1 is orientated below k2 and magnitude of k2 > magnitude of k1
 											proc_data->triad_phase_order[2][a] += cexp(I * gen_triad_phase);
 											proc_data->num_triads[2][a]++;
@@ -522,8 +521,6 @@ void SectorPhaseOrder(int s) {
 										// Update the flux contribution
 										proc_data->enst_flux[a] += -flux_wght * cos(triad_phase);
 
-										// printf("triad: %1.16lf\t gen: %1.16lf\t %1.16lf\t check = %d\t flux wght: %1.16lf, pre: %1.16lf\t k1_sqr: %1.0lf, k2_sqr: %1.0lf\t k1_x: %d, k1_y: %d \tk2_x: %d, k2_y: %d\n", triad_phase, gen_triad_phase, -M_PI, check, flux_wght, flux_pre_fac, k1_sqr, k2_sqr, k1_x, k1_y, k2_x, k2_y);
-
 										// ------ Update the PDFs of the combined triads
 										gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf[0][a], gen_triad_phase);
 										if (gsl_status != 0) {
@@ -542,7 +539,7 @@ void SectorPhaseOrder(int s) {
 										}
 
 										// Update the triad types and their PDFs
-										if (GSL_SIGN(flux_pre_fac) < 0) {
+										if (flux_pre_fac < 0) {
 											// TYPE 3 ---> Negative flux term and when the k1 is orientated below k2 and magnitude of k2 < magnitude of k1
 											proc_data->triad_phase_order[3][a] += cexp(I * gen_triad_phase);
 											proc_data->num_triads[3][a]++;
@@ -564,7 +561,7 @@ void SectorPhaseOrder(int s) {
 												exit(1);
 											}
 										}
-										else if (GSL_SIGN(flux_pre_fac) > 0) {
+										else if (flux_pre_fac > 0) {
 											// TYPE 4 ---> Negative flux term and when the k1 is orientated below k2 and magnitude of k2 > magnitude of k1
 											proc_data->triad_phase_order[4][a] += cexp(I * gen_triad_phase);
 											proc_data->num_triads[4][a]++;
