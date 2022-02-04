@@ -249,12 +249,14 @@ where $\bfx = (x, y)$ and $\bfk = (k_x, k_y)$. The various terms in (\ref{eq:vor
 
 
 \begin{align}
-	(-1)^{p + 1}\nu_p (\nabla^2)^p  \omega =  (-1)^{p + 1}\nu_p \left(\left(\ppder{}{x}\right)^p\omega + \left(\ppder{}{y}^p\right)\omega\right) &= (-1)^{p + 1}\nu_p (-1)^p\nu_p\left(\sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}} \left(k_x^2\right)^p\hat{\omega}_{\mathbf{k}}\e^{\ii \mathbf{k}\cdot \mathbf{x}} +\sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}} \left(k_y^2\right)^p\hat{\omega}_{\mathbf{k}}\e^{\ii \mathbf{k}\cdot \mathbf{x}} \right)\notag \\
-	&= (-1)^{p + 1}(-1)^p\nu_p\sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}} |\bfk|^{2p}\hat{\omega}_{\mathbf{k}}\e^{\ii \mathbf{k}\cdot \mathbf{x}}
+	(-1)^{p + 1}\nu_p (\nabla^2)^p  \omega =  (-1)^{p + 1}\nu_p \left(\left(\ppder{}{x}\right)^p\omega + \left(\ppder{}{y}^p\right)\omega\right) &= (-1)^{p + 1}\nu_p \nu_p\left(\sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}} \left(-k_x^2\right)^p\hat{\omega}_{\mathbf{k}}\e^{\ii \mathbf{k}\cdot \mathbf{x}} +\sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}} \left(-k_y^2\right)^p\hat{\omega}_{\mathbf{k}}\e^{\ii \mathbf{k}\cdot \mathbf{x}} \right)\notag \\
+	&= (-1)^{p + 1}(-1)^p\nu_p\sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}} |\bfk|^{2p}\hat{\omega}_{\mathbf{k}}\e^{\ii \mathbf{k}\cdot \mathbf{x}} \notag\\
+	&= -(-1)^{2p}\nu_p\sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}} |\bfk|^{2p}\hat{\omega}_{\mathbf{k}}\e^{\ii \mathbf{k}\cdot \mathbf{x}} 
 \end{align}
 
 \begin{align}
-	-(-1)^{q + 1}\alpha_q \nabla^{2q}\omega = -(-1)^{q + 1} (-1)^{q}\alpha_q \sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}} |\bfk|^{2q}\hat{\omega}_{\mathbf{k}}(t)\e^{\ii \mathbf{k}\cdot \mathbf{x}}
+	-(-1)^{q + 1}\alpha_q \nabla^{2q}\omega &= -(-1)^{q + 1} (-1)^{q}\alpha_q \sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}} |\bfk|^{2q}\hat{\omega}_{\mathbf{k}}(t)\e^{\ii \mathbf{k}\cdot \mathbf{x}} \notag \\
+																					&= (-1)^{2q}\alpha_q \sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}} |\bfk|^{2q}\hat{\omega}_{\mathbf{k}}(t)\e^{\ii \mathbf{k}\cdot \mathbf{x}}
 \end{align}
 with the nonlinear term becoming 
 

@@ -145,9 +145,9 @@ typedef struct postprocess_data_struct {
 	double* enrg;			   		 							 // Array to hold the full field zero centred energy
 	double* enst;			   		 							 // Array to hold the full field zero centred enstrophy
 	double* enst_spec; 		   		 							 // Array to hold the enstrophy spectrum
+    double* enrg_spec; 		   		 							 // Array to hold the energy spectrum
 	bool pos_flux_term_cond;									 // Boolean to store the condition on the wavevectors for the first (positive) term in the enstrophy flux
 	bool neg_flux_term_cond;									 // Boolean to store the condition on the wavevectors for the second (negative) term in the enstrophy flux
-    double* enrg_spec; 		   		 							 // Array to hold the energy spectrum
     double* enst_flux_spec;										 // Array to hold the enstrophy flux spectrum
     double* enst_flux_C;										 // Array to hold the enstrophy flux out of the set C defined by radius sys_vars->kmax_frac * sys_vars->kmax
     fftw_complex* dw_hat_dt; 									 // Array to hold the RHS of the vorticity equation
@@ -163,7 +163,7 @@ typedef struct postprocess_data_struct {
     fftw_complex* phase_order;       							 // Array to hold the phase order parameter for each sector for the individual phases
     fftw_complex* triad_phase_order[NUM_TRIAD_TYPES + 1]; 		 // Array to hold the phase order parameter for each sector for each of the triad phase types including combined
     double* phase_R;				 							 // Array to hold the phase sync per sector for the individual phases
-    double* enst_flux;											 // Array to hold the flux of enstrophy for each triad type for each sector
+    double* enst_flux[NUM_TRIAD_TYPES + 1];						 // Array to hold the flux of enstrophy for each triad type for each sector
     double* phase_Phi;               							 // Array to hold the average phase per sector for the individual phases
     int* num_triads[NUM_TRIAD_TYPES + 1];						 // Array to hold the number of triads for each triad type
     double* triad_R[NUM_TRIAD_TYPES + 1];						 // Array to hold the phase sync per sector for each of the triad phase types including all together

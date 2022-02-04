@@ -330,10 +330,10 @@ void SectorPhaseOrder(int s) {
 		for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
 			// Initialize the number of triads for each type
 			proc_data->num_triads[i][a] = 0;
-		}
 
-		// Initialize the flux for the current sector
-		proc_data->enst_flux[a] = 0.0;
+			// Initialize the flux for the current sector
+			proc_data->enst_flux[i][a] = 0.0;
+		}
 
 		// Loop through the k wavevector (k is the k3 wavevector)
 		for (int tmp_k_x = 0; tmp_k_x <= 2 * sys_vars->kmax - 1; ++tmp_k_x) {
@@ -441,8 +441,8 @@ void SectorPhaseOrder(int s) {
 										// Update the triad counter for the combined triad type
 										proc_data->num_triads[0][a]++;
 
-										// Update the flux contribution
-										proc_data->enst_flux[a] += flux_wght * cos(triad_phase);
+										// Update the flux contribution for type 0
+										proc_data->enst_flux[0][a] += flux_wght * cos(triad_phase);
 
 										// ------ Update the PDFs of the combined triads
 										gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf[0][a], gen_triad_phase);
@@ -465,7 +465,10 @@ void SectorPhaseOrder(int s) {
 										if (flux_pre_fac < 0) {
 											// TYPE 1 ---> Positive flux term and when the k1 is orientated below k2 and magnitude of k2 < magnitude of k1
 											proc_data->triad_phase_order[1][a] += cexp(I * gen_triad_phase);
-											proc_data->num_triads[1][a]++;											
+											proc_data->num_triads[1][a]++;		
+
+											// Update the flux contribution for tpye 1
+											proc_data->enst_flux[1][a] += flux_wght * cos(triad_phase);
 
 											// Update the PDFs
 											gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf[1][a], gen_triad_phase);
@@ -489,6 +492,8 @@ void SectorPhaseOrder(int s) {
 											proc_data->triad_phase_order[2][a] += cexp(I * gen_triad_phase);
 											proc_data->num_triads[2][a]++;
 
+											// Update the flux contribution for type 2
+											proc_data->enst_flux[2][a] += flux_wght * cos(triad_phase);
 
 											// Update the PDFs
 											gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf[2][a], gen_triad_phase);
@@ -518,8 +523,8 @@ void SectorPhaseOrder(int s) {
 										// Update the triad counter for the combined triad type
 										proc_data->num_triads[0][a]++;
 
-										// Update the flux contribution
-										proc_data->enst_flux[a] += -flux_wght * cos(triad_phase);
+										// Update the flux contribution for type 0
+										proc_data->enst_flux[0][a] += -flux_wght * cos(triad_phase);
 
 										// ------ Update the PDFs of the combined triads
 										gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf[0][a], gen_triad_phase);
@@ -544,6 +549,9 @@ void SectorPhaseOrder(int s) {
 											proc_data->triad_phase_order[3][a] += cexp(I * gen_triad_phase);
 											proc_data->num_triads[3][a]++;
 
+											// Update the flux contribution for type 3
+											proc_data->enst_flux[3][a] += flux_wght * cos(triad_phase);
+
 											// Update the PDFs
 											gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf[3][a], gen_triad_phase);
 											if (gsl_status != 0) {
@@ -565,6 +573,9 @@ void SectorPhaseOrder(int s) {
 											// TYPE 4 ---> Negative flux term and when the k1 is orientated below k2 and magnitude of k2 > magnitude of k1
 											proc_data->triad_phase_order[4][a] += cexp(I * gen_triad_phase);
 											proc_data->num_triads[4][a]++;
+
+											// Update the flux contribution for type 4
+											proc_data->enst_flux[4][a] += flux_wght * cos(triad_phase);
 
 											// Update the PDFs
 											gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf[4][a], gen_triad_phase);
@@ -1138,21 +1149,21 @@ void AllocateMemory(const long int* N) {
 		exit(1);
 	}
 
-	///--------------- Enstrophy Flux
-	proc_data->enst_flux = (double* )fftw_malloc(sizeof(double) * (sys_vars->num_sect));
-	if (proc_data->enst_flux == NULL) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Enstrophy Flux Per Sector");
-		exit(1);
-	}	
-
-	///--------------- Number of Triads
 	for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
+		///--------------- Number of Triads
 		// Allocate memory for the phase order parameter for the triad phases
 		proc_data->num_triads[i] = (int* )fftw_malloc(sizeof(int) * sys_vars->num_sect);
 		if (proc_data->num_triads[i] == NULL) {
 			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Number of Triads Per Sector");
 			exit(1);
 		}
+
+		///--------------- Enstrophy Flux
+		proc_data->enst_flux[i] = (double* )fftw_malloc(sizeof(double) * (sys_vars->num_sect));
+		if (proc_data->enst_flux[i] == NULL) {
+			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Enstrophy Flux Per Sector");
+			exit(1);
+		}	
 	}
 	
 	///--------------- Precomputed wavevector arctangents
@@ -1352,9 +1363,9 @@ void AllocateMemory(const long int* N) {
 		if (i < sys_vars->num_sect){
 			proc_data->phase_R[i]     = 0.0;
 			proc_data->phase_Phi[i]   = 0.0;
-			proc_data->enst_flux[i]   = 0.0;
 			proc_data->phase_order[i] = 0.0 + 0.0 * I;
 			for (int j = 0; j < NUM_TRIAD_TYPES + 1; ++j) {
+				proc_data->enst_flux[j][i]   	   = 0.0;
 				proc_data->triad_R[j][i]     	   = 0.0;
 				proc_data->triad_Phi[j][i]         = 0.0;
 				proc_data->triad_phase_order[j][i] = 0.0 + 0.0 * I;
@@ -1567,8 +1578,8 @@ void FreeMemoryAndCleanUp(void) {
 	fftw_free(proc_data->phase_order);
 	fftw_free(proc_data->phase_R);
 	fftw_free(proc_data->phase_Phi);
-	fftw_free(proc_data->enst_flux);
 	for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
+		fftw_free(proc_data->enst_flux[i]);
 		fftw_free(proc_data->triad_phase_order[i]);
 		fftw_free(proc_data->triad_R[i]);
 		fftw_free(proc_data->triad_Phi[i]);
