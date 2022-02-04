@@ -231,7 +231,7 @@ In summary, we have the following system
 	\Delta\psi &= -\omega. \label{eq:laplace}
 \end{align}
 
-Often times, when numerically solving the above system the viscosity and friction terms are replaced with an hyperviscosity term $(-1)^{p + 1}\nu_p \nabla^{2p}\omega$ and a hyperfriction (or hypo-diffusivity) term $(-1)^{q + 1}\alpha_q \nabla^{2q}\omega$. The motivation behined the hypervisosity and hyperfriction terms (when $p > 1$ and $q > 1$ respectively) is to reduces the range of scales over which the dissipative terms (friction and viscosity) contribute substantially, thereby ewxtending the inertial range for a given spatial resolution.
+Often times, when numerically solving the above system the viscosity and friction terms are replaced with an hyperviscosity term $(-1)^{p + 1}\nu_p \nabla^{2p}\omega$ and a hyperfriction (or hypo-diffusivity) term $(-1)^{q + 1}\alpha_q \nabla^{-2q}\omega$. The motivation behined the hypervisosity and hyperfriction terms (when $p > 1$ and $q > 1$ respectively) is to reduces the range of scales over which the dissipative terms (friction and viscosity) contribute substantially, thereby ewxtending the inertial range for a given spatial resolution.
 
 \section{Vorticity Equation in Fourier Space}
 
@@ -249,14 +249,16 @@ where $\bfx = (x, y)$ and $\bfk = (k_x, k_y)$. The various terms in (\ref{eq:vor
 
 
 \begin{align}
-	(-1)^{p + 1}\nu_p (\nabla^2)^p  \omega =  (-1)^{p + 1}\nu_p \left(\left(\ppder{}{x}\right)^p\omega + \left(\ppder{}{y}^p\right)\omega\right) &= (-1)^{p + 1}\nu_p \nu_p\left(\sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}} \left(-k_x^2\right)^p\hat{\omega}_{\mathbf{k}}\e^{\ii \mathbf{k}\cdot \mathbf{x}} +\sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}} \left(-k_y^2\right)^p\hat{\omega}_{\mathbf{k}}\e^{\ii \mathbf{k}\cdot \mathbf{x}} \right)\notag \\
+	(-1)^{p + 1}\nu_p (\nabla^2)^p  \omega =  (-1)^{p + 1}\nu_p \left(\left(\ppder{}{x}\right)^p\omega + \left(\ppder{}{y}\right)^p\omega\right) &= (-1)^{p + 1}\nu_p \nu_p\left(\sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}} \left(-k_x^2\right)^p\hat{\omega}_{\mathbf{k}}\e^{\ii \mathbf{k}\cdot \mathbf{x}} +\sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}} \left(-k_y^2\right)^p\hat{\omega}_{\mathbf{k}}\e^{\ii \mathbf{k}\cdot \mathbf{x}} \right)\notag \\
 	&= (-1)^{p + 1}(-1)^p\nu_p\sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}} |\bfk|^{2p}\hat{\omega}_{\mathbf{k}}\e^{\ii \mathbf{k}\cdot \mathbf{x}} \notag\\
-	&= -(-1)^{2p}\nu_p\sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}} |\bfk|^{2p}\hat{\omega}_{\mathbf{k}}\e^{\ii \mathbf{k}\cdot \mathbf{x}} 
+	&= -(-1)^{2p}\nu_p\sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}} |\bfk|^{2p}\hat{\omega}_{\mathbf{k}}\e^{\ii \mathbf{k}\cdot \mathbf{x}} \notag \\
+	&= -\nu_p\sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}} |\bfk|^{2p}\hat{\omega}_{\mathbf{k}}\e^{\ii \mathbf{k}\cdot \mathbf{x}} 
 \end{align}
 
 \begin{align}
-	-(-1)^{q + 1}\alpha_q \nabla^{2q}\omega &= -(-1)^{q + 1} (-1)^{q}\alpha_q \sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}} |\bfk|^{2q}\hat{\omega}_{\mathbf{k}}(t)\e^{\ii \mathbf{k}\cdot \mathbf{x}} \notag \\
-																					&= (-1)^{2q}\alpha_q \sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}} |\bfk|^{2q}\hat{\omega}_{\mathbf{k}}(t)\e^{\ii \mathbf{k}\cdot \mathbf{x}}
+	(-1)^{q + 1}\alpha_q \nabla^{-2q}\omega &= (-1)^{q + 1} (-1)^{-q}\alpha_q \sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}} |\bfk|^{-2q}\hat{\omega}_{\mathbf{k}}(t)\e^{\ii \mathbf{k}\cdot \mathbf{x}} \notag \\
+																					&= (-1)^{1}\alpha_q \sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}} |\bfk|^{-2q}\hat{\omega}_{\mathbf{k}}(t)\e^{\ii \mathbf{k}\cdot \mathbf{x}} \notag \\
+																					&= -\alpha_q \sum_{\mathbf{k}\in \mathbb{Z}^2\setminus \mathbf{0}} |\bfk|^{-2q}\hat{\omega}_{\mathbf{k}}(t)\e^{\ii \mathbf{k}\cdot \mathbf{x}}
 \end{align}
 with the nonlinear term becoming 
 
@@ -280,7 +282,7 @@ Putting them all together and performing the following transform
 the system in Fourier space becomes
 
 \begin{align}
-	\der{\omegahat{k}}{t} = \frac{1}{2}	\sum_{\mathbf{k}_1, \mathbf{k}_2\in \mathbb{Z}^2\setminus \mathbf{0}}\left(k_{1x}k_{2y} - k_{1y}k_{2x}\right) \left(\frac{1}{|\bfkn{1}|^2} - \frac{1}{|\bfkn{2}|^2}\right) \omegahat{\bfkn{1}}\omegahat{\bfkn{2}} \delta_{\bfkn{1}, \bfkn{2}}^{\bfk} +(-1)^{p + 1} (-1)^p\nu_p |\bfk|^{2n}\omegahat{k} -(-1)^{q + 1}(-1)^{q} \alpha_q|\bfk|^{2q}\omegahat{k} + \hat{f}_{\bfk}
+	\der{\omegahat{k}}{t} = \frac{1}{2}	\sum_{\mathbf{k}_1, \mathbf{k}_2\in \mathbb{Z}^2\setminus \mathbf{0}}\left(k_{1x}k_{2y} - k_{1y}k_{2x}\right) \left(\frac{1}{|\bfkn{1}|^2} - \frac{1}{|\bfkn{2}|^2}\right) \omegahat{\bfkn{1}}\omegahat{\bfkn{2}} \delta_{\bfkn{1}, \bfkn{2}}^{\bfk} -\nu_p |\bfk|^{2p}\omegahat{k} - \alpha_q|\bfk|^{-2q}\omegahat{k} + \hat{f}_{\bfk}
 	\label{eq:vort_eqn_fourier_space}
 \end{align}
 
@@ -301,11 +303,11 @@ or, noting that $a_{\bfk}^2 = |\hat{\omega}_{\bfk}|^2 = \hat{\omega}_{\bfk}\hat{
 Similarly, using the equation of motion for the Fourier vorticity in (\ref{eq:vort_eqn_fourier_space}) we can find an expression for the rate of change of enstrophy by multipling across by $\omegahat{k}^*$, adding the complex conjugate, averaging over $\bfk$ and taking the real part of both sides
 
 \begin{align}
-	\omegahat{k}^*\der{\omegahat{k}}{t} &= \frac{1}{2}	\sum_{\mathbf{k}_1, \mathbf{k}_2\in \mathbb{Z}^2\setminus \mathbf{0}}\left(k_{1x}k_{2y} - k_{1y}k_{2x}\right) \left(\frac{1}{|\bfkn{1}|^2} - \frac{1}{|\bfkn{2}|^2}\right) \omegahat{\bfkn{1}}\omegahat{\bfkn{2}}\omegahat{k}^* \delta_{\bfkn{1}, \bfkn{2}}^{\bfk} - \nu |\bfk|^{2n}\omegahat{k}\omegahat{k}^* - \alpha\omegahat{k}\omegahat{k}^* + \hat{f}_{\bfk} \omegahat{k}^* + c. c. \notag \\
-	\sum_{\bfk}\left(\omegahat{k}^*\dot{\hat{\omega}}_\bfk + \omegahat{k}\dot{\hat{\omega}}^*_\bfk\right)&= \frac{1}{2}	\sum_{\bfk, \mathbf{k}_1, \mathbf{k}_2\in \mathbb{Z}^2\setminus \mathbf{0}}\left(k_{1x}k_{2y} - k_{1y}k_{2x}\right) \left(\frac{1}{|\bfkn{1}|^2} - \frac{1}{|\bfkn{2}|^2}\right) \omegahat{\bfkn{1}}\omegahat{\bfkn{2}}\omegahat{k}^* \delta_{\bfkn{1}, \bfkn{2}}^{\bfk} - \nu \sum_{\bfk}|\bfk|^{2n} a_{\bfk}^2 - \alpha\sum_{\bfk} a_{\bfk}^2 + \sum_{\bfk}\hat{f}_{\bfk} \omegahat{k}^* + c. c. \notag \\
-	\frac{1}{2\pi^2}\der{\mathcal{E}}{t} &= \frac{1}{2}	\sum_{\bfk, \mathbf{k}_1, \mathbf{k}_2\in \mathbb{Z}^2\setminus \mathbf{0}}\left(k_{1x}k_{2y} - k_{1y}k_{2x}\right) \left(\frac{1}{|\bfkn{1}|^2} - \frac{1}{|\bfkn{2}|^2}\right) (\omegahat{\bfkn{1}}\omegahat{\bfkn{2}}\omegahat{k}^* \delta_{\bfkn{1}, \bfkn{2}}^{\bfk} + c.c.) - 2\nu \sum_{\bfk}|\bfk|^{2n} a_{\bfk}^2 - 2\alpha\sum_{\bfk} a_{\bfk}^2 \notag \\
-	&\qquad \qquad \qquad \qquad+ \sum_{\bfk}(\hat{f}_{\bfk} \omegahat{k}^* + c. c.)\notag \\
-	\der{\mathcal{E}}{t} &= 2\pi^2	\sum_{\bfk, \mathbf{k}_1, \mathbf{k}_2\in \mathbb{Z}^2\setminus \mathbf{0}}\left(k_{1x}k_{2y} - k_{1y}k_{2x}\right) \left(\frac{1}{|\bfkn{1}|^2} - \frac{1}{|\bfkn{2}|^2}\right) a_{\bfkn{1}} a_{\bfkn{2}} a_{\bfk} \cos(\phi_{\bfkn{1}} + \phi_{\bfkn{2}} - \phi_{\bfk}) \delta_{\bfkn{1}, \bfkn{2}}^{\bfk} \notag \\ & \qquad \qquad \qquad \qquad- 4\pi^2\nu \sum_{\bfk}|\bfk|^{2n} a_{\bfk}^2 - 4\pi^2\alpha\sum_{\bfk} a_{\bfk}^2 + 4\pi^2\sum_{\bfk}a_\bfk\Re\left\{\hat{f}_{\bfk} \e^{-\ii\phi_\bfk}\right\} \notag \\
+	\omegahat{k}^*\der{\omegahat{k}}{t} &= \frac{1}{2}	\sum_{\mathbf{k}_1, \mathbf{k}_2\in \mathbb{Z}^2\setminus \mathbf{0}}\left(k_{1x}k_{2y} - k_{1y}k_{2x}\right) \left(\frac{1}{|\bfkn{1}|^2} - \frac{1}{|\bfkn{2}|^2}\right) \omegahat{\bfkn{1}}\omegahat{\bfkn{2}}\omegahat{k}^* \delta_{\bfkn{1}, \bfkn{2}}^{\bfk} - \nu |\bfk|^{2p}\omegahat{k}\omegahat{k}^* - \alpha|\bfk|^{-2q}\omegahat{k}\omegahat{k}^* + \hat{f}_{\bfk} \omegahat{k}^* + c. c. \notag \\
+	\sum_{\bfk}\left(\omegahat{k}^*\dot{\hat{\omega}}_\bfk + \omegahat{k}\dot{\hat{\omega}}^*_\bfk\right)&= \frac{1}{2}	\sum_{\bfk, \mathbf{k}_1, \mathbf{k}_2\in \mathbb{Z}^2\setminus \mathbf{0}}\left(k_{1x}k_{2y} - k_{1y}k_{2x}\right) \left(\frac{1}{|\bfkn{1}|^2} - \frac{1}{|\bfkn{2}|^2}\right) \omegahat{\bfkn{1}}\omegahat{\bfkn{2}}\omegahat{k}^* \delta_{\bfkn{1}, \bfkn{2}}^{\bfk} - \nu \sum_{\bfk}|\bfk|^{2p} a_{\bfk}^2 - \alpha\sum_{\bfk}|\bfk|^{-2q} a_{\bfk}^2 \notag\\ &\qquad \qquad \qquad \qquad+ \sum_{\bfk}\hat{f}_{\bfk} \omegahat{k}^* + c. c. \notag \\
+	\frac{1}{2\pi^2}\der{\mathcal{E}}{t} &= \frac{1}{2}	\sum_{\bfk, \mathbf{k}_1, \mathbf{k}_2\in \mathbb{Z}^2\setminus \mathbf{0}}\left(k_{1x}k_{2y} - k_{1y}k_{2x}\right) \left(\frac{1}{|\bfkn{1}|^2} - \frac{1}{|\bfkn{2}|^2}\right) (\omegahat{\bfkn{1}}\omegahat{\bfkn{2}}\omegahat{k}^* \delta_{\bfkn{1}, \bfkn{2}}^{\bfk} + c.c.) - 2\nu \sum_{\bfk}|\bfk|^{2p} a_{\bfk}^2 - 2\alpha\sum_{\bfk} |\bfk|^{-2q}a_{\bfk}^2 \notag \\
+	&\qquad \qquad \qquad \qquad+ \sum_{\bfk}\hat{f}_{\bfk} \omegahat{k}^* + c. c.\notag \\
+	\der{\mathcal{E}}{t} &= 2\pi^2	\sum_{\bfk, \mathbf{k}_1, \mathbf{k}_2\in \mathbb{Z}^2\setminus \mathbf{0}}\left(k_{1x}k_{2y} - k_{1y}k_{2x}\right) \left(\frac{1}{|\bfkn{1}|^2} - \frac{1}{|\bfkn{2}|^2}\right) a_{\bfkn{1}} a_{\bfkn{2}} a_{\bfk} \cos(\phi_{\bfkn{1}} + \phi_{\bfkn{2}} - \phi_{\bfk}) \delta_{\bfkn{1}, \bfkn{2}}^{\bfk} \notag \\ & \qquad \qquad \qquad \qquad- 4\pi^2\nu \sum_{\bfk}|\bfk|^{2p} a_{\bfk}^2 - 4\pi^2\alpha\sum_{\bfk} |\bfk|^{-2q}a_{\bfk}^2 + 4\pi^2\sum_{\bfk}a_\bfk\Re\left\{\hat{f}_{\bfk} \e^{-\ii\phi_\bfk}\right\} \notag \\
 	&= \Pi - \epsilon + \mathcal{I}
  \end{align}
 where $\Pi, \epsilon$ and $\mathcal{I}$ are the enstrophy flux in/out of the domain, enstrophy dissipation and forcing input respectively. Note that the Kronecker delta $\delta_{\bfkn{1}, \bfkn{2},\bfk}$ enforeces the triad condition $\bfkn{1} + \bfkn{2} + \bfk = 0$ which underlines the triad phase $\varphi_{\bfkn{1}, \bfkn{2}, \bfk} = \phi_{\bfkn{1}} + \phi_{\bfkn{2}} + \phi_{\bfk}$. It is also more appropriate to consider the flux in/out of a set, therefore let us define $\mathcal{U}$ as the universe of all wavevectors excluding the zero mode $\mathcal{U} \def \mathbb{Z}^2\setminus \mathbf{0}$ and we consider a set $\mathcal{C} \subset \mathcal{U}$ such that $-\mathcal{C} = \mathcal{C}$ where $-\mathcal{C} = \left\{-\bfk \mid \bfk \in \mathcal{C}\right\}$. Also note that due to conservation of \TODO{conservation of what}, the flux term in (\ref{eq:flux_enstrophy_derivation}) is zero when $\bfkn{1}$, $\bfkn{2}$ and $\bfkn{3}$ are all in the same set $\bfkn{1}$, $\bfkn{2}$, $\bfkn{3} \in \mathcal{C}$. Only when at least one mode of $\bfkn{1}$, $\bfkn{2}$ and $\bfkn{3}$ are outside the set do we get a nonzero contribution to the flux. Therefore the flux of enstrophy in the set $\mathcal{C}$ is 
@@ -393,7 +395,7 @@ Using the Fourier vorticity version of the total kinetic energy the rate of chan
 and 
 
 \begin{align}
-	\der{\mathcal{K}}{t} &= 2\pi^2	\sum_{\bfk, \mathbf{k}_1, \mathbf{k}_2\in \mathbb{Z}^2\setminus \mathbf{0}}\left(k_{1x}k_{2y} - k_{1y}k_{2x}\right) \left(\frac{1}{|\bfkn{1}|^2} - \frac{1}{|\bfkn{2}|^2}\right) \left( \frac{1}{|\bfk|^2}\right)a_{\bfkn{1}} a_{\bfkn{2}} a_{\bfk} \cos(\phi_{\bfkn{1}} + \phi_{\bfkn{2}} - \phi_{\bfk})\delta_{\bfkn{1}, \bfkn{2}}^{\bfk} \notag \\ & \qquad \qquad \qquad \qquad- 4\pi^2\nu \sum_{\bfk}|\bfk|^{2n - 1} a_{\bfk}^2 - 4\pi^2\alpha\sum_{\bfk} \frac{a_\bfk^2}{|\bfk|^2} + 4\pi^2\sum_{\bfk}\frac{a_\bfk}{|\bfk|^2}\Re\left\{\hat{f}_{\bfk} \e^{-\ii\phi_\bfk}\right\}
+	\der{\mathcal{K}}{t} &= 2\pi^2	\sum_{\bfk, \mathbf{k}_1, \mathbf{k}_2\in \mathbb{Z}^2\setminus \mathbf{0}}\left(k_{1x}k_{2y} - k_{1y}k_{2x}\right) \left(\frac{1}{|\bfkn{1}|^2} - \frac{1}{|\bfkn{2}|^2}\right) \left( \frac{1}{|\bfk|^2}\right)a_{\bfkn{1}} a_{\bfkn{2}} a_{\bfk} \cos(\phi_{\bfkn{1}} + \phi_{\bfkn{2}} - \phi_{\bfk})\delta_{\bfkn{1}, \bfkn{2}}^{\bfk} \notag \\ & \qquad \qquad \qquad \qquad- 4\pi^2\nu \sum_{\bfk}|\bfk|^{2p - 2} a_{\bfk}^2 - 4\pi^2\alpha\sum_{\bfk}|\bfk|^{-2q - 2} a_\bfk^2 + 4\pi^2\sum_{\bfk}\frac{a_\bfk}{|\bfk|^2}\Re\left\{\hat{f}_{\bfk} \e^{-\ii\phi_\bfk}\right\}
 \end{align}
 
 \section{System Quantities}
