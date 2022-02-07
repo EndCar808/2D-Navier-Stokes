@@ -233,7 +233,9 @@ In summary, we have the following system
 
 Often times, when numerically solving the above system the viscosity and friction terms are replaced with an hyperviscosity term $(-1)^{p + 1}\nu_p \nabla^{2p}\omega$ and a hyperfriction (or hypo-diffusivity) term $(-1)^{q + 1}\alpha_q \nabla^{-2q}\omega$. The motivation behined the hypervisosity and hyperfriction terms (when $p > 1$ and $q > 1$ respectively) is to reduces the range of scales over which the dissipative terms (friction and viscosity) contribute substantially, thereby ewxtending the inertial range for a given spatial resolution.
 
-\section{Vorticity Equation in Fourier Space}
+\section{Equations of Motion}
+
+\subsection{Vorticity Equation in Fourier Space}
 
 To solve this system we perform a Fourier decomposition of the scalar vorticity field in space
 
@@ -286,6 +288,31 @@ the system in Fourier space becomes
 	\label{eq:vort_eqn_fourier_space}
 \end{align}
 
+
+\subsection{The Timestepping Scheme}
+
+We employ an IMEX scheme wherey a Runge-Kutta scheme is applied to the nonlinear term and a Crank Nicolson scheme is applied to the diffusive terms. Letting the super script $n$ denote discretized time, the discretized Fourier space vorticity at time $t = t_n$ is $\omegahat{\bfk}(t_n) = \omegahat{\bfk}^n$. Applying both schemes to (\ref{eq:vort_eqn_fourier_space}) we get 
+
+\begin{align}
+	\frac{\omegahat{\bfk}^{n + 1} - \omegahat{\bfk}^n}{h} = \frac{1}{6}\left(R_1 + 2 R_2 + 2 R_3 + R_4\right) - \nu |\bfk|^{2p}\frac{1}{2}(\omegahat{\bfk}^{n + 1} + \omegahat{\bfk}^{n}) - \alpha|\bfk|^{-2q}\frac{1}{2}(\omegahat{\bfk}^{n + 1} + \omegahat{\bfk}^{n}) + \hat{f}_{\bfk}^{n}
+	\label{eq:disc_vort_eqn_fourier_space}
+\end{align}
+where $R_1$, $R_2$, $R_3$ and $R_4$ are 
+
+\begin{align}
+R_1 &= f(t_n, \omegahat{\bfk}^{n}) \notag \\
+R_2 &= f(t_n + \frac{1}{2}h, \omegahat{\bfk}^{n} + \frac{1}{2}hR_1) \notag \\
+R_3 &= f(t_n + \frac{1}{2}h, \omegahat{\bfk}^{n} + \frac{1}{2}hR_2) \notag \\
+R_4 &= f(t_n + h, \omegahat{\bfk}^{n} + hR_3)
+\end{align}
+and $f = \frac{1}{2}	\sum_{\mathbf{k}_1, \mathbf{k}_2\in \mathbb{Z}^2\setminus \mathbf{0}}\left(k_{1x}k_{2y} - k_{1y}k_{2x}\right) \left(\frac{1}{|\bfkn{1}|^2} - \frac{1}{|\bfkn{2}|^2}\right) \omegahat{\bfkn{1}}\omegahat{\bfkn{2}} \delta_{\bfkn{1}, \bfkn{2}}^{\bfk} + \hat{f}_\bfk$ is the nonlinear term with the forcing.
+
+Rearranging (\ref{eq:disc_vort_eqn_fourier_space}) we get the following expression for the update step of our numerical scheme
+
+\begin{align}
+\omegahat{\bfk}^{n + 1} = \omegahat{\bfk}^{n} \left(\frac{2 - \Delta}{2 + \Delta}\right) + \frac{2 h}{2 + \Delta}\left(\frac{1}{6}R_1 + \frac{1}{3}R_2  + \frac{1}{3}R_3 + \frac{1}{6}R_4\right)
+\end{align}
+where $\Delta = h \left(\nu|\bfk|^{2p} + \alpha|\bfk|^{-2q}\right)$
 \section{Enstrophy Flux}
 
 Using (\ref{eq:enstrophy_fourier}) we can find the rate of change of enstrophy as the following

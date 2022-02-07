@@ -121,25 +121,45 @@ if __name__ == '__main__':
     # -----------------------------------------
     # # --------  Compare Data
     # -----------------------------------------
-    # for i in range(sys_vars.ndata):
-    #     print(np.add.accumulate(spec_data.enst_flux_spectrum[i, :]))
-    #     print(post_data.enst_flux_spec[i, :])
-    #     print(np.allclose(np.add.accumulate(spec_data.enst_flux_spectrum[i, :]), post_data.enst_flux_spec[i, :], rtol = 1e-14, atol = 1e-14))
-    print(post_data.enst_flux_C[:4])
-    print(np.sum(post_data.enst_flux_per_sec[:4, :], axis = 1) * 4 * np.pi**2 / (sys_vars.Nx * sys_vars.Ny)**2 / np.absolute(post_data.enst_flux_C[:4]))
-    print(post_data.enst_flux_per_sec[4, :])
-    print(post_data.enst_flux_per_sec[4, :].sum())
-    print(np.sum(post_data.enst_flux_per_sec[:, :], axis =1)[4])
     fig = plt.figure(figsize = (16, 8))
-    gs  = GridSpec(1, 1)
+    gs  = GridSpec(2, 2)
     ax1 = fig.add_subplot(gs[0, 0])
-    ax1.plot(run_data.time, np.sum(post_data.enst_flux_per_sec[:, :], axis = 1) * 4 * np.pi**2 / (sys_vars.Nx * sys_vars.Ny)**2)
+    ax1.plot(run_data.time, np.sum(post_data.enst_flux_per_sec[:, 0, :], axis = 1) * 4 * np.pi**2 / (sys_vars.Nx * sys_vars.Ny)**2)
     ax1.plot(run_data.time, post_data.enst_flux_C[:])
     ax1.set_xlabel(r"$t$")
     ax1.set_ylabel(r"\Pi_{\mathcal{C}}")
     ax1.legend([r"$\sum_{\theta}\Pi_{\mathcal{C}_{\theta}}$", r"$\Pi_{\mathcal{C}}$"])
-    # ax1.set_yscale('log')
+    ax1.set_yscale('symlog')
     # ax1.set_xscale('log')
     ax1.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+
+    ax2 = fig.add_subplot(gs[0, 1])
+    plot = []
+    for i in range(5):
+        l, = ax2.plot(run_data.time, np.sum(post_data.enst_flux_per_sec[:, i, :], axis = 1) * 4 * np.pi**2 / (sys_vars.Nx * sys_vars.Ny)**2)
+        plot.append(l.get_color())
+    ax2.set_xlabel(r"$t$")
+    ax2.set_ylabel(r"$\sum_{\theta}\Pi_{\mathcal{C}_{\theta}}$")
+    ax2.legend([r"Type ${}$".format(t) for t in range(5)])
+    # ax2.set_yscale('symlog')
+    # ax2.set_xscale('log')
+    ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+    
+    ax3 = fig.add_subplot(gs[1, 0])
+    ax3.plot(run_data.time, np.sum(post_data.enst_flux_per_sec[:, 1, :], axis = 1) * 4 * np.pi**2 / (sys_vars.Nx * sys_vars.Ny)**2, color = plot[1])
+    ax3.plot(run_data.time, np.sum(post_data.enst_flux_per_sec[:, 2, :], axis = 1) * 4 * np.pi**2 / (sys_vars.Nx * sys_vars.Ny)**2, color = plot[2])
+    ax3.set_xlabel(r"$t$")
+    ax3.set_ylabel(r"$\sum_{\theta}\Pi_{\mathcal{C}_{\theta}}$")
+    ax3.legend([r"Type $1$", r"Type $2$"])
+    ax3.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+
+    ax4 = fig.add_subplot(gs[1, 1])
+    ax4.plot(run_data.time, np.sum(post_data.enst_flux_per_sec[:, 3, :], axis = 1) * 4 * np.pi**2 / (sys_vars.Nx * sys_vars.Ny)**2, color = plot[3])
+    ax4.plot(run_data.time, np.sum(post_data.enst_flux_per_sec[:, 4, :], axis = 1) * 4 * np.pi**2 / (sys_vars.Nx * sys_vars.Ny)**2, color = plot[4])
+    ax4.set_xlabel(r"$t$")
+    ax4.set_ylabel(r"$\sum_{\theta}\Pi_{\mathcal{C}_{\theta}}$")
+    ax4.legend([r"Type $3$", r"Type $4$"])
+    ax4.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+
     plt.savefig(cmdargs.out_dir + "EnstrophyFluxCompare.png")
     plt.close()

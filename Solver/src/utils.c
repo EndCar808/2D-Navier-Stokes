@@ -132,7 +132,7 @@ int GetCMLArgs(int argc, char** argv) {
 			case 'v':
 				// Read in the viscosity
 				sys_vars->NU = atof(optarg);
-				if (sys_vars->CFL_CONST <= 0) {
+				if (sys_vars->NU <= 0) {
 					fprintf(stderr, "\n["RED"ERROR"RESET"] Parsing of Command Line Arguements Failed: The provided viscosity: [%lf] must be strictly positive\n-->> Exiting!\n\n", sys_vars->NU);		
 					exit(1);
 				}
@@ -140,6 +140,10 @@ int GetCMLArgs(int argc, char** argv) {
 			case 'd':
 				// Read in the Ekman drag coefficient
 				sys_vars->EKMN_ALPHA = atof(optarg);
+				if (sys_vars->EKMN_ALPHA <= 0) {
+					fprintf(stderr, "\n["RED"ERROR"RESET"] Parsing of Command Line Arguements Failed: The provided Ekmann friction: [%lf] must be strictly positive\n-->> Exiting!\n\n", sys_vars->EKMN_ALPHA);		
+					exit(1);
+				}
 				break;
 			case 'i':
 				// Read in the initial conditions
