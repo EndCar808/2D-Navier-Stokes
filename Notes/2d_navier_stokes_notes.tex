@@ -503,10 +503,10 @@ Using (\ref{eq:fourier_decomp}) again the total palinstrophy in Fourier space be
 &=  \frac{1}{2}\int_0^{2\pi} \left(\sum_{\mathbf{k}_1\in \mathbb{Z}^2\setminus \mathbf{0}}\ii k_{1x}\hat{\omega}_{\mathbf{k}_1}\e^{\ii \mathbf{k}_1\cdot \mathbf{x}}\right)\left(\sum_{\mathbf{k}_2\in \mathbb{Z}^2\setminus \mathbf{0}}\ii k_{2x}\hat{\omega}_{\mathbf{k}_2}\e^{\ii \mathbf{k}_2\cdot \mathbf{x}}\right) + \left(\sum_{\mathbf{k}_1\in \mathbb{Z}^2\setminus \mathbf{0}}\ii k_{1y}\hat{\omega}_{\mathbf{k}_1}\e^{\ii \mathbf{k}_1\cdot \mathbf{x}}\right)\left(\sum_{\mathbf{k}_2\in \mathbb{Z}^2\setminus \mathbf{0}}\ii k_{2y}\hat{\omega}_{\mathbf{k}_2}\e^{\ii \mathbf{k}_2\cdot \mathbf{x}}\right) \mathrm{d}\bfx \notag\\
 &= \frac{1}{2}\int_0^{2\pi} \sum_{\mathbf{k}_1, \mathbf{k}_2\in \mathbb{Z}^2\setminus \mathbf{0}} -(k_{1x}k_{2x} + k_{1y}k_{2y})\hat{\omega}_{\bfkn{1}}\hat{\omega}_{\bfkn{2}}\e^{\ii (\bfkn{1} + \bfkn{2}) \cdot \bfx}\mathrm{d}\bfx \notag\\
 &=  \frac{1}{2}\sum_{\mathbf{k}_1, \mathbf{k}_2\in \mathbb{Z}^2\setminus \mathbf{0}} -(k_{1x}k_{2x} + k_{1y}k_{2y})\hat{\omega}_{\bfkn{1}}\hat{\omega}_{\bfkn{2}}\int_0^{2\pi}\e^{\ii (\bfkn{1} + \bfkn{2}) \cdot \bfx}\mathrm{d}\bfx \notag\\
-&=  \frac{1}{2}\sum_{\mathbf{k}_1, \mathbf{k}_2\in \mathbb{Z}^2\setminus \mathbf{0}} -(k_{1x}k_{2x} + k_{1y}k_{2y})\hat{\omega}_{\bfkn{1}}\hat{\omega}_{\bfkn{2}} 4\pi^2 \delta_{\bfkn{1}, \bfkn{2}}\mathrm{d}\bfx \notag\\
-&=  2\pi^2 \sum_{\mathbf{k}_1, \in \mathbb{Z}^2\setminus \mathbf{0}} -(k_{1x}-k_{1x} + k_{1y}-k_{1y})\hat{\omega}_{\bfkn{1}}\hat{\omega}_{-\bfkn{1}} \mathrm{d}\bfx \notag\\
-&=  2\pi^2 \sum_{\mathbf{k}, \in \mathbb{Z}^2\setminus \mathbf{0}} |\bfk|^2 |\hat{\omega}_{\bfk}|^2 \mathrm{d}\bfx \notag\\
-&=  2\pi^2 \sum_{\mathbf{k}, \in \mathbb{Z}^2\setminus \mathbf{0}} |\bfk|^2 a_{\bfk}^2 \mathrm{d}\bfx \notag\\
+&=  \frac{1}{2}\sum_{\mathbf{k}_1, \mathbf{k}_2\in \mathbb{Z}^2\setminus \mathbf{0}} -(k_{1x}k_{2x} + k_{1y}k_{2y})\hat{\omega}_{\bfkn{1}}\hat{\omega}_{\bfkn{2}} 4\pi^2 \delta_{\bfkn{1}, \bfkn{2}} \notag\\
+&=  2\pi^2 \sum_{\mathbf{k}_1, \in \mathbb{Z}^2\setminus \mathbf{0}} -(k_{1x}-k_{1x} + k_{1y}-k_{1y})\hat{\omega}_{\bfkn{1}}\hat{\omega}_{-\bfkn{1}} \notag\\
+&=  2\pi^2 \sum_{\mathbf{k}, \in \mathbb{Z}^2\setminus \mathbf{0}} |\bfk|^2 |\hat{\omega}_{\bfk}|^2 \notag\\
+&=  2\pi^2 \sum_{\mathbf{k}, \in \mathbb{Z}^2\setminus \mathbf{0}} |\bfk|^2 a_{\bfk}^2 \notag\\
 \label{eq:palinstrophy_fourier}
 \end{align}
 

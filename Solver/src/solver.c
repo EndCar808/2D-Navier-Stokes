@@ -27,7 +27,7 @@
 // Define RK4 variables
 #if defined(__RK4)
 static const double RK4_C2 = 0.5, 	  RK4_A21 = 0.5, \
-				  	RK4_C3 = 0.5,           					RK4_A32 = 0.5, \
+				  	RK4_C3 = 0.5,	           					RK4_A32 = 0.5, \
 				  	RK4_C4 = 1.0,                      									   RK4_A43 = 1.0, \
 				              	 	  RK4_B1 = 1.0/6.0, 		RK4_B2  = 1.0/3.0, 		   RK4_B3  = 1.0/3.0, 		RK4_B4 = 1.0/6.0;
 // Define RK5 Dormand Prince variables
@@ -39,7 +39,7 @@ static const double RK5_C2 = 0.2, 	  RK5_A21 = 0.2, \
 				  	RK5_C6 = 1.0,     RK5_A61 = 9017.0/3168.0,  RK5_A62 = -355.0/33.0,     RK5_A63 = 46732.0/5247.0, RK5_A64 = 49.0/176.0,    RK5_A65 = -5103.0/18656.0, \
 				  	RK5_C7 = 1.0,     RK5_A71 = 35.0/384.0,								   RK5_A73 = 500.0/1113.0,   RK5_A74 = 125.0/192.0,   RK5_A75 = -2187.0/6784.0,    RK5_A76 = 11.0/84.0, \
 				              		  RK5_B1  = 35.0/384.0, 							   RK5_B3  = 500.0/1113.0,   RK5_B4  = 125.0/192.0,   RK5_B5  = -2187.0/6784.0,    RK5_B6  = 11.0/84.0, \
-				              		  RK5_Bs1 = 5179.0/57600.0, 						   RK5_Bs3 = 7571.0/16695.0, RK5_Bs4 = 393.0/640.0,   RK_Bs5  = -92097.0/339200.0, RK5_Bs6 = 187.0/2100.0, RK5_Bs7 = 1.0/40.0;
+				              		  RK5_Bs1 = 5179.0/57600.0, 						   RK5_Bs3 = 7571.0/16695.0, RK5_Bs4 = 393.0/640.0,   RK5_Bs5 = -92097.0/339200.0, RK5_Bs6 = 187.0/2100.0, RK5_Bs7 = 1.0/40.0;
 #endif
 // ---------------------------------------------------------------------
 //  Function Definitions
@@ -91,6 +91,10 @@ void SpectralSolve(void) {
 	double dt;
 	double T;
 	long int trans_steps;
+	#if defined(__DPRK5)
+	int try = 1;
+	double dt_new;
+	#endif
 
 	// Get timestep and other integration variables
 	InitializeIntegrationVariables(&t0, &t, &dt, &T, &trans_steps);
@@ -114,10 +118,6 @@ void SpectralSolve(void) {
 	//////////////////////////////
 	// Begin Integration
 	//////////////////////////////
-	#if defined(__DPRK5)
-	try = 1;
-	double dt_new;
-	#endif
 	t 				   += dt;
 	int iters          = 1;
 	#if defined(TRANSIENTS)
@@ -133,18 +133,18 @@ void SpectralSolve(void) {
 		#if defined(__RK4)
 		RK4Step(dt, N, sys_vars->local_Nx, RK_data);
 		#elif defined(__RK5)
-		RK5DPStep(dt, N, sys_vars->local_Nx, RK_data);
+		RK5DPStep(dt, N, iters, sys_vars->local_Nx, RK_data);
 		#elif defined(__DPRK5)
 		while (try) {
 			// Try a Dormand Prince step and compute the local error
-			RK5DPStep(dt, N, sys_vars->local_Nx, RK_data);
+			RK5DPStep(dt, N, iters, sys_vars->local_Nx, RK_data);
 
 			// Compute the new timestep
-			dt_new = dt * DPMin(DP_DELTA_MAX, DPMax(DP_DELTA_MIN, DP_DELTA * pow(1.0 / RK_data->DP_errr, 0.2)))
+			dt_new = dt * DPMin(DP_DELTA_MAX, DPMax(DP_DELTA_MIN, DP_DELTA * pow(1.0 / RK_data->DP_err, 0.2)));
 			
 			// If error is bad repeat else move on
 			if (RK_data->DP_err < 1.0) {
-				RK->DP_fails++;
+				RK_data->DP_fails++;
 				dt = dt_new;
 				continue;
 			}
@@ -245,6 +245,8 @@ void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdif
 	#if defined(__DPRK5)
 	const long int Nx = N[0];
 	double dp_ho_step;
+	double err_sum;
+	double err_denom;
 	#endif
 	#if defined(PHASE_ONLY)
 	// Pre-record the amplitudes so they can be reset after update step
@@ -1417,7 +1419,7 @@ void InitializeSpaceVariables(double** x, int** k, const long int* N) {
 	}
 
 	// -------------------------------
-	// Fill the second dirction 
+	// Fill the second direction 
 	// -------------------------------
 	for (int i = 0; i < Ny; ++i) {
 		if (i < Ny_Fourier) {
@@ -2878,7 +2880,7 @@ void AllocateMemory(const long int* NBatch, RK_data_struct* RK_data) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for Integration Array ["CYAN"%s"RESET"] \n-->> Exiting!!!\n", "RK_tmp");
 		exit(1);
 	}
-	#if defined(__RK5)
+	#if defined(__RK5) || defined(__DPRK5)
 	RK_data->RK5       = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->alloc_local_batch);
 	if (RK_data->RK5 == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for Integration Array ["CYAN"%s"RESET"] \n-->> Exiting!!!\n", "RK5");
@@ -3256,7 +3258,7 @@ void FreeMemory(RK_data_struct* RK_data) {
 	fftw_free(RK_data->RK2);
 	fftw_free(RK_data->RK3);
 	fftw_free(RK_data->RK4);
-	#if defined(__RK5)
+	#if defined(__RK5) || defined(__DPRK5)
 	fftw_free(RK_data->RK5);
 	fftw_free(RK_data->RK6);
 	#endif 
