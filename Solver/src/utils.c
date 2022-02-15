@@ -106,7 +106,7 @@ int GetCMLArgs(int argc, char** argv) {
 				sys_vars->t0 = atof(optarg);
 
 				if (sys_vars->t0 < 0) {
-				    fprintf(stderr, "\n["RED"ERROR"RESET"] Parsing of Command Line Arguements Failed: The integration start time [%ld] must be a positive\n-->> Exiting!\n", sys_vars->t0);      
+				    fprintf(stderr, "\n["RED"ERROR"RESET"] Parsing of Command Line Arguements Failed: The integration start time [%lf] must be a positive\n-->> Exiting!\n", sys_vars->t0);      
 				    exit(1);
 				}	
 				break;
@@ -114,7 +114,7 @@ int GetCMLArgs(int argc, char** argv) {
 				// Read in final time
 				sys_vars->T = atof(optarg);	
 				if (sys_vars->T < 0) {
-				    fprintf(stderr, "\n["RED"ERROR"RESET"] Parsing of Command Line Arguements Failed: The integration end time [%ld] must be a positive\n-->> Exiting!\n", sys_vars->T);      
+				    fprintf(stderr, "\n["RED"ERROR"RESET"] Parsing of Command Line Arguements Failed: The integration end time [%lf] must be a positive\n-->> Exiting!\n", sys_vars->T);      
 				    exit(1);
 				}
 				else if (sys_vars->T < sys_vars->t0) {

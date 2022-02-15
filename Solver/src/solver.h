@@ -60,6 +60,7 @@ void EnstrophyFluxSpectrum(RK_data_struct* RK_data);
 void EnstrophyFlux(double* enst_flux, double* enst_diss, RK_data_struct* RK_data);
 void EnergyFlux(double* enrg_flux, double* enrg_diss, RK_data_struct* RK_data);
 void RecordSystemMeasures(double t, int print_indx,  RK_data_struct* RK_data);
+void ComputeSystemMeasurables(int iter, RK_data_struct* RK_data);
 // Testing
 void TestTaylorGreenVortex(const double t, const long int* N, double* norms);
 void TaylorGreenSoln(const double t, const long int* N);

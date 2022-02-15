@@ -2183,7 +2183,7 @@ double EnergyDissipationRate(void) {
 	// Compute The Energy Diss Rate
 	// -------------------------------
 	// Initialize total enstrophy
-	double enrgy = 0.0;
+	double enrgy_diss = 0.0;
 
 	// Loop over Fourier vorticity
 	for (int i = 0; i < local_Nx; ++i) {
@@ -2213,16 +2213,16 @@ double EnergyDissipationRate(void) {
 
 			// Update the running sum for the palinstrophy -> first and last modes have no conjugate so only count once
 			if((j == 0) || (j == Ny_Fourier - 1)) {
-				enrgy += pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+				enrgy_diss += pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
 			}
 			else {
-				enrgy += 2.0 * pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+				enrgy_diss += 2.0 * pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
 			}
 		}
 	}
 
 	// Return result -> 2 (nu * 0.5 *<|w|^2>)
-	return 2.0 * (4.0 * M_PI * M_PI * enrgy * norm_fac);
+	return 2.0 * (4.0 * M_PI * M_PI * enrgy_diss * norm_fac);
 }
 /**
  * Function to compute the enstrophy dissipation rate \eta which is equal to 2 * Palinstrophy for the current iteration on the local process
@@ -2246,7 +2246,7 @@ double EnstrophyDissipationRate(void) {
 	// Compute The Enstrophy Diss Rate 
 	// -------------------------------
 	// Initialize total enstrophy
-	double tot_palin = 0.0;
+	double tot_enst_diss = 0.0;
 
 	// Loop over Fourier vorticity
 	for (int i = 0; i < local_Nx; ++i) {
@@ -2273,23 +2273,23 @@ double EnstrophyDissipationRate(void) {
 				pre_fac = sys_vars->NU * k_sqr; 
 				#endif
 
-				// Update the running sum for the palinstrophy -> first and last modes have no conjugate so only count once
+				// Update the running sum for the enst_dissstrophy -> first and last modes have no conjugate so only count once
 				if((j == 0) || (j == Ny_Fourier - 1)) {
-					tot_palin += pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+					tot_enst_diss += pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
 				}
 				else {
-					tot_palin += 2.0 * pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+					tot_enst_diss += 2.0 * pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
 				}
 			}
 			else {
-				tot_palin += 0.0;
+				tot_enst_diss += 0.0;
 			}
 		}
 	}
 
 
-	// Return result -> 2(palin) = 2(0.5 * <|grad \omega|^2>)
-	return 2.0 * (4.0 * M_PI * M_PI * tot_palin * norm_fac);
+	// Return result -> 2(enst_diss) = 2(0.5 * <|grad \omega|^2>)
+	return 2.0 * (4.0 * M_PI * M_PI * tot_enst_diss * norm_fac);
 }	
 /**
  * Function to compute the enstrophy flux and enstrophy dissipation from a subset of modes on the local process for the current iteration 
@@ -2675,6 +2675,195 @@ void EnstrophyFluxSpectrum(RK_data_struct* RK_data) {
 	// Free Temp Memory
 	// -------------------------------------
 	fftw_free(dwhat_dt);
+}
+/**
+ * Function to compute the system measurables such as energy, enstrophy, palinstrophy, helicity, energy and enstrophy dissipation rates, and spectra at once on the local processes for the current timestep
+ * @param iter 		The index in the system arrays for the current timestep
+ * @param RK_data 	Struct containing the integration varaiables needed for the nonlinear term function
+ */
+void ComputeSystemMeasurables(int iter, RK_data_struct* RK_data) {
+
+	// Initialize variables
+	int tmp;
+	int indx;
+	int spec_indx;
+	ptrdiff_t local_Nx 		  = sys_vars->local_Nx;
+	const long int Nx         = sys_vars->N[0];
+	const long int Ny         = sys_vars->N[1];
+	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
+	double k_sqr, pre_fac;
+	double norm_fac  = 0.5 / pow(Nx * Ny, 2.0);
+    double const_fac = 4.0 * pow(M_PI, 2.0);
+
+	// ------------------------------------
+	// Initialize Measurables
+	// ------------------------------------
+	#if defined(__SYS_MEASURES)
+	// Initialize totals
+	run_data->tot_enstr[iter]  = 0.0;
+	run_data->tot_palin[iter]  = 0.0;
+	run_data->tot_energy[iter] = 0.0;
+	run_data->enrg_diss[iter]  = 0.0;
+	run_data->enst_diss[iter]  = 0.0;
+	#endif 
+	#if defined(__ENRG_SPECT) || defined(__ENST_SPECT)
+	// Initialize spectra
+	for (int i = 0; i < sys_vars->n_spect; ++i) {
+		#if defined(__ENRG_SPECT)
+		run_data->enrg_spect[i] = 0.0;
+		#endif
+		#if defined(__ENST_SPECT)
+		run_data->enst_spect[i] = 0.0;
+		#endif
+		#if defined(__ENST_FLUX_SPECT)
+		run_data->enst_flux_spect[spec_indx] = 0.0;
+		#endif
+		#if defined(__ENRG_FLUX_SPECT)
+		run_data->enrg_flux_spect[spec_indx] = 0.0;
+		#endif
+	}
+	#endif
+
+	#if defined(__ENRG_FLUX) || defined(__ENST_FLUX) || defined(__ENRG_FLUX_SPECT) || defined(__ENST_FLUX_SPECT)
+	// Compute the nonlinear term
+	NonlinearRHSBatch(run_data->w_hat, RK_data->RK1, RK_data->nabla_psi, RK_data->nabla_w);
+	#endif
+
+
+	// -------------------------------------
+	// Compute Measurables in Fourier Space
+	// -------------------------------------
+	// Loop over Fourier vorticity
+	for (int i = 0; i < local_Nx; ++i) {
+		tmp = i * Ny_Fourier;
+		for (int j = 0; j < Ny_Fourier; ++j) {
+			indx = tmp + j;
+
+
+			///--------------------------------- System Measures
+			#if defined(__SYS_MEASURES)
+			if ((run_data->k[0][i] != 0) || (run_data->k[1][j] != 0)) {
+				// The |k|^2 prefactor
+				k_sqr = (double )(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
+
+				// Get the appropriate prefactor
+				#if defined(HYPER_VISC) && defined(EKMN_DRAG)  // Both Hyperviscosity and Ekman drag
+				pre_fac = sys_vars->NU * pow(k_sqr, VIS_POW) + sys_vars->EKMN_ALPHA * pow(k_sqr, EKMN_POW);
+				#elif !defined(HYPER_VISC) && defined(EKMN_DRAG) // No hyperviscosity but we have Ekman drag
+				pre_fac = sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA * pow(k_sqr, EKMN_POW);
+				#elif defined(HYPER_VISC) && !defined(EKMN_DRAG) // Hyperviscosity only
+				pre_fac = sys_vars->NU * pow(k_sqr, VIS_POW);
+				#else // No hyper viscosity or no ekman drag -> just normal viscosity
+				pre_fac = sys_vars->NU * k_sqr; 
+				#endif
+
+				// Update the sums
+				if ((j == 0) || (j == Ny_Fourier - 1)) { // only count the 0 and N/2 modes once as they have no conjugate
+					run_data->tot_energy[iter] += cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * (1.0 / k_sqr);
+					run_data->tot_enstr[iter]  += cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+					run_data->tot_palin[iter]  += k_sqr * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+					run_data->enrg_diss[iter]  += sys_vars->NU * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+					run_data->enst_diss[iter]  += pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+					if ((k_sqr >= pow(LWR_SBST_LIM, 2.0)) && (k_sqr < pow(UPR_SBST_LIM, 2.0))) { // define the subset to consider for the flux and dissipation
+						#if defined(__ENRG_FLUX)
+						run_data->enrg_diss_sbst[iter] += creal(run_data->w_hat[indx] * conj(RK_data->RK1[indx]) + conj(run_data->w_hat[indx]) * RK_data->RK1[indx]) * (1.0 / k_sqr);
+						run_data->enrg_diss_sbst[iter] += pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * (1.0 / k_sqr);
+						#endif
+						#if defined(__ENST_FLUX)
+						run_data->enst_flux_sbst[iter] += creal(run_data->w_hat[indx] * conj(RK_data->RK1[indx]) + conj(run_data->w_hat[indx]) * RK_data->RK1[indx]); 
+						run_data->enst_diss_sbst[iter] += pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+						#endif
+					}
+				}
+				else {
+					run_data->tot_energy[iter] += 2.0 * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * (1.0 / k_sqr);
+					run_data->tot_enstr[iter]  += 2.0 * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+					run_data->tot_palin[iter]  += 2.0 * k_sqr * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+					run_data->enrg_diss[iter]  += 2.0 * sys_vars->NU * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+					run_data->enst_diss[iter]  += 2.0 * pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+					if ((k_sqr >= pow(LWR_SBST_LIM, 2.0)) && (k_sqr < pow(UPR_SBST_LIM, 2.0))) { // define the subset to consider for the flux and dissipation
+						#if defined(__ENRG_FLUX)
+						run_data->enrg_flux_sbst[iter] += 2.0 * creal(run_data->w_hat[indx] * conj(RK_data->RK1[indx]) + conj(run_data->w_hat[indx]) * RK_data->RK1[indx]) * (1.0 / k_sqr);
+						run_data->enrg_diss_sbst[iter] += 2.0 * pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * (1.0 / k_sqr);
+						#endif
+						#if defined(__ENST_FLUX)
+						run_data->enst_flux_sbst[iter] += 2.0 * creal(run_data->w_hat[indx] * conj(RK_data->RK1[indx]) + conj(run_data->w_hat[indx]) * RK_data->RK1[indx]); 
+						run_data->enst_diss_sbst[iter] += 2.0 * pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+						#endif
+					}
+				}
+			}
+			else {
+				continue;
+			}
+			#endif
+
+			///--------------------------------- Spectra
+			#if defined(__ENRG_SPEC) || defined(__ENST_SPECT)
+			// Get spectrum index -> spectrum is computed by summing over the energy contained in concentric annuli in wavenumber space
+			spec_indx = (int) round( sqrt( (double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]) ) );
+
+			if ((run_data->k[0][i] != 0) || (run_data->k[1][j] != 0)) {
+				// Compute |k|^2
+				k_sqr = ((double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]));
+
+				if ((j == 0) || (j == Ny_Fourier - 1)) {
+					// Update the current bin
+					#if defined(__ENRG_SPEC)
+					run_data->enrg_spect[spec_indx] += const_fac * norm_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * (1.0 / k_sqr);
+					#endif
+					#if defined(__ENST_SPECT)
+					run_data->enst_spect[spec_indx] += const_fac * norm_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+					#endif
+					#if defined(__ENST_FLUX_SPECT)
+					run_data->enst_flux_spect[spec_indx] += const_fac * norm_fac * creal(run_data->w_hat[indx] * conj(RK_data->RK1[indx]) + conj(run_data->w_hat[indx]) * RK_data->RK1[indx]);
+					#endif
+					#if defined(__ENRG_FLUX_SPECT)
+					run_data->enrg_flux_spect[spec_indx] += const_fac * norm_fac * creal(run_data->w_hat[indx] * conj(RK_data->RK1[indx]) + conj(run_data->w_hat[indx]) * RK_data->RK1[indx]) * (1.0 / k_sqr);
+					#endif
+				}
+				else {
+					// Update the spectra sums for the current mode
+					#if defined(__ENRG_SPEC)
+					run_data->enrg_spect[spec_indx] += 2.0 * const_fac * norm_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * (1.0 / k_sqr);
+					#endif
+					#if defined(__ENST_SPECT)
+					run_data->enst_spect[spec_indx] += 2.0 * const_fac * norm_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+					#endif
+					#if defined(__ENST_FLUX_SPECT)
+					run_data->enst_flux_spect[spec_indx] += 2.0 * const_fac * norm_fac * creal(run_data->w_hat[indx] * conj(RK_data->RK1[indx]) + conj(run_data->w_hat[indx]) * RK_data->RK1[indx]);
+					#endif
+					#if defined(__ENRG_FLUX_SPECT)
+					run_data->enrg_flux_spect[spec_indx] += 2.0 * const_fac * norm_fac * creal(run_data->w_hat[indx] * conj(RK_data->RK1[indx]) + conj(run_data->w_hat[indx]) * RK_data->RK1[indx]) * (1.0 / k_sqr);
+					#endif
+				}
+			}
+			else {
+				continue;
+			}
+			#endif
+		}
+	}
+
+	// ------------------------------------
+	// Normalize Measureables 
+	// ------------------------------------	
+	#if defined(__SYS_MEASURES)
+	// Normalize results and take into account computation in Fourier space
+	run_data->enrg_diss[iter]  *= 2.0 * const_fac * norm_fac;
+	run_data->enst_diss[iter]  *= 2.0 * const_fac * norm_fac;
+	run_data->tot_enstr[iter]  *= const_fac * norm_fac;
+	run_data->tot_palin[iter]  *= const_fac * norm_fac;
+	run_data->tot_energy[iter] *= const_fac * norm_fac;
+	#endif
+	#if defined(__ENRG_FLUX)
+	run_data->enrg_flux_sbst[iter] *= const_fac * norm_fac;
+	run_data->enrg_diss_sbst[iter] *= 2.0 * const_fac * norm_fac;
+	#endif
+	#if defined(__ENST_FLUX)
+	run_data->enst_flux_sbst[iter] *= const_fac * norm_fac;
+	run_data->enst_diss_sbst[iter] *= 2.0 * const_fac * norm_fac;
+	#endif
 }
 /**
  * Function to record the system measures for the current timestep 
