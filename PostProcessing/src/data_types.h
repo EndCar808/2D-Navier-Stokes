@@ -146,6 +146,7 @@ typedef struct postprocess_data_struct {
 	double* enst;			   		 							 // Array to hold the full field zero centred enstrophy
 	double* enst_spec; 		   		 							 // Array to hold the enstrophy spectrum
     double* enrg_spec; 		   		 							 // Array to hold the energy spectrum
+    double dtheta; 												 // The angle between sectors
 	bool pos_flux_term_cond;									 // Boolean to store the condition on the wavevectors for the first (positive) term in the enstrophy flux
 	bool neg_flux_term_cond;									 // Boolean to store the condition on the wavevectors for the second (negative) term in the enstrophy flux
     double* enst_flux_spec;										 // Array to hold the enstrophy flux spectrum
@@ -155,6 +156,7 @@ typedef struct postprocess_data_struct {
     double* nabla_w;											 // Array to hold the gradient of the real space vorticity -> for nonlinear RHS function
     double* nabla_psi;											 // Array to hold the gradient of the real space stream function -> for nonlinear RHS function
 	double* theta;                   							 // Array to hold the angles for the sector boundaries
+	double* mid_theta;                 							 // Array to hold the angles for the mid point of the sectors
     double* k_angle;											 // Array to hold the pre computed arctangents of the k3 wavevectors to speed up triad computation
     double* k1_angle;											 // Array to hold the pre computed arctangents of the k1 wavevectors to speed up triad computation
     double* k2_angle;											 // Array to hold the pre computed arctangents of the k2 wavevectors to speed up triad computation

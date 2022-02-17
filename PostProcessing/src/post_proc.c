@@ -237,8 +237,8 @@ void SectorPhaseOrder(int s) {
 	int num_phases;
 	int tmp, tmp1;
 	double flux_pre_fac;
-	double k2_sector_angle_1;
-	double k2_sector_angle_2; 
+	double k1_curl_k2;
+	double k2_sector_angle;
 	int k_x, k1_x, k2_x, k2_y;
 	int tmp_k, tmp_k1, tmp_k2;
 	double phase, triad_phase, gen_triad_phase;
@@ -337,7 +337,7 @@ void SectorPhaseOrder(int s) {
 			proc_data->enst_flux[i][a] = 0.0;
 		}
 
-
+		// Loop through second sector choice
 		for (int l = 0; l < sys_vars->num_sect - 1; ++l) {
 			
 			// Loop through the k wavevector (k is the k3 wavevector)
@@ -364,40 +364,42 @@ void SectorPhaseOrder(int s) {
 								k1_angle = proc_data->k1_angle[tmp_k1_x * (sys_vars->kmax + 1) + k1_y];
 
 								// Check if k1 wavevector is in the sector theta + l*dtheta
-								if((k1_sqr > 0 && k1_sqr < sys_vars->kmax_sqr) && (k1_angle >= proc_data->theta[(a + l) % sys_vars->num_sect] && k1_angle < proc_data->theta[(a + 1 + l) % sys_vars->num_sect])) {
+								if((k1_sqr > 0 && k1_sqr < sys_vars->kmax_sqr) && (k1_angle >= proc_data->mid_theta[(a + l) % sys_vars->num_sect] - proc_data->dthat/2.0 && k1_angle < proc_data->mid_theta[(a + l) % sys_vars->num_sect] + proc_data->dthat/2.0)) {
 									
 									// Find the k2 wavevector
 									k2_x = k_x - k1_x;
 									k2_y = k_y - k1_y;
+
+									// Get k1 x k2
+									k1_curl_k2 = (double)(k1_x * k2_y - k2_x * k1_y);
 									
 									// Get polar coords for k2
 									k2_sqr   = (double) (k2_x * k2_x + k2_y * k2_y);
 									k2_angle = proc_data->k2_angle[(sys_vars->kmax + 1) * ((2 * sys_vars->kmax) * (tmp_k_x * (sys_vars->kmax + 1) + k_y) + tmp_k1_x) + k1_y];
 
+									// Get the value of the -k2 angle
 									if (k2_y < 0 || (k2_y == 0 && k2_x > 0)) {
 										// Get the angle of the negative wavevector k2 i.e., -k2 --> for checking the case if k2 is in the negative sector
 										k2_angle_neg = proc_data->k2_angle_neg[(sys_vars->kmax + 1) * ((2 * sys_vars->kmax) * (tmp_k_x * (sys_vars->kmax + 1) + k_y) + tmp_k1_x) + k1_y];
 									}
 
-									// Get the appropriate sector angle for k2
+									// Get the appropriate sector angle for k2 -> k2 can either be in the same sector as k3 and k1 (pos or neg) or in the sector defined by the vector addition of k3 - k1
 									if (l == 0) {
-										k2_sector_angle_1 = proc_data->theta[a];
-										k2_sector_angle_2 = proc_data->theta[a + 1];
+										k2_sector_angle = proc_data->mid_theta[a];
 									}
 									else {
-										k2_sector_angle_1 = proc_data->theta[a] - proc_data->theta[(a + l) % sys_vars->num_sect];
-										k2_sector_angle_2 = proc_data->theta[a + 1] - proc_data->theta[(a + 1 + l) % sys_vars->num_sect];
+										k2_sector_angle = (proc_data->mid_theta[a] + proc_data->mid_theta[(a + l) % sys_vars->num_sect] + GSL_SIGN(k1_curl_k2) * M_PI) / 2.0;
 									}
 
 									// Check if k2 is in the current positive sector or if k2 is in the negative sector
-									if ((k2_sqr > 0 && k2_sqr < sys_vars->kmax_sqr) &&  ((k2_angle >=  k2_sector_angle_1 && k2_angle < k2_sector_angle_2 && k2_sqr > k1_sqr) || ((k2_y < 0 || (k2_y == 0 && k2_x > 0)) && k2_angle_neg >= k2_sector_angle_1 && k2_angle_neg < k2_sector_angle_2))) {
+									if ((k2_sqr > 0 && k2_sqr < sys_vars->kmax_sqr) &&  ((k2_angle >=  k2_sector_angle - proc_data->dtheta/2.0 && k2_angle < k2_sector_angle + proc_data->dtheta/2.0 && k2_sqr > k1_sqr) || ((k2_y < 0 || (k2_y == 0 && k2_x > 0)) && k2_angle_neg >= k2_sector_angle - proc_data->dtheta/2.0 && k2_angle_neg < k2_sector_angle + proc_data->dtheta/2.0))) {
 										// Get correct phase index -> recall that to access kx > 0, use -kx
 										tmp_k  = (sys_vars->kmax - 1 - k_x) * (2 * sys_vars->kmax - 1);
 										tmp_k1 = (sys_vars->kmax - 1 - k1_x) * (2 * sys_vars->kmax - 1);	
 										tmp_k2 = (sys_vars->kmax - 1 - k2_x) * (2 * sys_vars->kmax - 1);
 
 										// Get the wavevector prefactor -> the sign of the determines triad type
-										flux_pre_fac = (double)(k1_x * k2_y - k2_x * k1_y) * (1.0 / k1_sqr - 1.0 / k2_sqr);
+										flux_pre_fac = k1_curl_k2 * (1.0 / k1_sqr - 1.0 / k2_sqr);
 
 										// Get the weighting (modulus) of this term to the contribution to the flux
 										flux_wght = flux_pre_fac * (proc_data->amps[tmp_k1 + sys_vars->kmax - 1 + k1_y] * proc_data->amps[tmp_k2 + sys_vars->kmax - 1 + k2_y] * proc_data->amps[tmp_k + sys_vars->kmax - 1 + k_y]);
@@ -1166,6 +1168,12 @@ void AllocateMemory(const long int* N) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Phase Sync Sector Angles");
 		exit(1);
 	}
+	// Allocate the array of mid point sector angles
+	proc_data->mid_theta = (double* )fftw_malloc(sizeof(double) * sys_vars->num_sect);
+	if (proc_data->mid_theta == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Phase Sync Sector Midpoint Angles");
+		exit(1);
+	}
 
 	for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
 		///--------------- Number of Triads
@@ -1375,10 +1383,11 @@ void AllocateMemory(const long int* N) {
 	}
 	
 	// Initialize arrays
-	double dtheta = M_PI / (double )sys_vars->num_sect;
+	proc_data->dtheta = M_PI / (double )sys_vars->num_sect;
 	for (int i = 0; i < sys_vars->num_sect + 1; ++i) {
 		proc_data->theta[i] = -M_PI / 2.0 + i * dtheta;
 		if (i < sys_vars->num_sect){
+			proc_data->mid_theta[i]   = -M_PI / 2.0 + i * dtheta + dtheta;
 			proc_data->phase_R[i]     = 0.0;
 			proc_data->phase_Phi[i]   = 0.0;
 			proc_data->phase_order[i] = 0.0 + 0.0 * I;
@@ -1588,6 +1597,7 @@ void FreeMemoryAndCleanUp(void) {
 	#endif
 	#if defined(__SEC_PHASE_SYNC)
 	fftw_free(proc_data->theta);
+	fftw_free(proc_data->mid_theta);
 	fftw_free(proc_data->k_angle);
 	fftw_free(proc_data->k1_angle);
 	fftw_free(proc_data->k2_angle);
