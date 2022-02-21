@@ -237,7 +237,7 @@ void SectorPhaseOrder(int s) {
 	int num_phases;
 	int tmp, tmp1;
 	double flux_pre_fac;
-	double k1_curl_k2;
+	double k1_curl_k3;
 	double k2_sector_angle;
 	int k_x, k1_x, k2_x, k2_y;
 	int tmp_k, tmp_k1, tmp_k2;
@@ -364,14 +364,14 @@ void SectorPhaseOrder(int s) {
 								k1_angle = proc_data->k1_angle[tmp_k1_x * (sys_vars->kmax + 1) + k1_y];
 
 								// Check if k1 wavevector is in the sector theta + l*dtheta
-								if((k1_sqr > 0 && k1_sqr < sys_vars->kmax_sqr) && (k1_angle >= proc_data->mid_theta[(a + l) % sys_vars->num_sect] - proc_data->dthat/2.0 && k1_angle < proc_data->mid_theta[(a + l) % sys_vars->num_sect] + proc_data->dthat/2.0)) {
+								if((k1_sqr > 0 && k1_sqr < sys_vars->kmax_sqr) && (k1_angle >= proc_data->mid_theta[(a + l) % sys_vars->num_sect] - proc_data->dtheta/2.0 && k1_angle < proc_data->mid_theta[(a + l) % sys_vars->num_sect] + proc_data->dtheta/2.0)) {
 									
 									// Find the k2 wavevector
 									k2_x = k_x - k1_x;
 									k2_y = k_y - k1_y;
 
-									// Get k1 x k2
-									k1_curl_k2 = (double)(k1_x * k2_y - k2_x * k1_y);
+									// Get k1 x k2 unit vectors
+									k1_curl_k3 = (double)(k1_x * k_y - k1_y * k_x) / (sqrt(k1_sqr) * sqrt(k_sqr));
 									
 									// Get polar coords for k2
 									k2_sqr   = (double) (k2_x * k2_x + k2_y * k2_y);
@@ -388,7 +388,7 @@ void SectorPhaseOrder(int s) {
 										k2_sector_angle = proc_data->mid_theta[a];
 									}
 									else {
-										k2_sector_angle = (proc_data->mid_theta[a] + proc_data->mid_theta[(a + l) % sys_vars->num_sect] + GSL_SIGN(k1_curl_k2) * M_PI) / 2.0;
+										k2_sector_angle = (proc_data->mid_theta[a] + proc_data->mid_theta[(a + l) % sys_vars->num_sect] + GSL_SIGN(k1_curl_k3) * M_PI) / 2.0;
 									}
 
 									// Check if k2 is in the current positive sector or if k2 is in the negative sector
@@ -399,7 +399,7 @@ void SectorPhaseOrder(int s) {
 										tmp_k2 = (sys_vars->kmax - 1 - k2_x) * (2 * sys_vars->kmax - 1);
 
 										// Get the wavevector prefactor -> the sign of the determines triad type
-										flux_pre_fac = k1_curl_k2 * (1.0 / k1_sqr - 1.0 / k2_sqr);
+										flux_pre_fac = (double)(k1_x * k2_y - k2_x * k1_y) * (1.0 / k1_sqr - 1.0 / k2_sqr);
 
 										// Get the weighting (modulus) of this term to the contribution to the flux
 										flux_wght = flux_pre_fac * (proc_data->amps[tmp_k1 + sys_vars->kmax - 1 + k1_y] * proc_data->amps[tmp_k2 + sys_vars->kmax - 1 + k2_y] * proc_data->amps[tmp_k + sys_vars->kmax - 1 + k_y]);
@@ -444,10 +444,6 @@ void SectorPhaseOrder(int s) {
 											proc_data->neg_flux_term_cond = k_sqr <= sys_vars->kmax_C_sqr && (k1_sqr > sys_vars->kmax_C_sqr && k2_sqr > sys_vars->kmax_C_sqr);
 										}
 
-										// if (a == 25 && (proc_data->pos_flux_term_cond)) {
-										// 	printf("sgn: %d\tpre_fac: %lf\tflux_wght: %lf\tk1: (%d, %d)\tk2: (%d, %d)\tk_sqr: %lf\tk1_sqr: %lf\tk2_sqr: %lf\tkmax_C: %lf\tpos: %d\n", GSL_SIGN(flux_pre_fac), flux_pre_fac, flux_wght, k1_x, k1_y, k2_x, k2_y, k_sqr, k1_sqr, k2_sqr, sys_vars->kmax_C_sqr, proc_data->pos_flux_term_cond ? 1 : 0);
-										// }
-
 										///------------------ Determine which flux contribution we are dealing with -> the postive case (when k1 & k2 in C^' and k3 in C) or the negative case (when k3 in C^' and k1 and k2 in C)
 										// The postive case
 										if (proc_data->pos_flux_term_cond && fabs(flux_wght) > 1e-5) {  
@@ -459,7 +455,7 @@ void SectorPhaseOrder(int s) {
 											proc_data->num_triads[0][a]++;
 
 											// Update the flux contribution for type 0
-											proc_data->enst_flux[0][a] += flux_wght * cos(triad_phase);
+											proc_data->enst_flux[0][a] += 2.0 * flux_wght * cos(triad_phase);
 
 											// ------ Update the PDFs of the combined triads
 											gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf[0][a], gen_triad_phase);
@@ -485,7 +481,7 @@ void SectorPhaseOrder(int s) {
 												proc_data->num_triads[1][a]++;		
 
 												// Update the flux contribution for tpye 1
-												proc_data->enst_flux[1][a] += flux_wght * cos(triad_phase);
+												proc_data->enst_flux[1][a] += 2.0 *flux_wght * cos(triad_phase);
 
 												// Update the PDFs
 												gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf[1][a], gen_triad_phase);
@@ -510,7 +506,7 @@ void SectorPhaseOrder(int s) {
 												proc_data->num_triads[2][a]++;
 
 												// Update the flux contribution for type 2
-												proc_data->enst_flux[2][a] += flux_wght * cos(triad_phase);
+												proc_data->enst_flux[2][a] += 2.0 * flux_wght * cos(triad_phase);
 
 												// Update the PDFs
 												gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf[2][a], gen_triad_phase);
@@ -541,7 +537,7 @@ void SectorPhaseOrder(int s) {
 											proc_data->num_triads[0][a]++;
 
 											// Update the flux contribution for type 0
-											proc_data->enst_flux[0][a] += -flux_wght * cos(triad_phase);
+											proc_data->enst_flux[0][a] -= 2.0 * flux_wght * cos(triad_phase);
 
 											// ------ Update the PDFs of the combined triads
 											gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf[0][a], gen_triad_phase);
@@ -567,7 +563,7 @@ void SectorPhaseOrder(int s) {
 												proc_data->num_triads[3][a]++;
 
 												// Update the flux contribution for type 3
-												proc_data->enst_flux[3][a] += flux_wght * cos(triad_phase);
+												proc_data->enst_flux[3][a] -= 2.0 * flux_wght * cos(triad_phase);
 
 												// Update the PDFs
 												gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf[3][a], gen_triad_phase);
@@ -592,7 +588,7 @@ void SectorPhaseOrder(int s) {
 												proc_data->num_triads[4][a]++;
 
 												// Update the flux contribution for type 4
-												proc_data->enst_flux[4][a] += flux_wght * cos(triad_phase);
+												proc_data->enst_flux[4][a] -= 2.0 * flux_wght * cos(triad_phase);
 
 												// Update the PDFs
 												gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf[4][a], gen_triad_phase);
@@ -1385,9 +1381,9 @@ void AllocateMemory(const long int* N) {
 	// Initialize arrays
 	proc_data->dtheta = M_PI / (double )sys_vars->num_sect;
 	for (int i = 0; i < sys_vars->num_sect + 1; ++i) {
-		proc_data->theta[i] = -M_PI / 2.0 + i * dtheta;
+		proc_data->theta[i] = -M_PI / 2.0 + i * proc_data->dtheta;
 		if (i < sys_vars->num_sect){
-			proc_data->mid_theta[i]   = -M_PI / 2.0 + i * dtheta + dtheta;
+			proc_data->mid_theta[i]   = -M_PI / 2.0 + i * proc_data->dtheta + proc_data->dtheta;
 			proc_data->phase_R[i]     = 0.0;
 			proc_data->phase_Phi[i]   = 0.0;
 			proc_data->phase_order[i] = 0.0 + 0.0 * I;

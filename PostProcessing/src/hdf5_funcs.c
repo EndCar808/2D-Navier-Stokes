@@ -750,7 +750,7 @@ void WriteDataToFile(double t, long int snap) {
     ///------------------------ Enstrophy Flux
     for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
     	for (int a = 0; a < sys_vars->num_sect; ++a) {
-    		tmp[i * sys_vars->num_sect + a] = proc_data->enst_flux[i][a];
+    		tmp[i * sys_vars->num_sect + a] = 2.0 * pow(M_PI, 2.0) * proc_data->enst_flux[i][a];
     	}
     }
     status = H5LTmake_dataset(group_id, "EnstrophyFluxPerSector", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, tmp);
