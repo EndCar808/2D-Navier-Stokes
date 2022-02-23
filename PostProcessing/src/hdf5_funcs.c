@@ -763,7 +763,7 @@ void WriteDataToFile(double t, long int snap) {
     fftw_free(tmp);
 
 
-    /// ------------------------ Phase Order Stats Data
+    ///------------------------- Phase Order Stats Data
 	// Allocate temporary memory for the phases pdfs
 	double* ranges = (double*) fftw_malloc(sizeof(double) * sys_vars->num_sect * (proc_data->phase_sect_pdf_t[0]->n + 1));
 	double* counts = (double*) fftw_malloc(sizeof(double) * sys_vars->num_sect * proc_data->phase_sect_pdf_t[0]->n);
@@ -1024,12 +1024,9 @@ void FinalWriteAndClose(void) {
 	#endif
 	
 	#if defined(__SEC_PHASE_SYNC)
-	/// ------------------------- Sector Angles
+	///-------------------------- Sector Angles
 	// Convert theta array back to angles before printing
-	for (int i = 0; i < sys_vars->num_sect + 1; ++i) {
-		proc_data->theta[i] = proc_data->theta[i];
-	}
-    dset_dims_1d[0] = sys_vars->num_sect + 1;
+    dset_dims_1d[0] = sys_vars->num_sect;
 	status = H5LTmake_dataset(file_info->output_file_handle, "SectorAngles", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, proc_data->theta);
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Sector Angles");
@@ -1055,7 +1052,7 @@ void FinalWriteAndClose(void) {
     fftw_free(tmp);
     
 
-    /// ------------------------- Sector Phase PDFs
+    ///-------------------------- Sector Phase PDFs
     // Allocate temporary memory
 	double* ranges = (double*) fftw_malloc(sizeof(double) * sys_vars->num_sect * (proc_data->phase_sect_pdf[0]->n + 1));
 	double* counts = (double*) fftw_malloc(sizeof(double) * sys_vars->num_sect * proc_data->phase_sect_pdf[0]->n);

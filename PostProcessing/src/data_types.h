@@ -156,10 +156,10 @@ typedef struct postprocess_data_struct {
     double* nabla_w;											 // Array to hold the gradient of the real space vorticity -> for nonlinear RHS function
     double* nabla_psi;											 // Array to hold the gradient of the real space stream function -> for nonlinear RHS function
 	double* theta;                   							 // Array to hold the angles for the sector boundaries
-	double* mid_theta;                 							 // Array to hold the angles for the mid point of the sectors
     double* k_angle;											 // Array to hold the pre computed arctangents of the k3 wavevectors to speed up triad computation
     double* k1_angle;											 // Array to hold the pre computed arctangents of the k1 wavevectors to speed up triad computation
     double* k2_angle;											 // Array to hold the pre computed arctangents of the k2 wavevectors to speed up triad computation
+    double* mid_angle_sum;									     // Array to hold the pre computed midpoint angle sums -> this will determine which sector k2 is in
     double* k2_angle_neg;										 // Array to hold the pre computed arctangents of the negative k2 wavevectors to speed up triad computation    
     double* phase_angle;										 // Array to hold the pre computed arctangents of the wavevectors for the individual phases   
     fftw_complex* phase_order;       							 // Array to hold the phase order parameter for each sector for the individual phases
