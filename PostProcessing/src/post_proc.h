@@ -18,6 +18,7 @@
 void RealSpaceStats(int s);
 void FullFieldData();
 void SectorPhaseOrder(int s);
+void SectorPhaseOrderPar(int s);
 void EnstrophyFluxSpectrum(int snap);
 void NonlinearRHS(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* nonlinterm, double* u, double* nabla_w);
 void ApplyDealiasing(fftw_complex* array, int array_dim, const long int* N);

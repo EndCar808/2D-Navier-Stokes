@@ -51,10 +51,12 @@ int GetCMLArgs(int argc, char** argv) {
 	sys_vars->num_sect = 40;
 	// Fraction of maximum wavevector
 	sys_vars->kmax_frac = 1.0;
+	// Set the default amount of threads to use
+	sys_vars->num_threads = 4;
 	// -------------------------------
 	// Parse CML Arguments
 	// -------------------------------
-	while ((c = getopt(argc, argv, "a:o:h:n:s:e:t:v:i:c:p:f:z:k:")) != -1) {
+	while ((c = getopt(argc, argv, "a:o:h:n:s:e:t:v:i:c:p:f:z:k:t:")) != -1) {
 		switch(c) {
 			case 'o':
 				if (output_dir_flag == 0) {
@@ -86,6 +88,14 @@ int GetCMLArgs(int argc, char** argv) {
 					exit(1);
 				}
 				break;
+			case 't':
+				// Get the number of omp threads to use
+				sys_vars->num_threads = atoi(optarg); 
+				if (sys_vars->num_threads <= 0) {
+					fprintf(stderr, "\n["RED"ERROR"RESET"]: Error in reading in command line agument ["CYAN"%s"RESET"], number of OMP threads must be greater than or equal to 1, umber provided ["CYAN"%d"RESET"]\n--->> Now Exiting!\n", "sys_vars->num_sect", sys_vars->num_threads);
+					exit(1);
+				}
+				break;
 			case 'k':
 				// Get the fraction of kmax wavevectors to consider in the phase sync
 				sys_vars->kmax_frac = atof(optarg); 
@@ -98,6 +108,9 @@ int GetCMLArgs(int argc, char** argv) {
 				fprintf(stderr, "\n["RED"ERROR"RESET"] Incorrect command line flag encountered\n");		
 				fprintf(stderr, "Use"YELLOW" -o"RESET" to specify the output directory\n");
 				fprintf(stderr, "Use"YELLOW" -i"RESET" to specify the input directory\n");
+				fprintf(stderr, "Use"YELLOW" -a"RESET" to specify the number of sectors in wavevector space to use\n");
+				fprintf(stderr, "Use"YELLOW" -t"RESET" to specify the number of OMP threads to use\n");
+				fprintf(stderr, "Use"YELLOW" -k"RESET" to specify the frac of kmax to use as the set C\n");
 				fprintf(stderr, "\nExample usage:\n"CYAN"\tmpirun -n 4 ./bin/main -o \"../Data/Tmp\" -n 64 -n 64 -s 0.0 -e 1.0 -h 0.0001 -v 1.0 -i \"TG_VORT\" -t \"TEMP_RUN\" \n"RESET);
 				fprintf(stderr, "\n-->> Now Exiting!\n\n");
 				exit(1);

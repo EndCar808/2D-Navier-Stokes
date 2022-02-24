@@ -56,7 +56,7 @@ int main(int argc, char** argv) {
 	//  Begin Timing
 	// --------------------------------
 	// Initialize timing counter
-	clock_t begin = clock();
+	clock_t begin = omp_get_wtime();
 
 	// --------------------------------
 	//  Get Command Line Arguements
@@ -64,6 +64,15 @@ int main(int argc, char** argv) {
 	if ((GetCMLArgs(argc, argv)) != 0) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"]: Error in reading in command line aguments, check utils.c file for details\n");
 		exit(1);
+	}
+
+	// Set the number of threads and get thread IDs
+	omp_set_num_threads(sys_vars->num_threads);
+	#pragma omp parallel
+	{
+		if (!(sys_vars->thread_id)) {
+		printf("\nThreads Active: "CYAN"%d"RESET"\n", sys_vars->num_threads);
+		}
 	}
 
 	// --------------------------------
@@ -81,7 +90,7 @@ int main(int argc, char** argv) {
 	// --------------------------------
 	AllocateMemory(sys_vars->N);
 
-	InitializeFFTWPlans(sys_vars->N);	
+	InitializeFFTWPlans(sys_vars->N);
 
 	//////////////////////////////
 	// Begin Snapshot Processing
@@ -127,7 +136,8 @@ int main(int argc, char** argv) {
 		//  Phase Sync
 		// --------------------------------
 		#if defined(__SEC_PHASE_SYNC) 
-		SectorPhaseOrder(s);		
+		SectorPhaseOrder(s);
+		// SectorPhaseOrderPar(s);		
 		#endif
 
 		// --------------------------------
@@ -155,10 +165,10 @@ int main(int argc, char** argv) {
 	//  End Timing
 	// --------------------------------
 	// Finish timing
-	clock_t end = clock();
+	clock_t end = omp_get_wtime();
 
 	// calculate execution time
-	double time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
+	double time_spent = (double)(end - begin);
 	int hh = (int) time_spent / 3600;
 	int mm = ((int )time_spent - hh * 3600) / 60;
 	int ss = time_spent - hh * 3600 - mm * 60;

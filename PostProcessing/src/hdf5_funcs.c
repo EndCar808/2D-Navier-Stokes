@@ -718,8 +718,9 @@ void WriteDataToFile(double t, long int snap) {
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Average Angle", t, snap);
         exit(1);
-    }
+    }    
 
+    //------------------------ Write the phase order data for the triad phases
     // Allocate tmporary memory for writing the phase order data
     double* tmp = (double*) fftw_malloc(sizeof(double) * sys_vars->num_sect * (NUM_TRIAD_TYPES + 1));
     for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
@@ -727,8 +728,6 @@ void WriteDataToFile(double t, long int snap) {
     		tmp[i * sys_vars->num_sect + a] = proc_data->triad_R[i][a];
     	}
     }
-
-    // Write the phase order data for the triad phases
     dset_dims_2d[0] = NUM_TRIAD_TYPES + 1;
     dset_dims_2d[1] = sys_vars->num_sect;
 	status = H5LTmake_dataset(group_id, "TriadPhaseSync", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, tmp);
@@ -747,20 +746,64 @@ void WriteDataToFile(double t, long int snap) {
         exit(1);
     }
 
+    // Across sector
+    double* tmp1 = (double*) fftw_malloc(sizeof(double) * sys_vars->num_sect * (NUM_TRIAD_TYPES + 1) * sys_vars->num_sect);
+    for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
+    	for (int a = 0; a < sys_vars->num_sect; ++a) {
+    		for (int l = 0; l < sys_vars->num_sect; ++l) {
+	    		tmp1[sys_vars->num_sect * (i * sys_vars->num_sect + a) + l] = proc_data->triad_R_across_sec[i][a * sys_vars->num_sect + l];
+    		}
+    	}
+    }
+    dset_dims_3d[0] = NUM_TRIAD_TYPES + 1;
+    dset_dims_3d[1] = sys_vars->num_sect;
+    dset_dims_3d[2] = sys_vars->num_sect;
+	status = H5LTmake_dataset(group_id, "TriadPhaseSyncAcrossSector", Dims3D, dset_dims_3d, H5T_NATIVE_DOUBLE, tmp1);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file  at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Triad Sync Parameter Across Sector", t, snap);
+        exit(1);
+    }
+    for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
+    	for (int a = 0; a < sys_vars->num_sect; ++a) {
+    		for (int l = 0; l < sys_vars->num_sect; ++l) {
+	    		tmp1[sys_vars->num_sect * (i * sys_vars->num_sect + a) + l] = proc_data->triad_Phi_across_sec[i][a * sys_vars->num_sect + l];
+    		}
+    	}
+    }
+    status = H5LTmake_dataset(group_id, "TriadAverageAngleAcrossSector", Dims3D, dset_dims_3d, H5T_NATIVE_DOUBLE, tmp1);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file  at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Triad Average Angle Across Sector", t, snap);
+        exit(1);
+    }
+
     ///------------------------ Enstrophy Flux
     for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
     	for (int a = 0; a < sys_vars->num_sect; ++a) {
     		tmp[i * sys_vars->num_sect + a] = 2.0 * pow(M_PI, 2.0) * proc_data->enst_flux[i][a];
     	}
     }
-    status = H5LTmake_dataset(group_id, "EnstrophyFluxPerSector", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, tmp);
+    status = H5LTmake_dataset(group_id, "EnstrophyFluxPerSector", Dims3D, dset_dims_2d, H5T_NATIVE_DOUBLE, tmp);
 	if (status < 0) {
-        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "EnstrophyFluxPerSector", t, snap);
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Enstrophy Flux Per Sector", t, snap);
+        exit(1);
+    }
+    // Across Sector
+    for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
+    	for (int a = 0; a < sys_vars->num_sect; ++a) {
+    		for (int l = 0; l < sys_vars->num_sect; ++l) {
+	    		tmp1[sys_vars->num_sect * (i * sys_vars->num_sect + a) + l] = proc_data->enst_flux_across_sec[i][a * sys_vars->num_sect + l];
+    		}
+    	}
+    }
+    status = H5LTmake_dataset(group_id, "EnstrophyFluxPerSectorAcrossSector", Dims3D, dset_dims_3d, H5T_NATIVE_DOUBLE, tmp1);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file  at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Enstrophy Flux Per Sector Across Sector", t, snap);
         exit(1);
     }
 
     // Free tmp memory
     fftw_free(tmp);
+    fftw_free(tmp1);
 
 
     ///------------------------- Phase Order Stats Data
@@ -1047,9 +1090,27 @@ void FinalWriteAndClose(void) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!!!\n-->> Exiting...\n", "Number of Triads Per Sector");
         exit(1);
     }
+    // Across Sector
+    int* tmp1 = (int*) fftw_malloc(sizeof(int) * sys_vars->num_sect * sys_vars->num_sect * (NUM_TRIAD_TYPES + 1));
+    for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
+    	for (int a = 0; a < sys_vars->num_sect; ++a) {
+    		for (int l = 0; l < sys_vars->num_sect; ++l) {
+    			tmp1[i * sys_vars->num_sect + a] = proc_data->num_triads[i][a];
+    		}
+    	}
+    }
+    dset_dims_3d[0] = NUM_TRIAD_TYPES + 1;
+    dset_dims_3d[1] = sys_vars->num_sect;
+    dset_dims_3d[2] = sys_vars->num_sect;
+	status = H5LTmake_dataset(file_info->output_file_handle, "NumTriadsPerSectorAcrossSector", Dims2D, dset_dims_2d, H5T_NATIVE_INT, tmp1);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!!!\n-->> Exiting...\n", "Number of Triads Per Sector Across Sector");
+        exit(1);
+    }
 
     // free temporary memory
     fftw_free(tmp);
+    fftw_free(tmp1);
     
 
     ///-------------------------- Sector Phase PDFs
