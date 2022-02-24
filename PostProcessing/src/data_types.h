@@ -82,7 +82,7 @@
 // #define N_SECTORS 40		 	// The number of phase sectors
 #define N_BINS_SEC 1000         // The number of bins in the sector pdfs
 #define N_BINS_SEC_INTIME 200   // The number of bins in the sector pdfs in time
-#define NUM_TRIAD_TYPES 4 		// The number of triad types contributing to the flux
+#define NUM_TRIAD_TYPES 5 		// The number of triad types contributing to the flux
 // ---------------------------------------------------------------------
 //  Global Struct Definitions
 // ---------------------------------------------------------------------

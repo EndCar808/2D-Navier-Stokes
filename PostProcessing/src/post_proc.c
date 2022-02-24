@@ -661,6 +661,14 @@ void SectorPhaseOrder(int s) {
 												}
 											}
 										}
+										else if (fabs(flux_wght) <= 1e-5){
+											// TYPE 5 ---> When the modulus of the flux term is 0 but not necessarily the triad
+											proc_data->triad_phase_order[5][a] += cexp(I * gen_triad_phase);
+											proc_data->triad_phase_order_across_sec[5][a * sys_vars->num_sect + l] += cexp(I * gen_triad_phase);
+											proc_data->num_triads[5][a]++;
+											proc_data->num_triads_across_sec[5][a * sys_vars->num_sect + l]++;
+
+										}
 										else {
 											// When k1 and k2 = k3 the contribution to the flux is zero
 											continue;

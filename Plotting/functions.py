@@ -493,11 +493,11 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
         for group in file.keys():
             if "Snap" in group:
                 if 'FullFieldPhases' in list(file[group].keys()):
-                    data.phases[nn, :] = file[group]["FullFieldPhases"][:]
+                    data.phases[nn, :] = file[group]["FullFieldPhases"][:, :]
                 if 'FullFieldEnstrophySpectrum' in list(file[group].keys()):
-                    data.enst_spectrum[nn, :] = file[group]["FullFieldEnstrophySpectrum"][:]
+                    data.enst_spectrum[nn, :] = file[group]["FullFieldEnstrophySpectrum"][:, :]
                 if 'FullFieldEnergySpectrum' in list(file[group].keys()):
-                    data.enrg_spectrum[nn, :] = file[group]["FullFieldEnergySpectrum"][:]
+                    data.enrg_spectrum[nn, :] = file[group]["FullFieldEnergySpectrum"][:, :]
                 if 'VelocityPDFCounts' in list(file[group].keys()):
                     data.u_pdf_counts[nn, :] = file[group]["VelocityPDFCounts"][:]
                 if 'VelocityPDFRanges' in list(file[group].keys()):
