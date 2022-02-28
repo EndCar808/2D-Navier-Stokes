@@ -425,8 +425,8 @@ void SectorPhaseOrder(int s) {
 									in_pos_sector = (k2_angle >= sector_angle - proc_data->dtheta/2.0 && k2_angle < sector_angle + proc_data->dtheta/2.0 && k2_sqr > k1_sqr);
 									valid_wavevec = (k2_sqr > 0 && k2_sqr < sys_vars->kmax_sqr);
 									in_neg_sector = neg_k2_angle >= sector_angle - proc_data->dtheta/2.0 && neg_k2_angle < sector_angle + proc_data->dtheta/2.0;
-									not_in_k1_sec = !(k2_angle >= alt_theta_lwr && k2_angle < alt_theta_upr);
-									not_in_k3_sec = !(k2_angle >= theta_lwr && k2_angle < theta_upr);
+									not_in_k1_sec = !(k2_angle >= alt_theta_lwr && k2_angle < alt_theta_upr) || !(k2_angle >= alt_theta_lwr + M_PI && k2_angle < alt_theta_upr + M_PI);
+									not_in_k3_sec = !(k2_angle >= theta_lwr && k2_angle < theta_upr) || !(k2_angle >= theta_lwr + M_PI && k2_angle < theta_upr + M_PI);
 									if (valid_wavevec &&  (in_pos_sector || (k2_neg && in_neg_sector)) && not_in_k1_sec && not_in_k3_sec) {
 										// Get correct phase index -> recall that to access kx > 0, use -kx
 										tmp_k  = (sys_vars->kmax - 1 - k_x) * (2 * sys_vars->kmax - 1);
@@ -661,7 +661,7 @@ void SectorPhaseOrder(int s) {
 												}
 											}
 										}
-										else if (fabs(flux_wght) <= 1e-5){
+										else if (fabs(flux_wght) <= 1e-5 || k1_sqr == k2_sqr || k1_angle == k2_angle){
 											// TYPE 5 ---> When the modulus of the flux term is 0 but not necessarily the triad
 											proc_data->triad_phase_order[5][a] += cexp(I * gen_triad_phase);
 											proc_data->triad_phase_order_across_sec[5][a * sys_vars->num_sect + l] += cexp(I * gen_triad_phase);
