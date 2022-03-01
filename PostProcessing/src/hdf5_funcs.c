@@ -782,7 +782,7 @@ void WriteDataToFile(double t, long int snap) {
     		tmp[i * sys_vars->num_sect + a] = 2.0 * pow(M_PI, 2.0) * proc_data->enst_flux[i][a];
     	}
     }
-    status = H5LTmake_dataset(group_id, "EnstrophyFluxPerSector", Dims3D, dset_dims_2d, H5T_NATIVE_DOUBLE, tmp);
+    status = H5LTmake_dataset(group_id, "EnstrophyFluxPerSector", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, tmp);
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Enstrophy Flux Per Sector", t, snap);
         exit(1);

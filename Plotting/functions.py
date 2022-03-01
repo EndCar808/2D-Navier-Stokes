@@ -460,25 +460,28 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                     self.num_triads = file["NumTriadsPerSector"][:, :]
                 if 'EnstrophyFluxC' in list(file.keys()):
                     self.enst_flux_C = file["EnstrophyFluxC"][:]
-            self.num_sect  = self.theta.shape[0] - 1
+            self.num_sect  = self.theta.shape[0]
             ## Enstrophy Flux Spectrum
             self.enst_flux_spec = np.zeros((sim_data.ndata, sim_data.spec_size))
             self.kmax_frac      = float(in_file.split('_')[-1].split("[")[-1].split("]")[0])
             self.kmax_C         = int(self.kmax * self.kmax_frac)
             ## Enstrophy Flux Per Sector
-            self.enst_flux_per_sec = np.zeros((sim_data.ndata, 5, self.num_sect))
+            self.enst_flux_per_sec = np.zeros((sim_data.ndata, 6, self.num_sect, 6))
+            self.enst_flux_per_sec_across_sec = np.zeros((sim_data.ndata, 6, self.num_sect, self.num_sect))
             ## Phase Sync arrays
-            self.phase_R       = np.zeros((sim_data.ndata, self.num_sect))
-            self.phase_Phi     = np.zeros((sim_data.ndata, self.num_sect))
-            self.triad_R       = np.zeros((sim_data.ndata, 5, self.num_sect))
-            self.triad_Phi     = np.zeros((sim_data.ndata, 5, self.num_sect))
+            self.phase_R              = np.zeros((sim_data.ndata, self.num_sect))
+            self.phase_Phi            = np.zeros((sim_data.ndata, self.num_sect))
+            self.triad_R              = np.zeros((sim_data.ndata, 6, self.num_sect))
+            self.triad_Phi            = np.zeros((sim_data.ndata, 6, self.num_sect))
+            self.triad_R_across_sec   = np.zeros((sim_data.ndata, 6, self.num_sect, self.num_sect))
+            self.triad_Phi_across_sec = np.zeros((sim_data.ndata, 6, self.num_sect, self.num_sect))
             ## Phase Sync Stats
             self.phase_sector_counts = np.zeros((sim_data.ndata, self.num_sect, 200))
             self.phase_sector_ranges = np.zeros((sim_data.ndata, self.num_sect, 201))
-            self.triad_sector_counts = np.zeros((sim_data.ndata, self.num_sect, 200, 5))
-            self.triad_sector_ranges = np.zeros((sim_data.ndata, self.num_sect, 201, 5))
-            self.triad_sector_wghtd_counts = np.zeros((sim_data.ndata, self.num_sect, 200, 5))
-            self.triad_sector_wghtd_ranges = np.zeros((sim_data.ndata, self.num_sect, 201, 5))
+            self.triad_sector_counts = np.zeros((sim_data.ndata, self.num_sect, 200, 6))
+            self.triad_sector_ranges = np.zeros((sim_data.ndata, self.num_sect, 201, 6))
+            self.triad_sector_wghtd_counts = np.zeros((sim_data.ndata, self.num_sect, 200, 6))
+            self.triad_sector_wghtd_ranges = np.zeros((sim_data.ndata, self.num_sect, 201, 6))
 
     ## Create instance of data class
     data = PostProcessData()
@@ -518,12 +521,18 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                     data.triad_R[nn, :, :] = file[group]["TriadPhaseSync"][:, :]
                 if 'TriadAverageAngle' in list(file[group].keys()):
                     data.triad_Phi[nn, :, :] = file[group]["TriadAverageAngle"][:, :]
+                if 'TriadPhaseSyncAcrossSector' in list(file[group].keys()):
+                    data.triad_R_across_sec[nn, :, :] = file[group]["TriadPhaseSyncAcrossSector"][:, :]
+                if 'TriadAverageAngleAcrossSector' in list(file[group].keys()):
+                    data.triad_Phi_across_sec[nn, :, :] = file[group]["TriadAverageAngleAcrossSector"][:, :]
                 if 'w_hat' in list(file[group].keys()):
                     data.w_hat[nn, :, :] = file[group]["w_hat"][:, :]
                 if 'EnstrophyFluxSpectrum' in list(file[group].keys()):
                     data.enst_flux_spec[nn, :] = file[group]["EnstrophyFluxSpectrum"][:]
                 if 'EnstrophyFluxPerSector' in list(file[group].keys()):
-                    data.enst_flux_per_sec[nn, :, :] = file[group]["EnstrophyFluxPerSector"][:, :]
+                    data.enst_flux_per_sec[nn, :, :, :] = file[group]["EnstrophyFluxPerSector"][:, :, :]
+                if 'EnstrophyFluxPerSectorAcrossSector' in list(file[group].keys()):
+                    data.enst_flux_per_sec_across_sec[nn, :, :] = file[group]["EnstrophyFluxPerSectorAcrossSector"][:, :]
                 if 'SectorPhasePDF_InTime_Counts' in list(file[group].keys()):
                     data.phase_sector_counts[nn, :, :] = file[group]["SectorPhasePDF_InTime_Counts"][:, :]
                 if 'SectorPhasePDF_InTime_Ranges' in list(file[group].keys()):

@@ -183,8 +183,8 @@ if __name__ == '__main__':
     post_data = import_post_processing_data(post_file_path, sys_vars, method)
 
     if cmdargs.full:
-        flux_min = np.amin(post_data.enst_flux_per_sec)
-        flux_max = np.amax(post_data.enst_flux_per_sec)
+        flux_min = np.amin(post_data.enst_flux_per_sec[:, :, :, 0])
+        flux_max = np.amax(post_data.enst_flux_per_sec[:, :, :, 0])
     # -----------------------------------------
     # # --------  Make Output Directories
     # -----------------------------------------

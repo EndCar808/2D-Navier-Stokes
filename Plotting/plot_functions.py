@@ -577,7 +577,7 @@ def plot_sector_phase_sync_snaps(i, out_dir, phases, theta, R, Phi, t, Nx, Ny):
        angticks      = [-np.pi/2, -3*np.pi/8, -np.pi/4.0, -np.pi/8, 0.0, np.pi/8, np.pi/4.0, 3*np.pi/8, np.pi/2.0]
        angtickLabels = [r"$-\frac{\pi}{2}$", r"$-\frac{3\pi}{8}$", r"$-\frac{\pi}{4}$", r"$-\frac{\pi}{8}$", r"$0$", r"$\frac{\pi}{8}$", r"$\frac{\pi}{4}$", r"$\frac{3\pi}{8}$", r"$\frac{\pi}{2}$"]
        ax2 = fig.add_subplot(gs[1, 0])
-       ax2.plot(theta[:-1], R)
+       ax2.plot(theta, R)
        ax2.set_xlim(-np.pi/2, np.pi/2)
        ax2.set_xticks(angticks)
        ax2.set_xticklabels(angtickLabels)
@@ -591,7 +591,7 @@ def plot_sector_phase_sync_snaps(i, out_dir, phases, theta, R, Phi, t, Nx, Ny):
        # Plot Avg Phase Per Sector  
        #--------------------------
        ax3 = fig.add_subplot(gs[1, 1])
-       ax3.plot(theta[:-1], Phi, '.-')
+       ax3.plot(theta, Phi, '.-')
        ax3.set_xlim(-np.pi/2, np.pi/2)
        ax3.set_xticks(angticks)
        ax3.set_xticklabels(angtickLabels)
@@ -707,7 +707,7 @@ def plot_sector_phase_sync_snaps_full(i, out_dir, w, enst_spec, enst_flux, phase
        ax3 = fig.add_subplot(gs[1, 0])
        div3   = make_axes_locatable(ax3)
        axtop3 = div3.append_axes("top", size = "100%", pad = 0.2)
-       axtop3.plot(theta[:-1], Phi, '.-', color = "orange")
+       axtop3.plot(theta, Phi, '.-', color = "orange")
        axtop3.set_xlim(-np.pi/2, np.pi/2)
        axtop3.set_xticks(angticks)
        axtop3.set_xticklabels([])
@@ -717,7 +717,7 @@ def plot_sector_phase_sync_snaps_full(i, out_dir, w, enst_spec, enst_flux, phase
        axtop3.grid(which = 'both', axis = 'both', linestyle = ':', linewidth = '0.6', alpha = 0.8)
        axtop3.set_title(r"Order Parameters")
        axtop3.set_ylabel(r"$\Phi$")
-       ax3.plot(theta[:-1], R)
+       ax3.plot(theta, R)
        ax3.set_xticks(angticks)
        ax3.set_xlim(-np.pi/2, np.pi/2)
        ax3.set_xticklabels(angtickLabels)
@@ -730,7 +730,7 @@ def plot_sector_phase_sync_snaps_full(i, out_dir, w, enst_spec, enst_flux, phase
        # Plot Enstrophy Flux Per Sector  
        #--------------------------------
        ax4 = fig.add_subplot(gs[1, 1])
-       ax4.plot(theta[:-1], enst_flux, '.-')
+       ax4.plot(theta, enst_flux, '.-')
        ax4.set_xlim(-np.pi/2, np.pi/2)
        ax4.set_xticks(angticks)
        ax4.set_xticklabels(angtickLabels)

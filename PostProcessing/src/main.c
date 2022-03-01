@@ -71,7 +71,7 @@ int main(int argc, char** argv) {
 	#pragma omp parallel
 	{
 		if (!(sys_vars->thread_id)) {
-		printf("\nThreads Active: "CYAN"%d"RESET"\n", sys_vars->num_threads);
+			printf("\nThreads Active: "CYAN"%d"RESET"\n", sys_vars->num_threads);
 		}
 	}
 
