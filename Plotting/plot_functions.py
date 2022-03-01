@@ -760,6 +760,206 @@ def plot_sector_phase_sync_snaps_full(i, out_dir, w, enst_spec, enst_flux, phase
        plt.close()
 
 
+def plot_sector_phase_sync_snaps_full_sec(i, out_dir, w, enst_spec, enst_flux, enst_flux_a_sec, phases, theta, R, R_a_sec, Phi, Phi_a_sec, flux_min, flux_max, t, x, y, Nx, Ny):
+
+       """
+       Plots the phases and average phase and sync per sector of the phases
+
+       i       : int
+               - The current snap
+       out_dir : str
+               - Path to the output folder
+       phases  : ndarray, float64
+               - 2D array of the Fourier phases, only ky > section 
+       theta   : array, float64
+               - 1D Array containing the angles of the sector boundaries
+       R       : array, float64
+               - Array of the phase sync parameter for each sector
+       Phi     : array, float64
+               - Array of the average phase for each sector
+       t       : float64
+               - The current time 
+       Nx      : int
+               - Size of the first dimension
+       Ny      : int
+               - Size of the second dimension
+       """
+
+       ## Print Update
+       print("SNAP: {}".format(i))
+
+       ## Set up figure
+       fig = plt.figure(figsize = (16, 9))
+       gs  = GridSpec(3, 3)
+       
+       ## Generate colour map
+       my_hsv = cm.jet
+       my_hsv.set_under(color = "white")
+       my_hot = cm.hot
+       my_hot.set_under(color = "white")
+
+       #--------------------------
+       # Plot Phases  
+       #--------------------------
+       ax1 = fig.add_subplot(gs[0, 0:2])
+       im1 = ax1.imshow(np.fliplr(np.transpose(phases)), extent = (int(-Nx / 3 + 1), int(Nx / 3), int(Ny / 3), 0), cmap = my_hsv, vmin = 0., vmax = 2. * np.pi) 
+       ang = np.arange(0, np.pi + np.pi / 100, np.pi / 100)
+       angticks      = [0, np.pi/8, np.pi/4.0, 3*np.pi/8, np.pi/2, 5*np.pi/8, 6*np.pi/8.0, 7*np.pi/8, np.pi]
+       angtickLabels = [r"$-\frac{\pi}{2}$", r"$-\frac{3\pi}{8}$", r"$-\frac{\pi}{4}$", r"$-\frac{\pi}{8}$", r"$0$", r"$\frac{\pi}{8}$", r"$\frac{\pi}{4}$", r"$\frac{3\pi}{8}$", r"$\frac{\pi}{2}$"]
+       angtickLabels.reverse()
+       rmax_ext = int(Nx / 3 + 20)
+       for tick, label in zip(angticks, angtickLabels):
+              if tick == 0:
+                     ax1.text(x = (rmax_ext - 7.5) * np.cos(tick), y = (rmax_ext - 7.5) * np.sin(tick) + 5.0, s = label) ## shift the +-pi/2 to the right 
+              elif tick > np.pi/2:
+                     ax1.text(x = (rmax_ext - 7.5) * np.cos(tick) - 5.0, y = (rmax_ext - 7.5) * np.sin(tick) + 4.0, s = label) ## shift the bottom quadrant ticks down
+              else:
+                     ax1.text(x = (rmax_ext - 7.5) * np.cos(tick), y = (rmax_ext - 7.5) * np.sin(tick), s = label) 
+              ax1.plot([(rmax_ext - 15) * np.cos(tick), (rmax_ext - 11) * np.cos(tick)], [(rmax_ext - 15) * np.sin(tick), (rmax_ext - 11) * np.sin(tick)], color = 'k', linestyle = '-', linewidth = 0.5)
+       ax1.plot((rmax_ext - 15) * np.cos(ang), (rmax_ext - 15) * np.sin(ang), color = 'k', linestyle = '--', linewidth = 0.5)
+       ax1.set_xlabel(r"$k_x$")
+       ax1.set_ylabel(r"$k_y$")
+       ax1.set_xlim(-rmax_ext, rmax_ext)
+       ax1.set_ylim(rmax_ext, 0)
+       ax1.set_title(r"Fourier Phases")
+       div1  = make_axes_locatable(ax1)
+       cbax1 = div1.append_axes("right", size = "10%", pad = 0.05)
+       cb1   = plt.colorbar(im1, cax = cbax1)
+       cb1.set_label(r"$\phi_{\mathbf{k}}$")
+       cb1.set_ticks([0.0, np.pi/2.0, np.pi, 3.0*np.pi/2.0, 2.0*np.pi])
+       cb1.set_ticklabels([r"$0$", r"$\frac{\pi}{2}$", r"$\pi$", r"$\frac{3\pi}{2}$", r"$2\pi$"])
+
+       #--------------------------
+       # Plot Vorticity  
+       #--------------------------
+       ax2 = fig.add_subplot(gs[0, 2])
+       im2 = ax2.imshow(w, extent = (y[0], y[-1], x[-1], x[0]), cmap = "jet") #, vmin = w_min, vmax = w_max 
+       ax2.set_xlabel(r"$y$")
+       ax2.set_ylabel(r"$x$")
+       ax2.set_xlim(0.0, y[-1])
+       ax2.set_ylim(0.0, x[-1])
+       ax2.set_xticks([0.0, np.pi/2.0, np.pi, 1.5*np.pi, y[-1]])
+       ax2.set_xticklabels([r"$0$", r"$\frac{\pi}{2}$", r"$\pi$", r"$\frac{3\pi}{2}$", r"$2 \pi$"])
+       ax2.set_yticks([0.0, np.pi/2.0, np.pi, 1.5*np.pi, x[-1]])
+       ax2.set_yticklabels([r"$0$", r"$\frac{\pi}{2}$", r"$\pi$", r"$\frac{3\pi}{2}$", r"$2 \pi$"])
+       div2  = make_axes_locatable(ax2)
+       cbax2 = div2.append_axes("right", size = "10%", pad = 0.05)
+       cb2   = plt.colorbar(im2, cax = cbax2)
+       cb2.set_label(r"$\omega(x, y)$")
+       ax2.set_title(r"Vorticity")
+
+       #--------------------------
+       # Plot Order Parameters
+       #--------------------------
+       angticks      = [-np.pi/2, -3*np.pi/8, -np.pi/4.0, -np.pi/8, 0.0, np.pi/8, np.pi/4.0, 3*np.pi/8, np.pi/2.0]
+       angtickLabels = [r"$-\frac{\pi}{2}$", r"$-\frac{3\pi}{8}$", r"$-\frac{\pi}{4}$", r"$-\frac{\pi}{8}$", r"$0$", r"$\frac{\pi}{8}$", r"$\frac{\pi}{4}$", r"$\frac{3\pi}{8}$", r"$\frac{\pi}{2}$"]
+       ax3 = fig.add_subplot(gs[1, 0])
+       div3   = make_axes_locatable(ax3)
+       axtop3 = div3.append_axes("top", size = "100%", pad = 0.2)
+       axtop3.plot(theta, Phi, '.-', color = "orange")
+       axtop3.set_xlim(-np.pi/2, np.pi/2)
+       axtop3.set_xticks(angticks)
+       axtop3.set_xticklabels([])
+       axtop3.set_ylim(-np.pi-0.2, np.pi+0.2)
+       axtop3.set_yticks([-np.pi, -np.pi/2.0, 0., np.pi/2, np.pi])
+       axtop3.set_yticklabels([r"$-\pi$", r"$\frac{-\pi}{2}$", r"$0$", r"$\frac{\pi}{2}$", r"$\pi$"])
+       axtop3.grid(which = 'both', axis = 'both', linestyle = ':', linewidth = '0.6', alpha = 0.8)
+       axtop3.set_title(r"Order Parameters")
+       axtop3.set_ylabel(r"$\Phi$")
+       ax3.plot(theta, R)
+       ax3.set_xticks(angticks)
+       ax3.set_xlim(-np.pi/2, np.pi/2)
+       ax3.set_xticklabels(angtickLabels)
+       ax3.set_ylim(0 - 0.05, 1 + 0.05)
+       ax3.set_xlabel(r"$\theta$")
+       ax3.grid(which = 'both', axis = 'both', linestyle = ':', linewidth = '0.6', alpha = 0.8)
+       ax3.set_ylabel(r"$\mathcal{R}$")
+
+       #--------------------------------
+       # Plot Enstrophy Flux Per Sector  
+       #--------------------------------
+       ax4 = fig.add_subplot(gs[1, 1])
+       ax4.plot(theta, enst_flux, '.-')
+       ax4.set_xlim(-np.pi/2, np.pi/2)
+       ax4.set_xticks(angticks)
+       ax4.set_xticklabels(angtickLabels)
+       ax4.set_xlabel(r"$\theta$")
+       ax4.set_ylabel(r"$\Pi_{\mathcal{C}}$")
+       ax4.set_yscale('symlog')
+       ax4.set_ylim(flux_min, flux_max)
+       ax4.grid(which = 'both', axis = 'both', linestyle = ':', linewidth = '0.6', alpha = 0.8)
+       ax4.set_title(r"Enstrophy Flux Per Sector")
+
+       #--------------------------------
+       # Plot Enstrophy Spectrum  
+       #--------------------------------
+       ax5  = fig.add_subplot(gs[1, 2])
+       im5  = ax5.imshow(enst_spec, extent = (-Ny / 3 + 1, Ny / 3, -Nx / 3 + 1, Nx / 3), cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1]), norm = mpl.colors.LogNorm()) # cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1]), norm = mpl.colors.LogNorm() 
+       ax5.set_xlabel(r"$k_y$")
+       ax5.set_ylabel(r"$k_x$")
+       ax5.set_title("Enstrophy Spectrum")
+       div5  = make_axes_locatable(ax5)
+       cbax5 = div5.append_axes("right", size = "10%", pad = 0.05)
+       cb5   = plt.colorbar(im5, cax = cbax5)
+       cb5.set_label(r"$\mathcal{E}(\hat{\omega}_\mathbf{k})$")
+
+       #--------------------------------
+       # Plot Sync Across Sectors 
+       #--------------------------------
+       ax6 = fig.add_subplot(gs[2, 0])
+       im6 = ax6.imshow(R_a_sec, extent = (-np.pi/2, np.pi/2, np.pi/2, np.pi/2), cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1]))
+       ax6.set_xticks(angticks)
+       ax6.set_xticklabels(angtickLabels)
+       ax6.set_yticks(angticks)
+       ax6.set_yticklabels(angtickLabels)
+       ax6.set_xlabel(r"$\theta$")
+       ax6.set_ylabel(r"$\alpha$")
+       ax6.set_title(r"Sync Across Sectors")
+       div6  = make_axes_locatable(ax6)
+       cbax6 = div6.append_axes("right", size = "10%", pad = 0.05)
+       cb6   = plt.colorbar(im6, cax = cbax6)
+       cb6.set_label(r"$\mathcal{R}$")
+
+       #--------------------------------
+       # Plot Avg Phase Across Sectors  
+       #--------------------------------
+       ax7 = fig.add_subplot(gs[2, 1])
+       im7 = ax7.imshow(Phi_a_sec, extent = (-np.pi/2, np.pi/2, np.pi/2, np.pi/2), cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1]))
+       ax7.set_xticks(angticks)
+       ax7.set_xticklabels(angtickLabels)
+       ax7.set_yticks(angticks)
+       ax7.set_yticklabels(angtickLabels)
+       ax7.set_xlabel(r"$\theta$")
+       ax7.set_ylabel(r"$\alpha$")
+       ax7.set_title(r"Average Angle Across Sectors")
+       div7  = make_axes_locatable(ax7)
+       cbax7 = div7.append_axes("right", size = "10%", pad = 0.05)
+       cb7   = plt.colorbar(im7, cax = cbax7)
+       cb7.set_label(r"$\Phi$")
+
+       #--------------------------------
+       # Plot Enstrophy Flux Across Sectors  
+       #--------------------------------
+       ax8 = fig.add_subplot(gs[2, 2])
+       im8 = ax8.imshow(enst_flux_a_sec, extent = (-np.pi/2, np.pi/2, np.pi/2, np.pi/2), cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1]), norm = mpl.colors.LogNorm())
+       ax8.set_xticks(angticks)
+       ax8.set_xticklabels(angtickLabels)
+       ax8.set_yticks(angticks)
+       ax8.set_yticklabels(angtickLabels)
+       ax8.set_xlabel(r"$\theta$")
+       ax8.set_ylabel(r"$\alpha$")
+       ax8.set_title(r"Enstrophy Flux Across Sectors")
+       div8  = make_axes_locatable(ax8)
+       cbax8 = div8.append_axes("right", size = "10%", pad = 0.05)
+       cb8   = plt.colorbar(im8, cax = cbax8)
+       cb8.set_label(r"$\Pi_{\mathcal{C}}$")
+
+       ## Add title and save fig
+       plt.suptitle(r"$t = {:.5f}$".format(t))
+       plt.savefig(out_dir + "/Phase_Sync_SNAP_{:05d}.png".format(i), bbox_inches = 'tight')
+       plt.close()
+
+
 #############################
 ##       COLOURMAPS        ##
 #############################

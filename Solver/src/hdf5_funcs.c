@@ -1298,7 +1298,7 @@ void FinalWriteAndCloseOutputFile(const long int* N, int iters, int save_data_in
 	if (!(sys_vars->rank)) {
 		status = H5Fclose(file_info->output_file_handle);
 		if (status < 0) {
-			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close main output file: "CYAN"%s"RESET" \n-->>Exiting....n", file_info->output_file_name);
+			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close main output file: "CYAN"%s"RESET" \n-->> Exiting....\n", file_info->output_file_name);
 			exit(1);
 		}
 	}
@@ -1341,7 +1341,7 @@ void OpenTestingFile(void) {
 	if (!sys_vars->rank) {
         file_info->test_file_handle = H5Fcreate(file_info->test_file_name, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
         if (file_info->test_file_handle < 0) {
-        	fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to create test file: "CYAN"%s"RESET" \n-->>Exiting....n", file_info->test_file_name);
+        	fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to create test file: "CYAN"%s"RESET" \n-->> Exiting....\n", file_info->test_file_name);
         	exit(1);
         }
     }
@@ -1368,14 +1368,14 @@ hid_t CreateComplexDatatype(void) {
 	// Insert the real part of the datatype
   	status = H5Tinsert(dtype, "r", offsetof(complex_type_tmp,re), H5T_NATIVE_DOUBLE);
   	if (status < 0) {
-  		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Could not insert real part for the Complex Compound Datatype!!\nExiting...\n");
+  		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Could not insert real part for the Complex Compound Datatype!!\n-->> Exiting...\n");
   		exit(1);
   	}
 
   	// Insert the imaginary part of the datatype
   	status = H5Tinsert(dtype, "i", offsetof(complex_type_tmp,im), H5T_NATIVE_DOUBLE);
   	if (status < 0) {
-  		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Could not insert imaginary part for the Complex Compound Datatype! \n-->>Exiting...\n");
+  		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Could not insert imaginary part for the Complex Compound Datatype!!\n-->> Exiting...\n");
   		exit(1);
   	}
 

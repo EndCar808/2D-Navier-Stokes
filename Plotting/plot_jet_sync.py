@@ -29,7 +29,7 @@ import time as TIME
 from subprocess import Popen, PIPE
 from matplotlib.pyplot import cm
 from functions import tc, sim_data, import_data, import_spectra_data, import_post_processing_data
-from plot_functions import plot_sector_phase_sync_snaps, plot_sector_phase_sync_snaps_full
+from plot_functions import plot_sector_phase_sync_snaps, plot_sector_phase_sync_snaps_full, plot_sector_phase_sync_snaps_full_sec
 ###############################
 ##       FUNCTION DEFS       ##
 ###############################
@@ -58,6 +58,7 @@ def parse_cml(argv):
             self.triads         = triads
             self.triad_type     = triad_type
             self.full           = full
+            self.triad_plot_type = None
 
 
     ## Initialize class
@@ -65,7 +66,7 @@ def parse_cml(argv):
 
     try:
         ## Gather command line arguments
-        opts, args = getopt.getopt(argv, "i:o:f:", ["par", "plot", "vid", "phase", "triads=", "full"])
+        opts, args = getopt.getopt(argv, "i:o:f:", ["par", "plot", "vid", "phase", "triads=", "full="])
     except:
         print("[" + tc.R + "ERROR" + tc.Rst + "] ---> Incorrect Command Line Arguements.")
         sys.exit()
@@ -106,6 +107,8 @@ def parse_cml(argv):
             ## If full figure is to be plotted
             cargs.full = True
 
+            ## Read in the triad type
+            cargs.triad_plot_type = str(arg)
         elif opt in ['--triads']:
             ## If triads are to be plotted
             cargs.triads = True
@@ -183,8 +186,8 @@ if __name__ == '__main__':
     post_data = import_post_processing_data(post_file_path, sys_vars, method)
 
     if cmdargs.full:
-        flux_min = np.amin(post_data.enst_flux_per_sec[:, :, :, 0])
-        flux_max = np.amax(post_data.enst_flux_per_sec[:, :, :, 0])
+        flux_min = np.amin(post_data.enst_flux_per_sec[:, :, :])
+        flux_max = np.amax(post_data.enst_flux_per_sec[:, :, :])
     # -----------------------------------------
     # # --------  Make Output Directories
     # -----------------------------------------
@@ -216,7 +219,8 @@ if __name__ == '__main__':
 
                 ## Create tasks for the process pool
                 if cmdargs.full:
-                    groups_args = [(mprocs.Process(target = plot_sector_phase_sync_snaps_full, args = (i, cmdargs.out_dir_phases, run_data.w[i, :, :], post_data.enst_spectrum[i, :, :], post_data.enst_flux_per_sec[i, 0, :], post_data.phases[i, :, int(sys_vars.Nx/3 - 1):], post_data.theta, post_data.phase_R[i, :], post_data.phase_Phi[i, :], flux_min, flux_max, run_data.time[i], run_data.x, run_data.y, sys_vars.Nx, sys_vars.Ny)) for i in range(sys_vars.ndata))] * proc_lim                                
+                    groups_args = [(mprocs.Process(target = plot_sector_phase_sync_snaps_full, args = (i, cmdargs.out_dir_triads, run_data.w[i, :, :], post_data.enst_spectrum[i, :, :], post_data.enst_flux_per_sec[i, 0, :], post_data.phases[i, :, int(sys_vars.Nx/3 - 1):], post_data.theta, post_data.triad_R[i, int(cmdargs.triad_type), :], post_data.triad_Phi[i, int(cmdargs.triad_type), :], flux_min, flux_max, run_data.time[i], run_data.x, run_data.y, sys_vars.Nx, sys_vars.Ny)) for i in range(sys_vars.ndata))] * proc_lim
+
                 else:
                     groups_args = [(mprocs.Process(target = plot_sector_phase_sync_snaps, args = (i, cmdargs.out_dir_phases, post_data.phases[i, :, int(sys_vars.Nx/3 - 1):], post_data.theta, post_data.phase_R[i, :], post_data.phase_Phi[i, :], run_data.time[i], sys_vars.Nx, sys_vars.Ny)) for i in range(sys_vars.ndata))] * proc_lim
 
@@ -248,9 +252,13 @@ if __name__ == '__main__':
                 proc_lim = 20
 
                 if cmdargs.triad_type != "all":
+                    print("TRIAD TYPE: {}".format(t), end = " ")
                     ## Create tasks for the process pool
                     if cmdargs.full:
-                        groups_args = [(mprocs.Process(target = plot_sector_phase_sync_snaps_full, args = (i, cmdargs.out_dir_triads, run_data.w[i, :, :], post_data.enst_spectrum[i, :, :], post_data.enst_flux_per_sec[i, 0, :], post_data.phases[i, :, int(sys_vars.Nx/3 - 1):], post_data.theta, post_data.triad_R[i, int(cmdargs.triad_type), :], post_data.triad_Phi[i, int(cmdargs.triad_type), :], flux_min, flux_max, run_data.time[i], run_data.x, run_data.y, sys_vars.Nx, sys_vars.Ny)) for i in range(sys_vars.ndata))] * proc_lim
+                        if cmdargs.triad_plot_type is "sec":
+                            groups_args = [(mprocs.Process(target = plot_sector_phase_sync_snaps_full_sec, args = (i, cmdargs.out_dir_triads, run_data.w[i, :, :], post_data.enst_spectrum[i, :, :], post_data.enst_flux_per_sec[i, int(cmdargs.triad_type), :], post_data.enst_flux_per_sec_across_sec[i, int(cmdargs.triad_type), :, :], post_data.phases[i, :, int(sys_vars.Nx/3 - 1):], post_data.theta, post_data.triad_R[i, int(cmdargs.triad_type), :], post_data.triad_R_across[i, int(cmdargs.triad_type), :, :], post_data.triad_Phi_across_sec[i, int(cmdargs.triad_type), :, :], post_data.triad_Phi_across_sec[i, int(cmdargs.triad_type), :, :], flux_min, flux_max, run_data.time[i], run_data.x, run_data.y, sys_vars.Nx, sys_vars.Ny)) for i in range(sys_vars.ndata))] * proc_lim
+                        else:
+                            groups_args = [(mprocs.Process(target = plot_sector_phase_sync_snaps_full, args = (i, cmdargs.out_dir_triads, run_data.w[i, :, :], post_data.enst_spectrum[i, :, :], post_data.enst_flux_per_sec[i, int(cmdargs.triad_type), :], post_data.phases[i, :, int(sys_vars.Nx/3 - 1):], post_data.theta, post_data.triad_R[i, int(cmdargs.triad_type), :], post_data.triad_Phi[i, int(cmdargs.triad_type), :], flux_min, flux_max, run_data.time[i], run_data.x, run_data.y, sys_vars.Nx, sys_vars.Ny)) for i in range(sys_vars.ndata))] * proc_lim
                     else:
                         groups_args = [(mprocs.Process(target = plot_sector_phase_sync_snaps, args = (i, cmdargs.out_dir_triads, post_data.phases[i, :, int(sys_vars.Nx/3 - 1):], post_data.theta, post_data.triad_R[i, int(cmdargs.triad_type), :], post_data.triad_Phi[i, int(cmdargs.triad_type), :], run_data.time[i], sys_vars.Nx, sys_vars.Ny)) for i in range(sys_vars.ndata))] * proc_lim
 
@@ -268,9 +276,13 @@ if __name__ == '__main__':
                             process.join()
                 else:
                     for t in range(5):
+                        print("TRIAD TYPE: {}".format(t), end = " ")
                         ## Create tasks for the process pool
                         if cmdargs.full:
-                            groups_args = [(mprocs.Process(target = plot_sector_phase_sync_snaps_full, args = (i, cmdargs.out_dir_triads, run_data.w[i, :, :], post_data.enst_spectrum[i, :, :], post_data.enst_flux_per_sec[i, 0, :], post_data.phases[i, :, int(sys_vars.Nx/3 - 1):], post_data.theta, post_data.triad_R[i, t, :], post_data.triad_Phi[i, t, :], flux_min, flux_max, run_data.time[i], run_data.x, run_data.y, sys_vars.Nx, sys_vars.Ny)) for i in range(sys_vars.ndata))] * proc_lim
+                            if cmdargs.triad_plot_type is "sec":
+                                groups_args = [(mprocs.Process(target = plot_sector_phase_sync_snaps_full_sec, args = (i, cmdargs.out_dir_triads, run_data.w[i, :, :], post_data.enst_spectrum[i, :, :], post_data.enst_flux_per_sec[i, t, :], post_data.enst_flux_per_sec_across_sec[i, t, :, :], post_data.phases[i, :, int(sys_vars.Nx/3 - 1):], post_data.theta, post_data.triad_R[i, t, :], post_data.triad_R_across_sec[i, t, :, :], post_data.triad_Phi[i, t, :], post_data.triad_Phi_across_sec[i, t, :, :], flux_min, flux_max, run_data.time[i], run_data.x, run_data.y, sys_vars.Nx, sys_vars.Ny)) for i in range(sys_vars.ndata))] * proc_lim
+                            else:
+                                groups_args = [(mprocs.Process(target = plot_sector_phase_sync_snaps_full, args = (i, cmdargs.out_dir_triads, run_data.w[i, :, :], post_data.enst_spectrum[i, :, :], post_data.enst_flux_per_sec[i, t, :], post_data.phases[i, :, int(sys_vars.Nx/3 - 1):], post_data.theta, post_data.triad_R[i, int(cmdargs.triad_type), :], post_data.triad_Phi[i, int(cmdargs.triad_type), :], flux_min, flux_max, run_data.time[i], run_data.x, run_data.y, sys_vars.Nx, sys_vars.Ny)) for i in range(sys_vars.ndata))] * proc_lim
                         else:
                             groups_args = [(mprocs.Process(target = plot_sector_phase_sync_snaps, args = (i, cmdargs.out_dir_triads, post_data.phases[i, :, int(sys_vars.Nx/3 - 1):], post_data.theta, post_data.triad_R[i, t, :], post_data.triad_Phi[i, t, :], run_data.time[i], sys_vars.Nx, sys_vars.Ny)) for i in range(sys_vars.ndata))] * proc_lim
 
@@ -308,17 +320,27 @@ if __name__ == '__main__':
                     ## Loop through simulation and plot data
                     for i in range(sys_vars.ndata):
                         ## Plot the data
-                        if cmdargs.full:    
-                            plot_sector_phase_sync_snaps_full(i, cmdargs.out_dir_triads, run_data.w[i, :, :], post_data.enst_spectrum[i, :, :], post_data.enst_flux_per_sec[i, 0, :], post_data.phases[i, :, int(sys_vars.Nx/3 - 1):], post_data.theta, post_data.triad_R[i, int(cmdargs.triad_type), :], post_data.triad_Phi[i, int(cmdargs.triad_type), :], flux_min, flux_max, run_data.time[i], run_data.x, run_data.y, sys_vars.Nx, sys_vars.Ny)
+                        if cmdargs.full:  
+                            if cmdargs.full:
+                                if cmdargs.triad_plot_type == "sec":
+                                    plot_sector_phase_sync_snaps_full_sec(i, cmdargs.out_dir_triads, run_data.w[i, :, :], post_data.enst_spectrum[i, :, :], post_data.enst_flux_per_sec[i, int(cmdargs.triad_type), :], post_data.enst_flux_per_sec_across_sec[i, int(cmdargs.triad_type), :, :], post_data.phases[i, :, int(sys_vars.Nx/3 - 1):], post_data.theta, post_data.triad_R[i, int(cmdargs.triad_type), :], post_data.triad_R_across_sec[i, int(cmdargs.triad_type), :, :], post_data.triad_Phi[i, int(cmdargs.triad_type), :], post_data.triad_Phi_across_sec[i, int(cmdargs.triad_type), :, :], flux_min, flux_max, run_data.time[i], run_data.x, run_data.y, sys_vars.Nx, sys_vars.Ny)
+                                else:
+                                    plot_sector_phase_sync_snaps_full(i, cmdargs.out_dir_triads, run_data.w[i, :, :], post_data.enst_spectrum[i, :, :], post_data.enst_flux_per_sec[i, 0, :], post_data.phases[i, :, int(sys_vars.Nx/3 - 1):], post_data.theta, post_data.triad_R[i, int(cmdargs.triad_type), :], post_data.triad_Phi[i, int(cmdargs.triad_type), :], flux_min, flux_max, run_data.time[i], run_data.x, run_data.y, sys_vars.Nx, sys_vars.Ny)
                         else:
                             plot_sector_phase_sync_snaps(i, cmdargs.out_dir_triads, post_data.phases[i, :, int(sys_vars.Nx/3 - 1):], post_data.theta, post_data.triad_R[i, int(cmdargs.triad_type), :], post_data.triad_Phi[i, int(cmdargs.triad_type), :], run_data.time[i], sys_vars.Nx, sys_vars.Ny)
                 else:
                     for t in range(5):
+                        print(cmdargs.full, cmdargs.triad_plot_type)
+                        print("TRIAD TYPE: {}".format(t), end = " ")
+
                         ## Loop through simulation and plot data
                         for i in range(sys_vars.ndata):
                             ## Plot the data
                             if cmdargs.full: 
-                                plot_sector_phase_sync_snaps_full(i, cmdargs.out_dir_triads, run_data.w[i, :, :], post_data.enst_spectrum[i, :, :], post_data.enst_flux_per_sec[i, 0, :], post_data.phases[i, :, int(sys_vars.Nx/3 - 1):], post_data.theta, post_data.triad_R[i, t, :], post_data.triad_Phi[i, t, :], flux_min, flux_max, run_data.time[i], run_data.x, run_data.y, sys_vars.Nx, sys_vars.Ny)
+                                if cmdargs.triad_plot_type == "sec":
+                                    plot_sector_phase_sync_snaps_full_sec(i, cmdargs.out_dir_triads, run_data.w[i, :, :], post_data.enst_spectrum[i, :, :], post_data.enst_flux_per_sec[i, t, :], post_data.enst_flux_per_sec_across_sec[i, t, :, :], post_data.phases[i, :, int(sys_vars.Nx/3 - 1):], post_data.theta, post_data.triad_R[i, t, :], post_data.triad_R_across_sec[i, t, :, :], post_data.triad_Phi[i, t, :], post_data.triad_Phi_across_sec[i, t, :, :], flux_min, flux_max, run_data.time[i], run_data.x, run_data.y, sys_vars.Nx, sys_vars.Ny)
+                                else:
+                                    plot_sector_phase_sync_snaps_full(i, cmdargs.out_dir_triads, run_data.w[i, :, :], post_data.enst_spectrum[i, :, :], post_data.enst_flux_per_sec[i, 0, :], post_data.phases[i, :, int(sys_vars.Nx/3 - 1):], post_data.theta, post_data.triad_R[i, t, :], post_data.triad_Phi[i, t, :], flux_min, flux_max, run_data.time[i], run_data.x, run_data.y, sys_vars.Nx, sys_vars.Ny)
                             else:
                                 plot_sector_phase_sync_snaps(i, cmdargs.out_dir_triads, post_data.phases[i, :, int(sys_vars.Nx/3 - 1):], post_data.theta, post_data.triad_R[i, t, :], post_data.triad_Phi[i, t, :], run_data.time[i], sys_vars.Nx, sys_vars.Ny)
 

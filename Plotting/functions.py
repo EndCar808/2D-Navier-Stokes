@@ -466,7 +466,7 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
             self.kmax_frac      = float(in_file.split('_')[-1].split("[")[-1].split("]")[0])
             self.kmax_C         = int(self.kmax * self.kmax_frac)
             ## Enstrophy Flux Per Sector
-            self.enst_flux_per_sec = np.zeros((sim_data.ndata, 6, self.num_sect, 6))
+            self.enst_flux_per_sec = np.zeros((sim_data.ndata, 6, self.num_sect))
             self.enst_flux_per_sec_across_sec = np.zeros((sim_data.ndata, 6, self.num_sect, self.num_sect))
             ## Phase Sync arrays
             self.phase_R              = np.zeros((sim_data.ndata, self.num_sect))
@@ -530,9 +530,9 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                 if 'EnstrophyFluxSpectrum' in list(file[group].keys()):
                     data.enst_flux_spec[nn, :] = file[group]["EnstrophyFluxSpectrum"][:]
                 if 'EnstrophyFluxPerSector' in list(file[group].keys()):
-                    data.enst_flux_per_sec[nn, :, :, :] = file[group]["EnstrophyFluxPerSector"][:, :, :]
+                    data.enst_flux_per_sec[nn, :, :] = file[group]["EnstrophyFluxPerSector"][:, :]
                 if 'EnstrophyFluxPerSectorAcrossSector' in list(file[group].keys()):
-                    data.enst_flux_per_sec_across_sec[nn, :, :] = file[group]["EnstrophyFluxPerSectorAcrossSector"][:, :]
+                    data.enst_flux_per_sec_across_sec[nn, :, :, :] = file[group]["EnstrophyFluxPerSectorAcrossSector"][:, :, :]
                 if 'SectorPhasePDF_InTime_Counts' in list(file[group].keys()):
                     data.phase_sector_counts[nn, :, :] = file[group]["SectorPhasePDF_InTime_Counts"][:, :]
                 if 'SectorPhasePDF_InTime_Ranges' in list(file[group].keys()):

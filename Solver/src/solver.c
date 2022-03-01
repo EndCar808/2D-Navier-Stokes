@@ -762,7 +762,7 @@ void ApplyDealiasing(fftw_complex* array, int array_dim, const long int* N) {
 					array[indx + l] = array[indx + l];	
 				}				
 			}
-			#elif __DEALIAS_HOU_LI
+			#elif defined(__DEALIAS_HOU_LI)
 			// Compute Hou-Li filter
 			hou_li_filter = exp(-36.0 * pow((sqrt(pow(run_data->k[0][i] / (Nx / 2), 2.0) + pow(run_data->k[1][j] / (Ny / 2), 2.0))), 36.0));
 
@@ -3135,8 +3135,10 @@ void AllocateMemory(const long int* NBatch, RK_data_struct* RK_data) {
 				RK_data->RK3[SYS_DIM * indx_four + 1]    	  = 0.0 + 0.0 * I;
 				RK_data->RK4[SYS_DIM * indx_four + 0]    	  = 0.0 + 0.0 * I;
 				RK_data->RK4[SYS_DIM * indx_four + 1]    	  = 0.0 + 0.0 * I;
+				#if defined(__NONLIN)
 				run_data->nonlinterm[SYS_DIM * indx_four + 0] = 0.0 + 0.0 * I;
 				run_data->nonlinterm[SYS_DIM * indx_four + 1] = 0.0 + 0.0 * I;
+				#endif
 				#if defined(__RK5)
 				RK_data->RK5[SYS_DIM * indx_four + 0]    	  = 0.0 + 0.0 * I;
 				RK_data->RK5[SYS_DIM * indx_four + 1]    	  = 0.0 + 0.0 * I;
@@ -3148,12 +3150,12 @@ void AllocateMemory(const long int* NBatch, RK_data_struct* RK_data) {
 				RK_data->RK7[SYS_DIM * indx_four + 1]    	 = 0.0 + 0.0 * I;
 				RK_data->w_hat_last[indx_four]			 	 = 0.0 + 0.0 * I;
 				#endif
-				if (i == 0) {
-					if (j < Ny_Fourier) {
-						run_data->k[1][j] = 0;
-					}
-					run_data->x[1][j] = 0.0;
+			}
+			if (i == 0) {
+				if (j < Ny_Fourier) {
+					run_data->k[1][j] = 0;
 				}
+				run_data->x[1][j] = 0.0;
 			}
 		}
 		run_data->k[0][i] = 0; 

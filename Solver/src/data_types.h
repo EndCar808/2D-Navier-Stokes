@@ -47,8 +47,6 @@
 // Choose which system to solver 
 // #define __EULER
 // #define __NAVIER
-// Indicate whether to do full or phase-only system
-// define __PHASE_ONLY
 // Choose which integrator to use
 #define __RK4
 // #define __RK5
