@@ -746,12 +746,12 @@ void WriteDataToFile(double t, long int snap) {
         exit(1);
     }
 
-    // Across sector
-    double* tmp1 = (double*) fftw_malloc(sizeof(double) * sys_vars->num_sect * (NUM_TRIAD_TYPES + 1) * sys_vars->num_sect);
+    //-------------------------- Phase Sync Across sector
+    double* tmp1 = (double*) fftw_malloc(sizeof(double) * (NUM_TRIAD_TYPES + 1) * sys_vars->num_sect * sys_vars->num_sect);
     for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
     	for (int a = 0; a < sys_vars->num_sect; ++a) {
     		for (int l = 0; l < sys_vars->num_sect; ++l) {
-	    		tmp1[sys_vars->num_sect * (i * sys_vars->num_sect + a) + l] = proc_data->triad_R_across_sec[i][a * sys_vars->num_sect + l];
+	    		tmp1[sys_vars->num_sect * (i * sys_vars->num_sect + a) + l] = proc_data->triad_R_across_sec[i][a][l];
     		}
     	}
     }
@@ -766,7 +766,7 @@ void WriteDataToFile(double t, long int snap) {
     for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
     	for (int a = 0; a < sys_vars->num_sect; ++a) {
     		for (int l = 0; l < sys_vars->num_sect; ++l) {
-	    		tmp1[sys_vars->num_sect * (i * sys_vars->num_sect + a) + l] = proc_data->triad_Phi_across_sec[i][a * sys_vars->num_sect + l];
+	    		tmp1[sys_vars->num_sect * (i * sys_vars->num_sect + a) + l] = proc_data->triad_Phi_across_sec[i][a][l];
     		}
     	}
     }
@@ -791,7 +791,7 @@ void WriteDataToFile(double t, long int snap) {
     for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
     	for (int a = 0; a < sys_vars->num_sect; ++a) {
     		for (int l = 0; l < sys_vars->num_sect; ++l) {
-	    		tmp1[sys_vars->num_sect * (i * sys_vars->num_sect + a) + l] = proc_data->enst_flux_across_sec[i][a * sys_vars->num_sect + l];
+	    		tmp1[sys_vars->num_sect * (i * sys_vars->num_sect + a) + l] = proc_data->enst_flux_across_sec[i][a][l];
     		}
     	}
     }

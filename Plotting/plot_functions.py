@@ -789,8 +789,8 @@ def plot_sector_phase_sync_snaps_full_sec(i, out_dir, w, enst_spec, enst_flux, e
        print("SNAP: {}".format(i))
 
        ## Set up figure
-       fig = plt.figure(figsize = (16, 9))
-       gs  = GridSpec(3, 3)
+       fig = plt.figure(figsize = (32, 18))
+       gs  = GridSpec(3, 3, hspace = 0.4)
        
        ## Generate colour map
        my_hsv = cm.jet
@@ -907,7 +907,7 @@ def plot_sector_phase_sync_snaps_full_sec(i, out_dir, w, enst_spec, enst_flux, e
        # Plot Sync Across Sectors 
        #--------------------------------
        ax6 = fig.add_subplot(gs[2, 0])
-       im6 = ax6.imshow(R_a_sec, extent = (-np.pi/2, np.pi/2, np.pi/2, np.pi/2), cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1]))
+       im6 = ax6.imshow(R_a_sec, extent = (-np.pi/2, np.pi/2, -np.pi/2, np.pi/2), cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1]))
        ax6.set_xticks(angticks)
        ax6.set_xticklabels(angtickLabels)
        ax6.set_yticks(angticks)
@@ -924,7 +924,7 @@ def plot_sector_phase_sync_snaps_full_sec(i, out_dir, w, enst_spec, enst_flux, e
        # Plot Avg Phase Across Sectors  
        #--------------------------------
        ax7 = fig.add_subplot(gs[2, 1])
-       im7 = ax7.imshow(Phi_a_sec, extent = (-np.pi/2, np.pi/2, np.pi/2, np.pi/2), cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1]))
+       im7 = ax7.imshow(Phi_a_sec, extent = (-np.pi/2, np.pi/2, -np.pi/2, np.pi/2), cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1]))
        ax7.set_xticks(angticks)
        ax7.set_xticklabels(angtickLabels)
        ax7.set_yticks(angticks)
@@ -941,7 +941,7 @@ def plot_sector_phase_sync_snaps_full_sec(i, out_dir, w, enst_spec, enst_flux, e
        # Plot Enstrophy Flux Across Sectors  
        #--------------------------------
        ax8 = fig.add_subplot(gs[2, 2])
-       im8 = ax8.imshow(enst_flux_a_sec, extent = (-np.pi/2, np.pi/2, np.pi/2, np.pi/2), cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1]), norm = mpl.colors.LogNorm())
+       im8 = ax8.imshow(enst_flux_a_sec, extent = (-np.pi/2, np.pi/2, -np.pi/2, np.pi/2), cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1]), norm = mpl.colors.LogNorm())
        ax8.set_xticks(angticks)
        ax8.set_xticklabels(angtickLabels)
        ax8.set_yticks(angticks)

@@ -96,7 +96,7 @@ int main(int argc, char** argv) {
 	// Begin Snapshot Processing
 	//////////////////////////////
 	printf("\nStarting Snapshot Processing:\n");
-	for (int s = 0; s < sys_vars->num_snaps; ++s) { //  
+	for (int s = 0; s < sys_vars->num_snaps; ++s) { //
 		
 		// Print update to screen
 		printf("Snapshot: %d\n", s);
