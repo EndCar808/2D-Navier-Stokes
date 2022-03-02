@@ -92,11 +92,12 @@ int main(int argc, char** argv) {
 
 	InitializeFFTWPlans(sys_vars->N);
 
+
 	//////////////////////////////
 	// Begin Snapshot Processing
 	//////////////////////////////
 	printf("\nStarting Snapshot Processing:\n");
-	for (int s = 0; s < sys_vars->num_snaps; ++s) { //
+	for (int s = 0; s < 1; ++s) { // sys_vars->num_snaps
 		
 		// Print update to screen
 		printf("Snapshot: %d\n", s);

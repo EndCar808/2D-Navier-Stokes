@@ -749,14 +749,14 @@ void WriteDataToFile(double t, long int snap) {
     //-------------------------- Phase Sync Across sector
     double* tmp1 = (double*) fftw_malloc(sizeof(double) * (NUM_TRIAD_TYPES + 1) * sys_vars->num_sect * sys_vars->num_sect);
     for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
-    	for (int a = 0; a < sys_vars->num_sect; ++a) {
-    		for (int l = 0; l < sys_vars->num_sect; ++l) {
-	    		tmp1[sys_vars->num_sect * (i * sys_vars->num_sect + a) + l] = proc_data->triad_R_across_sec[i][a][l];
+    	for (int l = 0; l < NUM_K1_SECTS; ++l) {
+    		for (int a = 0; a < sys_vars->num_sect; ++a) {
+	    		tmp1[sys_vars->num_sect * (i * NUM_K1_SECTS + l) + a] = proc_data->triad_R_across_sec[i][l][a];
     		}
     	}
     }
     dset_dims_3d[0] = NUM_TRIAD_TYPES + 1;
-    dset_dims_3d[1] = sys_vars->num_sect;
+    dset_dims_3d[1] = NUM_K1_SECTS;
     dset_dims_3d[2] = sys_vars->num_sect;
 	status = H5LTmake_dataset(group_id, "TriadPhaseSyncAcrossSector", Dims3D, dset_dims_3d, H5T_NATIVE_DOUBLE, tmp1);
 	if (status < 0) {
@@ -764,9 +764,9 @@ void WriteDataToFile(double t, long int snap) {
         exit(1);
     }
     for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
-    	for (int a = 0; a < sys_vars->num_sect; ++a) {
-    		for (int l = 0; l < sys_vars->num_sect; ++l) {
-	    		tmp1[sys_vars->num_sect * (i * sys_vars->num_sect + a) + l] = proc_data->triad_Phi_across_sec[i][a][l];
+    	for (int l = 0; l < NUM_K1_SECTS; ++l) {
+    		for (int a = 0; a < sys_vars->num_sect; ++a) {
+	    		tmp1[sys_vars->num_sect * (i * NUM_K1_SECTS + l) + a] = proc_data->triad_Phi_across_sec[i][l][a];
     		}
     	}
     }
@@ -789,9 +789,9 @@ void WriteDataToFile(double t, long int snap) {
     }
     // Across Sector
     for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
-    	for (int a = 0; a < sys_vars->num_sect; ++a) {
-    		for (int l = 0; l < sys_vars->num_sect; ++l) {
-	    		tmp1[sys_vars->num_sect * (i * sys_vars->num_sect + a) + l] = proc_data->enst_flux_across_sec[i][a][l];
+    	for (int l = 0; l < NUM_K1_SECTS; ++l) {
+    		for (int a = 0; a < sys_vars->num_sect; ++a) {
+	    		tmp1[sys_vars->num_sect * (i * NUM_K1_SECTS + l) + a] = proc_data->enst_flux_across_sec[i][l][a];
     		}
     	}
     }
@@ -1093,16 +1093,16 @@ void FinalWriteAndClose(void) {
     // Across Sector
     int* tmp1 = (int*) fftw_malloc(sizeof(int) * sys_vars->num_sect * sys_vars->num_sect * (NUM_TRIAD_TYPES + 1));
     for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
-    	for (int a = 0; a < sys_vars->num_sect; ++a) {
-    		for (int l = 0; l < sys_vars->num_sect; ++l) {
-    			tmp1[i * sys_vars->num_sect + a] = proc_data->num_triads[i][a];
+    	for (int l = 0; l < NUM_K1_SECTS; ++l) {
+    		for (int a = 0; a < sys_vars->num_sect; ++a) {
+    			tmp1[sys_vars->num_sect * (i * NUM_K1_SECTS + l) + a] = proc_data->num_triads_across_sec[i][l][a];
     		}
     	}
     }
     dset_dims_3d[0] = NUM_TRIAD_TYPES + 1;
-    dset_dims_3d[1] = sys_vars->num_sect;
+    dset_dims_3d[1] = NUM_K1_SECTS;
     dset_dims_3d[2] = sys_vars->num_sect;
-	status = H5LTmake_dataset(file_info->output_file_handle, "NumTriadsPerSectorAcrossSector", Dims2D, dset_dims_2d, H5T_NATIVE_INT, tmp1);
+	status = H5LTmake_dataset(file_info->output_file_handle, "NumTriadsPerSectorAcrossSector", Dims3D, dset_dims_3d, H5T_NATIVE_INT, tmp1);
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!!!\n-->> Exiting...\n", "Number of Triads Per Sector Across Sector");
         exit(1);

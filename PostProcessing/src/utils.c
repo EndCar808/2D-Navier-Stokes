@@ -52,7 +52,7 @@ int GetCMLArgs(int argc, char** argv) {
 	// Fraction of maximum wavevector
 	sys_vars->kmax_frac = 1.0;
 	// Set the default amount of threads to use
-	sys_vars->num_threads = 4;
+	sys_vars->num_threads = 1;
 	// -------------------------------
 	// Parse CML Arguments
 	// -------------------------------
