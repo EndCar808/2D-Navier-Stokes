@@ -458,6 +458,8 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                     self.theta = file["SectorAngles"][:]
                 if 'NumTriadsPerSector' in list(file.keys()):
                     self.num_triads = file["NumTriadsPerSector"][:, :]
+                if 'NumTriadsPerSectorAcrossSector' in list(file.keys()):
+                    self.num_triads_across_sec = file["NumTriadsPerSectorAcrossSector"][:, :]
                 if 'EnstrophyFluxC' in list(file.keys()):
                     self.enst_flux_C = file["EnstrophyFluxC"][:]
             self.num_sect  = self.theta.shape[0]
