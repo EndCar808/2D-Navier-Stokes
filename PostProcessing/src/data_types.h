@@ -48,13 +48,13 @@
 // Turning these on in this file means that they WILL be on at compilation time
 
 // Post processing Modes
-// #define __REAL_STATS
-// #define __VEL_INC_STATS
-// #define __STR_FUNC_STATS
-#define __FULL_FIELD
+#define __REAL_STATS
+#define __VEL_INC_STATS
+#define __STR_FUNC_STATS
+// #define __FULL_FIELD
 // #define __SPECTRA
-#define __SEC_PHASE_SYNC
-#define __ENST_FLUX
+// #define __SEC_PHASE_SYNC
+// #define __ENST_FLUX
 
 // Postprocessing data sets
 // #define __VORT
@@ -192,6 +192,7 @@ typedef struct stats_data_struct {
 	gsl_histogram* w_pdf;		 									// Histogram struct for the vorticity distribution
 	gsl_histogram* u_pdf;		  									// Histrogam struct for the velocity distribution
 	gsl_histogram* vel_incr[INCR_TYPES][NUM_INCR]; 					// Array to hold the PDFs of the longitudinal and transverse velocity increments for each increment
+	gsl_histogram* w_incr[INCR_TYPES][NUM_INCR]; 					// Array to hold the PDFs of the longitudinal and transverse vorticity increments for each increment
 	double* str_func[INCR_TYPES][STR_FUNC_MAX_POW - 2];				// Array to hold the structure functions longitudinal and transverse velocity increments for each increment
 } stats_data_struct;
 

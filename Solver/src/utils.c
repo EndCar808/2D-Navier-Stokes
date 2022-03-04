@@ -216,7 +216,7 @@ int GetCMLArgs(int argc, char** argv) {
 					strncpy(sys_vars->u0, "NONE", 64);
 					break;
 				}
-				break;
+				break;	
 			case 't':
 				// Read in output directory tag
 				strncpy(file_info->output_tag, optarg, 64);	

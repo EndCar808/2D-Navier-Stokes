@@ -88,7 +88,7 @@ int GetCMLArgs(int argc, char** argv) {
 					exit(1);
 				}
 				break;
-			case 't':
+			case 'p':
 				// Get the number of omp threads to use
 				sys_vars->num_threads = atoi(optarg); 
 				if (sys_vars->num_threads <= 0) {
@@ -104,13 +104,18 @@ int GetCMLArgs(int argc, char** argv) {
 					exit(1);
 				}
 				break;
+			case 't':
+				// Get the tag for the output file
+				strncpy(file_info->output_tag, optarg, 64);
+				break;
 			default:
 				fprintf(stderr, "\n["RED"ERROR"RESET"] Incorrect command line flag encountered\n");		
 				fprintf(stderr, "Use"YELLOW" -o"RESET" to specify the output directory\n");
 				fprintf(stderr, "Use"YELLOW" -i"RESET" to specify the input directory\n");
 				fprintf(stderr, "Use"YELLOW" -a"RESET" to specify the number of sectors in wavevector space to use\n");
-				fprintf(stderr, "Use"YELLOW" -t"RESET" to specify the number of OMP threads to use\n");
+				fprintf(stderr, "Use"YELLOW" -p"RESET" to specify the number of OMP threads to use\n");
 				fprintf(stderr, "Use"YELLOW" -k"RESET" to specify the frac of kmax to use as the set C\n");
+				fprintf(stderr, "Use"YELLOW" -t"RESET" to specify the tag for the output file\n");
 				fprintf(stderr, "\nExample usage:\n"CYAN"\tmpirun -n 4 ./bin/main -o \"../Data/Tmp\" -n 64 -n 64 -s 0.0 -e 1.0 -h 0.0001 -v 1.0 -i \"TG_VORT\" -t \"TEMP_RUN\" \n"RESET);
 				fprintf(stderr, "\n-->> Now Exiting!\n\n");
 				exit(1);

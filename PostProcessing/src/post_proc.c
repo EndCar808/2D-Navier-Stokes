@@ -106,19 +106,35 @@ void RealSpaceStats(int s) {
 				// Get the current increment
 				r = increment[r_indx];
 
-				// Get the longitudinal and transverse increments
-				long_increment  = run_data->w[((i + r) % Nx) * Ny + j] - run_data->w[i * Ny + j];
-				trans_increment = run_data->w[i * Ny + ((j + r) % Ny)] - run_data->w[i * Ny + j];
+				//------------- Get the longitudinal and transverse Velocity increments
+				long_increment  = run_data->u[SYS_DIM * (((i + r) % Nx) * Ny + j) + 0] - run_data->u[SYS_DIM * (i * Ny + j) + 0];
+				trans_increment = run_data->u[SYS_DIM * (((i + r) % Nx) * Ny + j) + 1] - run_data->u[SYS_DIM * (i * Ny + j) + 1];
 
 				// Update the histograms
 				gsl_status = gsl_histogram_increment(stats_data->vel_incr[0][r_indx], long_increment);
 				if (gsl_status != 0) {
-					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", "Longitudinal Increment", s);
+					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", "Longitudinal Velocity Increment", s);
 					exit(1);
 				}
 				gsl_status = gsl_histogram_increment(stats_data->vel_incr[1][r_indx], trans_increment);
 				if (gsl_status != 0) {
-					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", "Transverse Increment", s);
+					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", "Transverse Velocity Increment", s);
+					exit(1);
+				}
+
+				//------------- Get the longitudinal and transverse Vorticity increments
+				long_increment  = run_data->w[((i + r) % Nx) * Ny + j] - run_data->w[i * Ny + j];
+				trans_increment = run_data->w[i * Ny + ((j + r) % Ny)] - run_data->w[i * Ny + j];
+
+				// Update the histograms
+				gsl_status = gsl_histogram_increment(stats_data->w_incr[0][r_indx], long_increment);
+				if (gsl_status != 0) {
+					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", "Longitudinal Vorticity Increment", s);
+					exit(1);
+				}
+				gsl_status = gsl_histogram_increment(stats_data->w_incr[1][r_indx], trans_increment);
+				if (gsl_status != 0) {
+					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", "Transverse Vorticity Increment", s);
 					exit(1);
 				}
 			}
@@ -127,8 +143,8 @@ void RealSpaceStats(int s) {
 			for (int p = 2; p < STR_FUNC_MAX_POW; ++p) {
 				for (int r_inc = 1; r_inc <= GSL_MIN(Nx, Ny) / 2; ++r_inc) {
 					// Get increments
-					long_increment  = run_data->w[((i + r_inc) % Nx) * Ny + j] - run_data->w[i * Ny + j];
-					trans_increment = run_data->w[i * Ny + ((j + r_inc) % Ny)] - run_data->w[i * Ny + j];
+					long_increment  = run_data->u[SYS_DIM * (((i + r) % Nx) * Ny + j) + 0] - run_data->u[SYS_DIM * (i * Ny + j) + 0];
+					trans_increment = run_data->u[SYS_DIM * (((i + r) % Nx) * Ny + j) + 1] - run_data->u[SYS_DIM * (i * Ny + j) + 1];
 
 					// Compute str function - normalize here
 					stats_data->str_func[0][p - 2][r_inc - 1] += pow(long_increment, p) / (Nx * Ny);	
@@ -684,13 +700,19 @@ void SectorPhaseOrder(int s) {
 											// When k1 and k2 = k3 the contribution to the flux is zero
 											continue;
 										}
-									}									
+									}	
+									// if (a == 19 && l == 1 && k_sqr <= sys_vars->kmax_C_sqr + 3 &&  k_sqr > sys_vars->kmax_C_sqr) {
+									// 	printf("a: %d\ttype: %d\tl = %d\tnum_t: %d\tk1 = (%d, %d)\tk2 = (%d, %d)\tk3 = (%d, %d)\n",a, 1, l, proc_data->num_triads_across_sec[1][a][l], k1_x, k1_y, k2_x, k2_y, k_x, k_y);
+									// 	// printf("a: %d\ttype: %d\tl = %d\tnum_t: %d\tord: %lf %lf I\t\tR: %lf\tPhi: %lf\n", a, i, l, proc_data->num_triads_across_sec[i][a][l], creal(proc_data->triad_phase_order_across_sec[i][a][l]), cimag(proc_data->triad_phase_order_across_sec[i][a][l]), proc_data->triad_R_across_sec[i][a][l], proc_data->triad_Phi_across_sec[i][a][l]);
+									// }								
 								}
 							}
 						}
 					}
-				}				
+				}		
+
 			}
+		// if(a == 19 && l == 1) printf("\n");	
 		}
 
 		
@@ -713,12 +735,10 @@ void SectorPhaseOrder(int s) {
 				// Record the phase syncs and average phases
 				proc_data->triad_R_across_sec[i][a][l]   = cabs(proc_data->triad_phase_order_across_sec[i][a][l]);
 				proc_data->triad_Phi_across_sec[i][a][l] = carg(proc_data->triad_phase_order_across_sec[i][a][l]); 
-				// if (a == 0) {
-					// printf("type: %d\tl = %d\tnum_t: %d\tord: %lf %lf I\t\tR: %lf\tPhi: %lf\n", i, l, proc_data->num_triads_across_sec[i][a][l], creal(proc_data->triad_phase_order_across_sec[i][a][l]), cimag(proc_data->triad_phase_order_across_sec[i][a][l]), proc_data->triad_R_across_sec[i][a][l], proc_data->triad_Phi_across_sec[i][a][l]);
-				// }
+
 			}
 			// if (a == 0)printf("a: %d type: %d Num: %d\t triad_phase_order: %lf %lf I\t\t R: %lf, Phi %lf\n", a, i, proc_data->num_triads[i][a], creal(proc_data->triad_phase_order[i][a]), cimag(proc_data->triad_phase_order[i][a]), proc_data->triad_R[i][a], proc_data->triad_Phi[i][a]);
-			// if (a == 0)	printf("\n");
+			
 			// printf("Num Triads Type %d: %d\tord: %lf %lf I\tR: %lf\tPhi: %lf\n", i, proc_data->num_triads[i][a], creal(proc_data->triad_phase_order[i][a]), cimag(proc_data->triad_phase_order[i][a]), proc_data->triad_R[i][a], proc_data->triad_Phi[i][a]);
 			// printf("a = %d\t ord: %1.16lf %1.16lf I\t num: %d\tR: %lf\n", a, creal(proc_data->triad_phase_order[i][a]), cimag(proc_data->triad_phase_order[i][a]), proc_data->num_triads[i][a], proc_data->triad_R[i][a]);
 		}
@@ -1541,9 +1561,10 @@ void AllocateMemory(const long int* N) {
 	}
 
 	#if defined(__VEL_INC_STATS)
-	// Initialize a histogram object for each increment for each direction	
+	// Initialize a histogram objects for each increments for each direction	
 	for (int i = 0; i < INCR_TYPES; ++i) {
 		for (int j = 0; j < NUM_INCR; ++j) {
+			stats_data->w_incr[i][j]   = gsl_histogram_alloc(N_BINS);
 			stats_data->vel_incr[i][j] = gsl_histogram_alloc(N_BINS);
 		}
 	}
@@ -1551,9 +1572,16 @@ void AllocateMemory(const long int* N) {
 	// Set the bin limits for the velocity increments
 	for (int i = 0; i < INCR_TYPES; ++i) {
 		for (int j = 0; j < NUM_INCR; ++j) {
+			// Velocity increments
 			gsl_status = gsl_histogram_set_ranges_uniform(stats_data->vel_incr[i][j], -BIN_LIM - 0.5, BIN_LIM + 0.5);
 			if (gsl_status != 0) {
 				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set bin ranges for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Velocity Increments");
+				exit(1);
+			}
+			// Vorticity increments
+			gsl_status = gsl_histogram_set_ranges_uniform(stats_data->w_incr[i][j], -BIN_LIM - 0.5, BIN_LIM + 0.5);
+			if (gsl_status != 0) {
+				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set bin ranges for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Vorticity Increments");
 				exit(1);
 			}
 		}
@@ -2298,6 +2326,12 @@ void FreeMemoryAndCleanUp(void) {
 	gsl_histogram_free(stats_data->u_pdf);
 	#endif
 	#if defined(__VEL_INC_STATS)
+	for (int i = 0; i < INCR_TYPES; ++i) {
+		for (int j = 0; j < NUM_INCR; ++j) {
+			gsl_histogram_free(stats_data->vel_incr[j][i]);
+			gsl_histogram_free(stats_data->w_incr[j][i]);
+		}	
+	}
 	#endif
 	#if defined(__SEC_PHASE_SYNC)
 	for (int i = 0; i < sys_vars->num_sect; ++i) {

@@ -393,7 +393,7 @@ void OpenOutputFile(void) {
 	if (strcmp(file_info->output_dir, "NONE") == -1) {
 		// Construct pathh
 		strcpy(file_info->output_file_name, file_info->output_dir);
-		sprintf(file_name, "PostProcessing_HDF_Data_SECTORS[%d]_KFRAC[%1.2lf].h5", sys_vars->num_sect, sys_vars->kmax_frac);
+		sprintf(file_name, "PostProcessing_HDF_Data_SECTORS[%d]_KFRAC[%1.2lf]_TAG[%s].h5", sys_vars->num_sect, sys_vars->kmax_frac, file_info->output_tag);
 		strcat(file_info->output_file_name, file_name);
 
 		// Print output file path to screen
@@ -404,7 +404,7 @@ void OpenOutputFile(void) {
 
 		// Construct pathh
 		strcpy(file_info->output_file_name, file_info->input_dir);
-		sprintf(file_name, "PostProcessing_HDF_Data_SECTORS[%d].h5", sys_vars->num_sect);
+		sprintf(file_name, "PostProcessing_HDF_Data_SECTORS[%d]_KFRAC[%1.2lf]_TAG[%s].h5", sys_vars->num_sect, sys_vars->kmax_frac, file_info->output_tag);
 		strcat(file_info->output_file_name, file_name);
 
 		// Print output file path to screen
@@ -575,93 +575,6 @@ void WriteDataToFile(double t, long int snap) {
         exit(1);
     }	
 	#endif
-	#if defined(__VEL_INC_STATS)
-	// Allocate temporary memory to record the histogram data contiguously
-    double* inc_range  = (double*) fftw_malloc(sizeof(double) * NUM_INCR * (N_BINS + 1));
-    double* inc_counts = (double*) fftw_malloc(sizeof(double) * NUM_INCR * (N_BINS));
-
-    //----------------------- Write the longitudinal increments
-   	for (int r = 0; r < NUM_INCR; ++r) {
-   		for (int b = 0; b < N_BINS + 1; ++b) {
-	   		inc_range[r * (N_BINS + 1) + b] = stats_data->vel_incr[0][r]->range[b];
-	   		if (b < N_BINS) {
-	   			inc_counts[r * (N_BINS) + b] = stats_data->vel_incr[0][r]->bin[b];	   			
-	   		}
-   		}
-   	}
-   	dset_dims_2d[0] = NUM_INCR;
-   	dset_dims_2d[1] = N_BINS + 1;
-   	status = H5LTmake_dataset(group_id, "LongitudinalVelIncrements_BinRanges", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, inc_range);
-	if (status < 0) {
-        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Longitudinal Velocity Increment PDF Bin Ranges", t, snap);
-        exit(1);
-    }		
-	dset_dims_2d[1] = N_BINS;
-	status = H5LTmake_dataset(group_id, "LongitudinalVelIncrements_BinCounts", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, inc_counts);	
-	if (status < 0) {
-        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Longitudinal Velocity Increment PDF Bin Counts", t, snap);
-        exit(1);
-    }
-
-    //----------------------- Write the transverse increments
-    for (int r = 0; r < NUM_INCR; ++r) {
-   		for (int b = 0; b < N_BINS + 1; ++b) {
-	   		inc_range[r * (N_BINS + 1) + b] = stats_data->vel_incr[1][r]->range[b];
-	   		if (b < N_BINS) {
-	   			inc_counts[r * (N_BINS) + b] = stats_data->vel_incr[1][r]->bin[b];	   			
-	   		}
-   		}
-   	}
-   	dset_dims_2d[1] = N_BINS + 1;
-   	status = H5LTmake_dataset(group_id, "TransverseVelIncrements_BinRanges", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, inc_range);
-	if (status < 0) {
-        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Transverse Velocity Increment PDF Bin Ranges", t, snap);
-        exit(1);
-    }		
-	dset_dims_2d[1] = N_BINS;
-	status = H5LTmake_dataset(group_id, "TransverseVelIncrements_BinCounts", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, inc_counts);	
-	if (status < 0) {
-        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Transverse Velocity Increment PDF Bin Counts", t, snap);
-        exit(1);
-    }
-
-    // Free temporary memory
-    fftw_free(inc_range);
-    fftw_free(inc_counts);
-	#endif
-    #if defined(__VEL_INC_STATS)
-    // Allocate temporary memory to record the histogram data contiguously
-    double* str_funcs = (double*) fftw_malloc(sizeof(double) * (STR_FUNC_MAX_POW - 2) * (GSL_MIN(sys_vars->N[0], sys_vars->N[1]) / 2));
-
-    //----------------------- Write the longitudinal structure functions
-   	for (int p = 0; p < STR_FUNC_MAX_POW - 2; ++p) {
-   		for (int r = 0; r < GSL_MIN(sys_vars->N[0], sys_vars->N[1]) / 2; ++r) {
-	   		str_funcs[p * (GSL_MIN(sys_vars->N[0], sys_vars->N[1]) / 2) + r] = stats_data->str_func[0][p][r];
-   		}
-   	}
-   	dset_dims_2d[0] = STR_FUNC_MAX_POW - 2;
-   	dset_dims_2d[1] = GSL_MIN(sys_vars->N[0], sys_vars->N[1]) / 2;
-   	status = H5LTmake_dataset(group_id, "LongitudinalStructureFunctions", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, str_funcs);
-	if (status < 0) {
-        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Longitudinal Structure Functions", t, snap);
-        exit(1);
-    }			
-
-    //----------------------- Write the transverse structure functions
-    for (int p = 0; p < STR_FUNC_MAX_POW - 2; ++p) {
-   		for (int r = 0; r < GSL_MIN(sys_vars->N[0], sys_vars->N[1]) / 2; ++r) {
-	   		str_funcs[p * (GSL_MIN(sys_vars->N[0], sys_vars->N[1]) / 2) + r] = stats_data->str_func[1][p][r];
-   		}
-   	}
-   	status = H5LTmake_dataset(group_id, "TransverseStructureFunctions", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, str_funcs);
-	if (status < 0) {
-        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Transverse Structure Funcitons", t, snap);
-        exit(1);
-    }		
-	
-    // Free temporary memory
-    fftw_free(str_funcs);
-    #endif
 
 
     // -------------------------------
@@ -1056,6 +969,7 @@ void FinalWriteAndClose(void) {
 	// -------------------------------
 	// Write Datasets
 	// -------------------------------
+	///----------------------------------- Write the Enstrophy Flux out of C
 	#if defined(__ENST_FLUX)
 	// Write the enstrophy flux out of the set C
 	dset_dims_1d[0] = sys_vars->num_snaps;
@@ -1065,7 +979,147 @@ void FinalWriteAndClose(void) {
         exit(1);
     }
 	#endif
+
+
+    ///----------------------------------- Write the Velocity & Vorticity Increments
+	#if defined(__VEL_INC_STATS)
+	// Allocate temporary memory to record the histogram data contiguously
+    double* inc_range  = (double*) fftw_malloc(sizeof(double) * NUM_INCR * (N_BINS + 1));
+    double* inc_counts = (double*) fftw_malloc(sizeof(double) * NUM_INCR * (N_BINS));
+
+    //-------------- Write the longitudinal increments
+    // Velocity Increments
+   	for (int r = 0; r < NUM_INCR; ++r) {
+   		for (int b = 0; b < N_BINS + 1; ++b) {
+	   		inc_range[r * (N_BINS + 1) + b] = stats_data->vel_incr[0][r]->range[b];
+	   		if (b < N_BINS) {
+	   			inc_counts[r * (N_BINS) + b] = stats_data->vel_incr[0][r]->bin[b];	   			
+	   		}
+   		}
+   	}
+   	dset_dims_2d[0] = NUM_INCR;
+   	dset_dims_2d[1] = N_BINS + 1;
+   	status = H5LTmake_dataset(file_info->output_file_handle, "LongitudinalVelIncrements_BinRanges", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, inc_range);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Longitudinal Velocity Increment PDF Bin Ranges");
+        exit(1);
+    }		
+	dset_dims_2d[1] = N_BINS;
+	status = H5LTmake_dataset(file_info->output_file_handle, "LongitudinalVelIncrements_BinCounts", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, inc_counts);	
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Longitudinal Velocity Increment PDF Bin Counts");
+        exit(1);
+    }
+    // Vorticity Increments
+    for (int r = 0; r < NUM_INCR; ++r) {
+   		for (int b = 0; b < N_BINS + 1; ++b) {
+	   		inc_range[r * (N_BINS + 1) + b] = stats_data->w_incr[0][r]->range[b];
+	   		if (b < N_BINS) {
+	   			inc_counts[r * (N_BINS) + b] = stats_data->w_incr[0][r]->bin[b];	   			
+	   		}
+   		}
+   	}
+   	dset_dims_2d[0] = NUM_INCR;
+   	dset_dims_2d[1] = N_BINS + 1;
+   	status = H5LTmake_dataset(file_info->output_file_handle, "LongitudinalVortIncrements_BinRanges", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, inc_range);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Longitudinal Vorticity Increment PDF Bin Ranges");
+        exit(1);
+    }		
+	dset_dims_2d[1] = N_BINS;
+	status = H5LTmake_dataset(file_info->output_file_handle, "LongitudinalVortIncrements_BinCounts", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, inc_counts);	
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Longitudinal Vorticity Increment PDF Bin Counts");
+        exit(1);
+    }
+
+    //--------------- Write the transverse increments
+    // Velocity
+    for (int r = 0; r < NUM_INCR; ++r) {
+   		for (int b = 0; b < N_BINS + 1; ++b) {
+	   		inc_range[r * (N_BINS + 1) + b] = stats_data->vel_incr[1][r]->range[b];
+	   		if (b < N_BINS) {
+	   			inc_counts[r * (N_BINS) + b] = stats_data->vel_incr[1][r]->bin[b];	   			
+	   		}
+   		}
+   	}
+   	dset_dims_2d[1] = N_BINS + 1;
+   	status = H5LTmake_dataset(file_info->output_file_handle, "TransverseVelIncrements_BinRanges", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, inc_range);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Transverse Velocity Increment PDF Bin Ranges");
+        exit(1);
+    }		
+	dset_dims_2d[1] = N_BINS;
+	status = H5LTmake_dataset(file_info->output_file_handle, "TransverseVelIncrements_BinCounts", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, inc_counts);	
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Transverse Velocity Increment PDF Bin Counts");
+        exit(1);
+    }
+    // Vorticity
+    for (int r = 0; r < NUM_INCR; ++r) {
+   		for (int b = 0; b < N_BINS + 1; ++b) {
+	   		inc_range[r * (N_BINS + 1) + b] = stats_data->w_incr[1][r]->range[b];
+	   		if (b < N_BINS) {
+	   			inc_counts[r * (N_BINS) + b] = stats_data->w_incr[1][r]->bin[b];	   			
+	   		}
+   		}
+   	}
+   	dset_dims_2d[1] = N_BINS + 1;
+   	status = H5LTmake_dataset(file_info->output_file_handle, "TransverseVortIncrements_BinRanges", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, inc_range);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Transverse Vorticity Increment PDF Bin Ranges");
+        exit(1);
+    }		
+	dset_dims_2d[1] = N_BINS;
+	status = H5LTmake_dataset(file_info->output_file_handle, "TransverseVortIncrements_BinCounts", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, inc_counts);	
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Transverse Vorticity Increment PDF Bin Counts");
+        exit(1);
+    }
+
+    // Free temporary memory
+    fftw_free(inc_range);
+    fftw_free(inc_counts);
+	#endif
+
+
+	///----------------------------------- Write the Structure Functions
+    #if defined(__STR_FUNC_STATS)
+    // Allocate temporary memory to record the histogram data contiguously
+    double* str_funcs = (double*) fftw_malloc(sizeof(double) * (STR_FUNC_MAX_POW - 2) * (GSL_MIN(sys_vars->N[0], sys_vars->N[1]) / 2));
+
+    //----------------------- Write the longitudinal structure functions
+   	for (int p = 0; p < STR_FUNC_MAX_POW - 2; ++p) {
+   		for (int r = 0; r < GSL_MIN(sys_vars->N[0], sys_vars->N[1]) / 2; ++r) {
+	   		str_funcs[p * (GSL_MIN(sys_vars->N[0], sys_vars->N[1]) / 2) + r] = stats_data->str_func[0][p][r];
+   		}
+   	}
+   	dset_dims_2d[0] = STR_FUNC_MAX_POW - 2;
+   	dset_dims_2d[1] = GSL_MIN(sys_vars->N[0], sys_vars->N[1]) / 2;
+   	status = H5LTmake_dataset(file_info->output_file_handle, "LongitudinalStructureFunctions", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, str_funcs);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Longitudinal Structure Functions");
+        exit(1);
+    }			
+
+    //----------------------- Write the transverse structure functions
+    for (int p = 0; p < STR_FUNC_MAX_POW - 2; ++p) {
+   		for (int r = 0; r < GSL_MIN(sys_vars->N[0], sys_vars->N[1]) / 2; ++r) {
+	   		str_funcs[p * (GSL_MIN(sys_vars->N[0], sys_vars->N[1]) / 2) + r] = stats_data->str_func[1][p][r];
+   		}
+   	}
+   	status = H5LTmake_dataset(file_info->output_file_handle, "TransverseStructureFunctions", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, str_funcs);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Transverse Structure Funcitons");
+        exit(1);
+    }		
 	
+    // Free temporary memory
+    fftw_free(str_funcs);
+    #endif
+	
+
+
 	#if defined(__SEC_PHASE_SYNC)
 	///-------------------------- Sector Angles
 	// Convert theta array back to angles before printing
@@ -1102,7 +1156,7 @@ void FinalWriteAndClose(void) {
     dset_dims_3d[0] = NUM_TRIAD_TYPES + 1;
     dset_dims_3d[1] = sys_vars->num_sect;
     dset_dims_3d[2] = sys_vars->num_sect;
-	status = H5LTmake_dataset(file_info->output_file_handle, "NumTriadsPerSectorAcrossSector", Dims2D, dset_dims_2d, H5T_NATIVE_INT, tmp1);
+	status = H5LTmake_dataset(file_info->output_file_handle, "NumTriadsPerSectorAcrossSector", Dims3D, dset_dims_3d, H5T_NATIVE_INT, tmp1);
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!!!\n-->> Exiting...\n", "Number of Triads Per Sector Across Sector");
         exit(1);
