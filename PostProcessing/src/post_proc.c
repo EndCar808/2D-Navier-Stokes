@@ -108,11 +108,7 @@ void RealSpaceStats(int s) {
 
 				//------------- Get the longitudinal and transverse Velocity increments
 				long_increment  = run_data->u[SYS_DIM * (((i + r) % Nx) * Ny + j) + 0] - run_data->u[SYS_DIM * (i * Ny + j) + 0];
-<<<<<<< HEAD
 				trans_increment = run_data->u[SYS_DIM * (((i + r) % Nx) * Ny + j) + 1] - run_data->u[SYS_DIM * (i * Ny + j) + 1];
-=======
-				// trans_increment = run_data->u[SYS_DIM * (((i + r) % Nx) * Ny + j) + 1] - run_data->u[SYS_DIM * (i * Ny + j) + 1];
->>>>>>> dev
 
 				// Update the histograms
 				gsl_status = gsl_histogram_increment(stats_data->vel_incr[0][r_indx], long_increment);
