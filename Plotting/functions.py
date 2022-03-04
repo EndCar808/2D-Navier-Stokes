@@ -436,36 +436,59 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
         """
 
         def __init__(self, in_file = file):
+            ## Get non time dependent datasets
+            with h5py.File(in_file, 'r') as file:
+                ## Get the number of sectors
+                if 'SectorAngles' in list(file.keys()):
+                    self.theta = file["SectorAngles"][:]
+                    self.num_sect = self.theta.shape[0]
+                if 'SectorAngles' not in list(file.keys()):
+                    self.num_sect = int(in_file.split('_')[-4].split("[")[-1].split("]")[0])
+                ## Get the number of triads per sector
+                if 'NumTriadsPerSector' in list(file.keys()):
+                    self.num_triads = file["NumTriadsPerSector"][:, :]
+                if 'NumTriadsPerSectorAcrossSector' in list(file.keys()):
+                    self.num_triads_across_sec = file["NumTriadsPerSectorAcrossSector"][:, :]
+                ## Get the enstrophy flux out of the set C
+                if 'EnstrophyFluxC' in list(file.keys()):
+                    self.enst_flux_C = file["EnstrophyFluxC"][:]
+                ## Get the increment histogram data
+                if 'LongitudinalVelIncrements_BinRanges' in list(file.keys()):
+                    self.long_vel_incr_ranges = file["LongitudinalVelIncrements_BinRanges"][:, :]
+                if 'LongitudinalVelIncrements_BinCounts' in list(file.keys()):
+                    self.long_vel_incr_counts = file["LongitudinalVelIncrements_BinCounts"][:, :]
+                if 'TransverseVelIncrements_BinRanges' in list(file.keys()):
+                    self.trans_vel_incr_ranges = file["TransverseVelIncrements_BinRanges"][:, :]
+                if 'TransverseVelIncrements_BinCounts' in list(file.keys()):
+                    self.trans_vel_incr_counts = file["TransverseVelIncrements_BinCounts"][:, :]
+                if 'LongitudinalVortIncrements_BinRanges' in list(file.keys()):
+                    self.long_vort_incr_ranges = file["LongitudinalVortIncrements_BinRanges"][:, :]
+                if 'LongitudinalVortIncrements_BinCounts' in list(file.keys()):
+                    self.long_vort_incr_counts = file["LongitudinalVortIncrements_BinCounts"][:, :]
+                if 'TransverseVortIncrements_BinRanges' in list(file.keys()):
+                    self.trans_vort_incr_ranges = file["TransverseVortIncrements_BinRanges"][:, :]
+                if 'TransverseVortIncrements_BinCounts' in list(file.keys()):
+                    self.trans_vort_incr_counts = file["TransverseVortIncrements_BinCounts"][:, :]
+                        
             ## Get the max wavenumber
             self.kmax = int(sim_data.Nx / 3)
             ## Allocate spectra aarrays
             self.phases        = np.zeros((sim_data.ndata, int(2 * self.kmax - 1), int(2 * self.kmax - 1)))
             self.enrg_spectrum = np.zeros((sim_data.ndata, int(2 * self.kmax - 1), int(2 * self.kmax - 1)))
             self.enst_spectrum = np.zeros((sim_data.ndata, int(2 * self.kmax - 1), int(2 * self.kmax - 1)))
-            ## Allocate histogram arrays
-            self.w_pdf_counts = np.zeros((sim_data.ndata, 1000))
+            ## Allocate the increment arrays
+            self.u_pdf_ranges = np.zeros((sim_data.ndata, 1001))
             self.u_pdf_counts = np.zeros((sim_data.ndata, 1000))
             self.w_pdf_ranges = np.zeros((sim_data.ndata, 1001))
-            self.u_pdf_ranges = np.zeros((sim_data.ndata, 1001))
+            self.w_pdf_counts = np.zeros((sim_data.ndata, 1000))
             ## Allocate spectra arrays
             self.enst_spectrum_1d = np.zeros((sim_data.ndata, sim_data.spec_size))
             self.enrg_spectrum_1d = np.zeros((sim_data.ndata, sim_data.spec_size))
             ## Allocate solver data arrays
             self.w_hat = np.ones((sim_data.ndata, sim_data.Nx, sim_data.Nk)) * np.complex(0.0, 0.0)
-            ## Get the number of sectors and the number of triads
-            with h5py.File(in_file, 'r') as file:
-                if 'SectorAngles' in list(file.keys()):
-                    self.theta = file["SectorAngles"][:]
-                if 'NumTriadsPerSector' in list(file.keys()):
-                    self.num_triads = file["NumTriadsPerSector"][:, :]
-                if 'NumTriadsPerSectorAcrossSector' in list(file.keys()):
-                    self.num_triads_across_sec = file["NumTriadsPerSectorAcrossSector"][:, :]
-                if 'EnstrophyFluxC' in list(file.keys()):
-                    self.enst_flux_C = file["EnstrophyFluxC"][:]
-            self.num_sect  = self.theta.shape[0]
             ## Enstrophy Flux Spectrum
             self.enst_flux_spec = np.zeros((sim_data.ndata, sim_data.spec_size))
-            self.kmax_frac      = float(in_file.split('_')[-1].split("[")[-1].split("]")[0])
+            self.kmax_frac      = float(in_file.split('_')[-3].split("[")[-1].split("]")[0])
             self.kmax_C         = int(self.kmax * self.kmax_frac)
             ## Enstrophy Flux Per Sector
             self.enst_flux_per_sec = np.zeros((sim_data.ndata, 6, self.num_sect))
