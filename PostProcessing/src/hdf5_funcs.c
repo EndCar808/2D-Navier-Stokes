@@ -581,6 +581,7 @@ void WriteDataToFile(double t, long int snap) {
     double* inc_counts = (double*) fftw_malloc(sizeof(double) * NUM_INCR * (N_BINS));
 
     //----------------------- Write the longitudinal increments
+    // Velocity Increments
    	for (int r = 0; r < NUM_INCR; ++r) {
    		for (int b = 0; b < N_BINS + 1; ++b) {
 	   		inc_range[r * (N_BINS + 1) + b] = stats_data->vel_incr[0][r]->range[b];
@@ -602,8 +603,31 @@ void WriteDataToFile(double t, long int snap) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Longitudinal Velocity Increment PDF Bin Counts", t, snap);
         exit(1);
     }
+    // Vorticity Increments
+    for (int r = 0; r < NUM_INCR; ++r) {
+   		for (int b = 0; b < N_BINS + 1; ++b) {
+	   		inc_range[r * (N_BINS + 1) + b] = stats_data->w_incr[0][r]->range[b];
+	   		if (b < N_BINS) {
+	   			inc_counts[r * (N_BINS) + b] = stats_data->w_incr[0][r]->bin[b];	   			
+	   		}
+   		}
+   	}
+   	dset_dims_2d[0] = NUM_INCR;
+   	dset_dims_2d[1] = N_BINS + 1;
+   	status = H5LTmake_dataset(group_id, "LongitudinalVortIncrements_BinRanges", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, inc_range);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Longitudinal Vorticity Increment PDF Bin Ranges", t, snap);
+        exit(1);
+    }		
+	dset_dims_2d[1] = N_BINS;
+	status = H5LTmake_dataset(group_id, "LongitudinalVortIncrements_BinCounts", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, inc_counts);	
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Longitudinal Vorticity Increment PDF Bin Counts", t, snap);
+        exit(1);
+    }
 
     //----------------------- Write the transverse increments
+    // Velocity
     for (int r = 0; r < NUM_INCR; ++r) {
    		for (int b = 0; b < N_BINS + 1; ++b) {
 	   		inc_range[r * (N_BINS + 1) + b] = stats_data->vel_incr[1][r]->range[b];
@@ -624,12 +648,33 @@ void WriteDataToFile(double t, long int snap) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Transverse Velocity Increment PDF Bin Counts", t, snap);
         exit(1);
     }
+    // Vorticity
+    for (int r = 0; r < NUM_INCR; ++r) {
+   		for (int b = 0; b < N_BINS + 1; ++b) {
+	   		inc_range[r * (N_BINS + 1) + b] = stats_data->w_incr[1][r]->range[b];
+	   		if (b < N_BINS) {
+	   			inc_counts[r * (N_BINS) + b] = stats_data->w_incr[1][r]->bin[b];	   			
+	   		}
+   		}
+   	}
+   	dset_dims_2d[1] = N_BINS + 1;
+   	status = H5LTmake_dataset(group_id, "TransverseVortIncrements_BinRanges", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, inc_range);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Transverse Vorticity Increment PDF Bin Ranges", t, snap);
+        exit(1);
+    }		
+	dset_dims_2d[1] = N_BINS;
+	status = H5LTmake_dataset(group_id, "TransverseVortIncrements_BinCounts", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, inc_counts);	
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Transverse Vorticity Increment PDF Bin Counts", t, snap);
+        exit(1);
+    }
 
     // Free temporary memory
     fftw_free(inc_range);
     fftw_free(inc_counts);
 	#endif
-    #if defined(__VEL_INC_STATS)
+    #if defined(__STR_FUNC_STATS)
     // Allocate temporary memory to record the histogram data contiguously
     double* str_funcs = (double*) fftw_malloc(sizeof(double) * (STR_FUNC_MAX_POW - 2) * (GSL_MIN(sys_vars->N[0], sys_vars->N[1]) / 2));
 
@@ -1102,7 +1147,7 @@ void FinalWriteAndClose(void) {
     dset_dims_3d[0] = NUM_TRIAD_TYPES + 1;
     dset_dims_3d[1] = sys_vars->num_sect;
     dset_dims_3d[2] = sys_vars->num_sect;
-	status = H5LTmake_dataset(file_info->output_file_handle, "NumTriadsPerSectorAcrossSector", Dims2D, dset_dims_2d, H5T_NATIVE_INT, tmp1);
+	status = H5LTmake_dataset(file_info->output_file_handle, "NumTriadsPerSectorAcrossSector", Dims3D, dset_dims_3d, H5T_NATIVE_INT, tmp1);
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!!!\n-->> Exiting...\n", "Number of Triads Per Sector Across Sector");
         exit(1);

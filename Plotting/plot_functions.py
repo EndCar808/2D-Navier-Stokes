@@ -789,7 +789,7 @@ def plot_sector_phase_sync_snaps_full_sec(i, out_dir, w, enst_spec, enst_flux, e
        print("SNAP: {}".format(i))
 
        ## Set up figure
-       fig = plt.figure(figsize = (32, 18))
+       fig = plt.figure(figsize = (20, 13))
        gs  = GridSpec(3, 3, hspace = 0.4)
        
        ## Generate colour map
@@ -907,7 +907,7 @@ def plot_sector_phase_sync_snaps_full_sec(i, out_dir, w, enst_spec, enst_flux, e
        # Plot Sync Across Sectors 
        #--------------------------------
        ax6 = fig.add_subplot(gs[2, 0])
-       im6 = ax6.imshow(R_a_sec, extent = (-np.pi/2, np.pi/2, -np.pi/2, np.pi/2), cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1]))
+       im6 = ax6.imshow(R_a_sec, extent = (-np.pi/2, np.pi/2, -np.pi/2, np.pi/2), cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1]), vmin = 0.0, vmax = 1.0)
        ax6.set_xticks(angticks)
        ax6.set_xticklabels(angtickLabels)
        ax6.set_yticks(angticks)
@@ -924,7 +924,7 @@ def plot_sector_phase_sync_snaps_full_sec(i, out_dir, w, enst_spec, enst_flux, e
        # Plot Avg Phase Across Sectors  
        #--------------------------------
        ax7 = fig.add_subplot(gs[2, 1])
-       im7 = ax7.imshow(Phi_a_sec, extent = (-np.pi/2, np.pi/2, -np.pi/2, np.pi/2), cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1]))
+       im7 = ax7.imshow(Phi_a_sec, extent = (-np.pi/2, np.pi/2, -np.pi/2, np.pi/2), cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1]), vmin = -np.pi, vmax = np.pi)
        ax7.set_xticks(angticks)
        ax7.set_xticklabels(angtickLabels)
        ax7.set_yticks(angticks)
@@ -935,6 +935,8 @@ def plot_sector_phase_sync_snaps_full_sec(i, out_dir, w, enst_spec, enst_flux, e
        div7  = make_axes_locatable(ax7)
        cbax7 = div7.append_axes("right", size = "10%", pad = 0.05)
        cb7   = plt.colorbar(im7, cax = cbax7)
+       cb7.set_ticks([-np.pi, -np.pi/2.0, 0., np.pi/2, np.pi])
+       cb7.set_ticklabels([r"$-\pi$", r"$\frac{-\pi}{2}$", r"$0$", r"$\frac{\pi}{2}$", r"$\pi$"])
        cb7.set_label(r"$\Phi$")
 
        #--------------------------------

@@ -185,6 +185,8 @@ if __name__ == '__main__':
     ## Read in post processing data
     post_data = import_post_processing_data(post_file_path, sys_vars, method)
 
+    print(post_data.num_triads_across_sec[1, :, :])
+
     if cmdargs.full:
         flux_min = np.amin(post_data.enst_flux_per_sec[:, :, :])
         flux_max = np.amax(post_data.enst_flux_per_sec[:, :, :])
@@ -336,7 +338,6 @@ if __name__ == '__main__':
                             ## Plot the data
                             if cmdargs.full: 
                                 if cmdargs.triad_plot_type == "sec":
-                                    print(post_data.triad_R_across_sec[i, t, :, :])
                                     plot_sector_phase_sync_snaps_full_sec(i, cmdargs.out_dir_triads, run_data.w[i, :, :], post_data.enst_spectrum[i, :, :], post_data.enst_flux_per_sec[i, t, :], post_data.enst_flux_per_sec_across_sec[i, t, :, :], post_data.phases[i, :, int(sys_vars.Nx/3 - 1):], post_data.theta, post_data.triad_R[i, t, :], post_data.triad_R_across_sec[i, t, :, :], post_data.triad_Phi[i, t, :], post_data.triad_Phi_across_sec[i, t, :, :], flux_min, flux_max, run_data.time[i], run_data.x, run_data.y, sys_vars.Nx, sys_vars.Ny)
                                 else:
                                     plot_sector_phase_sync_snaps_full(i, cmdargs.out_dir_triads, run_data.w[i, :, :], post_data.enst_spectrum[i, :, :], post_data.enst_flux_per_sec[i, 0, :], post_data.phases[i, :, int(sys_vars.Nx/3 - 1):], post_data.theta, post_data.triad_R[i, t, :], post_data.triad_Phi[i, t, :], flux_min, flux_max, run_data.time[i], run_data.x, run_data.y, sys_vars.Nx, sys_vars.Ny)
