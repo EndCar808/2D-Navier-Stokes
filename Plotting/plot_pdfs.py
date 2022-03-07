@@ -325,3 +325,37 @@ if __name__ == '__main__':
         
         plt.savefig(cmdargs.out_dir + "/Vorticity_Incrments.png")
         plt.close()
+
+
+
+        ##------------------------------- Structure Functions
+        ## Create Figure
+        fig = plt.figure(figsize = (16, 8))
+        gs  = GridSpec(1, 2) 
+        r = np.arange(1, np.minimum(sys_vars.Nx, sys_vars.Ny) / 2 + 1)
+        L = np.minimum(sys_vars.Nx, sys_vars.Ny) / 2
+
+        ax1 = fig.add_subplot(gs[0, 0])
+        for i in range(post_data.long_str_func.shape[0]):
+            ax1.plot(r / L, post_data.long_str_func[i, :])
+        ax1.set_xlabel(r"$r / L$")
+        ax1.set_ylabel(r"$S_p(r)$")
+        ax1.set_xscale('log')
+        ax1.set_yscale('log')
+        ax1.grid(color = 'k', linewidth = .5, linestyle = ':')
+        ax1.title(r"Longitudinal Structure Functions")
+        ax1.legend([r"$p = {}$".format(p) for p in range(2, post_data.long_str_func.shape[0] + 2)])
+
+        ax2 = fig.add_subplot(gs[0, 1])
+        for i in range(post_data.trans_str_func.shape[0]):
+            ax2.plot(r / L, post_data.trans_str_func[i, :])
+        ax2.set_xlabel(r"$r / L$")
+        ax2.set_ylabel(r"$S_p(r)$")
+        ax2.set_xscale('log')
+        ax2.set_yscale('log')
+        ax2.grid(color = 'k', linewidth = .5, linestyle = ':')
+        ax2.title(r"Transverse Structure Functions")
+        ax2.legend([r"$p = {}$".format(p) for p in range(2, post_data.trans_str_func.shape[0] + 2)])
+        
+        plt.savefig(cmdargs.out_dir + "/Structure_Functions.png")
+        plt.close()

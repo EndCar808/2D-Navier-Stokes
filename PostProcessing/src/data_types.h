@@ -51,6 +51,7 @@
 #define __REAL_STATS
 #define __VEL_INC_STATS
 #define __STR_FUNC_STATS
+#define __GRAD_STATS
 // #define __FULL_FIELD
 // #define __SPECTRA
 // #define __SEC_PHASE_SYNC
@@ -154,6 +155,10 @@ typedef struct postprocess_data_struct {
     double* enst_flux_spec;										             // Array to hold the enstrophy flux spectrum
     double* enst_flux_C;										             // Array to hold the enstrophy flux out of the set C defined by radius sys_vars->kmax_frac * sys_vars->kmax
     fftw_complex* dw_hat_dt; 									             // Array to hold the RHS of the vorticity equation
+    fftw_complex* grad_w_hat;												 // Array to hold the derivative of the vorticity in the x and y direction in Fourier space     
+    fftw_complex* grad_u_hat;												 // Array to hold the derivative of the velocity in the x and y direction in Fourier space     
+    double* grad_w;															 // Array to hold the derivative of the vorticity in the x and y direction in Real space 
+    double* grad_u;															 // Array to hold the derivative of the vorticity in the x and y direction in Real space 
     double* nonlinterm;											 			 // Array to hold the nonlinear term after multiplication in real space -> for nonlinear RHS funciotn
     double* nabla_w;											 			 // Array to hold the gradient of the real space vorticity -> for nonlinear RHS function
     double* nabla_psi;											 			 // Array to hold the gradient of the real space stream function -> for nonlinear RHS function
@@ -192,6 +197,8 @@ typedef struct stats_data_struct {
 	gsl_histogram* w_pdf;		 									// Histogram struct for the vorticity distribution
 	gsl_histogram* u_pdf;		  									// Histrogam struct for the velocity distribution
 	gsl_histogram* vel_incr[INCR_TYPES][NUM_INCR]; 					// Array to hold the PDFs of the longitudinal and transverse velocity increments for each increment
+	gsl_histogram* vel_grad[INCR_TYPES];		 					// Array to hold the PDFs of the longitudinal and transverse velocity gradients 
+	gsl_histogram* vort_grad[INCR_TYPES];		 					// Array to hold the PDFs of the longitudinal and transverse vorticity gradients 
 	gsl_histogram* w_incr[INCR_TYPES][NUM_INCR]; 					// Array to hold the PDFs of the longitudinal and transverse vorticity increments for each increment
 	double* str_func[INCR_TYPES][STR_FUNC_MAX_POW - 2];				// Array to hold the structure functions longitudinal and transverse velocity increments for each increment
 } stats_data_struct;

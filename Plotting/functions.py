@@ -469,6 +469,12 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                     self.trans_vort_incr_ranges = file["TransverseVortIncrements_BinRanges"][:, :]
                 if 'TransverseVortIncrements_BinCounts' in list(file.keys()):
                     self.trans_vort_incr_counts = file["TransverseVortIncrements_BinCounts"][:, :]
+                ## Get the structure function data
+                if 'LongitudinalStructureFunctions' in list(file.keys()):
+                    self.long_str_func = file["LongitudinalStructureFunctions"][:, :]
+                if 'TransverseStructureFunctions' in list(file.keys()):
+                    self.trans_str_func = file["TransverseStructureFunctions"][:, :]
+                
                         
             ## Get the max wavenumber
             self.kmax = int(sim_data.Nx / 3)

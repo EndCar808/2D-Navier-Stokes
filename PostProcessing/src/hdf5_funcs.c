@@ -1081,6 +1081,65 @@ void FinalWriteAndClose(void) {
     fftw_free(inc_counts);
 	#endif
 
+    ///----------------------------------- Gradient Statistics
+	#if defined(__GRAD_STATS)
+	//----------------- Write the x gradients
+	// Velocity
+   	dset_dims_1d[0] = N_BINS + 1;
+   	status = H5LTmake_dataset(file_info->output_file_handle, "VelocityGradient_x_BinRanges", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, stats_data->vel_grad[0]->range);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Velocity Gradient X PDF Bin Ranges");
+        exit(1);
+    }		
+	dset_dims_1d[0] = N_BINS;
+	status = H5LTmake_dataset(file_info->output_file_handle, "VelocityGradient_x_BinCounts", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, stats_data->vel_grad[0]->bin);	
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Velocity Gradient X PDF Bin Counts");
+        exit(1);
+    }
+    // Vorticity
+   	dset_dims_1d[0] = N_BINS + 1;
+   	status = H5LTmake_dataset(file_info->output_file_handle, "VorticityGradient_x_BinRanges", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, stats_data->vort_grad[0]->range);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Vorticity Gradient X PDF Bin Ranges");
+        exit(1);
+    }		
+	dset_dims_1d[0] = N_BINS;
+	status = H5LTmake_dataset(file_info->output_file_handle, "VortcityGradient_x_BinCounts", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, stats_data->vort_grad[0]->bin);	
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Vorticity Gradient X PDF Bin Counts");
+        exit(1);
+    }
+
+    //--------------- Write the y gradients
+    // Velocity
+   	dset_dims_1d[0] = N_BINS + 1;
+   	status = H5LTmake_dataset(file_info->output_file_handle, "VelocityGradient_y_BinRanges", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, stats_data->vel_grad[1]->range);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Velocity Gradient Y PDF Bin Ranges");
+        exit(1);
+    }		
+	dset_dims_1d[0] = N_BINS;
+	status = H5LTmake_dataset(file_info->output_file_handle, "VelocityGradient_y_BinCounts", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, stats_data->vel_grad[1]->bin);	
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Velocity Gradient Y PDF Bin Counts");
+        exit(1);
+    }
+    // Vorticity
+   	dset_dims_1d[1] = N_BINS + 1;
+   	status = H5LTmake_dataset(file_info->output_file_handle, "VorticityGradient_y_BinRanges", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, stats_data->vort_grad[1]->range);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Vorticity Gradient Y PDF Bin Ranges");
+        exit(1);
+    }		
+	dset_dims_1d[1] = N_BINS;
+	status = H5LTmake_dataset(file_info->output_file_handle, "VorticityGradient_y_BinCounts", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, stats_data->vort_grad[1]->bin);	
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Vorticity Gradient Y PDF Bin Counts");
+        exit(1);
+    }
+	#endif
+
 
 	///----------------------------------- Write the Structure Functions
     #if defined(__STR_FUNC_STATS)
@@ -1090,7 +1149,7 @@ void FinalWriteAndClose(void) {
     //----------------------- Write the longitudinal structure functions
    	for (int p = 0; p < STR_FUNC_MAX_POW - 2; ++p) {
    		for (int r = 0; r < GSL_MIN(sys_vars->N[0], sys_vars->N[1]) / 2; ++r) {
-	   		str_funcs[p * (GSL_MIN(sys_vars->N[0], sys_vars->N[1]) / 2) + r] = stats_data->str_func[0][p][r];
+	   		str_funcs[p * (GSL_MIN(sys_vars->N[0], sys_vars->N[1]) / 2) + r] = stats_data->str_func[0][p][r] / sys_vars->num_snaps;
    		}
    	}
    	dset_dims_2d[0] = STR_FUNC_MAX_POW - 2;
@@ -1104,7 +1163,7 @@ void FinalWriteAndClose(void) {
     //----------------------- Write the transverse structure functions
     for (int p = 0; p < STR_FUNC_MAX_POW - 2; ++p) {
    		for (int r = 0; r < GSL_MIN(sys_vars->N[0], sys_vars->N[1]) / 2; ++r) {
-	   		str_funcs[p * (GSL_MIN(sys_vars->N[0], sys_vars->N[1]) / 2) + r] = stats_data->str_func[1][p][r];
+	   		str_funcs[p * (GSL_MIN(sys_vars->N[0], sys_vars->N[1]) / 2) + r] = stats_data->str_func[1][p][r] / sys_vars->num_snaps;
    		}
    	}
    	status = H5LTmake_dataset(file_info->output_file_handle, "TransverseStructureFunctions", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, str_funcs);
