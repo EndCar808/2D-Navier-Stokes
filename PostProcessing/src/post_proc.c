@@ -38,8 +38,8 @@ void RealSpaceStats(int s) {
 	const long int Nx = sys_vars->N[0];
 	const long int Ny = sys_vars->N[1];
 	#if defined(__VEL_INC_STATS) || defined(__STR_FUNC_STATS) || defined(__GRAD_STATS)
-	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
 	int r;
+	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
 	double long_increment, trans_increment;
 	int N_max_incr = (int) (GSL_MIN(Nx, Ny) / 2);
 	int increment[NUM_INCR] = {1, N_max_incr};
@@ -48,8 +48,9 @@ void RealSpaceStats(int s) {
 
 
 	// --------------------------------
-	// Get Histogram Limits
+	// Get In-Time Histogram Limits
 	// --------------------------------
+	#if defined(__REAL_STATS)
 	// Get min and max data for histogram limits
 	w_max = 0.0;
 	w_min = 1e8;
@@ -61,10 +62,7 @@ void RealSpaceStats(int s) {
 	if (fabs(u_min) > u_max) {
 		u_max = fabs(u_min);
 	}
-
-	// --------------------------------
-	// Set Histogram Bin Ranges
-	// --------------------------------
+	
 	// Set histogram ranges for the current snapshot
 	gsl_status = gsl_histogram_set_ranges_uniform(stats_data->w_pdf, w_min - 0.5, w_max + 0.5);
 	if (gsl_status != 0) {
@@ -75,7 +73,8 @@ void RealSpaceStats(int s) {
 	if (gsl_status != 0) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set bin ranges for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", "Real Velocity", s);
 		exit(1);
-	}	
+	}
+	#endif
 
 	// --------------------------------
 	// Compute Gradients
@@ -163,6 +162,7 @@ void RealSpaceStats(int s) {
 		for (int j = 0; j < Ny; ++j) {
 			indx = tmp + j;
 
+			#if defined(__REAL_STATS)
 			///-------------------------------- Velocity & Vorticity Fields
 			// Add current values to appropriate bins
 			gsl_status = gsl_histogram_increment(stats_data->w_pdf, run_data->w[indx]);
@@ -180,6 +180,7 @@ void RealSpaceStats(int s) {
 				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Real Velocity", s, gsl_status, fabs(run_data->u[SYS_DIM * indx + 1]));
 				exit(1);
 			}
+			#endif
 
 			///-------------------------------- Gradient Fields
 			#if defined(__GRAD_STATS)
@@ -271,8 +272,8 @@ void RealSpaceStats(int s) {
 				}
 			}
 			// Compute str function - normalize here
-			stats_data->str_func[0][p - 2][r_inc - 1] += pow(long_increment, p) / (Nx * Ny);	
-			stats_data->str_func[1][p - 2][r_inc - 1] += pow(trans_increment, p) / (Nx * Ny);
+			stats_data->str_func[0][p - 2][r_inc - 1] += pow(long_increment, p) * norm_fac;	
+			stats_data->str_func[1][p - 2][r_inc - 1] += pow(trans_increment, p) * norm_fac;
 		}
 	}
 	#endif	

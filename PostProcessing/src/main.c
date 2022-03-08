@@ -93,7 +93,6 @@ int main(int argc, char** argv) {
 	InitializeFFTWPlans(sys_vars->N);
 
 
-
 	//////////////////////////////
 	// Begin Snapshot Processing
 	//////////////////////////////
