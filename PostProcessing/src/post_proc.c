@@ -62,7 +62,7 @@ void RealSpaceStats(int s) {
 	if (fabs(u_min) > u_max) {
 		u_max = fabs(u_min);
 	}
-	
+
 	// Set histogram ranges for the current snapshot
 	gsl_status = gsl_histogram_set_ranges_uniform(stats_data->w_pdf, w_min - 0.5, w_max + 0.5);
 	if (gsl_status != 0) {
@@ -267,13 +267,13 @@ void RealSpaceStats(int s) {
 					indx = tmp + j;
 				
 					// Get increments
-					long_increment  += run_data->u[SYS_DIM * (((i + r) % Nx) * Ny + j) + 0] - run_data->u[SYS_DIM * (i * Ny + j) + 0];
-					trans_increment += run_data->u[SYS_DIM * (((i + r) % Nx) * Ny + j) + 1] - run_data->u[SYS_DIM * (i * Ny + j) + 1];
+					long_increment  += pow(run_data->u[SYS_DIM * (((i + r) % Nx) * Ny + j) + 0] - run_data->u[SYS_DIM * (i * Ny + j) + 0], p);
+					trans_increment += pow(run_data->u[SYS_DIM * (((i + r) % Nx) * Ny + j) + 1] - run_data->u[SYS_DIM * (i * Ny + j) + 1], p);
 				}
 			}
 			// Compute str function - normalize here
-			stats_data->str_func[0][p - 2][r_inc - 1] += pow(long_increment, p) * norm_fac;	
-			stats_data->str_func[1][p - 2][r_inc - 1] += pow(trans_increment, p) * norm_fac;
+			stats_data->str_func[0][p - 2][r_inc - 1] += long_increment * norm_fac;	
+			stats_data->str_func[1][p - 2][r_inc - 1] += trans_increment * norm_fac;
 		}
 	}
 	#endif	
