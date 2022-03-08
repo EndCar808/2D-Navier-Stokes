@@ -268,7 +268,7 @@ void ReadInData(int snap_indx) {
 	// --------------------------------
 	//  Read in Real Vorticity
 	// --------------------------------
-	#if defined(__REAL_STATS)
+	#if defined(__REAL_STATS) || defined(__VEL_INC_STATS) || defined(__STR_FUNC_STATS) || defined(__GRAD_STATS)
 	// If Real Space vorticity exists read it in
 	sprintf(group_string, "/Iter_%05d/w", snap_indx);	
 	if (H5Lexists(file_info->input_file_handle, group_string, H5P_DEFAULT) > 0 ) {
@@ -307,7 +307,7 @@ void ReadInData(int snap_indx) {
 	// --------------------------------
 	//  Read in Real Velocity
 	// --------------------------------
-	#if defined(__REAL_STATS)
+	#if defined(__REAL_STATS) || defined(__VEL_INC_STATS) || defined(__STR_FUNC_STATS) || defined(__GRAD_STATS)
 	// If Real Space Velocity exists read it in
 	sprintf(group_string, "/Iter_%05d/u", snap_indx);	
 	if (H5Lexists(file_info->input_file_handle, group_string, H5P_DEFAULT) > 0 ) {
@@ -322,16 +322,21 @@ void ReadInData(int snap_indx) {
 			exit(1);	
 		}
 
+		#if defined(__GRAD_STATS)
+		// Transform from Real space To Fourier Space
+		fftw_execute_dft_r2c(sys_vars->fftw_2d_dft_batch_r2c, run_data->u, run_data->u_hat);
+		#endif
+
 		// Real space vorticity exists
 		sys_vars->REAL_VEL_FLAG = 1; 
 	}
 	else {
 		fftw_complex k_sqr;
 		
-		// Real space vorticity exists
+		// Real space velocity doesn't exist
 		sys_vars->REAL_VEL_FLAG = 0; 
 
-		// Compute the Fourier velocity
+		// Compute the Fourier velocity from the Fourier vorticity
 		for (int i = 0; i < Nx; ++i) {
 			tmp = i * Ny_Fourier;
 			for (int j = 0; j < Ny_Fourier; ++j) {
@@ -1143,17 +1148,18 @@ void FinalWriteAndClose(void) {
 
 	///----------------------------------- Write the Structure Functions
     #if defined(__STR_FUNC_STATS)
+    int N_max_incr = (int ) GSL_MIN(sys_vars->N[0], sys_vars->N[1]) / 2;
     // Allocate temporary memory to record the histogram data contiguously
-    double* str_funcs = (double*) fftw_malloc(sizeof(double) * (STR_FUNC_MAX_POW - 2) * (GSL_MIN(sys_vars->N[0], sys_vars->N[1]) / 2));
+    double* str_funcs = (double*) fftw_malloc(sizeof(double) * (STR_FUNC_MAX_POW - 2) * (N_max_incr));
 
     //----------------------- Write the longitudinal structure functions
    	for (int p = 0; p < STR_FUNC_MAX_POW - 2; ++p) {
-   		for (int r = 0; r < GSL_MIN(sys_vars->N[0], sys_vars->N[1]) / 2; ++r) {
-	   		str_funcs[p * (GSL_MIN(sys_vars->N[0], sys_vars->N[1]) / 2) + r] = stats_data->str_func[0][p][r] / sys_vars->num_snaps;
+   		for (int r = 0; r < N_max_incr; ++r) {
+	   		str_funcs[p * (N_max_incr) + r] = stats_data->str_func[0][p][r] / sys_vars->num_snaps;
    		}
    	}
    	dset_dims_2d[0] = STR_FUNC_MAX_POW - 2;
-   	dset_dims_2d[1] = GSL_MIN(sys_vars->N[0], sys_vars->N[1]) / 2;
+   	dset_dims_2d[1] = N_max_incr;
    	status = H5LTmake_dataset(file_info->output_file_handle, "LongitudinalStructureFunctions", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, str_funcs);
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Longitudinal Structure Functions");
@@ -1162,8 +1168,8 @@ void FinalWriteAndClose(void) {
 
     //----------------------- Write the transverse structure functions
     for (int p = 0; p < STR_FUNC_MAX_POW - 2; ++p) {
-   		for (int r = 0; r < GSL_MIN(sys_vars->N[0], sys_vars->N[1]) / 2; ++r) {
-	   		str_funcs[p * (GSL_MIN(sys_vars->N[0], sys_vars->N[1]) / 2) + r] = stats_data->str_func[1][p][r] / sys_vars->num_snaps;
+   		for (int r = 0; r < N_max_incr; ++r) {
+	   		str_funcs[p * (N_max_incr) + r] = stats_data->str_func[1][p][r] / sys_vars->num_snaps;
    		}
    	}
    	status = H5LTmake_dataset(file_info->output_file_handle, "TransverseStructureFunctions", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, str_funcs);

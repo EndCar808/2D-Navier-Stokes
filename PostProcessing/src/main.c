@@ -111,7 +111,7 @@ int main(int argc, char** argv) {
 		// --------------------------------
 		//  Real Space Stats
 		// --------------------------------
-		#if defined(__REAL_STATS) || defined(__VEL_INCR_STATS) || defined(__STR_FUNC_STATS)
+		#if defined(__REAL_STATS) || defined(__VEL_INCR_STATS) || defined(__STR_FUNC_STATS) || defined(__GRAD_STATS)
 		RealSpaceStats(s);
 		#endif
 

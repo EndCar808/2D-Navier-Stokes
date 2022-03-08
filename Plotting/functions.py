@@ -474,7 +474,23 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                     self.long_str_func = file["LongitudinalStructureFunctions"][:, :]
                 if 'TransverseStructureFunctions' in list(file.keys()):
                     self.trans_str_func = file["TransverseStructureFunctions"][:, :]
-                
+                ## Get the gradient histograms
+                if 'VelocityGradient_x_BinRanges' in list(file.keys()):
+                    self.grad_u_x_ranges = file["VelocityGradient_x_BinRanges"][:]
+                if 'VelocityGradient_x_BinCounts' in list(file.keys()):
+                    self.grad_u_x_counts = file["VelocityGradient_x_BinCounts"][:]
+                if 'VelocityGradient_y_BinRanges' in list(file.keys()):
+                    self.grad_u_y_ranges = file["VelocityGradient_y_BinRanges"][:]
+                if 'VelocityGradient_y_BinCounts' in list(file.keys()):
+                    self.grad_u_y_counts = file["VelocityGradient_y_BinCounts"][:]
+                if 'VorticityGradient_x_BinRanges' in list(file.keys()):
+                    self.grad_w_x_ranges = file["VorticityGradient_x_BinRanges"][:]
+                if 'VorticityGradient_x_BinCounts' in list(file.keys()):
+                    self.grad_w_x_counts = file["VorticityGradient_x_BinCounts"][:]
+                if 'VorticityGradient_y_BinRanges' in list(file.keys()):
+                    self.grad_w_y_ranges = file["VorticityGradient_y_BinRanges"][:]
+                if 'VorticityGradient_y_BinCounts' in list(file.keys()):
+                    self.grad_w_y_counts = file["VorticityGradient_y_BinCounts"][:]
                         
             ## Get the max wavenumber
             self.kmax = int(sim_data.Nx / 3)

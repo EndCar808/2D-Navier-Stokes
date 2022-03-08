@@ -75,7 +75,7 @@ void RealSpaceStats(int s) {
 	if (gsl_status != 0) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set bin ranges for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", "Real Velocity", s);
 		exit(1);
-	}
+	}	
 
 	// --------------------------------
 	// Compute Gradients
@@ -88,28 +88,68 @@ void RealSpaceStats(int s) {
 			indx = tmp + j;
 
 			// Compute the gradients of the vorticity
-			post_data->grad_w_hat[SYS_DIM * indx + 0] = I run_data->k[0][i] * run_data->w_hat[indx];
-			post_data->grad_w_hat[SYS_DIM * indx + 1] = I run_data->k[1][j] * run_data->w_hat[indx];
+			proc_data->grad_w_hat[SYS_DIM * indx + 0] = I * run_data->k[0][i] * run_data->w_hat[indx];
+			proc_data->grad_w_hat[SYS_DIM * indx + 1] = I * run_data->k[1][j] * run_data->w_hat[indx];
 
 			// Compute the gradients of the vorticity
-			post_data->grad_u_hat[SYS_DIM * indx + 0] = I run_data->k[0][i] * run_data->u_hat[SYS_DIM * indx + 0];
-			post_data->grad_u_hat[SYS_DIM * indx + 1] = I run_data->k[1][j] * run_data->u_hat[SYS_DIM * indx + 1];
+			proc_data->grad_u_hat[SYS_DIM * indx + 0] = I * run_data->k[0][i] * run_data->u_hat[SYS_DIM * indx + 0];
+			proc_data->grad_u_hat[SYS_DIM * indx + 1] = I * run_data->k[1][j] * run_data->u_hat[SYS_DIM * indx + 1];
 		}
 	}
 
 	// Perform inverse transform and normalize to get the gradients in real space
-	fftw_execute_dft_c2r(sys_vars->fftw_2d_dft_batch_c2r, grad_w_hat, grad_w);
-	fftw_execute_dft_c2r(sys_vars->fftw_2d_dft_batch_c2r, grad_u_hat, grad_u);
+	fftw_execute_dft_c2r(sys_vars->fftw_2d_dft_batch_c2r, proc_data->grad_w_hat, proc_data->grad_w);
+	fftw_execute_dft_c2r(sys_vars->fftw_2d_dft_batch_c2r, proc_data->grad_u_hat, proc_data->grad_u);
+	double std_w_x = 0.0;
+	double std_u_x = 0.0;
+	double std_w_y = 0.0;
+	double std_u_y = 0.0;
 	for (int i = 0; i < Nx; ++i) {
 		tmp = i * Ny_Fourier;
 		for (int j = 0; j < Ny_Fourier; ++j) {
 			indx = tmp + j;
 
 			// Normalize the gradients
-			post_data->grad_w[SYS_DIM * indx + 0] *= norm_fac;
-			post_data->grad_w[SYS_DIM * indx + 1] *= norm_fac;
-			post_data->grad_u[SYS_DIM * indx + 0] *= norm_fac;
-			post_data->grad_u[SYS_DIM * indx + 1] *= norm_fac;
+			proc_data->grad_w[SYS_DIM * indx + 0] *= norm_fac;
+			proc_data->grad_w[SYS_DIM * indx + 1] *= norm_fac;
+			proc_data->grad_u[SYS_DIM * indx + 0] *= norm_fac;
+			proc_data->grad_u[SYS_DIM * indx + 1] *= norm_fac;
+
+			if (s == 0) {
+				// Update the sum for standard deviations
+				std_u_x += pow(proc_data->grad_u[SYS_DIM * indx + 0], 2.0);
+				std_u_y += pow(proc_data->grad_u[SYS_DIM * indx + 1], 2.0);
+				std_w_x += pow(proc_data->grad_w[SYS_DIM * indx + 0], 2.0);
+				std_w_y += pow(proc_data->grad_w[SYS_DIM * indx + 1], 2.0);
+			}
+		}
+	}
+
+	// If this is the first snapshot set the bin limits
+	if (s == 0) {
+		// Set the bin limits for the Gradients
+		double std_w, std_u;
+		for (int i = 0; i < INCR_TYPES; ++i) {
+			if (i == 0)	{
+				std_u = sqrt(std_u_x * norm_fac);
+				std_w = sqrt(std_w_x * norm_fac);
+			}
+			else {
+				std_u = sqrt(std_u_y * norm_fac);
+				std_w = sqrt(std_w_y * norm_fac);
+			}
+			// Velocity gradients
+			gsl_status = gsl_histogram_set_ranges_uniform(stats_data->vel_grad[i], -BIN_LIM * std_u, BIN_LIM * std_u);
+			if (gsl_status != 0) {
+				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set bin ranges for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Velocity Increments");
+				exit(1);
+			}
+			// Vorticity gradients
+			gsl_status = gsl_histogram_set_ranges_uniform(stats_data->vort_grad[i], -BIN_LIM * std_w, BIN_LIM * std_w);
+			if (gsl_status != 0) {
+				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set bin ranges for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Vorticity Increments");
+				exit(1);
+			}
 		}
 	}
 	#endif
@@ -127,43 +167,43 @@ void RealSpaceStats(int s) {
 			// Add current values to appropriate bins
 			gsl_status = gsl_histogram_increment(stats_data->w_pdf, run_data->w[indx]);
 			if (gsl_status != 0) {
-				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", "Real Vorticity", s);
+				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Real Vorticity", s, gsl_status, run_data->w[indx]);
 				exit(1);
 			}
 			gsl_status = gsl_histogram_increment(stats_data->u_pdf, fabs(run_data->u[SYS_DIM * indx + 0]));
 			if (gsl_status != 0) {
-				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", "Real Velocity", s);
+				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Real Velocity", s, gsl_status, fabs(run_data->u[SYS_DIM * indx + 0]));
 				exit(1);
 			}
 			gsl_status = gsl_histogram_increment(stats_data->u_pdf, fabs(run_data->u[SYS_DIM * indx + 1]));
 			if (gsl_status != 0) {
-				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", "Real Velocity", s);
+				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Real Velocity", s, gsl_status, fabs(run_data->u[SYS_DIM * indx + 1]));
 				exit(1);
 			}
 
 			///-------------------------------- Gradient Fields
 			#if defined(__GRAD_STATS)
 			// Update Velocity gradient histograms
-			gsl_status = gsl_histogram_increment(stats_data->vel_grad[0], post_data->grad_u[SYS_DIM * indx + 0]);
+			gsl_status = gsl_histogram_increment(stats_data->vel_grad[0], proc_data->grad_u[SYS_DIM * indx + 0] * (norm_fac));
 			if (gsl_status != 0) {
-				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", "Longitudinal Velocity Increment", s);
+				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "X Velocity Gradient", s, gsl_status, proc_data->grad_u[SYS_DIM * indx + 0] * (norm_fac));
 				exit(1);
 			}
-			gsl_status = gsl_histogram_increment(stats_data->vel_grad[1], post_data->grad_u[SYS_DIM * indx + 1]);
+			gsl_status = gsl_histogram_increment(stats_data->vel_grad[1], proc_data->grad_u[SYS_DIM * indx + 1] * (norm_fac));
 			if (gsl_status != 0) {
-				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", "Transverse Velocity Increment", s);
+				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Y Velocity Gradient", s, gsl_status, proc_data->grad_u[SYS_DIM * indx + 1] * (norm_fac));
 				exit(1);
 			}
 
 			// Update Vorticity gradient histograms
-			gsl_status = gsl_histogram_increment(stats_data->vort_grad[0], post_data->grad_w[SYS_DIM * indx + 0]);
+			gsl_status = gsl_histogram_increment(stats_data->vort_grad[0], proc_data->grad_w[SYS_DIM * indx + 0] * (norm_fac));
 			if (gsl_status != 0) {
-				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", "Longitudinal Velocity Increment", s);
+				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "X Vorticity Gradient", s, gsl_status, proc_data->grad_w[SYS_DIM * indx + 0] * (norm_fac));
 				exit(1);
 			}
-			gsl_status = gsl_histogram_increment(stats_data->vort_grad[1], post_data->grad_w[SYS_DIM * indx + 1]);
+			gsl_status = gsl_histogram_increment(stats_data->vort_grad[1], proc_data->grad_w[SYS_DIM * indx + 1] * (norm_fac));
 			if (gsl_status != 0) {
-				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", "Transverse Velocity Increment", s);
+				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Y Vorticity Gradient", s, gsl_status, proc_data->grad_w[SYS_DIM * indx + 1] * (norm_fac));
 				exit(1);
 			}
 			#endif
@@ -182,12 +222,12 @@ void RealSpaceStats(int s) {
 				// Update the histograms
 				gsl_status = gsl_histogram_increment(stats_data->vel_incr[0][r_indx], long_increment);
 				if (gsl_status != 0) {
-					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", "Longitudinal Velocity Increment", s);
+					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Longitudinal Velocity Increment", s, gsl_status, long_increment);
 					exit(1);
 				}
 				gsl_status = gsl_histogram_increment(stats_data->vel_incr[1][r_indx], trans_increment);
 				if (gsl_status != 0) {
-					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", "Transverse Velocity Increment", s);
+					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Transverse Velocity Increment", s, gsl_status, trans_increment);
 					exit(1);
 				}
 
@@ -198,12 +238,12 @@ void RealSpaceStats(int s) {
 				// Update the histograms
 				gsl_status = gsl_histogram_increment(stats_data->w_incr[0][r_indx], long_increment);
 				if (gsl_status != 0) {
-					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", "Longitudinal Vorticity Increment", s);
+					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Longitudinal Vorticity Increment", s, gsl_status, long_increment);
 					exit(1);
 				}
 				gsl_status = gsl_histogram_increment(stats_data->w_incr[1][r_indx], trans_increment);
 				if (gsl_status != 0) {
-					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", "Transverse Vorticity Increment", s);
+					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Transverse Vorticity Increment", s, gsl_status, trans_increment);
 					exit(1);
 				}
 			}
@@ -228,12 +268,11 @@ void RealSpaceStats(int s) {
 					// Get increments
 					long_increment  += run_data->u[SYS_DIM * (((i + r) % Nx) * Ny + j) + 0] - run_data->u[SYS_DIM * (i * Ny + j) + 0];
 					trans_increment += run_data->u[SYS_DIM * (((i + r) % Nx) * Ny + j) + 1] - run_data->u[SYS_DIM * (i * Ny + j) + 1];
-
-					// Compute str function - normalize here
-					stats_data->str_func[0][p - 2][r_inc - 1] += pow(long_increment, p) / (Nx * Ny);	
-					stats_data->str_func[1][p - 2][r_inc - 1] += pow(trans_increment, p) / (Nx * Ny);
 				}
 			}
+			// Compute str function - normalize here
+			stats_data->str_func[0][p - 2][r_inc - 1] += pow(long_increment, p) / (Nx * Ny);	
+			stats_data->str_func[1][p - 2][r_inc - 1] += pow(trans_increment, p) / (Nx * Ny);
 		}
 	}
 	#endif	
@@ -1645,24 +1684,24 @@ void AllocateMemory(const long int* N) {
 
 	#if defined(__GRAD_STATS)
 	// Allocate Fourier gradient arrays
-	post_data->grad_u_hat = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * Nx * Ny_Fourier * SYS_DIM);
-	if (run_data->grad_u_hat == NULL) {
+	proc_data->grad_u_hat = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * Nx * Ny_Fourier * SYS_DIM);
+	if (proc_data->grad_u_hat == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Fourier Velocity");
 		exit(1);
 	}
-	post_data->grad_w_hat = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * Nx * Ny_Fourier * SYS_DIM);
-	if (run_data->grad_w_hat == NULL) {
+	proc_data->grad_w_hat = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * Nx * Ny_Fourier * SYS_DIM);
+	if (proc_data->grad_w_hat == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Fourier Velocity");
 		exit(1);
 	}
 	// Allocate Real Space gradient arrays
-	run_data->grad_u = (double* )fftw_malloc(sizeof(double) * Nx * Ny * SYS_DIM);
-	if (run_data->grad_u == NULL) {
+	proc_data->grad_u = (double* )fftw_malloc(sizeof(double) * Nx * Ny * SYS_DIM);
+	if (proc_data->grad_u == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Velocity");
 		exit(1);
 	}
-	run_data->grad_w = (double* )fftw_malloc(sizeof(double) * Nx * Ny * SYS_DIM);
-	if (run_data->grad_w == NULL) {
+	proc_data->grad_w = (double* )fftw_malloc(sizeof(double) * Nx * Ny * SYS_DIM);
+	if (proc_data->grad_w == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Velocity");
 		exit(1);
 	}
@@ -1672,23 +1711,6 @@ void AllocateMemory(const long int* N) {
 		stats_data->vel_grad[i]  = gsl_histogram_alloc(N_BINS);
 		stats_data->vort_grad[i] = gsl_histogram_alloc(N_BINS);
 	}
-
-	// Set the bin limits for the velocity increments
-	for (int i = 0; i < INCR_TYPES; ++i) {
-		// Velocity gradients
-		gsl_status = gsl_histogram_set_ranges_uniform(stats_data->vel_grad[i], -BIN_LIM - 0.5, BIN_LIM + 0.5);
-		if (gsl_status != 0) {
-			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set bin ranges for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Velocity Increments");
-			exit(1);
-		}
-		// Vorticity gradients
-		gsl_status = gsl_histogram_set_ranges_uniform(stats_data->vort_grad[i], -BIN_LIM - 0.5, BIN_LIM + 0.5);
-		if (gsl_status != 0) {
-			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set bin ranges for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Vorticity Increments");
-			exit(1);
-		}
-	}
-
 	#endif
 	#if defined(__VEL_INC_STATS)
 	// Initialize a histogram objects for each increments for each direction	
@@ -1719,16 +1741,17 @@ void AllocateMemory(const long int* N) {
 	#endif
 	#if defined(__STR_FUNC_STATS)
 	// Allocate memory for each structure function for each of the increment directions
+	int N_max_incr = (int) GSL_MIN(Nx, Ny) / 2;
 	for (int i = 0; i < INCR_TYPES; ++i) {
 		for (int j = 2; j < STR_FUNC_MAX_POW; ++j) {
-			stats_data->str_func[i][j - 2] = (double* )fftw_malloc(sizeof(double) * (GSL_MIN(Nx, Ny) / 2));
+			stats_data->str_func[i][j - 2] = (double* )fftw_malloc(sizeof(double) * (N_max_incr));
 			if (stats_data->str_func[i][j - 2] == NULL) {
 				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Structure Functions");
 				exit(1);
 			}
 
 			// Initialize array
-			for (int r = 0; r < GSL_MIN(Nx, Ny) / 2; ++r) {
+			for (int r = 0; r < N_max_incr; ++r) {
 				stats_data->str_func[i][j - 2][r] = 0.0;
 			}
 		}
@@ -2248,7 +2271,7 @@ void InitializeFFTWPlans(const long int* N) {
 	const long int Ny = N[1];
 	const int N_batch[SYS_DIM] = {Nx, Ny};
 
-	#if defined(__REAL_STATS) || defined(__VEL_INC_STATS) || defined(__STR_FUNC_STATS)
+	#if defined(__REAL_STATS) || defined(__VEL_INC_STATS) || defined(__STR_FUNC_STATS) || defined(__GRAD_STATS)
 	// Initialize Fourier Transforms
 	sys_vars->fftw_2d_dft_c2r = fftw_plan_dft_c2r_2d(Nx, Ny, run_data->w_hat, run_data->w, FFTW_ESTIMATE);
 	if (sys_vars->fftw_2d_dft_c2r == NULL) {
@@ -2264,10 +2287,19 @@ void InitializeFFTWPlans(const long int* N) {
 	}
 	#endif
 
-	#if defined(__ENST_FLUX) || defined(__SEC_PHASE_SYNC) || defined(__REAL_STATS)
+	#if defined(__ENST_FLUX) || defined(__SEC_PHASE_SYNC) || defined(__REAL_STATS) || defined(__GRAD_STATS)
 	// Initialize Batch Fourier Transforms
 	sys_vars->fftw_2d_dft_batch_c2r = fftw_plan_many_dft_c2r(SYS_DIM, N_batch, SYS_DIM, run_data->u_hat, NULL, SYS_DIM, 1, run_data->u, NULL, SYS_DIM, 1, FFTW_MEASURE);
 	if (sys_vars->fftw_2d_dft_batch_c2r == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to initialize batch FFTW Plans \n-->> Exiting!!!\n");
+		exit(1);
+	}
+	#endif
+
+	#if defined(__GRAD_STATS)
+	// Initialize Batch Fourier Transforms
+	sys_vars->fftw_2d_dft_batch_r2c = fftw_plan_many_dft_r2c(SYS_DIM, N_batch, SYS_DIM, run_data->u, NULL, SYS_DIM, 1, run_data->u_hat, NULL, SYS_DIM, 1, FFTW_MEASURE);
+	if (sys_vars->fftw_2d_dft_batch_r2c == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to initialize batch FFTW Plans \n-->> Exiting!!!\n");
 		exit(1);
 	}
@@ -2394,10 +2426,10 @@ void FreeMemoryAndCleanUp(void) {
 	}
 	#endif
 	#if defined(__GRAD_STATS)
-	fftw_free(post_data->grad_u_hat);
-	fftw_free(post_data->grad_w_hat);
-	fftw_free(post_data->grad_u);
-	fftw_free(post_data->grad_w);	
+	fftw_free(proc_data->grad_u_hat);
+	fftw_free(proc_data->grad_w_hat);
+	fftw_free(proc_data->grad_u);
+	fftw_free(proc_data->grad_w);	
 	#endif
 	#endif
 	#if defined(__FULL_FIELD) || defined(__SEC_PHASE_SYNC)
@@ -2492,7 +2524,7 @@ void FreeMemoryAndCleanUp(void) {
 	//  Free FFTW Plans
 	// --------------------------------
 	// Destroy FFTW plans
-	#if defined(__REAL_STATS) || defined(__VEL_INC_STATS) || defined(__STR_FUNC_STATS)
+	#if defined(__REAL_STATS) || defined(__VEL_INC_STATS) || defined(__STR_FUNC_STATS) || defined(__GRAD_STATS)
 	fftw_destroy_plan(sys_vars->fftw_2d_dft_c2r);
 	#endif
 	#if defined(__ENST_FLUX) || defined(__SEC_PHASE_SYNC)
@@ -2501,6 +2533,9 @@ void FreeMemoryAndCleanUp(void) {
 	#if defined(__ENST_FLUX) || defined(__SEC_PHASE_SYNC) || defined(__REAL_STATS) || defined(__GRAD_STATS)
 	fftw_destroy_plan(sys_vars->fftw_2d_dft_batch_c2r);
 	#endif
+	#if defined(__GRAD_STATS)
+	fftw_destroy_plan(sys_vars->fftw_2d_dft_batch_r2c);
+	#endif	
 
 	// --------------------------------
 	//  Close HDF5 Objects

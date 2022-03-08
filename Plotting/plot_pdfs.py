@@ -343,7 +343,7 @@ if __name__ == '__main__':
         ax1.set_xscale('log')
         ax1.set_yscale('log')
         ax1.grid(color = 'k', linewidth = .5, linestyle = ':')
-        ax1.title(r"Longitudinal Structure Functions")
+        ax1.set_title(r"Longitudinal Structure Functions")
         ax1.legend([r"$p = {}$".format(p) for p in range(2, post_data.long_str_func.shape[0] + 2)])
 
         ax2 = fig.add_subplot(gs[0, 1])
@@ -354,7 +354,7 @@ if __name__ == '__main__':
         ax2.set_xscale('log')
         ax2.set_yscale('log')
         ax2.grid(color = 'k', linewidth = .5, linestyle = ':')
-        ax2.title(r"Transverse Structure Functions")
+        ax2.set_title(r"Transverse Structure Functions")
         ax2.legend([r"$p = {}$".format(p) for p in range(2, post_data.trans_str_func.shape[0] + 2)])
         
         plt.savefig(cmdargs.out_dir + "/Structure_Functions.png")

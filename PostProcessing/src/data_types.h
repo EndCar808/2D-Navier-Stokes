@@ -78,7 +78,7 @@
 #define NUM_INCR 2              // The number of increment length scales
 #define INCR_TYPES 2 			// The number of increment directions i.e., longitudinal and transverse
 #define STR_FUNC_MAX_POW 6      // The maximum pow of the structure functions to compute
-#define BIN_LIM 20              // The limit of the bins for the velocity increments
+#define BIN_LIM 40              // The limit of the bins for the velocity increments
 // Phase sync 
 // #define N_SECTORS 40		 	// The number of phase sectors
 #define N_BINS_SEC 1000         // The number of bins in the sector pdfs
