@@ -91,6 +91,31 @@ def parse_cml(argv):
 
     return cargs
 
+# @njit
+def compute_pdf(bin_ranges, bin_counts, normalized = False):
+
+    ## Get nonzero bin indexs
+    non_zero_args = np.where(bin_counts != 0)
+
+    ## Get the bin centres
+    bin_centres = (bin_ranges[1:] + bin_ranges[:-1]) * 0.5
+    bin_centres = bin_centres[non_zero_args]
+
+    ## Compute the bin width
+    bin_width = bin_ranges[1] - bin_ranges[0]
+
+    ## Compute the pdf
+    pdf = bin_counts[:] / (np.sum(bin_counts[:]) * bin_width)
+    pdf = pdf[non_zero_args]
+
+    if normalized:
+        var         = np.sqrt(np.sum(pdf * bin_centres**2 * bin_width))
+        pdf         *= var
+        bin_centres /= var 
+        bin_width   /= var
+
+
+    return bin_centres, pdf
 
 ######################
 ##       MAIN       ##
@@ -239,16 +264,7 @@ if __name__ == '__main__':
         ## Longitudinal PDFs
         ax1 = fig.add_subplot(gs[0, 0])
         for i in range(post_data.long_vel_incr_ranges.shape[0]):
-            non_zero_args = np.where(post_data.long_vel_incr_counts[i, :] != 0)
-            bin_centres   = (post_data.long_vel_incr_ranges[i, 1:] + post_data.long_vel_incr_ranges[i, :-1]) * 0.5
-            bin_centres   = bin_centres[non_zero_args]
-            bin_width     = post_data.long_vel_incr_ranges[i, 1] - post_data.long_vel_incr_ranges[i, 0]
-            pdf           = post_data.long_vel_incr_counts[i, :] / (np.sum(post_data.long_vel_incr_counts[i, :]) * bin_width)
-            pdf           = pdf[non_zero_args]
-            var           = np.sqrt(np.sum(pdf * bin_centres**2 * bin_width))
-            pdf           *= var
-            bin_centres   /= var 
-            bin_width     /= var
+            bin_centres, pdf = compute_pdf(post_data.long_vel_incr_ranges[i, :], post_data.long_vel_incr_counts[i, :], normalized = True)
             ax1.plot(bin_centres, pdf)
         ax1.set_xlabel(r"$\delta_r u_{\parallel} / \langle (\delta_r u_{\parallel})^2 \rangle^{1/2}$")
         ax1.set_ylabel(r"PDF")
@@ -279,7 +295,7 @@ if __name__ == '__main__':
         plt.savefig(cmdargs.out_dir + "/Velocity_Incrmenents.png")
         plt.close()
 
-        ##------------------------------- Velocity Increments
+        ##------------------------------- Vorticity Increments
         ## Create Figure
         fig = plt.figure(figsize = (16, 8))
         gs  = GridSpec(1, 2) 
@@ -331,15 +347,15 @@ if __name__ == '__main__':
         ##------------------------------- Structure Functions
         ## Create Figure
         fig = plt.figure(figsize = (16, 8))
-        gs  = GridSpec(1, 2) 
+        gs  = GridSpec(2, 2, hspace = 0.3) 
         r = np.arange(1, np.minimum(sys_vars.Nx, sys_vars.Ny) / 2 + 1)
         L = np.minimum(sys_vars.Nx, sys_vars.Ny) / 2
 
         ax1 = fig.add_subplot(gs[0, 0])
         for i in range(post_data.long_str_func.shape[0]):
-            ax1.plot(r / L, post_data.long_str_func[i, :])
+            ax1.plot(r / L, np.absolute(post_data.long_str_func[i, :]))
         ax1.set_xlabel(r"$r / L$")
-        ax1.set_ylabel(r"$S_p(r)$")
+        ax1.set_ylabel(r"$|S^p(r)|$")
         ax1.set_xscale('log')
         ax1.set_yscale('log')
         ax1.grid(color = 'k', linewidth = .5, linestyle = ':')
@@ -348,14 +364,36 @@ if __name__ == '__main__':
 
         ax2 = fig.add_subplot(gs[0, 1])
         for i in range(post_data.trans_str_func.shape[0]):
-            ax2.plot(r / L, post_data.trans_str_func[i, :])
+            ax2.plot(r / L, np.absolute(post_data.trans_str_func[i, :]))
         ax2.set_xlabel(r"$r / L$")
-        ax2.set_ylabel(r"$S_p(r)$")
+        ax2.set_ylabel(r"$|S^p(r)|$")
         ax2.set_xscale('log')
         ax2.set_yscale('log')
         ax2.grid(color = 'k', linewidth = .5, linestyle = ':')
         ax2.set_title(r"Transverse Structure Functions")
         ax2.legend([r"$p = {}$".format(p) for p in range(2, post_data.trans_str_func.shape[0] + 2)])
+
+        ax3 = fig.add_subplot(gs[1, 0])
+        for i in range(post_data.long_str_func_abs.shape[0]):
+            ax3.plot(r / L, np.absolute(post_data.long_str_func_abs[i, :]))
+        ax3.set_xlabel(r"$r / L$")
+        ax3.set_ylabel(r"$|S^p_{abs}(r)|$")
+        ax3.set_xscale('log')
+        ax3.set_yscale('log')
+        ax3.grid(color = 'k', linewidth = .5, linestyle = ':')
+        ax3.set_title(r"Absolute Longitudinal Structure Functions")
+        ax3.legend([r"$p = {}$".format(p) for p in range(2, post_data.long_str_func_abs.shape[0] + 2)])
+
+        ax4 = fig.add_subplot(gs[1, 1])
+        for i in range(post_data.trans_str_func_abs.shape[0]):
+            ax4.plot(r / L, np.absolute(post_data.trans_str_func_abs[i, :]))
+        ax4.set_xlabel(r"$r / L$")
+        ax4.set_ylabel(r"$|S^p_{abs}(r)|$")
+        ax4.set_xscale('log')
+        ax4.set_yscale('log')
+        ax4.grid(color = 'k', linewidth = .5, linestyle = ':')
+        ax4.set_title(r"Absolute Transverse Structure Functions")
+        ax4.legend([r"$p = {}$".format(p) for p in range(2, post_data.trans_str_func_abs.shape[0] + 2)])
         
         plt.savefig(cmdargs.out_dir + "/Structure_Functions.png")
         plt.close()

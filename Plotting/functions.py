@@ -474,6 +474,10 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                     self.long_str_func = file["LongitudinalStructureFunctions"][:, :]
                 if 'TransverseStructureFunctions' in list(file.keys()):
                     self.trans_str_func = file["TransverseStructureFunctions"][:, :]
+                if 'AbsoluteLongitudinalStructureFunctions' in list(file.keys()):
+                    self.long_str_func_abs = file["AbsoluteLongitudinalStructureFunctions"][:, :]
+                if 'AbsoluteTransverseStructureFunctions' in list(file.keys()):
+                    self.trans_str_func_abs = file["AbsoluteTransverseStructureFunctions"][:, :]
                 ## Get the gradient histograms
                 if 'VelocityGradient_x_BinRanges' in list(file.keys()):
                     self.grad_u_x_ranges = file["VelocityGradient_x_BinRanges"][:]

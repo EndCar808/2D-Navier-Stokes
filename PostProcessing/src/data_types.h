@@ -201,6 +201,7 @@ typedef struct stats_data_struct {
 	gsl_histogram* vort_grad[INCR_TYPES];		 					// Array to hold the PDFs of the longitudinal and transverse vorticity gradients 
 	gsl_histogram* w_incr[INCR_TYPES][NUM_INCR]; 					// Array to hold the PDFs of the longitudinal and transverse vorticity increments for each increment
 	double* str_func[INCR_TYPES][STR_FUNC_MAX_POW - 2];				// Array to hold the structure functions longitudinal and transverse velocity increments for each increment
+	double* str_func_abs[INCR_TYPES][STR_FUNC_MAX_POW - 2];			// Array to hold the structure functions longitudinal and transverse velocity increments for each absolute increment
 } stats_data_struct;
 
 // HDF5 file info struct

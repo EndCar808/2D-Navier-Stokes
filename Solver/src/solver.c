@@ -1363,7 +1363,11 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 	// -------------------------------------------------
 	ApplyForcing(w_hat, N);
    
-   
+   	// -------------------------------------------------
+   	// Get Max of Initial Condition
+   	// -------------------------------------------------
+   	sys_vars->w_max_init = GetMaxData("VORT");
+
 	// -------------------------------------------------
 	// Initialize Taylor Green Vortex Soln 
 	// -------------------------------------------------
@@ -1577,7 +1581,7 @@ double GetMaxData(char* dtype) {
 		}
 		// Find the max of the Fourier Vorticity
 		else if (strcmp(dtype, "VORT") == 0) {
-			tmp = i * Ny;
+			tmp = i * (Ny + 2);
 			for (int j = 0; j < Ny; ++j) {
 				indx = tmp + j;
 
@@ -1780,7 +1784,7 @@ void GetTimestep(double* dt) {
 	// -------------------------------
 	w_max = GetMaxData("VORT");
 
-	// Find proposed timestep = h_0 * (max{w_hat(0)} / max{w_hat(t)}) -> this ensures that the maximum vorticity by the timestep is constant
+	// Find proposed timestep = h_0 * (max{w(0)} / max{w(t)}) -> this ensures that the maximum vorticity by the timestep is constant
 	dt_new = (sys_vars->dt) * (sys_vars->w_max_init / w_max);	
 
 	// Gather new timesteps from all processes -> pick the smallest one
@@ -2678,10 +2682,11 @@ void EnstrophyFluxSpectrum(RK_data_struct* RK_data) {
 }
 /**
  * Function to compute the system measurables such as energy, enstrophy, palinstrophy, helicity, energy and enstrophy dissipation rates, and spectra at once on the local processes for the current timestep
+ * @param t 		The current time in the simulation
  * @param iter 		The index in the system arrays for the current timestep
  * @param RK_data 	Struct containing the integration varaiables needed for the nonlinear term function
  */
-void ComputeSystemMeasurables(int iter, RK_data_struct* RK_data) {
+void ComputeSystemMeasurables(double t, int iter, RK_data_struct* RK_data) {
 
 	// Initialize variables
 	int tmp;
@@ -2694,19 +2699,44 @@ void ComputeSystemMeasurables(int iter, RK_data_struct* RK_data) {
 	double k_sqr, pre_fac;
 	double norm_fac  = 0.5 / pow(Nx * Ny, 2.0);
     double const_fac = 4.0 * pow(M_PI, 2.0);
+    double lwr_sbst_lim_sqr = pow(LWR_SBST_LIM, 2.0);
+    double upr_sbst_lim_sqr = pow(UPR_SBST_LIM, 2.0);
+
+    // Record the initial time
+    #if defined(__TIME) && !defined(TRANSIENTS)
+    if (!(sys_vars->rank)) {
+    	run_data->time[iter] = t;
+    }
+    #endif
+
+    // If adaptive stepping check if within memory limits
+    if (print_indx >= sys_vars->num_print_steps) {
+    	// Print warning to screen if we have exceeded the memory limits for the system measurables arrays
+    	printf("\n["MAGENTA"WARNING"RESET"] --- Unable to write system measures at Indx: [%d] t: [%lf] ---- Number of intergration steps is now greater then memory allocated\n", print_indx, t);
+    }
 
 	// ------------------------------------
 	// Initialize Measurables
 	// ------------------------------------
 	#if defined(__SYS_MEASURES)
-	// Initialize totals
-	run_data->tot_enstr[iter]  = 0.0;
-	run_data->tot_palin[iter]  = 0.0;
-	run_data->tot_energy[iter] = 0.0;
-	run_data->enrg_diss[iter]  = 0.0;
-	run_data->enst_diss[iter]  = 0.0;
+	if (print_indx < sys_vars->num_print_steps) {
+		// Initialize totals
+		run_data->tot_enstr[iter]  = 0.0;
+		run_data->tot_palin[iter]  = 0.0;
+		run_data->tot_energy[iter] = 0.0;
+		run_data->enrg_diss[iter]  = 0.0;
+		run_data->enst_diss[iter]  = 0.0;
+		#if defined(__ENRG_FLUX)
+		run_data->enrg_diss_sbst[iter] = 0.0;
+		run_data->enrg_diss_sbst[iter] = 0.0;
+		#endif
+		#if defined(__ENST_FLUX)
+		run_data->enst_flux_sbst[iter] = 0.0;
+		run_data->enst_diss_sbst[iter] = 0.0;
+		#endif
+	}
 	#endif 
-	#if defined(__ENRG_SPECT) || defined(__ENST_SPECT)
+	#if defined(__ENRG_SPECT) || defined(__ENST_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__ENRG_FLUX_SPECT)
 	// Initialize spectra
 	for (int i = 0; i < sys_vars->n_spect; ++i) {
 		#if defined(__ENRG_SPECT)
@@ -2716,10 +2746,10 @@ void ComputeSystemMeasurables(int iter, RK_data_struct* RK_data) {
 		run_data->enst_spect[i] = 0.0;
 		#endif
 		#if defined(__ENST_FLUX_SPECT)
-		run_data->enst_flux_spect[spec_indx] = 0.0;
+		run_data->enst_flux_spect[i] = 0.0;
 		#endif
 		#if defined(__ENRG_FLUX_SPECT)
-		run_data->enrg_flux_spect[spec_indx] = 0.0;
+		run_data->enrg_flux_spect[i] = 0.0;
 		#endif
 	}
 	#endif
@@ -2742,64 +2772,66 @@ void ComputeSystemMeasurables(int iter, RK_data_struct* RK_data) {
 
 			///--------------------------------- System Measures
 			#if defined(__SYS_MEASURES)
-			if ((run_data->k[0][i] != 0) || (run_data->k[1][j] != 0)) {
-				// The |k|^2 prefactor
-				k_sqr = (double )(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
+		    if (print_indx < sys_vars->num_print_steps) {
+				if ((run_data->k[0][i] != 0) || (run_data->k[1][j] != 0)) {
+					// The |k|^2 prefactor
+					k_sqr = (double )(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 
-				// Get the appropriate prefactor
-				#if defined(HYPER_VISC) && defined(EKMN_DRAG)  // Both Hyperviscosity and Ekman drag
-				pre_fac = sys_vars->NU * pow(k_sqr, VIS_POW) + sys_vars->EKMN_ALPHA * pow(k_sqr, EKMN_POW);
-				#elif !defined(HYPER_VISC) && defined(EKMN_DRAG) // No hyperviscosity but we have Ekman drag
-				pre_fac = sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA * pow(k_sqr, EKMN_POW);
-				#elif defined(HYPER_VISC) && !defined(EKMN_DRAG) // Hyperviscosity only
-				pre_fac = sys_vars->NU * pow(k_sqr, VIS_POW);
-				#else // No hyper viscosity or no ekman drag -> just normal viscosity
-				pre_fac = sys_vars->NU * k_sqr; 
-				#endif
+					// Get the appropriate prefactor
+					#if defined(HYPER_VISC) && defined(EKMN_DRAG)  // Both Hyperviscosity and Ekman drag
+					pre_fac = sys_vars->NU * pow(k_sqr, VIS_POW) + sys_vars->EKMN_ALPHA * pow(k_sqr, EKMN_POW);
+					#elif !defined(HYPER_VISC) && defined(EKMN_DRAG) // No hyperviscosity but we have Ekman drag
+					pre_fac = sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA * pow(k_sqr, EKMN_POW);
+					#elif defined(HYPER_VISC) && !defined(EKMN_DRAG) // Hyperviscosity only
+					pre_fac = sys_vars->NU * pow(k_sqr, VIS_POW);
+					#else // No hyper viscosity or no ekman drag -> just normal viscosity
+					pre_fac = sys_vars->NU * k_sqr; 
+					#endif
 
-				// Update the sums
-				if ((j == 0) || (j == Ny_Fourier - 1)) { // only count the 0 and N/2 modes once as they have no conjugate
-					run_data->tot_energy[iter] += cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * (1.0 / k_sqr);
-					run_data->tot_enstr[iter]  += cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
-					run_data->tot_palin[iter]  += k_sqr * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
-					run_data->enrg_diss[iter]  += sys_vars->NU * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
-					run_data->enst_diss[iter]  += pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
-					if ((k_sqr >= pow(LWR_SBST_LIM, 2.0)) && (k_sqr < pow(UPR_SBST_LIM, 2.0))) { // define the subset to consider for the flux and dissipation
-						#if defined(__ENRG_FLUX)
-						run_data->enrg_diss_sbst[iter] += creal(run_data->w_hat[indx] * conj(RK_data->RK1[indx]) + conj(run_data->w_hat[indx]) * RK_data->RK1[indx]) * (1.0 / k_sqr);
-						run_data->enrg_diss_sbst[iter] += pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * (1.0 / k_sqr);
-						#endif
-						#if defined(__ENST_FLUX)
-						run_data->enst_flux_sbst[iter] += creal(run_data->w_hat[indx] * conj(RK_data->RK1[indx]) + conj(run_data->w_hat[indx]) * RK_data->RK1[indx]); 
-						run_data->enst_diss_sbst[iter] += pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
-						#endif
+					// Update the sums
+					if ((j == 0) || (j == Ny_Fourier - 1)) { // only count the 0 and N/2 modes once as they have no conjugate
+						run_data->tot_energy[iter] += cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * (1.0 / k_sqr);
+						run_data->tot_enstr[iter]  += cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+						run_data->tot_palin[iter]  += k_sqr * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+						run_data->enrg_diss[iter]  += pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * (1.0 / k_sqr);
+						run_data->enst_diss[iter]  += pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+						if ((k_sqr >= lwr_sbst_lim_sqr) && (k_sqr < upr_sbst_lim_sqr)) { // define the subset to consider for the flux and dissipation
+							#if defined(__ENRG_FLUX)
+							run_data->enrg_flux_sbst[iter] += creal(run_data->w_hat[indx] * conj(RK_data->RK1[indx]) + conj(run_data->w_hat[indx]) * RK_data->RK1[indx]) * (1.0 / k_sqr);
+							run_data->enrg_diss_sbst[iter] += pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * (1.0 / k_sqr);
+							#endif
+							#if defined(__ENST_FLUX)
+							run_data->enst_flux_sbst[iter] += creal(run_data->w_hat[indx] * conj(RK_data->RK1[indx]) + conj(run_data->w_hat[indx]) * RK_data->RK1[indx]); 
+							run_data->enst_diss_sbst[iter] += pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+							#endif
+						}
+					}
+					else {
+						run_data->tot_energy[iter] += 2.0 * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * (1.0 / k_sqr);
+						run_data->tot_enstr[iter]  += 2.0 * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+						run_data->tot_palin[iter]  += 2.0 * k_sqr * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+						run_data->enrg_diss[iter]  += 2.0 * pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * (1.0 / k_sqr);
+						run_data->enst_diss[iter]  += 2.0 * pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+						if ((k_sqr >= lwr_sbst_lim_sqr) && (k_sqr < upr_sbst_lim_sqr)) { // define the subset to consider for the flux and dissipation
+							#if defined(__ENRG_FLUX)
+							run_data->enrg_flux_sbst[iter] += 2.0 * creal(run_data->w_hat[indx] * conj(RK_data->RK1[indx]) + conj(run_data->w_hat[indx]) * RK_data->RK1[indx]) * (1.0 / k_sqr);
+							run_data->enrg_diss_sbst[iter] += 2.0 * pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * (1.0 / k_sqr);
+							#endif
+							#if defined(__ENST_FLUX)
+							run_data->enst_flux_sbst[iter] += 2.0 * creal(run_data->w_hat[indx] * conj(RK_data->RK1[indx]) + conj(run_data->w_hat[indx]) * RK_data->RK1[indx]); 
+							run_data->enst_diss_sbst[iter] += 2.0 * pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+							#endif
+						}
 					}
 				}
 				else {
-					run_data->tot_energy[iter] += 2.0 * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * (1.0 / k_sqr);
-					run_data->tot_enstr[iter]  += 2.0 * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
-					run_data->tot_palin[iter]  += 2.0 * k_sqr * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
-					run_data->enrg_diss[iter]  += 2.0 * sys_vars->NU * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
-					run_data->enst_diss[iter]  += 2.0 * pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
-					if ((k_sqr >= pow(LWR_SBST_LIM, 2.0)) && (k_sqr < pow(UPR_SBST_LIM, 2.0))) { // define the subset to consider for the flux and dissipation
-						#if defined(__ENRG_FLUX)
-						run_data->enrg_flux_sbst[iter] += 2.0 * creal(run_data->w_hat[indx] * conj(RK_data->RK1[indx]) + conj(run_data->w_hat[indx]) * RK_data->RK1[indx]) * (1.0 / k_sqr);
-						run_data->enrg_diss_sbst[iter] += 2.0 * pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * (1.0 / k_sqr);
-						#endif
-						#if defined(__ENST_FLUX)
-						run_data->enst_flux_sbst[iter] += 2.0 * creal(run_data->w_hat[indx] * conj(RK_data->RK1[indx]) + conj(run_data->w_hat[indx]) * RK_data->RK1[indx]); 
-						run_data->enst_diss_sbst[iter] += 2.0 * pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
-						#endif
-					}
+					continue;
 				}
-			}
-			else {
-				continue;
 			}
 			#endif
 
 			///--------------------------------- Spectra
-			#if defined(__ENRG_SPEC) || defined(__ENST_SPECT)
+			#if defined(__ENRG_SPEC) || defined(__ENST_SPECT) || defined(__ENRG_FLUX_SPECT) || defined(__ENST_FLUX_SPECT)
 			// Get spectrum index -> spectrum is computed by summing over the energy contained in concentric annuli in wavenumber space
 			spec_indx = (int) round( sqrt( (double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]) ) );
 
@@ -2849,12 +2881,14 @@ void ComputeSystemMeasurables(int iter, RK_data_struct* RK_data) {
 	// Normalize Measureables 
 	// ------------------------------------	
 	#if defined(__SYS_MEASURES)
-	// Normalize results and take into account computation in Fourier space
-	run_data->enrg_diss[iter]  *= 2.0 * const_fac * norm_fac;
-	run_data->enst_diss[iter]  *= 2.0 * const_fac * norm_fac;
-	run_data->tot_enstr[iter]  *= const_fac * norm_fac;
-	run_data->tot_palin[iter]  *= const_fac * norm_fac;
-	run_data->tot_energy[iter] *= const_fac * norm_fac;
+	if (print_indx < sys_vars->num_print_steps) {
+		// Normalize results and take into account computation in Fourier space
+		run_data->enrg_diss[iter]  *= 2.0 * const_fac * norm_fac;
+		run_data->enst_diss[iter]  *= 2.0 * const_fac * norm_fac;
+		run_data->tot_enstr[iter]  *= const_fac * norm_fac;
+		run_data->tot_palin[iter]  *= const_fac * norm_fac;
+		run_data->tot_energy[iter] *= const_fac * norm_fac;
+	}
 	#endif
 	#if defined(__ENRG_FLUX)
 	run_data->enrg_flux_sbst[iter] *= const_fac * norm_fac;

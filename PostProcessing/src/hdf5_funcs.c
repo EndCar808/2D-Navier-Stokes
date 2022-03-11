@@ -1153,6 +1153,7 @@ void FinalWriteAndClose(void) {
     double* str_funcs = (double*) fftw_malloc(sizeof(double) * (STR_FUNC_MAX_POW - 2) * (N_max_incr));
 
     //----------------------- Write the longitudinal structure functions
+    // Normal Structure functions
    	for (int p = 0; p < STR_FUNC_MAX_POW - 2; ++p) {
    		for (int r = 0; r < N_max_incr; ++r) {
 	   		str_funcs[p * (N_max_incr) + r] = stats_data->str_func[0][p][r] / sys_vars->num_snaps;
@@ -1165,8 +1166,20 @@ void FinalWriteAndClose(void) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Longitudinal Structure Functions");
         exit(1);
     }			
+    // Absolute Structure functions
+   	for (int p = 0; p < STR_FUNC_MAX_POW - 2; ++p) {
+   		for (int r = 0; r < N_max_incr; ++r) {
+	   		str_funcs[p * (N_max_incr) + r] = stats_data->str_func_abs[0][p][r] / sys_vars->num_snaps;
+   		}
+   	}
+	status = H5LTmake_dataset(file_info->output_file_handle, "AbsoluteLongitudinalStructureFunctions", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, str_funcs);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Absolute Longitudinal Structure Functions");
+        exit(1);
+    }	
 
     //----------------------- Write the transverse structure functions
+    // Normal structure functions
     for (int p = 0; p < STR_FUNC_MAX_POW - 2; ++p) {
    		for (int r = 0; r < N_max_incr; ++r) {
 	   		str_funcs[p * (N_max_incr) + r] = stats_data->str_func[1][p][r] / sys_vars->num_snaps;
@@ -1175,6 +1188,17 @@ void FinalWriteAndClose(void) {
    	status = H5LTmake_dataset(file_info->output_file_handle, "TransverseStructureFunctions", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, str_funcs);
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Transverse Structure Funcitons");
+        exit(1);
+    }		
+    // Absolute structure functions
+    for (int p = 0; p < STR_FUNC_MAX_POW - 2; ++p) {
+   		for (int r = 0; r < N_max_incr; ++r) {
+	   		str_funcs[p * (N_max_incr) + r] = stats_data->str_func_abs[1][p][r] / sys_vars->num_snaps;
+   		}
+   	}
+   	status = H5LTmake_dataset(file_info->output_file_handle, "AbsoluteTransverseStructureFunctions", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, str_funcs);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Absolute Transverse Structure Funcitons");
         exit(1);
     }		
 	

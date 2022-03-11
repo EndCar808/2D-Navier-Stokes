@@ -41,6 +41,7 @@ void RealSpaceStats(int s) {
 	int r;
 	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
 	double long_increment, trans_increment;
+	double long_increment_abs, trans_increment_abs;
 	int N_max_incr = (int) (GSL_MIN(Nx, Ny) / 2);
 	int increment[NUM_INCR] = {1, N_max_incr};
 	double norm_fac = 1.0 / (Nx * Ny);
@@ -259,21 +260,27 @@ void RealSpaceStats(int s) {
 	for (int p = 2; p < STR_FUNC_MAX_POW; ++p) {
 		for (int r_inc = 1; r_inc <= N_max_incr; ++r_inc) {
 			// Initialize increments
-			long_increment  = 0.0;
-			trans_increment = 0.0;
+			long_increment      = 0.0;
+			trans_increment     = 0.0;
+			long_increment_abs  = 0.0;
+			trans_increment_abs = 0.0;
 			for (int i = 0; i < Nx; ++i) {
 				tmp = i * Ny;
 				for (int j = 0; j < Ny; ++j) {
 					indx = tmp + j;
 				
 					// Get increments
-					long_increment  += pow(run_data->u[SYS_DIM * (((i + r) % Nx) * Ny + j) + 0] - run_data->u[SYS_DIM * (i * Ny + j) + 0], p);
-					trans_increment += pow(run_data->u[SYS_DIM * (((i + r) % Nx) * Ny + j) + 1] - run_data->u[SYS_DIM * (i * Ny + j) + 1], p);
+					long_increment      += pow(run_data->u[SYS_DIM * (((i + r_inc) % Nx) * Ny + j) + 0] - run_data->u[SYS_DIM * (i * Ny + j) + 0], p);
+					trans_increment     += pow(run_data->u[SYS_DIM * (((i + r_inc) % Nx) * Ny + j) + 1] - run_data->u[SYS_DIM * (i * Ny + j) + 1], p);
+					long_increment_abs  += pow(fabs(run_data->u[SYS_DIM * (((i + r_inc) % Nx) * Ny + j) + 0] - run_data->u[SYS_DIM * (i * Ny + j) + 0]), p);
+					trans_increment_abs += pow(fabs(run_data->u[SYS_DIM * (((i + r_inc) % Nx) * Ny + j) + 1] - run_data->u[SYS_DIM * (i * Ny + j) + 1]), p);
 				}
 			}
 			// Compute str function - normalize here
-			stats_data->str_func[0][p - 2][r_inc - 1] += long_increment * norm_fac;	
-			stats_data->str_func[1][p - 2][r_inc - 1] += trans_increment * norm_fac;
+			stats_data->str_func[0][p - 2][r_inc - 1]     += long_increment * norm_fac;	
+			stats_data->str_func[1][p - 2][r_inc - 1]     += trans_increment * norm_fac;
+			stats_data->str_func_abs[0][p - 2][r_inc - 1] += long_increment_abs * norm_fac;	
+			stats_data->str_func_abs[1][p - 2][r_inc - 1] += trans_increment_abs * norm_fac;
 		}
 	}
 	#endif	
@@ -1750,10 +1757,16 @@ void AllocateMemory(const long int* N) {
 				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Structure Functions");
 				exit(1);
 			}
+			stats_data->str_func_abs[i][j - 2] = (double* )fftw_malloc(sizeof(double) * (N_max_incr));
+			if (stats_data->str_func_abs[i][j - 2] == NULL) {
+				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Structure Functions Absolute");
+				exit(1);
+			}
 
 			// Initialize array
 			for (int r = 0; r < N_max_incr; ++r) {
-				stats_data->str_func[i][j - 2][r] = 0.0;
+				stats_data->str_func[i][j - 2][r]     = 0.0;
+				stats_data->str_func_abs[i][j - 2][r] = 0.0;
 			}
 		}
 	}
@@ -2424,6 +2437,8 @@ void FreeMemoryAndCleanUp(void) {
 	for (int i = 2; i < STR_FUNC_MAX_POW; ++i) {
 		fftw_free(stats_data->str_func[0][i - 2]);
 		fftw_free(stats_data->str_func[1][i - 2]);
+		fftw_free(stats_data->str_func_abs[0][i - 2]);
+		fftw_free(stats_data->str_func_abs[1][i - 2]);
 	}
 	#endif
 	#if defined(__GRAD_STATS)
