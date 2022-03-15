@@ -2831,7 +2831,7 @@ void ComputeSystemMeasurables(double t, int iter, RK_data_struct* RK_data) {
 			#endif
 
 			///--------------------------------- Spectra
-			#if defined(__ENRG_SPEC) || defined(__ENST_SPECT) || defined(__ENRG_FLUX_SPECT) || defined(__ENST_FLUX_SPECT)
+			#if defined(__ENRG_SPECT) || defined(__ENST_SPECT) || defined(__ENRG_FLUX_SPECT) || defined(__ENST_FLUX_SPECT)
 			// Get spectrum index -> spectrum is computed by summing over the energy contained in concentric annuli in wavenumber space
 			spec_indx = (int) round( sqrt( (double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]) ) );
 
@@ -2841,7 +2841,7 @@ void ComputeSystemMeasurables(double t, int iter, RK_data_struct* RK_data) {
 
 				if ((j == 0) || (j == Ny_Fourier - 1)) {
 					// Update the current bin
-					#if defined(__ENRG_SPEC)
+					#if defined(__ENRG_SPECT)
 					run_data->enrg_spect[spec_indx] += const_fac * norm_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * (1.0 / k_sqr);
 					#endif
 					#if defined(__ENST_SPECT)
@@ -2856,7 +2856,7 @@ void ComputeSystemMeasurables(double t, int iter, RK_data_struct* RK_data) {
 				}
 				else {
 					// Update the spectra sums for the current mode
-					#if defined(__ENRG_SPEC)
+					#if defined(__ENRG_SPECT)
 					run_data->enrg_spect[spec_indx] += 2.0 * const_fac * norm_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * (1.0 / k_sqr);
 					#endif
 					#if defined(__ENST_SPECT)
