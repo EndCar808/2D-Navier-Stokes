@@ -48,13 +48,13 @@
 // Turning these on in this file means that they WILL be on at compilation time
 
 // Post processing Modes
-#define __REAL_STATS
-#define __VEL_INC_STATS
-#define __STR_FUNC_STATS
-#define __GRAD_STATS
-// #define __FULL_FIELD
+// #define __REAL_STATS
+// #define __VEL_INC_STATS
+// #define __STR_FUNC_STATS
+// #define __GRAD_STATS
+#define __FULL_FIELD
 // #define __SPECTRA
-// #define __SEC_PHASE_SYNC
+#define __SEC_PHASE_SYNC
 // #define __ENST_FLUX
 
 // Postprocessing data sets

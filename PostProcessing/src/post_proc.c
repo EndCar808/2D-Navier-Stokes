@@ -872,24 +872,25 @@ void SectorPhaseOrder(int s) {
 			// printf("Num Triads Type %d: %d\tord: %lf %lf I\tR: %lf\tPhi: %lf\n", i, proc_data->num_triads[i][a], creal(proc_data->triad_phase_order[i][a]), cimag(proc_data->triad_phase_order[i][a]), proc_data->triad_R[i][a], proc_data->triad_Phi[i][a]);
 			// printf("a = %d\t ord: %1.16lf %1.16lf I\t num: %d\tR: %lf\n", a, creal(proc_data->triad_phase_order[i][a]), cimag(proc_data->triad_phase_order[i][a]), proc_data->num_triads[i][a], proc_data->triad_R[i][a]);
 		}
+		// printf("Here\n");
 		// printf("\n");
 		// printf("a: %d Num: %d\t triad_phase_order: %lf %lf I\t Num: %d\t triad_phase_order: %lf %lf I \t Num: %d\t triad_phase_order: %lf %lf I\n", a, num_triads[0], creal(proc_data->triad_phase_order[0][a]), cimag(proc_data->triad_phase_order[0][a]), num_triads[1], creal(proc_data->triad_phase_order[1][a]), cimag(proc_data->triad_phase_order[1][a]), num_triads[2], creal(proc_data->triad_phase_order[2][a]), cimag(proc_data->triad_phase_order[2][a]));
 		// printf("a: %d | Num: %d R0: %lf Phi0: %lf |\t Num: %d R1: %lf Phi1: %lf |\t Num: %d R2: %lf Phi2: %lf\n", a, num_triads[0], proc_data->triad_R[0][a], proc_data->triad_Phi[0][a], num_triads[1], proc_data->triad_R[1][a], proc_data->triad_Phi[1][a], num_triads[2], proc_data->triad_R[2][a], proc_data->triad_Phi[2][a]);	
 		// 
-		
-		// ----------------------------------
-		// Reset Phase Order Parameters
-		// ----------------------------------
-		// Set parameters to 0 for next snapshot
-		for (int a = 0; a < sys_vars->num_sect; ++a) {
-			proc_data->phase_order[a] = 0.0 + 0.0 * I;
-			for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
-				proc_data->triad_phase_order[i][a] = 0.0 + 0.0 * I;
-				for (int l = 0; l < sys_vars->num_sect; ++l) {
-					proc_data->triad_phase_order_across_sec[i][a][l] = 0.0 + 0.0 * I;
-				}
-			}	
-		}
+	}
+
+	// ----------------------------------
+	// Reset Phase Order Parameters
+	// ----------------------------------
+	// Set parameters to 0 for next snapshot
+	for (int a = 0; a < sys_vars->num_sect; ++a) {
+		proc_data->phase_order[a] = 0.0 + 0.0 * I;
+		for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
+			proc_data->triad_phase_order[i][a] = 0.0 + 0.0 * I;
+			for (int l = 0; l < sys_vars->num_sect; ++l) {
+				proc_data->triad_phase_order_across_sec[i][a][l] = 0.0 + 0.0 * I;
+			}
+		}	
 	}
 }
 /**
@@ -1988,16 +1989,6 @@ void AllocateMemory(const long int* N) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Midpoint Sector Angles");
 		exit(1);
 	}
-	fftw_complex k1, k3;
-	for (int a = 0; a < sys_vars->num_sect; ++a) {
-		for (int l = 0; l < sys_vars->num_sect; ++l) {
-			k3 = 1.0 * cexp(I * proc_data->theta[a]);
-			k1 = 1.0 * cexp(I * proc_data->theta[a + l % sys_vars->num_sect]);
-
-			// Compute the midpoint angle of the vector 
-			proc_data->mid_angle_sum[a * sys_vars->num_sect + l] = creal(1.0 / (2.0 * I) * (clog(k3 - k1) - clog(conj(k3) - conj(k1))));
-		}
-	}
 
 
 
@@ -2251,6 +2242,16 @@ void AllocateMemory(const long int* N) {
 				proc_data->triad_Phi_across_sec[j][i][k]         = 0.0;
 				proc_data->triad_phase_order_across_sec[j][i][k] = 0.0 + 0.0 * I;
 			}
+		}
+	}
+	fftw_complex k1, k3;
+	for (int a = 0; a < sys_vars->num_sect; ++a) {
+		for (int l = 0; l < sys_vars->num_sect; ++l) {
+			k3 = 1.0 * cexp(I * proc_data->theta[a]);
+			k1 = 1.0 * cexp(I * proc_data->theta[a + l % sys_vars->num_sect]);
+
+			// Compute the midpoint angle of the vector 
+			proc_data->mid_angle_sum[a * sys_vars->num_sect + l] = creal(1.0 / (2.0 * I) * (clog(k3 - k1) - clog(conj(k3) - conj(k1))));
 		}
 	}
 	#endif
