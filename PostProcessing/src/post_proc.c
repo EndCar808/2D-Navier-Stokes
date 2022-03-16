@@ -407,21 +407,21 @@ void SectorPhaseOrder(int s) {
 									}
 
 									// Get the appropriate sector angle for k2 -> k2 can either be in the same sector as k3 and k1 (pos or neg) or in the sector defined by the vector addition of k3 - k1
-									if (l == 0) {
-										sector_angle = proc_data->theta[a];
-									}
-									else {
+									// if (l == 0) {
+									// 	sector_angle = proc_data->theta[a];
+									// }
+									// else {
 										// (1.0 / (2.0 * I)) * (clog(k3 - k1) - clog(conj(k3) - conj(k1)));
 
 										// Get the k2 sector angle from the precomputed angle sum
 										if (k2_y < 0 && k2_x < 0) {
 											// Case when k2 lands in ther lower left quadrant
-											sector_angle = proc_data->mid_angle_sum[a * NUM_K1_SECTS + l] - M_PI;	
+											sector_angle = proc_data->mid_angle_sum[a * NUM_K1_SECTS + l] - M_PI; // 	
 											// sector_angle = creal(1.0 / (2.0 * I) * (clog(cexp(I * proc_data->theta[a]) - cexp(I * proc_data->theta[(a + l) % sys_vars->num_sect])) - clog(conj(cexp(I * proc_data->theta[a])) - conj(cexp(I * proc_data->theta[(a + l) % sys_vars->num_sect])))));	
 										}
 										else if (k2_y < 0 && k2_x > 0) {
 											// Case when k2 lands in the upper left quadrant
-											sector_angle = proc_data->mid_angle_sum[a * NUM_K1_SECTS + l] + M_PI;
+											sector_angle = proc_data->mid_angle_sum[a * NUM_K1_SECTS + l] + M_PI; // 
 											// sector_angle = creal(1.0 / (2.0 * I) * (clog(cexp(I * proc_data->theta[a]) - cexp(I * proc_data->theta[(a + l) % sys_vars->num_sect])) - clog(conj(cexp(I * proc_data->theta[a])) - conj(cexp(I * proc_data->theta[(a + l) % sys_vars->num_sect])))));
 										}
 										else {
@@ -429,7 +429,7 @@ void SectorPhaseOrder(int s) {
 											sector_angle = proc_data->mid_angle_sum[a * NUM_K1_SECTS + l];
 											// sector_angle = creal(1.0 / (2.0 * I) * (clog(cexp(I * proc_data->theta[a]) - cexp(I * proc_data->theta[(a + l) % sys_vars->num_sect])) - clog(conj(cexp(I * proc_data->theta[a])) - conj(cexp(I * proc_data->theta[(a + l) % sys_vars->num_sect])))));
 										}
-									}
+									// }
 
 									// Check if k2 is in the current positive sector or if k2 is in the negative sector
 									k2_neg        = (k2_y < 0 || (k2_y == 0 && k2_x > 0));
@@ -439,6 +439,7 @@ void SectorPhaseOrder(int s) {
 									not_in_k1_sec = !(k2_angle >= alt_theta_lwr && k2_angle < alt_theta_upr) || !(k2_angle >= alt_theta_lwr + M_PI && k2_angle < alt_theta_upr + M_PI);
 									not_in_k3_sec = !(k2_angle >= theta_lwr && k2_angle < theta_upr) || !(k2_angle >= theta_lwr + M_PI && k2_angle < theta_upr + M_PI);
 									// if (a == 0 && l == 1) printf("l: %d\tsec_ang: %lf\tk2_ang: %lf\tin pos: %s\t in neg: %s\n", l, sector_angle, k2_angle, in_pos_sector ? "True" : "False", (k2_neg && in_neg_sector) ? "True" : "False");
+									// if (a == 0) printf("k2_neg: %s\tin_pos_sect: %s\tvalid_wavec: %s\tin_neg_sect: %s\tk2_angle %lf\tneg_k2_angle: %lfsector_angle: %lf\n", k2_neg ? "True" : "False", in_pos_sector ? "True" : "False", valid_wavevec ? "True" : "False", in_neg_sector ? "True" : "False", k2_angle, neg_k2_angle, sector_angle);
 									if (valid_wavevec &&  (in_pos_sector || (k2_neg && in_neg_sector)) && not_in_k1_sec && not_in_k3_sec) {
 										// Get correct phase index -> recall that to access kx > 0, use -kx
 										tmp_k  = (sys_vars->kmax - 1 - k_x) * (2 * sys_vars->kmax - 1);
@@ -714,10 +715,10 @@ void SectorPhaseOrder(int s) {
 				proc_data->triad_R_across_sec[i][l][a]   = cabs(proc_data->triad_phase_order_across_sec[i][l][a]);
 				proc_data->triad_Phi_across_sec[i][l][a] = carg(proc_data->triad_phase_order_across_sec[i][l][a]); 
 				if (a == 0) {
-					printf("type: %d\tl = %d\tnum_t: %d\tord: %lf %lf I\t\tR: %lf\tPhi: %lf\n", i, l, proc_data->num_triads_across_sec[i][l][a], creal(proc_data->triad_phase_order_across_sec[i][l][a]), cimag(proc_data->triad_phase_order_across_sec[i][l][a]), proc_data->triad_R_across_sec[i][l][a], proc_data->triad_Phi_across_sec[i][l][a]);
+					printf("type: %d\ta = %lf\tl = %d\tnum_t: %d\tord: %lf %lf I\t\tR: %lf\tPhi: %lf\n", i, a, l, proc_data->num_triads_across_sec[i][l][a], creal(proc_data->triad_phase_order_across_sec[i][l][a]), cimag(proc_data->triad_phase_order_across_sec[i][l][a]), proc_data->triad_R_across_sec[i][l][a], proc_data->triad_Phi_across_sec[i][l][a]);
 				}
 			}
-			if (a == 0)printf("a: %d type: %d Num: %d\t triad_phase_order: %lf %lf I\t\t R: %lf, Phi %lf\n", a, i, proc_data->num_triads[i][a], creal(proc_data->triad_phase_order[i][a]), cimag(proc_data->triad_phase_order[i][a]), proc_data->triad_R[i][a], proc_data->triad_Phi[i][a]);
+			if (a == 0) printf("a: %d type: %d Num: %d\t triad_phase_order: %lf %lf I\t\t R: %lf, Phi %lf\n", a, i, proc_data->num_triads[i][a], creal(proc_data->triad_phase_order[i][a]), cimag(proc_data->triad_phase_order[i][a]), proc_data->triad_R[i][a], proc_data->triad_Phi[i][a]);
 			if (a == 0)	printf("\n");
 			// printf("Num Triads Type %d: %d\tord: %lf %lf I\tR: %lf\tPhi: %lf\n", i, proc_data->num_triads[i][a], creal(proc_data->triad_phase_order[i][a]), cimag(proc_data->triad_phase_order[i][a]), proc_data->triad_R[i][a], proc_data->triad_Phi[i][a]);
 			// printf("a = %d\t ord: %1.16lf %1.16lf I\t num: %d\tR: %lf\n", a, creal(proc_data->triad_phase_order[i][a]), cimag(proc_data->triad_phase_order[i][a]), proc_data->num_triads[i][a], proc_data->triad_R[i][a]);
@@ -1783,19 +1784,7 @@ void AllocateMemory(const long int* N) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Midpoint Sector Angles");
 		exit(1);
 	}
-	fftw_complex k1 = 0.0 + 0.0 * I;
-	fftw_complex k3 = 0.0 + 0.0 * I;
-	double k1_sector_array[NUM_K1_SECTS] = {sys_vars->num_sect / 6.0, sys_vars->num_sect / 4.0, sys_vars->num_sect / 3.0, sys_vars->num_sect / 2.0, -sys_vars->num_sect / 6.0, -sys_vars->num_sect / 4.0, -sys_vars->num_sect / 3.0, -sys_vars->num_sect / 2.0};
-	for (int a = 0; a < sys_vars->num_sect; ++a) {
-		for (int l = 0; l < NUM_K1_SECTS; ++l) {
-			k3 = 1.0 * cexp(I * proc_data->theta[a]);
-			k1 = 1.0 * cexp(I * proc_data->theta[a] + k1_sector_array[l]);
-
-			// Compute the midpoint angle of the vector 
-			proc_data->mid_angle_sum[a * NUM_K1_SECTS + l] = creal(1.0 / (2.0 * I) * (clog(k3 - k1) - clog(conj(k3) - conj(k1))));
-		}
-	}
-
+	
 
 	///--------------- Precomputed wavevector arctangents
 	// Allocate memory for the arctangent arrays
@@ -2031,6 +2020,20 @@ void AllocateMemory(const long int* N) {
 				proc_data->triad_phase_order_across_sec[j][k][i] = 0.0 + 0.0 * I;
 			}
 		}
+	}
+	fftw_complex k1;
+	fftw_complex k3;
+	double k1_sector_array[NUM_K1_SECTS] = {-sys_vars->num_sect / 2.0, -sys_vars->num_sect / 3.0, -sys_vars->num_sect / 4.0, -sys_vars->num_sect / 6.0, sys_vars->num_sect / 6.0, sys_vars->num_sect / 4.0, sys_vars->num_sect / 3.0, sys_vars->num_sect / 2.0};
+	for (int a = 0; a < sys_vars->num_sect; ++a) {
+		for (int l = 0; l < NUM_K1_SECTS; ++l) {
+			k3 = 1.0 * cexp(I * proc_data->theta[a]);
+			k1 = 1.0 * cexp(I * (proc_data->theta[a] + k1_sector_array[l] * proc_data->dtheta));
+
+			// Compute the midpoint angle of the vector 
+			proc_data->mid_angle_sum[a * NUM_K1_SECTS + l] = creal(1.0 / (2.0 * I) * (clog(k3 - k1) - clog(conj(k3) - conj(k1) )));
+			printf("a: %d\tl: %d\tmid_angle_sum: %lf\n", a, l, proc_data->mid_angle_sum[a * NUM_K1_SECTS + l]);
+		}
+		printf("\n");
 	}
 	#endif
 
