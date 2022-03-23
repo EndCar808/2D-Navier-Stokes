@@ -1237,7 +1237,7 @@ void FinalWriteAndClose(void) {
     for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
     	for (int a = 0; a < sys_vars->num_sect; ++a) {
     		for (int l = 0; l < sys_vars->num_sect; ++l) {
-    			tmp1[i * sys_vars->num_sect + a] = proc_data->num_triads[i][a];
+    			tmp1[sys_vars->num_sect * (i * sys_vars->num_sect + a) + l] = proc_data->num_triads_across_sec[i][a][l];
     		}
     	}
     }

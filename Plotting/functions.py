@@ -213,8 +213,8 @@ def sim_data(input_dir, method = "default"):
                 data.u0 = data.u0 + '_' + str(term.split(']')[0])
 
         ## Get the number of data saves
-        with h5py.File(input_dir, 'r') as file:
-            data.ndata = len([g for g in file.keys() if 'Iter' in g])
+        with h5py.File(input_dir, 'r') as f:
+            data.ndata = len([g for g in f.keys() if 'Iter' in g])
 
         ## Get spectrum size
         data.spec_size = int(np.sqrt((data.Nx / 2)**2 + (data.Ny / 2)**2) + 1)
@@ -282,58 +282,58 @@ def import_data(input_file, sim_data, method = "default"):
         in_file = input_file
 
     ## Open file and read in the data
-    with h5py.File(in_file, 'r') as file:
+    with h5py.File(in_file, 'r') as f:
 
         ## Initialize counter
         nn = 0
 
         # Read in the vorticity
-        for group in file.keys():
+        for group in f.keys():
             if "Iter" in group:
-                if 'w' in list(file[group].keys()):
-                    data.w[nn, :, :] = file[group]["w"][:, :]
-                if 'w_hat' in list(file[group].keys()):
-                    data.w_hat[nn, :, :] = file[group]["w_hat"][:, :]
-                if 'u' in list(file[group].keys()):
-                    data.u[nn, :, :] = file[group]["u"][:, :, :]
-                if 'u_hat' in list(file[group].keys()):
-                    data.u_hat[nn, :, :] = file[group]["u_hat"][:, :, :]
-                if 'TGSoln' in list(file[group].keys()):
-                    data.tg_soln[nn, :, :] = file[group]["TGSoln"][:, :]
-                data.time[nn] = file[group].attrs["TimeValue"]
+                if 'w' in list(f[group].keys()):
+                    data.w[nn, :, :] = f[group]["w"][:, :]
+                if 'w_hat' in list(f[group].keys()):
+                    data.w_hat[nn, :, :] = f[group]["w_hat"][:, :]
+                if 'u' in list(f[group].keys()):
+                    data.u[nn, :, :] = f[group]["u"][:, :, :]
+                if 'u_hat' in list(f[group].keys()):
+                    data.u_hat[nn, :, :] = f[group]["u_hat"][:, :, :]
+                if 'TGSoln' in list(f[group].keys()):
+                    data.tg_soln[nn, :, :] = f[group]["TGSoln"][:, :]
+                data.time[nn] = f[group].attrs["TimeValue"]
                 nn += 1
             else:
                 continue
 
         ## Read in the space arrays
-        if 'kx' in list(file.keys()):
-            data.kx = file["kx"][:]
-        if 'ky' in list(file.keys()):
-            data.ky = file["ky"][:]
-        if 'x' in list(file.keys()):
-            data.x  = file["x"][:]
-        if 'y' in list(file.keys()):
-            data.y  = file["y"][:]
+        if 'kx' in list(f.keys()):
+            data.kx = f["kx"][:]
+        if 'ky' in list(f.keys()):
+            data.ky = f["ky"][:]
+        if 'x' in list(f.keys()):
+            data.x  = f["x"][:]
+        if 'y' in list(f.keys()):
+            data.y  = f["y"][:]
 
         ## Read system measures
-        if 'TotalEnergy' in list(file.keys()):
-            data.tot_enrg = file['TotalEnergy'][:]
-        if 'TotalEnstrophy' in list(file.keys()):
-            data.tot_enst = file['TotalEnstrophy'][:]
-        if 'TotalPalinstrophy' in list(file.keys()):
-            data.tot_palin = file['TotalPalinstrophy'][:]
-        if 'EnergyDissipation' in list(file.keys()):
-            data.enrg_diss = file['EnergyDissipation'][:]
-        if 'EnstrophyDissipation' in list(file.keys()):
-            data.enst_diss = file['EnstrophyDissipation'][:]
-        if 'EnergyDissSubset' in list(file.keys()):
-            data.enrg_diss_sbst = file['EnergyDissSubset'][:]
-        if 'EnstrophyDissSubset' in list(file.keys()):
-            data.enst_diss_sbst = file['EnstrophyDissSubset'][:]
-        if 'EnergyFluxSubset' in list(file.keys()):
-            data.enrg_flux_sbst = file['EnergyFluxSubset'][:]
-        if 'EnstrophyFluxSubset' in list(file.keys()):
-            data.enst_flux_sbst = file['EnstrophyFluxSubset'][:]
+        if 'TotalEnergy' in list(f.keys()):
+            data.tot_enrg = f['TotalEnergy'][:]
+        if 'TotalEnstrophy' in list(f.keys()):
+            data.tot_enst = f['TotalEnstrophy'][:]
+        if 'TotalPalinstrophy' in list(f.keys()):
+            data.tot_palin = f['TotalPalinstrophy'][:]
+        if 'EnergyDissipation' in list(f.keys()):
+            data.enrg_diss = f['EnergyDissipation'][:]
+        if 'EnstrophyDissipation' in list(f.keys()):
+            data.enst_diss = f['EnstrophyDissipation'][:]
+        if 'EnergyDissSubset' in list(f.keys()):
+            data.enrg_diss_sbst = f['EnergyDissSubset'][:]
+        if 'EnstrophyDissSubset' in list(f.keys()):
+            data.enst_diss_sbst = f['EnstrophyDissSubset'][:]
+        if 'EnergyFluxSubset' in list(f.keys()):
+            data.enrg_flux_sbst = f['EnergyFluxSubset'][:]
+        if 'EnstrophyFluxSubset' in list(f.keys()):
+            data.enst_flux_sbst = f['EnstrophyFluxSubset'][:]
 
     ## Get inv wavenumbers
     data.k2 = data.ky**2 + data.kx[:, np.newaxis]**2
@@ -379,27 +379,27 @@ def import_spectra_data(input_file, sim_data, method = "default"):
 
     ## Depending on the output mmode of the solver the input files will be named differently
     if method == "default":
-        file = input_file + "Spectra_HDF_Data.h5"
+        in_file = input_file + "Spectra_HDF_Data.h5"
     else:
-        file = input_file
+        in_file = input_file
 
     ## Open file and read in the data
-    with h5py.File(file, 'r') as file:
+    with h5py.File(in_file, 'r') as f:
 
         ## Initialze counter
         nn = 0
 
         # Read in the spectra
-        for group in file.keys():
+        for group in f.keys():
             if "Iter" in group:
-                if 'EnergySpectrum' in list(file[group].keys()):
-                    data.enrg_spectrum[nn, :] = file[group]["EnergySpectrum"][:]
-                if 'EnstrophySpectrum' in list(file[group].keys()):
-                    data.enst_spectrum[nn, :] = file[group]["EnstrophySpectrum"][:]
-                if 'EnergyFluxSpectrum' in list(file[group].keys()):
-                    data.enrg_flux_spectrum[nn, :] = file[group]["EnergyFluxSpectrum"][:]
-                if 'EnstrophyFluxSpectrum' in list(file[group].keys()):
-                    data.enst_flux_spectrum[nn, :] = file[group]["EnstrophyFluxSpectrum"][:]
+                if 'EnergySpectrum' in list(f[group].keys()):
+                    data.enrg_spectrum[nn, :] = f[group]["EnergySpectrum"][:]
+                if 'EnstrophySpectrum' in list(f[group].keys()):
+                    data.enst_spectrum[nn, :] = f[group]["EnstrophySpectrum"][:]
+                if 'EnergyFluxSpectrum' in list(f[group].keys()):
+                    data.enrg_flux_spectrum[nn, :] = f[group]["EnergyFluxSpectrum"][:]
+                if 'EnstrophyFluxSpectrum' in list(f[group].keys()):
+                    data.enst_flux_spectrum[nn, :] = f[group]["EnstrophyFluxSpectrum"][:]
                 nn += 1
             else:
                 continue
@@ -424,9 +424,9 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
 
     ## Depending on the output mmode of the solver the input files will be named differently
     if method == "default":
-        file = input_file + "PostProcessing_HDF_Data.h5"
+        in_f = input_file + "PostProcessing_HDF_Data.h5"
     else:
-        file = input_file
+        in_f = input_file
 
     ## Define a data class for the solver data
     class PostProcessData:
@@ -435,66 +435,66 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
         Class for the run data.
         """
 
-        def __init__(self, in_file = file):
+        def __init__(self, in_file = in_f):
             ## Get non time dependent datasets
-            with h5py.File(in_file, 'r') as file:
+            with h5py.File(in_file, 'r') as f:
                 ## Get the number of sectors
-                if 'SectorAngles' in list(file.keys()):
-                    self.theta = file["SectorAngles"][:]
+                if 'SectorAngles' in list(f.keys()):
+                    self.theta = f["SectorAngles"][:]
                     self.num_sect = self.theta.shape[0]
-                if 'SectorAngles' not in list(file.keys()):
-                    self.num_sect = int(in_file.split('_')[-4].split("[")[-1].split("]")[0])
+                if 'SectorAngles' not in list(f.keys()):
+                    self.num_sect = int(in_f.split('_')[-4].split("[")[-1].split("]")[0])
                 ## Get the number of triads per sector
-                if 'NumTriadsPerSector' in list(file.keys()):
-                    self.num_triads = file["NumTriadsPerSector"][:, :]
-                if 'NumTriadsPerSectorAcrossSector' in list(file.keys()):
-                    self.num_triads_across_sec = file["NumTriadsPerSectorAcrossSector"][:, :]
+                if 'NumTriadsPerSector' in list(f.keys()):
+                    self.num_triads = f["NumTriadsPerSector"][:, :]
+                if 'NumTriadsPerSectorAcrossSector' in list(f.keys()):
+                    self.num_triads_across_sec = f["NumTriadsPerSectorAcrossSector"][:, :]
                 ## Get the enstrophy flux out of the set C
-                if 'EnstrophyFluxC' in list(file.keys()):
-                    self.enst_flux_C = file["EnstrophyFluxC"][:]
+                if 'EnstrophyFluxC' in list(f.keys()):
+                    self.enst_flux_C = f["EnstrophyFluxC"][:]
                 ## Get the increment histogram data
-                if 'LongitudinalVelIncrements_BinRanges' in list(file.keys()):
-                    self.long_vel_incr_ranges = file["LongitudinalVelIncrements_BinRanges"][:, :]
-                if 'LongitudinalVelIncrements_BinCounts' in list(file.keys()):
-                    self.long_vel_incr_counts = file["LongitudinalVelIncrements_BinCounts"][:, :]
-                if 'TransverseVelIncrements_BinRanges' in list(file.keys()):
-                    self.trans_vel_incr_ranges = file["TransverseVelIncrements_BinRanges"][:, :]
-                if 'TransverseVelIncrements_BinCounts' in list(file.keys()):
-                    self.trans_vel_incr_counts = file["TransverseVelIncrements_BinCounts"][:, :]
-                if 'LongitudinalVortIncrements_BinRanges' in list(file.keys()):
-                    self.long_vort_incr_ranges = file["LongitudinalVortIncrements_BinRanges"][:, :]
-                if 'LongitudinalVortIncrements_BinCounts' in list(file.keys()):
-                    self.long_vort_incr_counts = file["LongitudinalVortIncrements_BinCounts"][:, :]
-                if 'TransverseVortIncrements_BinRanges' in list(file.keys()):
-                    self.trans_vort_incr_ranges = file["TransverseVortIncrements_BinRanges"][:, :]
-                if 'TransverseVortIncrements_BinCounts' in list(file.keys()):
-                    self.trans_vort_incr_counts = file["TransverseVortIncrements_BinCounts"][:, :]
+                if 'LongitudinalVelIncrements_BinRanges' in list(f.keys()):
+                    self.long_vel_incr_ranges = f["LongitudinalVelIncrements_BinRanges"][:, :]
+                if 'LongitudinalVelIncrements_BinCounts' in list(f.keys()):
+                    self.long_vel_incr_counts = f["LongitudinalVelIncrements_BinCounts"][:, :]
+                if 'TransverseVelIncrements_BinRanges' in list(f.keys()):
+                    self.trans_vel_incr_ranges = f["TransverseVelIncrements_BinRanges"][:, :]
+                if 'TransverseVelIncrements_BinCounts' in list(f.keys()):
+                    self.trans_vel_incr_counts = f["TransverseVelIncrements_BinCounts"][:, :]
+                if 'LongitudinalVortIncrements_BinRanges' in list(f.keys()):
+                    self.long_vort_incr_ranges = f["LongitudinalVortIncrements_BinRanges"][:, :]
+                if 'LongitudinalVortIncrements_BinCounts' in list(f.keys()):
+                    self.long_vort_incr_counts = f["LongitudinalVortIncrements_BinCounts"][:, :]
+                if 'TransverseVortIncrements_BinRanges' in list(f.keys()):
+                    self.trans_vort_incr_ranges = f["TransverseVortIncrements_BinRanges"][:, :]
+                if 'TransverseVortIncrements_BinCounts' in list(f.keys()):
+                    self.trans_vort_incr_counts = f["TransverseVortIncrements_BinCounts"][:, :]
                 ## Get the structure function data
-                if 'LongitudinalStructureFunctions' in list(file.keys()):
-                    self.long_str_func = file["LongitudinalStructureFunctions"][:, :]
-                if 'TransverseStructureFunctions' in list(file.keys()):
-                    self.trans_str_func = file["TransverseStructureFunctions"][:, :]
-                if 'AbsoluteLongitudinalStructureFunctions' in list(file.keys()):
-                    self.long_str_func_abs = file["AbsoluteLongitudinalStructureFunctions"][:, :]
-                if 'AbsoluteTransverseStructureFunctions' in list(file.keys()):
-                    self.trans_str_func_abs = file["AbsoluteTransverseStructureFunctions"][:, :]
+                if 'LongitudinalStructureFunctions' in list(f.keys()):
+                    self.long_str_func = f["LongitudinalStructureFunctions"][:, :]
+                if 'TransverseStructureFunctions' in list(f.keys()):
+                    self.trans_str_func = f["TransverseStructureFunctions"][:, :]
+                if 'AbsoluteLongitudinalStructureFunctions' in list(f.keys()):
+                    self.long_str_func_abs = f["AbsoluteLongitudinalStructureFunctions"][:, :]
+                if 'AbsoluteTransverseStructureFunctions' in list(f.keys()):
+                    self.trans_str_func_abs = f["AbsoluteTransverseStructureFunctions"][:, :]
                 ## Get the gradient histograms
-                if 'VelocityGradient_x_BinRanges' in list(file.keys()):
-                    self.grad_u_x_ranges = file["VelocityGradient_x_BinRanges"][:]
-                if 'VelocityGradient_x_BinCounts' in list(file.keys()):
-                    self.grad_u_x_counts = file["VelocityGradient_x_BinCounts"][:]
-                if 'VelocityGradient_y_BinRanges' in list(file.keys()):
-                    self.grad_u_y_ranges = file["VelocityGradient_y_BinRanges"][:]
-                if 'VelocityGradient_y_BinCounts' in list(file.keys()):
-                    self.grad_u_y_counts = file["VelocityGradient_y_BinCounts"][:]
-                if 'VorticityGradient_x_BinRanges' in list(file.keys()):
-                    self.grad_w_x_ranges = file["VorticityGradient_x_BinRanges"][:]
-                if 'VorticityGradient_x_BinCounts' in list(file.keys()):
-                    self.grad_w_x_counts = file["VorticityGradient_x_BinCounts"][:]
-                if 'VorticityGradient_y_BinRanges' in list(file.keys()):
-                    self.grad_w_y_ranges = file["VorticityGradient_y_BinRanges"][:]
-                if 'VorticityGradient_y_BinCounts' in list(file.keys()):
-                    self.grad_w_y_counts = file["VorticityGradient_y_BinCounts"][:]
+                if 'VelocityGradient_x_BinRanges' in list(f.keys()):
+                    self.grad_u_x_ranges = f["VelocityGradient_x_BinRanges"][:]
+                if 'VelocityGradient_x_BinCounts' in list(f.keys()):
+                    self.grad_u_x_counts = f["VelocityGradient_x_BinCounts"][:]
+                if 'VelocityGradient_y_BinRanges' in list(f.keys()):
+                    self.grad_u_y_ranges = f["VelocityGradient_y_BinRanges"][:]
+                if 'VelocityGradient_y_BinCounts' in list(f.keys()):
+                    self.grad_u_y_counts = f["VelocityGradient_y_BinCounts"][:]
+                if 'VorticityGradient_x_BinRanges' in list(f.keys()):
+                    self.grad_w_x_ranges = f["VorticityGradient_x_BinRanges"][:]
+                if 'VorticityGradient_x_BinCounts' in list(f.keys()):
+                    self.grad_w_x_counts = f["VorticityGradient_x_BinCounts"][:]
+                if 'VorticityGradient_y_BinRanges' in list(f.keys()):
+                    self.grad_w_y_ranges = f["VorticityGradient_y_BinRanges"][:]
+                if 'VorticityGradient_y_BinCounts' in list(f.keys()):
+                    self.grad_w_y_counts = f["VorticityGradient_y_BinCounts"][:]
                         
             ## Get the max wavenumber
             self.kmax = int(sim_data.Nx / 3)
@@ -538,64 +538,64 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
     data = PostProcessData()
 
     ## Open file and read in the data
-    with h5py.File(file, 'r') as file:
+    with h5py.File(in_f, 'r') as f:
 
         ## Initialize counter
         nn = 0
 
         # Read in the spectra
-        for group in file.keys():
+        for group in f.keys():
             if "Snap" in group:
-                if 'FullFieldPhases' in list(file[group].keys()):
-                    data.phases[nn, :] = file[group]["FullFieldPhases"][:, :]
-                if 'FullFieldEnstrophySpectrum' in list(file[group].keys()):
-                    data.enst_spectrum[nn, :] = file[group]["FullFieldEnstrophySpectrum"][:, :]
-                if 'FullFieldEnergySpectrum' in list(file[group].keys()):
-                    data.enrg_spectrum[nn, :] = file[group]["FullFieldEnergySpectrum"][:, :]
-                if 'VelocityPDFCounts' in list(file[group].keys()):
-                    data.u_pdf_counts[nn, :] = file[group]["VelocityPDFCounts"][:]
-                if 'VelocityPDFRanges' in list(file[group].keys()):
-                    data.u_pdf_ranges[nn, :] = file[group]["VelocityPDFRanges"][:]
-                if 'VorticityPDFCounts' in list(file[group].keys()):
-                    data.w_pdf_counts[nn, :] = file[group]["VorticityPDFCounts"][:]
-                if 'VorticityPDFRanges' in list(file[group].keys()):
-                    data.w_pdf_ranges[nn, :] = file[group]["VorticityPDFRanges"][:]
-                if 'EnstrophySpectrum' in list(file[group].keys()):
-                    data.enst_spectrum_1d[nn, :] = file[group]["EnstrophySpectrum"][:]
-                if 'EnergySpectrum' in list(file[group].keys()):
-                    data.enrg_spectrum_1d[nn, :] = file[group]["EnergySpectrum"][:]
-                if 'PhaseSync' in list(file[group].keys()):
-                    data.phase_R[nn, :] = file[group]["PhaseSync"][:]
-                if 'AverageAngle' in list(file[group].keys()):
-                    data.phase_Phi[nn, :] = file[group]["AverageAngle"][:]
-                if 'TriadPhaseSync' in list(file[group].keys()):
-                    data.triad_R[nn, :, :] = file[group]["TriadPhaseSync"][:, :]
-                if 'TriadAverageAngle' in list(file[group].keys()):
-                    data.triad_Phi[nn, :, :] = file[group]["TriadAverageAngle"][:, :]
-                if 'TriadPhaseSyncAcrossSector' in list(file[group].keys()):
-                    data.triad_R_across_sec[nn, :, :] = file[group]["TriadPhaseSyncAcrossSector"][:, :]
-                if 'TriadAverageAngleAcrossSector' in list(file[group].keys()):
-                    data.triad_Phi_across_sec[nn, :, :] = file[group]["TriadAverageAngleAcrossSector"][:, :]
-                if 'w_hat' in list(file[group].keys()):
-                    data.w_hat[nn, :, :] = file[group]["w_hat"][:, :]
-                if 'EnstrophyFluxSpectrum' in list(file[group].keys()):
-                    data.enst_flux_spec[nn, :] = file[group]["EnstrophyFluxSpectrum"][:]
-                if 'EnstrophyFluxPerSector' in list(file[group].keys()):
-                    data.enst_flux_per_sec[nn, :, :] = file[group]["EnstrophyFluxPerSector"][:, :]
-                if 'EnstrophyFluxPerSectorAcrossSector' in list(file[group].keys()):
-                    data.enst_flux_per_sec_across_sec[nn, :, :, :] = file[group]["EnstrophyFluxPerSectorAcrossSector"][:, :, :]
-                if 'SectorPhasePDF_InTime_Counts' in list(file[group].keys()):
-                    data.phase_sector_counts[nn, :, :] = file[group]["SectorPhasePDF_InTime_Counts"][:, :]
-                if 'SectorPhasePDF_InTime_Ranges' in list(file[group].keys()):
-                    data.phase_sector_ranges[nn, :, :] = file[group]["SectorPhasePDF_InTime_Ranges"][:, :]
-                if 'SectorTriadPhasePDF_InTime_Counts' in list(file[group].keys()):
-                    data.triad_sector_counts[nn, :, :, :] = file[group]["SectorTriadPhasePDF_InTime_Counts"][:, :, :]
-                if 'SectorTriadPhasePDF_InTime_Ranges' in list(file[group].keys()):
-                    data.triad_sector_ranges[nn, :, :, :] = file[group]["SectorTriadPhasePDF_InTime_Ranges"][:, :, :]
-                if 'SectorTriadPhaseWeightedPDF_InTime_Counts' in list(file[group].keys()):
-                    data.triad_sector_wghtd_counts[nn, :, :, :] = file[group]["SectorTriadPhaseWeightedPDF_InTime_Counts"][:, :, :]
-                if 'SectorTriadPhaseWeightedPDF_InTime_Ranges' in list(file[group].keys()):
-                    data.triad_sector_wghtd_ranges[nn, :, :, :] = file[group]["SectorTriadPhaseWeightedPDF_InTime_Ranges"][:, :, :]
+                if 'FullFieldPhases' in list(f[group].keys()):
+                    data.phases[nn, :] = f[group]["FullFieldPhases"][:, :]
+                if 'FullFieldEnstrophySpectrum' in list(f[group].keys()):
+                    data.enst_spectrum[nn, :] = f[group]["FullFieldEnstrophySpectrum"][:, :]
+                if 'FullFieldEnergySpectrum' in list(f[group].keys()):
+                    data.enrg_spectrum[nn, :] = f[group]["FullFieldEnergySpectrum"][:, :]
+                if 'VelocityPDFCounts' in list(f[group].keys()):
+                    data.u_pdf_counts[nn, :] = f[group]["VelocityPDFCounts"][:]
+                if 'VelocityPDFRanges' in list(f[group].keys()):
+                    data.u_pdf_ranges[nn, :] = f[group]["VelocityPDFRanges"][:]
+                if 'VorticityPDFCounts' in list(f[group].keys()):
+                    data.w_pdf_counts[nn, :] = f[group]["VorticityPDFCounts"][:]
+                if 'VorticityPDFRanges' in list(f[group].keys()):
+                    data.w_pdf_ranges[nn, :] = f[group]["VorticityPDFRanges"][:]
+                if 'EnstrophySpectrum' in list(f[group].keys()):
+                    data.enst_spectrum_1d[nn, :] = f[group]["EnstrophySpectrum"][:]
+                if 'EnergySpectrum' in list(f[group].keys()):
+                    data.enrg_spectrum_1d[nn, :] = f[group]["EnergySpectrum"][:]
+                if 'PhaseSync' in list(f[group].keys()):
+                    data.phase_R[nn, :] = f[group]["PhaseSync"][:]
+                if 'AverageAngle' in list(f[group].keys()):
+                    data.phase_Phi[nn, :] = f[group]["AverageAngle"][:]
+                if 'TriadPhaseSync' in list(f[group].keys()):
+                    data.triad_R[nn, :, :] = f[group]["TriadPhaseSync"][:, :]
+                if 'TriadAverageAngle' in list(f[group].keys()):
+                    data.triad_Phi[nn, :, :] = f[group]["TriadAverageAngle"][:, :]
+                if 'TriadPhaseSyncAcrossSector' in list(f[group].keys()):
+                    data.triad_R_across_sec[nn, :, :] = f[group]["TriadPhaseSyncAcrossSector"][:, :]
+                if 'TriadAverageAngleAcrossSector' in list(f[group].keys()):
+                    data.triad_Phi_across_sec[nn, :, :] = f[group]["TriadAverageAngleAcrossSector"][:, :]
+                if 'w_hat' in list(f[group].keys()):
+                    data.w_hat[nn, :, :] = f[group]["w_hat"][:, :]
+                if 'EnstrophyFluxSpectrum' in list(f[group].keys()):
+                    data.enst_flux_spec[nn, :] = f[group]["EnstrophyFluxSpectrum"][:]
+                if 'EnstrophyFluxPerSector' in list(f[group].keys()):
+                    data.enst_flux_per_sec[nn, :, :] = f[group]["EnstrophyFluxPerSector"][:, :]
+                if 'EnstrophyFluxPerSectorAcrossSector' in list(f[group].keys()):
+                    data.enst_flux_per_sec_across_sec[nn, :, :, :] = f[group]["EnstrophyFluxPerSectorAcrossSector"][:, :, :]
+                if 'SectorPhasePDF_InTime_Counts' in list(f[group].keys()):
+                    data.phase_sector_counts[nn, :, :] = f[group]["SectorPhasePDF_InTime_Counts"][:, :]
+                if 'SectorPhasePDF_InTime_Ranges' in list(f[group].keys()):
+                    data.phase_sector_ranges[nn, :, :] = f[group]["SectorPhasePDF_InTime_Ranges"][:, :]
+                if 'SectorTriadPhasePDF_InTime_Counts' in list(f[group].keys()):
+                    data.triad_sector_counts[nn, :, :, :] = f[group]["SectorTriadPhasePDF_InTime_Counts"][:, :, :]
+                if 'SectorTriadPhasePDF_InTime_Ranges' in list(f[group].keys()):
+                    data.triad_sector_ranges[nn, :, :, :] = f[group]["SectorTriadPhasePDF_InTime_Ranges"][:, :, :]
+                if 'SectorTriadPhaseWeightedPDF_InTime_Counts' in list(f[group].keys()):
+                    data.triad_sector_wghtd_counts[nn, :, :, :] = f[group]["SectorTriadPhaseWeightedPDF_InTime_Counts"][:, :, :]
+                if 'SectorTriadPhaseWeightedPDF_InTime_Ranges' in list(f[group].keys()):
+                    data.triad_sector_wghtd_ranges[nn, :, :, :] = f[group]["SectorTriadPhaseWeightedPDF_InTime_Ranges"][:, :, :]
                 nn += 1
             else:
                 continue

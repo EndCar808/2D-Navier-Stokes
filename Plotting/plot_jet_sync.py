@@ -185,8 +185,6 @@ if __name__ == '__main__':
     ## Read in post processing data
     post_data = import_post_processing_data(post_file_path, sys_vars, method)
 
-    print(post_data.num_triads_across_sec[1, :, :])
-
     if cmdargs.full:
         flux_min = np.amin(post_data.enst_flux_per_sec[:, :, :])
         flux_max = np.amax(post_data.enst_flux_per_sec[:, :, :])

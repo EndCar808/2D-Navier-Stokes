@@ -66,19 +66,19 @@ if __name__ == '__main__':
 
 		## Loop through grouped iterable
 		for processes in zip_longest(*groups):
-                    for proc in filter(None, processes): # filters out 'None' fill values if proc_limit does not divide evenly into cmd_list
-                        ## Print command to screen
-                        print("\nExecuting the following command:\n\t" + tc.C + "{}".format(proc.args[0]) + tc.Rst)
+            for proc in filter(None, processes): # filters out 'None' fill values if proc_limit does not divide evenly into cmd_list
+                ## Print command to screen
+                print("\nExecuting the following command:\n\t" + tc.C + "{}".format(proc.args[0]) + tc.Rst)
 
-                        ## Communicate with process to retrive output and error
-                        [run_CodeOutput, run_CodeErr] = proc.communicate()
+                ## Communicate with process to retrive output and error
+                [run_CodeOutput, run_CodeErr] = proc.communicate()
 
-                        ## Print both to screen
-                        print(run_CodeOutput)
-                        print(run_CodeErr)
+                ## Print both to screen
+                print(run_CodeOutput)
+                print(run_CodeErr)
 
-                        ## Wait until all finished
-                        proc.wait()
+                ## Wait until all finished
+                proc.wait()
 
 	if os.path.isdir(test_res_folder):
 
@@ -124,11 +124,11 @@ if __name__ == '__main__':
 				nn = 0
 				# Read in the spectra
 				for group in globalf.keys():
-                                    if "Timestep" in group:
-                                        if "W_hat" in list(globalf[group].keys()):
-                                            b_w_hat[nn, :, :] = globalf[group]["W_hat"][:, :]
-                                        b_solv_time[nn] = globalf[group].attrs["TimeValue"]
-                                        nn += 1
+                    if "Timestep" in group:
+                        if "W_hat" in list(globalf[group].keys()):
+                            b_w_hat[nn, :, :] = globalf[group]["W_hat"][:, :]
+                        b_solv_time[nn] = globalf[group].attrs["TimeValue"]
+                        nn += 1
 				if "kx" in list(globalf["Timestep_0000"].keys()):
 					b_kx = globalf["Timestep_0000"]["kx"][:]
 				if "ky" in list(globalf["Timestep_0000"].keys()):

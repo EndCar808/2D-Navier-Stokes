@@ -842,9 +842,7 @@ void SectorPhaseOrder(int s) {
 				}		
 
 			}
-		// if(a == 19 && l == 1) printf("\n");	
 		}
-
 		
 
 		//------------------- Record the data for the triads
@@ -865,7 +863,6 @@ void SectorPhaseOrder(int s) {
 				// Record the phase syncs and average phases
 				proc_data->triad_R_across_sec[i][a][l]   = cabs(proc_data->triad_phase_order_across_sec[i][a][l]);
 				proc_data->triad_Phi_across_sec[i][a][l] = carg(proc_data->triad_phase_order_across_sec[i][a][l]); 
-
 			}
 			// if (a == 0)printf("a: %d type: %d Num: %d\t triad_phase_order: %lf %lf I\t\t R: %lf, Phi %lf\n", a, i, proc_data->num_triads[i][a], creal(proc_data->triad_phase_order[i][a]), cimag(proc_data->triad_phase_order[i][a]), proc_data->triad_R[i][a], proc_data->triad_Phi[i][a]);
 			
