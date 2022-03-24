@@ -830,17 +830,12 @@ void SectorPhaseOrder(int s) {
 											// When k1 and k2 = k3 the contribution to the flux is zero
 											continue;
 										}
-									}	
-									// if (a == 19 && l == 1 && k_sqr <= sys_vars->kmax_C_sqr + 3 &&  k_sqr > sys_vars->kmax_C_sqr) {
-									// 	printf("a: %d\ttype: %d\tl = %d\tnum_t: %d\tk1 = (%d, %d)\tk2 = (%d, %d)\tk3 = (%d, %d)\n",a, 1, l, proc_data->num_triads_across_sec[1][a][l], k1_x, k1_y, k2_x, k2_y, k_x, k_y);
-									// 	// printf("a: %d\ttype: %d\tl = %d\tnum_t: %d\tord: %lf %lf I\t\tR: %lf\tPhi: %lf\n", a, i, l, proc_data->num_triads_across_sec[i][a][l], creal(proc_data->triad_phase_order_across_sec[i][a][l]), cimag(proc_data->triad_phase_order_across_sec[i][a][l]), proc_data->triad_R_across_sec[i][a][l], proc_data->triad_Phi_across_sec[i][a][l]);
-									// }								
+									}									
 								}
 							}
 						}
 					}
 				}		
-
 			}
 		}
 		
@@ -863,14 +858,14 @@ void SectorPhaseOrder(int s) {
 				// Record the phase syncs and average phases
 				proc_data->triad_R_across_sec[i][a][l]   = cabs(proc_data->triad_phase_order_across_sec[i][a][l]);
 				proc_data->triad_Phi_across_sec[i][a][l] = carg(proc_data->triad_phase_order_across_sec[i][a][l]); 
+			printf("a: %d l: %d\ttype: %d Num: %d\t triad_phase_order: %lf %lf I\t\t R: %lf, Phi %lf\n", a, l, i, proc_data->num_triads_across_sec[i][a][l], creal(proc_data->triad_phase_order_across_sec[i][a][l]), cimag(proc_data->triad_phase_order_across_sec[i][a][l]), proc_data->triad_R_across_sec[i][a][l], proc_data->triad_Phi_across_sec[i][a][l]);
 			}
-			// if (a == 0)printf("a: %d type: %d Num: %d\t triad_phase_order: %lf %lf I\t\t R: %lf, Phi %lf\n", a, i, proc_data->num_triads[i][a], creal(proc_data->triad_phase_order[i][a]), cimag(proc_data->triad_phase_order[i][a]), proc_data->triad_R[i][a], proc_data->triad_Phi[i][a]);
-			
+			printf("a: %d \ttype: %d Num: %d\t triad_phase_order: %lf %lf I\t\t R: %lf, Phi %lf\n\n", a, i, proc_data->num_triads[i][a], creal(proc_data->triad_phase_order[i][a]), cimag(proc_data->triad_phase_order[i][a]), proc_data->triad_R[i][a], proc_data->triad_Phi[i][a]);
+			// printf("\n");
 			// printf("Num Triads Type %d: %d\tord: %lf %lf I\tR: %lf\tPhi: %lf\n", i, proc_data->num_triads[i][a], creal(proc_data->triad_phase_order[i][a]), cimag(proc_data->triad_phase_order[i][a]), proc_data->triad_R[i][a], proc_data->triad_Phi[i][a]);
 			// printf("a = %d\t ord: %1.16lf %1.16lf I\t num: %d\tR: %lf\n", a, creal(proc_data->triad_phase_order[i][a]), cimag(proc_data->triad_phase_order[i][a]), proc_data->num_triads[i][a], proc_data->triad_R[i][a]);
 		}
-		// printf("Here\n");
-		// printf("\n");
+		printf("\n\n");
 		// printf("a: %d Num: %d\t triad_phase_order: %lf %lf I\t Num: %d\t triad_phase_order: %lf %lf I \t Num: %d\t triad_phase_order: %lf %lf I\n", a, num_triads[0], creal(proc_data->triad_phase_order[0][a]), cimag(proc_data->triad_phase_order[0][a]), num_triads[1], creal(proc_data->triad_phase_order[1][a]), cimag(proc_data->triad_phase_order[1][a]), num_triads[2], creal(proc_data->triad_phase_order[2][a]), cimag(proc_data->triad_phase_order[2][a]));
 		// printf("a: %d | Num: %d R0: %lf Phi0: %lf |\t Num: %d R1: %lf Phi1: %lf |\t Num: %d R2: %lf Phi2: %lf\n", a, num_triads[0], proc_data->triad_R[0][a], proc_data->triad_Phi[0][a], num_triads[1], proc_data->triad_R[1][a], proc_data->triad_Phi[1][a], num_triads[2], proc_data->triad_R[2][a], proc_data->triad_Phi[2][a]);	
 		// 
@@ -2222,7 +2217,7 @@ void AllocateMemory(const long int* N) {
 	// Initialize arrays
 	proc_data->dtheta = M_PI / (double )sys_vars->num_sect;
 	for (int i = 0; i < sys_vars->num_sect; ++i) {
-		proc_data->theta[i] = -M_PI / 2.0 + i * proc_data->dtheta;
+		proc_data->theta[i] = -M_PI / 2.0 + i * proc_data->dtheta + proc_data->dtheta / 2.0;
 		proc_data->phase_R[i]     = 0.0;
 		proc_data->phase_Phi[i]   = 0.0;
 		proc_data->phase_order[i] = 0.0 + 0.0 * I;
@@ -2245,11 +2240,18 @@ void AllocateMemory(const long int* N) {
 	for (int a = 0; a < sys_vars->num_sect; ++a) {
 		for (int l = 0; l < sys_vars->num_sect; ++l) {
 			k3 = 1.0 * cexp(I * proc_data->theta[a]);
-			k1 = 1.0 * cexp(I * proc_data->theta[a + l % sys_vars->num_sect]);
+			k1 = 1.0 * cexp(I * proc_data->theta[(a + l) % sys_vars->num_sect]);
 
 			// Compute the midpoint angle of the vector 
-			proc_data->mid_angle_sum[a * sys_vars->num_sect + l] = creal(1.0 / (2.0 * I) * (clog(k3 - k1) - clog(conj(k3) - conj(k1))));
+			if (l == 0) {
+				proc_data->mid_angle_sum[a * sys_vars->num_sect + l] = proc_data->theta[a];
+			}
+			else {
+				proc_data->mid_angle_sum[a * sys_vars->num_sect + l] = creal((1.0 / (2.0 * I)) * (clog(k3 - k1) - clog(conj(k3) - conj(k1))));
+			}
+			printf("a: %d l: %d - theta: %lf\t theta_k1: %lf\tangle: %lf\n", a, l, proc_data->theta[a], proc_data->theta[(a + l) % sys_vars->num_sect], proc_data->mid_angle_sum[a * sys_vars->num_sect + l]);
 		}
+		printf("\n");
 	}
 	#endif
 
