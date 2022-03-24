@@ -553,28 +553,21 @@ void SectorPhaseOrder(int s) {
 									}
 
 									// Get the appropriate sector angle for k2 -> k2 can either be in the same sector as k3 and k1 (pos or neg) or in the sector defined by the vector addition of k3 - k1
-									if (l == 0) {
-										sector_angle = proc_data->theta[a];
+									// Get the k2 sector angle from the precomputed angle sum
+									if (k2_y < 0 && k2_x < 0) {
+										// Case when k2 lands in ther lower left quadrant
+										sector_angle = proc_data->mid_angle_sum[a * sys_vars->num_sect + l];	//  - M_PI
+										// sector_angle = creal(1.0 / (2.0 * I) * (clog(cexp(I * proc_data->theta[a]) - cexp(I * proc_data->theta[(a + l) % sys_vars->num_sect])) - clog(conj(cexp(I * proc_data->theta[a])) - conj(cexp(I * proc_data->theta[(a + l) % sys_vars->num_sect])))));	
+									}
+									else if (k2_y < 0 && k2_x > 0) {
+										// Case when k2 lands in the upper left quadrant
+										sector_angle = proc_data->mid_angle_sum[a * sys_vars->num_sect + l] ; // + M_PI
+										// sector_angle = creal(1.0 / (2.0 * I) * (clog(cexp(I * proc_data->theta[a]) - cexp(I * proc_data->theta[(a + l) % sys_vars->num_sect])) - clog(conj(cexp(I * proc_data->theta[a])) - conj(cexp(I * proc_data->theta[(a + l) % sys_vars->num_sect])))));
 									}
 									else {
-										// (1.0 / (2.0 * I)) * (clog(k3 - k1) - clog(conj(k3) - conj(k1)));
-
-										// Get the k2 sector angle from the precomputed angle sum
-										if (k2_y < 0 && k2_x < 0) {
-											// Case when k2 lands in ther lower left quadrant
-											sector_angle = proc_data->mid_angle_sum[a * sys_vars->num_sect + l] - M_PI;	
-											// sector_angle = creal(1.0 / (2.0 * I) * (clog(cexp(I * proc_data->theta[a]) - cexp(I * proc_data->theta[(a + l) % sys_vars->num_sect])) - clog(conj(cexp(I * proc_data->theta[a])) - conj(cexp(I * proc_data->theta[(a + l) % sys_vars->num_sect])))));	
-										}
-										else if (k2_y < 0 && k2_x > 0) {
-											// Case when k2 lands in the upper left quadrant
-											sector_angle = proc_data->mid_angle_sum[a * sys_vars->num_sect + l] + M_PI;
-											// sector_angle = creal(1.0 / (2.0 * I) * (clog(cexp(I * proc_data->theta[a]) - cexp(I * proc_data->theta[(a + l) % sys_vars->num_sect])) - clog(conj(cexp(I * proc_data->theta[a])) - conj(cexp(I * proc_data->theta[(a + l) % sys_vars->num_sect])))));
-										}
-										else {
-											// All the other cases
-											sector_angle = proc_data->mid_angle_sum[a * sys_vars->num_sect + l];
-											// sector_angle = creal(1.0 / (2.0 * I) * (clog(cexp(I * proc_data->theta[a]) - cexp(I * proc_data->theta[(a + l) % sys_vars->num_sect])) - clog(conj(cexp(I * proc_data->theta[a])) - conj(cexp(I * proc_data->theta[(a + l) % sys_vars->num_sect])))));
-										}
+										// All the other cases
+										sector_angle = proc_data->mid_angle_sum[a * sys_vars->num_sect + l];
+										// sector_angle = creal(1.0 / (2.0 * I) * (clog(cexp(I * proc_data->theta[a]) - cexp(I * proc_data->theta[(a + l) % sys_vars->num_sect])) - clog(conj(cexp(I * proc_data->theta[a])) - conj(cexp(I * proc_data->theta[(a + l) % sys_vars->num_sect])))));
 									}
 
 									// Check if k2 is in the current positive sector or if k2 is in the negative sector
