@@ -18,7 +18,7 @@
 //  User Libraries and Headers
 // ---------------------------------------------------------------------
 #include "data_types.h"
-
+#include "utils.h"
 
 // ---------------------------------------------------------------------
 //  Function Definitions
@@ -368,6 +368,214 @@ void FullFieldData() {
 		}
 	}
 }
+void SectorPhaseOrderBruteForceFast(int s) {
+
+	// Initialize variables
+	int k1_x, k1_y, k2_x, k2_y, k3_x, k3_y;
+	int tmp_k1, tmp_k2, tmp_k3;
+	double k1_sqr, k2_sqr, k3_sqr;
+	double flux_pre_fac;
+	double flux_wght;
+	double triad_phase;
+	double gen_triad_phase;
+
+	for (int a = 0; a < sys_vars->num_sect; ++a) {	
+
+		// Initialize counters number of triads and enstrophy flux for each triad type
+		for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
+			proc_data->num_triads[i][a] = 0;
+			proc_data->enst_flux[i][a] = 0.0;
+		}
+
+		for (int l = 0; l < NUM_K1_SECTORS; ++l) {
+
+			// Initialize counters for number of triads and enstrophy flux across sectors for each triad type
+			for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
+				proc_data->num_triads_across_sec[i][a][l] = 0;
+				proc_data->enst_flux_across_sec[i][a][l] = 0.0;
+			}
+
+			
+			// Loop through wavevectors
+			for (int n = 0; n < proc_data->num_wave_vecs[a][l]; ++n) {
+				
+				// Get k1 and k2 and k3
+				k1_x = proc_data->phase_sync_wave_vecs[a][l][K1_X][n];
+				k1_y = proc_data->phase_sync_wave_vecs[a][l][K1_Y][n];
+				k2_x = proc_data->phase_sync_wave_vecs[a][l][K2_X][n];
+				k2_y = proc_data->phase_sync_wave_vecs[a][l][K2_Y][n];
+				k3_x = proc_data->phase_sync_wave_vecs[a][l][K3_X][n];
+				k3_y = proc_data->phase_sync_wave_vecs[a][l][K3_Y][n];
+
+				// Compute the mod square of the wavevectors
+				k1_sqr = (double) (k1_x * k1_x + k1_y * k1_y);
+				k2_sqr = (double) (k2_x * k2_x + k2_y * k2_y);
+				k3_sqr = (double) (k3_x * k3_x + k3_y * k3_y);
+
+				// Get correct phase index -> recall that to access kx > 0, use -kx
+				tmp_k1 = (sys_vars->kmax - 1 - k1_x) * (2 * sys_vars->kmax - 1);	
+				tmp_k2 = (sys_vars->kmax - 1 - k2_x) * (2 * sys_vars->kmax - 1);
+				tmp_k3 = (sys_vars->kmax - 1 - k3_x) * (2 * sys_vars->kmax - 1);
+				
+
+				flux_pre_fac = (double) (k1_x * k2_y - k2_x * k1_y) * (1.0 / k1_sqr - 1.0 / k2_sqr);
+
+				// Get the flux weight term
+				flux_wght = flux_pre_fac * (proc_data->amps[tmp_k1 + sys_vars->kmax - 1 + k1_y] * proc_data->amps[tmp_k2 + sys_vars->kmax - 1 + k2_y] * proc_data->amps[tmp_k3 + sys_vars->kmax - 1 + k3_y]);
+
+				// Get the triad phase
+				triad_phase = proc_data->phases[tmp_k1 + sys_vars->kmax - 1 + k1_y] + proc_data->phases[tmp_k2 + sys_vars->kmax - 1 + k2_y] - proc_data->phases[tmp_k3 + sys_vars->kmax - 1 + k3_y];
+
+				// Get the generalized triad phase
+				if (k3_sqr > sys_vars->kmax_C_sqr && (k1_sqr <= sys_vars->kmax_C_sqr && k2_sqr <= sys_vars->kmax_C_sqr)) {
+					gen_triad_phase = fmod(triad_phase + 2.0 * M_PI + carg(flux_wght), 2.0 * M_PI) - M_PI;
+				}
+				else if (k3_sqr <= sys_vars->kmax_C_sqr && (k1_sqr > sys_vars->kmax_C_sqr && k2_sqr > sys_vars->kmax_C_sqr)) {
+					gen_triad_phase = fmod(triad_phase + 2.0 * M_PI + carg(-flux_wght), 2.0 * M_PI) - M_PI;
+				}
+				else {
+					gen_triad_phase = fmod(triad_phase + 2.0 * M_PI, 2.0 * M_PI) - M_PI;
+				}
+
+				// Update the Kuramoto order parameters for each triad type
+				if (k3_sqr > sys_vars->kmax_C_sqr && (k1_sqr <= sys_vars->kmax_C_sqr && k2_sqr <= sys_vars->kmax_C_sqr)) {
+					//------------------------------------------ TRIAD TYPE 0
+					// Update the combined triad phase order parameter with the appropriate contribution
+					proc_data->triad_phase_order[0][a]               += cexp(I * gen_triad_phase);
+					proc_data->triad_phase_order_across_sec[0][a][l] += cexp(I * gen_triad_phase);
+
+					// Update the triad counter for the combined triad type
+					proc_data->num_triads[0][a]++;
+					proc_data->num_triads_across_sec[0][a][l]++;
+
+					// Update the flux contribution for type 0
+					proc_data->enst_flux[0][a]               += flux_wght * cos(triad_phase);
+					proc_data->enst_flux_across_sec[0][a][l] += flux_wght * cos(triad_phase);
+
+					if (flux_pre_fac < 0) {
+						//------------------------------------------ TRIAD TYPE 1
+						proc_data->triad_phase_order[1][a]               += cexp(I * gen_triad_phase);
+						proc_data->triad_phase_order_across_sec[1][a][l] += cexp(I * gen_triad_phase);
+						proc_data->num_triads[1][a]++;		
+						proc_data->num_triads_across_sec[1][a][l]++;		
+
+						// Update the flux contribution for tpye 1
+						proc_data->enst_flux[1][a]               += flux_wght * cos(triad_phase);
+						proc_data->enst_flux_across_sec[1][a][l] += flux_wght * cos(triad_phase);
+					}
+					if (flux_pre_fac > 0) {
+						//------------------------------------------ TRIAD TYPE 2
+						proc_data->triad_phase_order[2][a]               += cexp(I * gen_triad_phase);
+						proc_data->triad_phase_order_across_sec[2][a][l] += cexp(I * gen_triad_phase);
+
+						// Update the number of triads
+						proc_data->num_triads[2][a]++;		
+						proc_data->num_triads_across_sec[2][a][l]++;		
+
+						// Update the flux contribution for tpye 2
+						proc_data->enst_flux[2][a]               += flux_wght * cos(triad_phase);
+						proc_data->enst_flux_across_sec[2][a][l] += flux_wght * cos(triad_phase);
+					}
+				}
+				else if (k3_sqr <= sys_vars->kmax_C_sqr && (k1_sqr > sys_vars->kmax_C_sqr && k2_sqr > sys_vars->kmax_C_sqr)) {
+					//------------------------------------------ TRIAD TYPE 0
+					// Update the combined triad phase order parameter with the appropriate contribution
+					proc_data->triad_phase_order[0][a]               += cexp(I * gen_triad_phase);
+					proc_data->triad_phase_order_across_sec[0][a][l] += cexp(I * gen_triad_phase);
+
+					// Update the triad counter for the combined triad type
+					proc_data->num_triads[0][a]++;
+					proc_data->num_triads_across_sec[0][a][l]++;
+
+					// Update the flux contribution for type 0
+					proc_data->enst_flux[0][a]               += flux_wght * cos(triad_phase);
+					proc_data->enst_flux_across_sec[0][a][l] += flux_wght * cos(triad_phase);
+
+					if (flux_pre_fac < 0) {
+						//------------------------------------------ TRIAD TYPE 3
+						proc_data->triad_phase_order[3][a]               += cexp(I * gen_triad_phase);
+						proc_data->triad_phase_order_across_sec[3][a][l] += cexp(I * gen_triad_phase);
+						proc_data->num_triads[3][a]++;		
+						proc_data->num_triads_across_sec[3][a][l]++;		
+
+						// Update the flux contribution for tpye 1
+						proc_data->enst_flux[3][a]               += flux_wght * cos(triad_phase);
+						proc_data->enst_flux_across_sec[3][a][l] += flux_wght * cos(triad_phase);
+					}
+					if (flux_pre_fac > 0) {
+						//------------------------------------------ TRIAD TYPE 4
+						proc_data->triad_phase_order[4][a]               += cexp(I * gen_triad_phase);
+						proc_data->triad_phase_order_across_sec[4][a][l] += cexp(I * gen_triad_phase);
+
+						// Update the number of triads
+						proc_data->num_triads[4][a]++;		
+						proc_data->num_triads_across_sec[4][a][l]++;		
+
+						// Update the flux contribution for tpye 2
+						proc_data->enst_flux[4][a]               += flux_wght * cos(triad_phase);
+						proc_data->enst_flux_across_sec[4][a][l] += flux_wght * cos(triad_phase);
+					}
+				}
+				else {
+					//------------------------------------------ TRIAD TYPE 5
+					proc_data->triad_phase_order[5][a]               += cexp(I * gen_triad_phase);
+					proc_data->triad_phase_order_across_sec[5][a][l] += cexp(I * gen_triad_phase);
+
+					// Update the number of triads
+					proc_data->num_triads[5][a]++;		
+					proc_data->num_triads_across_sec[5][a][l]++;	
+
+					// Update the flux contribution for tpye 2
+					proc_data->enst_flux[5][a]               += flux_wght * cos(triad_phase);
+					proc_data->enst_flux_across_sec[5][a][l] += flux_wght * cos(triad_phase);
+				}
+			}
+		}
+	}
+
+	//------------------- Record the data for the triads
+	for (int a = 0; a < sys_vars->num_sect; ++a) {
+		for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
+			// Normalize the phase order parameters
+			if (proc_data->num_triads[i][a] != 0) {
+				proc_data->triad_phase_order[i][a] /= proc_data->num_triads[i][a];
+			}
+			
+			// Record the phase syncs and average phases
+			proc_data->triad_R[i][a]   = cabs(proc_data->triad_phase_order[i][a]);
+			proc_data->triad_Phi[i][a] = carg(proc_data->triad_phase_order[i][a]);
+			for (int l = 0; l < NUM_K1_SECTORS; ++l) {
+				if (proc_data->num_triads_across_sec[i][a][l] != 0) {
+					proc_data->triad_phase_order_across_sec[i][a][l] /= proc_data->num_triads_across_sec[i][a][l];
+				}
+				
+				// Record the phase syncs and average phases
+				proc_data->triad_R_across_sec[i][a][l]   = cabs(proc_data->triad_phase_order_across_sec[i][a][l]);
+				proc_data->triad_Phi_across_sec[i][a][l] = carg(proc_data->triad_phase_order_across_sec[i][a][l]); 
+			}
+		}
+	}
+
+	for (int a = 0; a < sys_vars->num_sect; ++a) {
+		for (int l = 0; l < NUM_K1_SECTORS; ++l) {
+			for (int type = 0; type < NUM_TRIAD_TYPES + 1; ++type) {
+				printf("a: %d l: %d\ttype: %d Num: %d\t triad_phase_order: %lf %lf I\t\t R: %lf, Phi %lf \t\t Flux: %1.16lf\n", a, l, type, proc_data->num_triads_across_sec[type][a][l], creal(proc_data->triad_phase_order_across_sec[type][a][l]), cimag(proc_data->triad_phase_order_across_sec[type][a][l]), proc_data->triad_R_across_sec[type][a][l], proc_data->triad_Phi_across_sec[type][a][l], proc_data->enst_flux_across_sec[type][a][l]);
+			}
+			printf("\n");
+		}
+		printf("\n-------------------------------------\n\n");
+	}
+
+	//------------- Reset order parameters for next iteration
+	for (int a = 0; a < sys_vars->num_sect; ++a) {
+		for (int l = 0; l < NUM_K1_SECTORS; ++l) {
+			for (int type = 0; type < NUM_TRIAD_TYPES; ++type) {
+				proc_data->triad_phase_order[type][a]               = 0.0 + 0.0 * I;
+				proc_data->triad_phase_order_across_sec[type][a][l] = 0.0 + 0.0 * I;
+			}
+		}
+	}
+}
 /**
  * Function to compute the phase synchroniztion data sector by sector in wavenumber space for the current snaphsot
  * @param s The index of the current snapshot
@@ -382,19 +590,20 @@ void SectorPhaseOrder(int s) {
 	double flux_wght;
 	int num_phases;
 	int tmp, tmp1;
-	bool k2_neg, not_in_k1_sec, not_in_k3_sec;
-	bool valid_wavevec, in_pos_sector, in_neg_sector;
 	double flux_pre_fac;
-	double k1_curl_k3;
 	double sector_angle;
 	double theta_lwr, theta_upr;
 	double alt_theta_lwr, alt_theta_upr;
-	int k_x, k1_x, k2_x, k2_y;
+	int k_x, k_y, k1_x, k1_y, k2_x, k2_y;
 	int tmp_k, tmp_k1, tmp_k2;
 	double phase, triad_phase, gen_triad_phase;
-	double k_sqr, k_angle, k1_sqr, k1_angle, k2_sqr, k2_angle, neg_k2_angle;
+	double k_sqr, k_angle, k1_sqr, k1_angle, k2_sqr, k2_angle, theta_k1;
 	const long int Nx 		  = sys_vars->N[0];
 	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
+
+	// Initialize k1 sector angles
+	double k1_sector_angles[NUM_K1_SECTORS] = {-sys_vars->num_sect/2.0, -sys_vars->num_sect/3.0, -sys_vars->num_sect/4.0, -sys_vars->num_sect/6.0, sys_vars->num_sect/6.0, sys_vars->num_sect/4.0, sys_vars->num_sect/3.0, sys_vars->num_sect/2.0};
+
 
 	// for (int i = 0; i < sys_vars->N[0]; ++i) {
 	// 	if (abs(run_data->k[0][i]) < sys_vars->kmax) {
@@ -489,7 +698,7 @@ void SectorPhaseOrder(int s) {
 
 			// Initialize the flux for the current sector
 			proc_data->enst_flux[i][a] = 0.0;
-			for (int l = 0; l < sys_vars->num_sect; ++l) {
+			for (int l = 0; l < NUM_K1_SECTORS; ++l) {
 				// Initialize the number of triads for each type for across sectors
 				proc_data->num_triads_across_sec[i][a][l] = 0;
 
@@ -499,86 +708,74 @@ void SectorPhaseOrder(int s) {
 		}
 
 		// Loop through second sector choice
-		for (int l = 0; l < sys_vars->num_sect; ++l) {
+		for (int l = 0; l < NUM_K1_SECTORS; ++l) {
+
+			int nn = 0;
 
 			// Get the angles for the second sector
-			alt_theta_lwr = proc_data->theta[(a + l) % sys_vars->num_sect] - proc_data->dtheta / 2.0;
-			alt_theta_upr = proc_data->theta[(a + l) % sys_vars->num_sect] + proc_data->dtheta / 2.0;
+			theta_k1 = MyMod(proc_data->theta[a] + k1_sector_angles[l] * proc_data->dtheta / 2.0 + M_PI, 2.0 * M_PI) - M_PI;
+			alt_theta_lwr = theta_k1 - proc_data->dtheta / 2.0;
+			alt_theta_upr = theta_k1 + proc_data->dtheta / 2.0;
 			
 			// Loop through the k wavevector (k is the k3 wavevector)
 			for (int tmp_k_x = 0; tmp_k_x <= 2 * sys_vars->kmax - 1; ++tmp_k_x) {
 				// Get k_x
 				k_x = tmp_k_x - sys_vars->kmax + 1;
 
-				for (int k_y = 0; k_y <= sys_vars->kmax; ++k_y) {
+				for (int tmp_k_y = 0; tmp_k_y <= 2 * sys_vars->kmax - 1; ++tmp_k_y) {
+					// Get k_y
+					k_y = tmp_k_y - sys_vars->kmax + 1;
+
 					// Get polar coords for the k wavevector
 					k_sqr   = (double) (k_x * k_x + k_y * k_y);
-					k_angle = proc_data->k_angle[tmp_k_x * (sys_vars->kmax + 1) + k_y]; 
+					k_angle = atan2((double) k_x, k_y);
+					// proc_data->k_angle[tmp_k_x * (2 * sys_vars->kmax) + tmp_k_y]; 
 
-					// Check if the k wavevector is in the current sector
-					valid_wavevec = (k_sqr > 0 && k_sqr < sys_vars->kmax_sqr);
-					in_pos_sector     = (k_angle >= theta_lwr && k_angle < theta_upr);
-					if (valid_wavevec && in_pos_sector) {
+					if ((k_sqr > 0 && k_sqr < sys_vars->kmax_sqr) && (k_angle >= theta_lwr && k_angle < theta_upr)) {
 
 						// Loop through the k1 wavevector
 						for (int tmp_k1_x = 0; tmp_k1_x <= 2 * sys_vars->kmax - 1; ++tmp_k1_x) {
 							// Get k1_x
 							k1_x = tmp_k1_x - sys_vars->kmax + 1;
 
-							for (int k1_y = 0; k1_y <= sys_vars->kmax; ++k1_y) {
+							for (int tmp_k1_y = 0; tmp_k1_y <= 2 * sys_vars->kmax - 1; ++tmp_k1_y) {
+								// Get k1_y
+								k1_y = tmp_k1_y - sys_vars->kmax + 1;
+
 								// Get polar coords for k1
 								k1_sqr   = (double) (k1_x * k1_x + k1_y * k1_y);
-								k1_angle = proc_data->k1_angle[tmp_k1_x * (sys_vars->kmax + 1) + k1_y];
+								k1_angle = atan2((double) k1_x, (double) k1_y);
+								//proc_data->k1_angle[tmp_k1_x * (2 * sys_vars->kmax) + tmp_k1_y];
 
-								// Check if k1 wavevector is in the sector theta + l*dtheta
-								valid_wavevec = (k1_sqr > 0 && k1_sqr < sys_vars->kmax_sqr);
-								in_pos_sector     = (k1_angle >= alt_theta_lwr && k1_angle < alt_theta_upr);
-								if(valid_wavevec && in_pos_sector) {
-									
+								if((k1_sqr > 0 && k1_sqr < sys_vars->kmax_sqr) && (k1_angle >= alt_theta_lwr && k1_angle < alt_theta_upr)) {									
 									// Find the k2 wavevector
 									k2_x = k_x - k1_x;
 									k2_y = k_y - k1_y;
-
-									// Get k1 x k2 unit vectors
-									k1_curl_k3 = (double)(k1_x * k_y - k1_y * k_x) / (sqrt(k1_sqr) * sqrt(k_sqr));
 									
 									// Get polar coords for k2
 									k2_sqr   = (double) (k2_x * k2_x + k2_y * k2_y);
-									k2_angle = proc_data->k2_angle[(sys_vars->kmax + 1) * ((2 * sys_vars->kmax) * (tmp_k_x * (sys_vars->kmax + 1) + k_y) + tmp_k1_x) + k1_y];
-
-									// Get the value of the -k2 angle
-									if (k2_y < 0 || (k2_y == 0 && k2_x > 0)) {
-										// Get the angle of the negative wavevector k2 i.e., -k2 --> for checking the case if k2 is in the negative sector
-										neg_k2_angle = proc_data->k2_angle_neg[(sys_vars->kmax + 1) * ((2 * sys_vars->kmax) * (tmp_k_x * (sys_vars->kmax + 1) + k_y) + tmp_k1_x) + k1_y];
-									}
+									k2_angle = atan2((double) k2_x, (double) k2_y);
+									//proc_data->k2_angle[(2 * sys_vars->kmax) * ((2 * sys_vars->kmax) * (tmp_k_x * (2 * sys_vars->kmax) + tmp_k_y) + tmp_k1_x) + tmp_k1_y];
 
 									// Get the appropriate sector angle for k2 -> k2 can either be in the same sector as k3 and k1 (pos or neg) or in the sector defined by the vector addition of k3 - k1
 									// Get the k2 sector angle from the precomputed angle sum
 									if (k2_y < 0 && k2_x < 0) {
 										// Case when k2 lands in ther lower left quadrant
-										sector_angle = proc_data->mid_angle_sum[a * sys_vars->num_sect + l];	//  - M_PI
-										// sector_angle = creal(1.0 / (2.0 * I) * (clog(cexp(I * proc_data->theta[a]) - cexp(I * proc_data->theta[(a + l) % sys_vars->num_sect])) - clog(conj(cexp(I * proc_data->theta[a])) - conj(cexp(I * proc_data->theta[(a + l) % sys_vars->num_sect])))));	
+										sector_angle = proc_data->mid_angle_sum[a * NUM_K1_SECTORS + l];	//  - M_PI
 									}
 									else if (k2_y < 0 && k2_x > 0) {
 										// Case when k2 lands in the upper left quadrant
-										sector_angle = proc_data->mid_angle_sum[a * sys_vars->num_sect + l] ; // + M_PI
-										// sector_angle = creal(1.0 / (2.0 * I) * (clog(cexp(I * proc_data->theta[a]) - cexp(I * proc_data->theta[(a + l) % sys_vars->num_sect])) - clog(conj(cexp(I * proc_data->theta[a])) - conj(cexp(I * proc_data->theta[(a + l) % sys_vars->num_sect])))));
+										sector_angle = proc_data->mid_angle_sum[a * NUM_K1_SECTORS + l] ; // + M_PI
 									}
 									else {
 										// All the other cases
-										sector_angle = proc_data->mid_angle_sum[a * sys_vars->num_sect + l];
-										// sector_angle = creal(1.0 / (2.0 * I) * (clog(cexp(I * proc_data->theta[a]) - cexp(I * proc_data->theta[(a + l) % sys_vars->num_sect])) - clog(conj(cexp(I * proc_data->theta[a])) - conj(cexp(I * proc_data->theta[(a + l) % sys_vars->num_sect])))));
+										sector_angle = proc_data->mid_angle_sum[a * NUM_K1_SECTORS + l];
 									}
 
-									// Check if k2 is in the current positive sector or if k2 is in the negative sector
-									k2_neg        = (k2_y < 0 || (k2_y == 0 && k2_x > 0));
-									in_pos_sector = (k2_angle >= sector_angle - proc_data->dtheta/2.0 && k2_angle < sector_angle + proc_data->dtheta/2.0 && k2_sqr > k1_sqr);
-									valid_wavevec = (k2_sqr > 0 && k2_sqr < sys_vars->kmax_sqr);
-									in_neg_sector = neg_k2_angle >= sector_angle - proc_data->dtheta/2.0 && neg_k2_angle < sector_angle + proc_data->dtheta/2.0;
-									not_in_k1_sec = !(k2_angle >= alt_theta_lwr && k2_angle < alt_theta_upr) || !(k2_angle >= alt_theta_lwr + M_PI && k2_angle < alt_theta_upr + M_PI);
-									not_in_k3_sec = !(k2_angle >= theta_lwr && k2_angle < theta_upr) || !(k2_angle >= theta_lwr + M_PI && k2_angle < theta_upr + M_PI);
-									// if (a == 0 && l == 1) printf("l: %d\tsec_ang: %lf\tk2_ang: %lf\tin pos: %s\t in neg: %s\n", l, sector_angle, k2_angle, in_pos_sector ? "True" : "False", (k2_neg && in_neg_sector) ? "True" : "False");
-									if (valid_wavevec &&  (in_pos_sector || (k2_neg && in_neg_sector)) && not_in_k1_sec && not_in_k3_sec) {
+									if ((k2_sqr > 0 && k2_sqr < sys_vars->kmax_sqr) && (k2_angle >= sector_angle - proc_data->dtheta/2.0 && k2_angle < sector_angle + proc_data->dtheta/2.0)) {
+
+										nn++;
+
 										// Get correct phase index -> recall that to access kx > 0, use -kx
 										tmp_k  = (sys_vars->kmax - 1 - k_x) * (2 * sys_vars->kmax - 1);
 										tmp_k1 = (sys_vars->kmax - 1 - k1_x) * (2 * sys_vars->kmax - 1);	
@@ -592,7 +789,6 @@ void SectorPhaseOrder(int s) {
 
 										// Get the triad phase and adjust to with the orientation of the phase - the generalized phase
 										triad_phase = proc_data->phases[tmp_k1 + sys_vars->kmax - 1 + k1_y] + proc_data->phases[tmp_k2 + sys_vars->kmax - 1 + k2_y] - proc_data->phases[tmp_k + sys_vars->kmax - 1 + k_y];
-										// triad_phase = fmod(triad_phase + 2.0 * M_PI, 2.0 * M_PI) - M_PI;
 										
 										///----------------- Get the generalized triads and triad case conditions
 										// If the set C is the entire sector
@@ -632,7 +828,7 @@ void SectorPhaseOrder(int s) {
 
 										///------------------ Determine which flux contribution we are dealing with -> the postive case (when k1 & k2 in C^' and k3 in C) or the negative case (when k3 in C^' and k1 and k2 in C)
 										// The postive case
-										if (proc_data->pos_flux_term_cond && fabs(flux_wght) > 1e-5) {  
+										if (proc_data->pos_flux_term_cond) {  
 
 											// Update the combined triad phase order parameter with the appropriate contribution
 											proc_data->triad_phase_order[0][a] += cexp(I * gen_triad_phase);
@@ -723,7 +919,7 @@ void SectorPhaseOrder(int s) {
 
 										}
 										// The negative case
-										else if (proc_data->neg_flux_term_cond && fabs(flux_wght) > 1e-5) {
+										else if (proc_data->neg_flux_term_cond) {
 
 											// Update the combined triad phase order parameter with the appropriate contribution
 											proc_data->triad_phase_order[0][a] += cexp(I * gen_triad_phase);
@@ -812,17 +1008,17 @@ void SectorPhaseOrder(int s) {
 												}
 											}
 										}
-										else if (fabs(flux_wght) <= 1e-5 || k1_sqr == k2_sqr || k1_angle == k2_angle){
+										else {
 											// TYPE 5 ---> When the modulus of the flux term is 0 but not necessarily the triad
 											proc_data->triad_phase_order[5][a] += cexp(I * gen_triad_phase);
 											proc_data->triad_phase_order_across_sec[5][a][l] += cexp(I * gen_triad_phase);
 											proc_data->num_triads[5][a]++;
 											proc_data->num_triads_across_sec[5][a][l]++;
 										}
-										else {
-											// When k1 and k2 = k3 the contribution to the flux is zero
-											continue;
-										}
+										// else {
+										// 	// When k1 and k2 = k3 the contribution to the flux is zero
+										// 	continue;
+										// }
 									}									
 								}
 							}
@@ -830,10 +1026,20 @@ void SectorPhaseOrder(int s) {
 					}
 				}		
 			}
+			// Record the number of triad wavevectors
+			proc_data->num_wave_vecs[a][l] = nn;
 		}
 		
+	// 	for (int a = 0; a < sys_vars->num_sect; ++a) {
+	// 	for (int l = 0; l < NUM_K1_SECTORS; ++l) {
+	// 		printf("num[%d, %d]: %d\n", a, l, proc_data->num_wave_vecs[a][l]);
+	// 	}
+	// 	printf("\n");
+	// }
+	}
 
-		//------------------- Record the data for the triads
+	//------------------- Record the data for the triads
+	for (int a = 0; a < sys_vars->num_sect; ++a) {
 		for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
 			// Normalize the phase order parameters
 			if (proc_data->num_triads[i][a] != 0) {
@@ -843,7 +1049,7 @@ void SectorPhaseOrder(int s) {
 			// Record the phase syncs and average phases
 			proc_data->triad_R[i][a]   = cabs(proc_data->triad_phase_order[i][a]);
 			proc_data->triad_Phi[i][a] = carg(proc_data->triad_phase_order[i][a]);
-			for (int l = 0; l < sys_vars->num_sect; ++l) {
+			for (int l = 0; l < NUM_K1_SECTORS; ++l) {
 				if (proc_data->num_triads_across_sec[i][a][l] != 0) {
 					proc_data->triad_phase_order_across_sec[i][a][l] /= proc_data->num_triads_across_sec[i][a][l];
 				}
@@ -851,18 +1057,19 @@ void SectorPhaseOrder(int s) {
 				// Record the phase syncs and average phases
 				proc_data->triad_R_across_sec[i][a][l]   = cabs(proc_data->triad_phase_order_across_sec[i][a][l]);
 				proc_data->triad_Phi_across_sec[i][a][l] = carg(proc_data->triad_phase_order_across_sec[i][a][l]); 
-			printf("a: %d l: %d\ttype: %d Num: %d\t triad_phase_order: %lf %lf I\t\t R: %lf, Phi %lf\n", a, l, i, proc_data->num_triads_across_sec[i][a][l], creal(proc_data->triad_phase_order_across_sec[i][a][l]), cimag(proc_data->triad_phase_order_across_sec[i][a][l]), proc_data->triad_R_across_sec[i][a][l], proc_data->triad_Phi_across_sec[i][a][l]);
 			}
-			printf("a: %d \ttype: %d Num: %d\t triad_phase_order: %lf %lf I\t\t R: %lf, Phi %lf\n\n", a, i, proc_data->num_triads[i][a], creal(proc_data->triad_phase_order[i][a]), cimag(proc_data->triad_phase_order[i][a]), proc_data->triad_R[i][a], proc_data->triad_Phi[i][a]);
-			// printf("\n");
-			// printf("Num Triads Type %d: %d\tord: %lf %lf I\tR: %lf\tPhi: %lf\n", i, proc_data->num_triads[i][a], creal(proc_data->triad_phase_order[i][a]), cimag(proc_data->triad_phase_order[i][a]), proc_data->triad_R[i][a], proc_data->triad_Phi[i][a]);
-			// printf("a = %d\t ord: %1.16lf %1.16lf I\t num: %d\tR: %lf\n", a, creal(proc_data->triad_phase_order[i][a]), cimag(proc_data->triad_phase_order[i][a]), proc_data->num_triads[i][a], proc_data->triad_R[i][a]);
 		}
-		printf("\n\n");
-		// printf("a: %d Num: %d\t triad_phase_order: %lf %lf I\t Num: %d\t triad_phase_order: %lf %lf I \t Num: %d\t triad_phase_order: %lf %lf I\n", a, num_triads[0], creal(proc_data->triad_phase_order[0][a]), cimag(proc_data->triad_phase_order[0][a]), num_triads[1], creal(proc_data->triad_phase_order[1][a]), cimag(proc_data->triad_phase_order[1][a]), num_triads[2], creal(proc_data->triad_phase_order[2][a]), cimag(proc_data->triad_phase_order[2][a]));
-		// printf("a: %d | Num: %d R0: %lf Phi0: %lf |\t Num: %d R1: %lf Phi1: %lf |\t Num: %d R2: %lf Phi2: %lf\n", a, num_triads[0], proc_data->triad_R[0][a], proc_data->triad_Phi[0][a], num_triads[1], proc_data->triad_R[1][a], proc_data->triad_Phi[1][a], num_triads[2], proc_data->triad_R[2][a], proc_data->triad_Phi[2][a]);	
-		// 
 	}
+	
+	// for (int a = 0; a < sys_vars->num_sect; ++a) {
+	// 	for (int l = 0; l < NUM_K1_SECTORS; ++l) {
+	// 		for (int type = 0; type < NUM_TRIAD_TYPES + 1; ++type) {
+	// 			printf("a: %d l: %d\ttype: %d Num: %d\t triad_phase_order: %lf %lf I\t\t R: %lf, Phi %lf\n", a, l, type, proc_data->num_triads_across_sec[type][a][l], creal(proc_data->triad_phase_order_across_sec[type][a][l]), cimag(proc_data->triad_phase_order_across_sec[type][a][l]), proc_data->triad_R_across_sec[type][a][l], proc_data->triad_Phi_across_sec[type][a][l]);
+	// 		}
+	// 		printf("\n");
+	// 	}
+	// 	printf("\n-------------------------------------\n\n");
+	// }
 
 	// ----------------------------------
 	// Reset Phase Order Parameters
@@ -872,7 +1079,7 @@ void SectorPhaseOrder(int s) {
 		proc_data->phase_order[a] = 0.0 + 0.0 * I;
 		for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
 			proc_data->triad_phase_order[i][a] = 0.0 + 0.0 * I;
-			for (int l = 0; l < sys_vars->num_sect; ++l) {
+			for (int l = 0; l < NUM_K1_SECTORS; ++l) {
 				proc_data->triad_phase_order_across_sec[i][a][l] = 0.0 + 0.0 * I;
 			}
 		}	
@@ -1956,12 +2163,12 @@ void AllocateMemory(const long int* N) {
 			exit(1);
 		}	
 		for (int l = 0; l < sys_vars->num_sect; ++l) {
-			proc_data->num_triads_across_sec[i][l] = (int* )fftw_malloc(sizeof(int) * sys_vars->num_sect);
+			proc_data->num_triads_across_sec[i][l] = (int* )fftw_malloc(sizeof(int) * NUM_K1_SECTORS);
 			if (proc_data->num_triads_across_sec[i][l] == NULL) {
 				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Number of Triads Per Sector");
 				exit(1);
 			}
-			proc_data->enst_flux_across_sec[i][l] = (double* )fftw_malloc(sizeof(double) * sys_vars->num_sect);
+			proc_data->enst_flux_across_sec[i][l] = (double* )fftw_malloc(sizeof(double) * NUM_K1_SECTORS);
 			if (proc_data->enst_flux_across_sec[i][l] == NULL) {
 				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Enstrophy Flux Per Sector");
 				exit(1);
@@ -1969,7 +2176,7 @@ void AllocateMemory(const long int* N) {
 		}
 	}
 	// Allocate memory for the precomputed sector midpoint angle sums -> this is used to determine which sector k2 is
-	proc_data->mid_angle_sum = (double* )fftw_malloc(sizeof(double) * (sys_vars->num_sect) * (sys_vars->num_sect));
+	proc_data->mid_angle_sum = (double* )fftw_malloc(sizeof(double) * sys_vars->num_sect * NUM_K1_SECTORS);
 	if (proc_data->mid_angle_sum == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Midpoint Sector Angles");
 		exit(1);
@@ -1979,24 +2186,19 @@ void AllocateMemory(const long int* N) {
 
 	///--------------- Precomputed wavevector arctangents
 	// Allocate memory for the arctangent arrays
-	proc_data->k_angle = (double* )fftw_malloc(sizeof(double) * (2 * sys_vars->kmax) * (sys_vars->kmax + 1));
+	proc_data->k_angle = (double* )fftw_malloc(sizeof(double) * (2 * sys_vars->kmax) * (2 * sys_vars->kmax));
 	if (proc_data->k_angle == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "ArcTangents of k3");
 		exit(1);
 	}
-	proc_data->k1_angle = (double* )fftw_malloc(sizeof(double) * (2 * sys_vars->kmax) * (sys_vars->kmax + 1));
+	proc_data->k1_angle = (double* )fftw_malloc(sizeof(double) * (2 * sys_vars->kmax) * (2 * sys_vars->kmax));
 	if (proc_data->k1_angle == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "ArcTangents of k1");
 		exit(1);
 	}
-	proc_data->k2_angle = (double* )fftw_malloc(sizeof(double) * (2 * sys_vars->kmax) * (sys_vars->kmax + 1) * (2 * sys_vars->kmax) * (sys_vars->kmax + 1));
+	proc_data->k2_angle = (double* )fftw_malloc(sizeof(double) * (2 * sys_vars->kmax) * (2 * sys_vars->kmax) * (2 * sys_vars->kmax) * (2 * sys_vars->kmax));
 	if (proc_data->k2_angle == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "ArcTangents of k2");
-		exit(1);
-	}
-	proc_data->k2_angle_neg = (double* )fftw_malloc(sizeof(double) * (2 * sys_vars->kmax) * (sys_vars->kmax + 1) * (2 * sys_vars->kmax) * (sys_vars->kmax + 1));
-	if (proc_data->k2_angle_neg == NULL) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "ArcTangents of Negative k2");
 		exit(1);
 	}
 	proc_data->phase_angle = (double* )fftw_malloc(sizeof(double) * Nx * Ny_Fourier);
@@ -2006,28 +2208,30 @@ void AllocateMemory(const long int* N) {
 	}
 
 	// Fill the arrays with the pre-computed arctangents of the wavevectors
-	int k_x, k1_x, k2_x, k2_y;
+	int k_x, k_y, k1_x, k1_y, k2_x, k2_y;
 	for (int tmp_k_x = 0; tmp_k_x <= 2 * sys_vars->kmax - 1; ++tmp_k_x) {
 		k_x = tmp_k_x - sys_vars->kmax + 1;
-		for (int k_y = 0; k_y <= sys_vars->kmax; ++k_y) {
+		for (int tmp_k_y = 0; tmp_k_y <= 2 * sys_vars->kmax - 1; ++tmp_k_y) {
+			k_y = tmp_k_y - sys_vars->kmax + 1;
+
 			// Fill the k3 array
-			proc_data->k_angle[tmp_k_x * (sys_vars->kmax + 1) + k_y] = atan2((double) k_x, (double) k_y);
+			proc_data->k_angle[tmp_k_x * (2 * sys_vars->kmax) + tmp_k_y] = atan2((double) k_x, (double) k_y);
 
 			// Loop over k1 to get k2
 			for (int tmp_k1_x = 0; tmp_k1_x <= 2 * sys_vars->kmax - 1; ++tmp_k1_x) {
 				k1_x = tmp_k1_x - sys_vars->kmax + 1;
-				for (int k1_y = 0; k1_y <= sys_vars->kmax; ++k1_y) {	
+				for (int tmp_k1_y = 0; tmp_k1_y <= 2 * sys_vars->kmax - 1; ++tmp_k1_y) {	
+					k1_y = tmp_k1_y - sys_vars->kmax - 1;
 
 					// Fill the k1 array
-					proc_data->k1_angle[tmp_k1_x * (sys_vars->kmax + 1) + k1_y] = atan2((double) k1_x, (double) k1_y);				
+					proc_data->k1_angle[tmp_k1_x * (2 * sys_vars->kmax) + tmp_k1_y] = atan2((double) k1_x, (double) k1_y);				
 
 					// Get k2
 					k2_x = k_x - k1_x;
 					k2_y = k_y - k1_y;
 
 					// Fill the k2 arrays
-					proc_data->k2_angle[(sys_vars->kmax + 1) * ((2 * sys_vars->kmax) * (tmp_k_x * (sys_vars->kmax + 1) + k_y) + tmp_k1_x) + k1_y]     = atan2((double) k2_x, (double) k2_y);
-					proc_data->k2_angle_neg[(sys_vars->kmax + 1) * ((2 * sys_vars->kmax) * (tmp_k_x * (sys_vars->kmax + 1) + k_y) + tmp_k1_x) + k1_y] = atan2((double) -k2_x, (double) -k2_y);
+					proc_data->k2_angle[(2 * sys_vars->kmax) * ((2 * sys_vars->kmax) * (tmp_k_x * (2 * sys_vars->kmax) + tmp_k_y) + tmp_k1_x) + tmp_k1_y] = atan2((double) k2_x, (double) k2_y);
 				}
 			}
 		}
@@ -2103,19 +2307,19 @@ void AllocateMemory(const long int* N) {
 		}
 		for (int l = 0; l < sys_vars->num_sect; ++l) {
 			/// Allocate memory for the phase order parameter for the triad phases
-			proc_data->triad_phase_order_across_sec[i][l] = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->num_sect);
+			proc_data->triad_phase_order_across_sec[i][l] = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * NUM_K1_SECTORS);
 			if (proc_data->triad_phase_order_across_sec[i][l] == NULL) {
 				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Triad Phase Sync Phase Order Parameter");
 				exit(1);
 			}
 			// Allocate the array of phase sync per sector for the triad phases
-			proc_data->triad_R_across_sec[i][l] = (double* )fftw_malloc(sizeof(double) * sys_vars->num_sect);
+			proc_data->triad_R_across_sec[i][l] = (double* )fftw_malloc(sizeof(double) * NUM_K1_SECTORS);
 			if (proc_data->triad_R_across_sec[i][l] == NULL) {
 				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Triad Phase Sync Parameter");
 				exit(1);
 			}
 			// Allocate the array of average phase per sector for the triad phases
-			proc_data->triad_Phi_across_sec[i][l] = (double* )fftw_malloc(sizeof(double) * sys_vars->num_sect);
+			proc_data->triad_Phi_across_sec[i][l] = (double* )fftw_malloc(sizeof(double) * NUM_K1_SECTORS);
 			if (proc_data->triad_Phi_across_sec[i][l] == NULL) {
 				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Average Triad Phase");
 				exit(1);
@@ -2208,9 +2412,9 @@ void AllocateMemory(const long int* N) {
 	}
 	
 	// Initialize arrays
-	proc_data->dtheta = M_PI / (double )sys_vars->num_sect;
+	proc_data->dtheta = 2.0 * M_PI / (double )sys_vars->num_sect;
 	for (int i = 0; i < sys_vars->num_sect; ++i) {
-		proc_data->theta[i] = -M_PI / 2.0 + i * proc_data->dtheta + proc_data->dtheta / 2.0;
+		proc_data->theta[i] = -M_PI + i * proc_data->dtheta + proc_data->dtheta / 2.0;
 		proc_data->phase_R[i]     = 0.0;
 		proc_data->phase_Phi[i]   = 0.0;
 		proc_data->phase_order[i] = 0.0 + 0.0 * I;
@@ -2220,7 +2424,7 @@ void AllocateMemory(const long int* N) {
 			proc_data->triad_R[j][i]     	   = 0.0;
 			proc_data->triad_Phi[j][i]         = 0.0;
 			proc_data->triad_phase_order[j][i] = 0.0 + 0.0 * I;
-			for (int k = 0; k < sys_vars->num_sect; ++k) {
+			for (int k = 0; k < NUM_K1_SECTORS; ++k) {
 				proc_data->num_triads_across_sec[j][i][k]        = 0;
 				proc_data->enst_flux_across_sec[j][i][k]   	  	 = 0.0;
 				proc_data->triad_R_across_sec[j][i][k]     	  	 = 0.0;
@@ -2229,23 +2433,206 @@ void AllocateMemory(const long int* N) {
 			}
 		}
 	}
-	fftw_complex k1, k3;
-	for (int a = 0; a < sys_vars->num_sect; ++a) {
-		for (int l = 0; l < sys_vars->num_sect; ++l) {
-			k3 = 1.0 * cexp(I * proc_data->theta[a]);
-			k1 = 1.0 * cexp(I * proc_data->theta[(a + l) % sys_vars->num_sect]);
 
-			// Compute the midpoint angle of the vector 
-			if (l == 0) {
-				proc_data->mid_angle_sum[a * sys_vars->num_sect + l] = proc_data->theta[a];
+	fftw_complex k1, k3;
+	double theta_k1;
+	double k1_sector_angles[NUM_K1_SECTORS] = {-sys_vars->num_sect/2.0, -sys_vars->num_sect/3.0, -sys_vars->num_sect/4.0, -sys_vars->num_sect/6.0, sys_vars->num_sect/6.0, sys_vars->num_sect/4.0, sys_vars->num_sect/3.0, sys_vars->num_sect/2.0};
+	for (int a = 0; a < sys_vars->num_sect; ++a) {
+		for (int l = 0; l < NUM_K1_SECTORS; ++l) {
+			// Compute the unit vectors for k3 and k1
+			theta_k1 = MyMod(proc_data->theta[a] + k1_sector_angles[l] * proc_data->dtheta / 2.0 + M_PI, 2.0 * M_PI) - M_PI;
+			k3 = cexp(I * proc_data->theta[a]);
+			k1 = cexp(I * theta_k1);
+
+			// Compute the mid angle for the sector of k2
+			if (k1_sector_angles[l] == 0.0) {
+				proc_data->mid_angle_sum[a * NUM_K1_SECTORS + l] = proc_data->theta[a];
 			}
 			else {
-				proc_data->mid_angle_sum[a * sys_vars->num_sect + l] = creal((1.0 / (2.0 * I)) * (clog(k3 - k1) - clog(conj(k3) - conj(k1))));
+				proc_data->mid_angle_sum[a * NUM_K1_SECTORS + l] = creal(1.0 / (2.0 * I) * (clog(k3 - k1) - clog(conj(k3) - conj(k1))));
 			}
-			printf("a: %d l: %d - theta: %lf\t theta_k1: %lf\tangle: %lf\n", a, l, proc_data->theta[a], proc_data->theta[(a + l) % sys_vars->num_sect], proc_data->mid_angle_sum[a * sys_vars->num_sect + l]);
+
+			// printf("theta[%d]: %1.16lf \t theta_k1[%d]: %1.16lf \t mid[%d, %d]: %1.16lf ", a, proc_data->theta[a], l, theta_k1, a, l, proc_data->mid_angle_sum[a * NUM_K1_SECTORS + l]);
+			// Ensure the angle is a mid angle of a sector
+			for (int i = 0; i < sys_vars->num_sect; ++i) {
+				if (proc_data->mid_angle_sum[a * NUM_K1_SECTORS + l] >= proc_data->theta[i] - proc_data->dtheta/2.0 && proc_data->mid_angle_sum[a * NUM_K1_SECTORS + l] < proc_data->theta[i] + proc_data->dtheta/2.0) {
+					proc_data->mid_angle_sum[a * NUM_K1_SECTORS + l] = proc_data->theta[i];
+					// printf("mid[%d, %d]: %1.16lf", a, l, proc_data->mid_angle_sum[a * NUM_K1_SECTORS + l]);
+				}
+			}
+			// printf("\n");
 		}
-		printf("\n");
+		// printf("\n");
 	}
+
+	//---------- Allocate memory for the wavevector arrays
+	proc_data->phase_sync_wave_vecs = (int**** )fftw_malloc(sizeof(int***) * sys_vars->num_sect);
+	if (proc_data->phase_sync_wave_vecs == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Phase Sync Wavevectors");
+		exit(1);
+	}
+	for (int a = 0; a < sys_vars->num_sect; ++a) {
+		proc_data->phase_sync_wave_vecs[a] = (int*** )fftw_malloc(sizeof(int**) * NUM_K1_SECTORS);
+		if (proc_data->phase_sync_wave_vecs[a] == NULL) {
+			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Phase Sync Wavevectors");
+			exit(1);
+		}	
+	}
+	for (int a = 0; a < sys_vars->num_sect; ++a) {
+		for (int l = 0; l < NUM_K1_SECTORS; ++l) {
+			proc_data->phase_sync_wave_vecs[a][l] = (int** )fftw_malloc(sizeof(int*) * 6);
+			if (proc_data->phase_sync_wave_vecs[a][l] == NULL) {
+				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Phase Sync Wavevectors");
+				exit(1);
+			}	
+		}
+	}
+	int num_triad_est = (int)round(M_PI * pow(sys_vars->kmax, 2.0));
+	sys_vars->num_triad_per_sec_est = num_triad_est;
+	for (int a = 0; a < sys_vars->num_sect; ++a) {
+		for (int l = 0; l < NUM_K1_SECTORS; ++l) {
+			for (int n = 0; n < 6; ++n) {
+				proc_data->phase_sync_wave_vecs[a][l][n] = (int* )fftw_malloc(sizeof(int) * num_triad_est);
+				if (proc_data->phase_sync_wave_vecs[a][l][n] == NULL) {
+					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Phase Sync Wavevectors");
+					exit(1);
+				}
+			}	
+		}
+	}
+
+	//------------ Allocate memory for the number of wavevector triads per sector
+	proc_data->num_wave_vecs = (int** )fftw_malloc(sizeof(int*) * sys_vars->num_sect);
+	if (proc_data->num_wave_vecs == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Number of Phase Sync Wavevectors");
+		exit(1);
+	}
+	for (int a = 0; a < sys_vars->num_sect; ++a) {
+		proc_data->num_wave_vecs[a] = (int* )fftw_malloc(sizeof(int) * NUM_K1_SECTORS);
+		if (proc_data->num_wave_vecs[a] == NULL) {
+			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Number of Phase Sync Wavevectors");
+			exit(1);
+		}	
+	}
+	for (int a = 0; a < sys_vars->num_sect; ++a) {
+		for (int l = 0; l < NUM_K1_SECTORS; ++l) {
+			proc_data->num_wave_vecs[a][l] = sys_vars->num_triad_per_sec_est;
+		}
+	}
+
+	int nn;
+	double k1_sqr, k1_angle, k2_sqr, k2_angle, k_sqr, k_angle;
+	double theta_lwr, theta_upr, alt_theta_upr, alt_theta_lwr;
+	for (int a = 0; a < sys_vars->num_sect; ++a) {
+		
+		// Get the angles for the current sector
+		theta_lwr = proc_data->theta[a] - proc_data->dtheta / 2.0;
+		theta_upr = proc_data->theta[a] + proc_data->dtheta / 2.0;
+
+		// Loop through second sector choice
+		for (int l = 0; l < NUM_K1_SECTORS; ++l) {
+
+			// Get the angles for the second sector
+			theta_k1 = MyMod(proc_data->theta[a] + k1_sector_angles[l] * proc_data->dtheta/2.0 + M_PI, 2.0 * M_PI) - M_PI;
+			alt_theta_lwr = theta_k1 - proc_data->dtheta / 2.0;
+			alt_theta_upr = theta_k1 + proc_data->dtheta / 2.0;
+
+			// Initialize increment
+			nn = 0;
+
+			// Loop through the k wavevector (k is the k3 wavevector)
+			for (int tmp_k_x = 0; tmp_k_x <= 2 * (int) (sys_vars->N[0] / 2) - 1; ++tmp_k_x) {
+				// Get k_x
+				k_x = tmp_k_x - (int) (sys_vars->N[0] / 2) + 1;
+
+				for (int tmp_k_y = 0; tmp_k_y <= 2 * (int) (sys_vars->N[0] / 2) - 1; ++tmp_k_y) {
+					// Get k_y
+					k_y = tmp_k_y - (int) (sys_vars->N[0] / 2) + 1;
+
+					// Get polar coords for the k wavevector
+					k_sqr   = (double) (k_x * k_x + k_y * k_y);
+					k_angle = atan2((double)k_x, (double)k_y);
+					// k_angle = proc_data->k_angle[tmp_k_x * (2 * sys_vars->kmax) + tmp_k_y]; 
+					
+					// printf("k3: (%d, %d) - k3_a: %1.16lf\n", k_x, k_y, k_angle);
+
+					if ((k_sqr > 0 && k_sqr < sys_vars->kmax_sqr) && (k_angle >= theta_lwr && k_angle < theta_upr)) {
+
+						// Loop through the k1 wavevector
+						for (int tmp_k1_x = 0; tmp_k1_x <= 2 * (int) (sys_vars->N[0] / 2) - 1; ++tmp_k1_x) {
+							// Get k1_x
+							k1_x = tmp_k1_x - (int) (sys_vars->N[0] / 2) + 1;
+
+							for (int tmp_k1_y = 0; tmp_k1_y <= 2 * (int) (sys_vars->N[0] / 2) - 1; ++tmp_k1_y) {
+								// Get k1_y
+								k1_y = tmp_k1_y - (int) (sys_vars->N[0] / 2) + 1;
+
+								// Get polar coords for k1
+								k1_sqr   = (double) (k1_x * k1_x + k1_y * k1_y);
+								k1_angle = atan2((double) k1_x, (double) k1_y);
+								// k1_angle = proc_data->k1_angle[tmp_k1_x * (2 * sys_vars->kmax) + tmp_k1_y];
+
+								if((k1_sqr > 0 && k1_sqr < sys_vars->kmax_sqr) && (k1_angle >= alt_theta_lwr && k1_angle < alt_theta_upr)) {									
+									// Find the k2 wavevector
+									k2_x = k_x - k1_x;
+									k2_y = k_y - k1_y;
+									
+									// Get polar coords for k2
+									k2_sqr   = (double) (k2_x * k2_x + k2_y * k2_y);
+									k2_angle = atan2((double)k2_x, (double) k2_y);
+									// k2_angle = proc_data->k2_angle[(2 * sys_vars->kmax) * ((2 * sys_vars->kmax) * (tmp_k_x * (2 * sys_vars->kmax) + tmp_k_y) + tmp_k1_x) + tmp_k1_y];
+
+									if ((k2_sqr > 0 && k2_sqr < sys_vars->kmax_sqr) && (k2_angle >= proc_data->mid_angle_sum[a * NUM_K1_SECTORS + l] - proc_data->dtheta/2.0 && k2_angle < proc_data->mid_angle_sum[a * NUM_K1_SECTORS + l] + proc_data->dtheta/2.0)) {
+										// Add k1 vector
+										proc_data->phase_sync_wave_vecs[a][l][K1_X][nn] = k1_x;
+										proc_data->phase_sync_wave_vecs[a][l][K1_Y][nn] = k1_y;
+										// Add the k2 vector
+										proc_data->phase_sync_wave_vecs[a][l][K2_X][nn] = k2_x;
+										proc_data->phase_sync_wave_vecs[a][l][K2_Y][nn] = k2_y;
+										// Add the k3 vector
+										proc_data->phase_sync_wave_vecs[a][l][K3_X][nn] = k_x;
+										proc_data->phase_sync_wave_vecs[a][l][K3_Y][nn] = k_y;
+
+										// Increment
+										nn++;
+
+										// printf("a: %d, l: %d \t | k1: (%d, %d) \t k2: (%d, %d) \t k3: (%d, %d) \t | k1_sqr: %1.1lf \t k2_sqr: %1.1lf \t k3_sqr: %1.1lf \t kmax_C_sqr: %1.1lf  kmax_sqr: %1.1lf \t | \t k1_a: %1.6lf \t k2_a: %1.6lf\t k3_a: %1.6lf\n", a, l, k1_x, k1_y, k2_x, k2_y, k_x, k_y, k1_sqr, k2_sqr, k_sqr, sys_vars->kmax_C_sqr, sys_vars->kmax_sqr, k1_angle, k2_angle, k_angle);
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+			// Record the number of triad wavevectors
+			proc_data->num_wave_vecs[a][l] = nn;
+
+			// printf("\n");
+		}
+	}
+
+	// for (int a = 0; a < sys_vars->num_sect; ++a) {
+	// 	for (int l = 0; l < NUM_K1_SECTORS; ++l) {
+	// 		printf("num[%d, %d]: %d\n", a, l, proc_data->num_wave_vecs[a][l]);
+	// 	}
+	// 	printf("\n");
+	// }
+	// printf("Est: %d\n", sys_vars->num_triad_per_sec_est);
+
+	// Realloc
+	for (int a = 0; a < sys_vars->num_sect; ++a) {
+		for (int l = 0; l < NUM_K1_SECTORS; ++l) {
+			for (int n = 0; n < 6; ++n) {
+				proc_data->phase_sync_wave_vecs[a][l][n] = (int* )realloc(proc_data->phase_sync_wave_vecs[a][l][n] , sizeof(int) * proc_data->num_wave_vecs[a][l]);
+				if (proc_data->phase_sync_wave_vecs[a][l][n] == NULL) {
+					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to Reallocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Phase Sync Wavevectors");
+					exit(1);
+				}
+			}	
+		}
+	}
+
+
 	#endif
 
 	// --------------------------------	
@@ -2465,7 +2852,6 @@ void FreeMemoryAndCleanUp(void) {
 	fftw_free(proc_data->k1_angle);
 	fftw_free(proc_data->k2_angle);
 	fftw_free(proc_data->mid_angle_sum);
-	fftw_free(proc_data->k2_angle_neg);
 	fftw_free(proc_data->phase_angle);
 	fftw_free(proc_data->phase_order);
 	fftw_free(proc_data->phase_R);
@@ -2488,6 +2874,18 @@ void FreeMemoryAndCleanUp(void) {
 		fftw_free(proc_data->triad_R_across_sec[i]);
 		fftw_free(proc_data->triad_Phi_across_sec[i]);
 		fftw_free(proc_data->num_triads_across_sec[i]);
+	}
+	for (int a = 0; a < sys_vars->num_sect; ++a) {
+		for (int l = 0; l < NUM_K1_SECTORS; ++l){
+			for (int n = 0; n < 6; ++n) {
+				fftw_free(proc_data->phase_sync_wave_vecs[a][l][n]);
+			}
+			fftw_free(proc_data->phase_sync_wave_vecs[a][l]);
+		}
+		fftw_free(proc_data->phase_sync_wave_vecs[a]);
+	}
+	for (int a = 0; a < sys_vars->num_sect; ++a) {
+		fftw_free(proc_data->num_wave_vecs[a]);
 	}
 	#endif
 	for (int i = 0; i < SYS_DIM; ++i) {

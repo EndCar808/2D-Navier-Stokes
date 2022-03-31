@@ -84,6 +84,13 @@
 #define N_BINS_SEC 1000         // The number of bins in the sector pdfs
 #define N_BINS_SEC_INTIME 200   // The number of bins in the sector pdfs in time
 #define NUM_TRIAD_TYPES 5 		// The number of triad types contributing to the flux
+#define NUM_K1_SECTORS 8		// The number of k1 sectors to search over
+#define	K1_X  0
+#define	K1_Y  1
+#define	K2_X  2
+#define	K2_Y  3
+#define	K3_X  4
+#define	K3_Y  5
 // ---------------------------------------------------------------------
 //  Global Struct Definitions
 // ---------------------------------------------------------------------
@@ -127,6 +134,7 @@ typedef struct system_vars_struct {
 	int REAL_VEL_FLAG;					// Flag to indicate if the Real space velocity exists in solver data
 	int num_threads;					// The number of OMP threads to use
 	int thread_id;						// The ID of the OMP threads
+	int num_triad_per_sec_est;          // The estimate number of triads per sector
 } system_vars_struct;
 
 // Runtime data struct
@@ -167,8 +175,9 @@ typedef struct postprocess_data_struct {
     double* k1_angle;											 			 // Array to hold the pre computed arctangents of the k1 wavevectors to speed up triad computation
     double* k2_angle;											 			 // Array to hold the pre computed arctangents of the k2 wavevectors to speed up triad computation
     double* mid_angle_sum;									     			 // Array to hold the pre computed midpoint angle sums -> this will determine which sector k2 is in
-    double* k2_angle_neg;										 			 // Array to hold the pre computed arctangents of the negative k2 wavevectors to speed up triad computation    
     double* phase_angle;										 			 // Array to hold the pre computed arctangents of the wavevectors for the individual phases   
+    int**** phase_sync_wave_vecs;											 // Array of pointers to arrays to hold the wavevectors in a given sector
+    int** num_wave_vecs;													 // Array to hold the number of wavevector triads per secotr
     fftw_complex* phase_order;       							 			 // Array to hold the phase order parameter for each sector for the individual phases
     fftw_complex* triad_phase_order[NUM_TRIAD_TYPES + 1]; 		 			 // Array to hold the phase order parameter for each sector for each of the triad phase types including combined
     fftw_complex** triad_phase_order_across_sec[NUM_TRIAD_TYPES + 1]; 		 // Array to hold the phase order parameter for each sector for each of the triad phase types including combined
@@ -223,7 +232,6 @@ typedef struct complex_type_tmp {
 	double re;   		// real part 
 	double im;   		// imaginary part 
 } complex_type_tmp;
-
 
 // Declare the global variable pointers across all files
 extern system_vars_struct *sys_vars; 		    // Global pointer to system parameters struct

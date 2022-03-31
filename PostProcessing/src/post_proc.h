@@ -17,6 +17,7 @@
 // ---------------------------------------------------------------------
 void RealSpaceStats(int s);
 void FullFieldData();
+void SectorPhaseOrderBruteForceFast(int s);
 void SectorPhaseOrder(int s);
 void SectorPhaseOrderPar(int s);
 void EnstrophyFluxSpectrum(int snap);

@@ -125,6 +125,15 @@ int GetCMLArgs(int argc, char** argv) {
 
 	return 0;
 }
+double MyMod(double x, double y) {
+
+	double rem;
+	rem = fmod(x, y);
+
+	if (rem < 0) rem += y;
+
+	return rem;
+}
 /**
  * Function to initialize the Real space collocation points arrays and Fourier wavenumber arrays
  * 

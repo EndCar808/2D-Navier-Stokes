@@ -137,7 +137,8 @@ int main(int argc, char** argv) {
 		//  Phase Sync
 		// --------------------------------
 		#if defined(__SEC_PHASE_SYNC) 
-		SectorPhaseOrder(s);
+		SectorPhaseOrderBruteForceFast(s);
+		// SectorPhaseOrder(s);
 		// SectorPhaseOrderPar(s);		
 		#endif
 
