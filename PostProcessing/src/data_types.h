@@ -83,7 +83,7 @@
 // #define N_SECTORS 40		 	// The number of phase sectors
 #define N_BINS_SEC 1000         // The number of bins in the sector pdfs
 #define N_BINS_SEC_INTIME 200   // The number of bins in the sector pdfs in time
-#define NUM_TRIAD_TYPES 5 		// The number of triad types contributing to the flux
+#define NUM_TRIAD_TYPES 6 		// The number of triad types contributing to the flux
 #define NUM_K1_SECTORS 8		// The number of k1 sectors to search over
 #define	K1_X  0
 #define	K1_Y  1
@@ -171,9 +171,6 @@ typedef struct postprocess_data_struct {
     double* nabla_w;											 			 // Array to hold the gradient of the real space vorticity -> for nonlinear RHS function
     double* nabla_psi;											 			 // Array to hold the gradient of the real space stream function -> for nonlinear RHS function
 	double* theta;                   							 			 // Array to hold the angles for the sector boundaries
-    double* k_angle;											 			 // Array to hold the pre computed arctangents of the k3 wavevectors to speed up triad computation
-    double* k1_angle;											 			 // Array to hold the pre computed arctangents of the k1 wavevectors to speed up triad computation
-    double* k2_angle;											 			 // Array to hold the pre computed arctangents of the k2 wavevectors to speed up triad computation
     double* mid_angle_sum;									     			 // Array to hold the pre computed midpoint angle sums -> this will determine which sector k2 is in
     double* phase_angle;										 			 // Array to hold the pre computed arctangents of the wavevectors for the individual phases   
     int**** phase_sync_wave_vecs;											 // Array of pointers to arrays to hold the wavevectors in a given sector
@@ -193,9 +190,9 @@ typedef struct postprocess_data_struct {
     double** triad_Phi_across_sec[NUM_TRIAD_TYPES + 1];  				 	 // Array to hold the average phase per sector for each of the triad phase types including all together
     gsl_histogram** phase_sect_pdf;			    				 			 // Struct for the histogram of the individual phases in each sector over the simulation
     gsl_histogram** phase_sect_pdf_t;							 			 // Struct for the histogram of the individual phases in each sector over time
+    gsl_histogram** phase_sect_wghtd_pdf_t;						 			 // Struct for the weighted histogram of the individual phases in each sector over time
     gsl_histogram** triad_sect_pdf[NUM_TRIAD_TYPES + 1];  		 			 // Struct for the histogram of each triad phase type in each sector over the simulation
     gsl_histogram** triad_sect_pdf_t[NUM_TRIAD_TYPES + 1];		 			 // Struct for the histogram of each triad phase type in each sector over time
-    gsl_histogram** phase_sect_wghtd_pdf_t;						 			 // Struct for the weighted histogram of the individual phases in each sector over time
 	gsl_histogram** triad_sect_wghtd_pdf_t[NUM_TRIAD_TYPES + 1]; 			 // Struct for the weighted histogram of each triad phase type in each sector over time
 
 } postprocess_data_struct;
