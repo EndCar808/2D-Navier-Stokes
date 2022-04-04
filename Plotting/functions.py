@@ -495,7 +495,13 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                     self.grad_w_y_ranges = f["VorticityGradient_y_BinRanges"][:]
                 if 'VorticityGradient_y_BinCounts' in list(f.keys()):
                     self.grad_w_y_counts = f["VorticityGradient_y_BinCounts"][:]
-                        
+            
+            ## Set the number of Triad Types
+            NUM_TRIAD_TYPES = 7
+            ## Set the number of k1 sectors
+            NUM_K1_SECTS = 8
+
+
             ## Get the max wavenumber
             self.kmax = int(sim_data.Nx / 3)
             ## Allocate spectra aarrays
@@ -517,22 +523,22 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
             self.kmax_frac      = float(in_file.split('_')[-3].split("[")[-1].split("]")[0])
             self.kmax_C         = int(self.kmax * self.kmax_frac)
             ## Enstrophy Flux Per Sector
-            self.enst_flux_per_sec = np.zeros((sim_data.ndata, 6, self.num_sect))
-            self.enst_flux_per_sec_across_sec = np.zeros((sim_data.ndata, 6, self.num_sect, self.num_sect))
+            self.enst_flux_per_sec = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_sect))
+            self.enst_flux_per_sec_across_sec = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_sect, NUM_K1_SECTS))
             ## Phase Sync arrays
             self.phase_R              = np.zeros((sim_data.ndata, self.num_sect))
             self.phase_Phi            = np.zeros((sim_data.ndata, self.num_sect))
-            self.triad_R              = np.zeros((sim_data.ndata, 6, self.num_sect))
-            self.triad_Phi            = np.zeros((sim_data.ndata, 6, self.num_sect))
-            self.triad_R_across_sec   = np.zeros((sim_data.ndata, 6, self.num_sect, self.num_sect))
-            self.triad_Phi_across_sec = np.zeros((sim_data.ndata, 6, self.num_sect, self.num_sect))
+            self.triad_R              = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_sect))
+            self.triad_Phi            = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_sect))
+            self.triad_R_across_sec   = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_sect, NUM_K1_SECTS))
+            self.triad_Phi_across_sec = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_sect, NUM_K1_SECTS))
             ## Phase Sync Stats
             self.phase_sector_counts = np.zeros((sim_data.ndata, self.num_sect, 200))
             self.phase_sector_ranges = np.zeros((sim_data.ndata, self.num_sect, 201))
-            self.triad_sector_counts = np.zeros((sim_data.ndata, self.num_sect, 200, 6))
-            self.triad_sector_ranges = np.zeros((sim_data.ndata, self.num_sect, 201, 6))
-            self.triad_sector_wghtd_counts = np.zeros((sim_data.ndata, self.num_sect, 200, 6))
-            self.triad_sector_wghtd_ranges = np.zeros((sim_data.ndata, self.num_sect, 201, 6))
+            self.triad_sector_counts = np.zeros((sim_data.ndata, self.num_sect, 200, NUM_TRIAD_TYPES))
+            self.triad_sector_ranges = np.zeros((sim_data.ndata, self.num_sect, 201, NUM_TRIAD_TYPES))
+            self.triad_sector_wghtd_counts = np.zeros((sim_data.ndata, self.num_sect, 200, NUM_TRIAD_TYPES))
+            self.triad_sector_wghtd_ranges = np.zeros((sim_data.ndata, self.num_sect, 201, NUM_TRIAD_TYPES))
 
     ## Create instance of data class
     data = PostProcessData()
