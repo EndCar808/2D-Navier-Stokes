@@ -178,12 +178,15 @@ typedef struct system_vars_struct {
 	double dy;							// Collocation point spacing in the y direction
 	double w_max_init;					// Max vorticity of the initial condition
 	int n_spect;                        // Size of the spectra arrays
-	int force_k; 						// The forcing wavenumber 
 	int print_every;                    // Records how many iterations are performed before printing to file
 	double EKMN_ALPHA; 					// The value of the Ekman drag coefficient
 	double CFL_CONST;					// The CFL constant for the adaptive step
 	double NU;							// The viscosity
 	int SAVE_EVERY; 					// For specifying how often to print
+	double force_scale_var;				// The scaling variable for the forced modes
+	int force_k; 						// The forcing wavenumber 
+	int local_forcing_proc;				// Identifier used to indicate which process contains modes that need to be forced
+	int num_forced_modes; 				// The number of modes to be forced on the local process
 } system_vars_struct;
 
 // Runtime data struct
@@ -214,6 +217,9 @@ typedef struct runtime_data_struct {
 	double* enst_flux_spect;  // Array to hold the enstrophy flux of the system
 	double* enrg_flux_spect;  // Array to hold the energy flux spectrum
 	double* tg_soln;	  	  // Array for computing the Taylor Green vortex solution
+	fftw_complex* forcing;	  // Array to hold the forcing for the current timestep
+	int* forcing_indx;		  // Array to hold the indices of the forced modes
+	int* forcing_k[SYS_DIM];  // Array containg the wavenumbers for the forced modes
 } runtime_data_struct;
 
 // Runge-Kutta Integration struct

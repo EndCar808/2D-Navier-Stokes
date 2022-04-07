@@ -81,6 +81,9 @@ void SpectralSolve(void) {
 
 	// Get initial conditions
 	InitialConditions(run_data->w_hat, run_data->u, run_data->u_hat, N);
+
+	// Initialize the forcing 
+	InitializeForcing();
 		
 	// -------------------------------
 	// Integration Variables
@@ -248,8 +251,11 @@ void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdif
 	double err_sum;
 	double err_denom;
 	#endif
+	
+	//------------------- Pre-record the amplitudes so they can be reset after update step
 	#if defined(PHASE_ONLY)
-	// Pre-record the amplitudes so they can be reset after update step
+	double tmp_a_k_norm;
+
 	for (int i = 0; i < local_Nx; ++i) {
 		tmp = i * Ny_Fourier;
 		for (int j = 0; j < Ny_Fourier; ++j) {
@@ -259,8 +265,10 @@ void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdif
 			run_data->tmp_a_k[indx] = cabs(run_data->w_hat[indx]);
 		}
 	}
-	double tmp_a_k_norm;
 	#endif
+
+	//------------------- Get the forcing
+	ComputeForcing();
 	
 	/////////////////////
 	/// RK STAGES
@@ -484,8 +492,11 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Nx, RK_da
 	double D_fac;
 	#endif
 	const long int Ny_Fourier = N[1] / 2 + 1;
+
+	//------------------- Pre-record the amplitudes so they can be reset after update step
 	#if defined(PHASE_ONLY)
-	// Pre-record the amplitudes so they can be reset after update step
+	double tmp_a_k_norm;
+
 	for (int i = 0; i < local_Nx; ++i) {
 		tmp = i * Ny_Fourier;
 		for (int j = 0; j < Ny_Fourier; ++j) {
@@ -495,8 +506,10 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Nx, RK_da
 			run_data->tmp_a_k[indx] = cabs(run_data->w_hat[indx]);
 		}
 	}
-	double tmp_a_k_norm;
 	#endif
+
+	//------------------- Get the forcing
+	ComputeForcing();
 
 
 	/////////////////////
@@ -717,8 +730,12 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* u, 
  	// Apply dealiasing 
  	ApplyDealiasing(dw_hat_dt, 1, sys_vars->N);
 
- 	// Forcing 
- 	ApplyForcing(dw_hat_dt, sys_vars->N);
+ 	// Add the forcing
+	if (sys_vars->local_forcing_proc) {
+		for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
+			dw_hat_dt[run_data->forcing_indx[i]] += run_data->forcing[i]; 
+		}
+	}
 
  	// Free memory
  	free(nonlinterm);
@@ -775,23 +792,25 @@ void ApplyDealiasing(fftw_complex* array, int array_dim, const long int* N) {
 	}
 }	
 /**
- * Function that applies forcing to the Fourier vorticity
+ * Function that comutes the forcing for the current timestep
  * @param w_hat The Fourier vorticity
  * @param N     Dimensions of the system
  */
-void ApplyForcing(fftw_complex* w_hat, const long int* N) {
+void ComputeForcing(fftw_complex* w_hat, const long int* N) {
 
 	// Initialize variables
 	int tmp, indx;
+	double r1, r2;
+	double re_f, im_f;
 	ptrdiff_t local_Nx        = sys_vars->local_Nx;
 	const long int Ny         = N[1];
 	const long int Ny_Fourier = Ny / 2 + 1;
 
 	// --------------------------------------------
-	// Apply Appropriate Forcing
+	// Compute Forcing
 	// --------------------------------------------
+	//---------------------------- Compute Zero forcing -> specified modes are killed/set to 0
 	if(!(strcmp(sys_vars->forcing, "ZERO"))) {
-		// Apply Zero forcing -> specified modes are killed/set to 0
 		for (int i = 0; i < local_Nx; ++i) {
 			tmp = i * Ny_Fourier;
 			for (int j = 0; j < Ny_Fourier; ++j) {
@@ -804,12 +823,33 @@ void ApplyForcing(fftw_complex* w_hat, const long int* N) {
 			}
 		}
 	}
+	//---------------------------- Compute Kolmogorov forcing -> f(u) = (sin(n y), 0); f(w) = -n cos(n y) -> f_k = -1/2 * n \delta(n)
 	else if(!(strcmp(sys_vars->forcing, "KOLM"))) {
-		// Apply Kolmogorov forcing
-
+		// Compute the forcing on the local process containing the forced modes
+		if (sys_vars->local_forcing_proc) {
+			// Compute the Kolmogorov forcing
+			run_data->forcing[0] = -0.5 * sys_vars->force_k * (sys_vars->force_k + 0.0 * I);
+		}
 	}
+	//---------------------------- Compute Stochastic forcing
 	else if(!(strcmp(sys_vars->forcing, "STOC"))) {
-		// Apply Stochastic forcing
+		// Compute the forcing on the local process containing the forced modes
+		if (sys_vars->local_forcing_proc) {
+			// Loop over the forced modes
+			for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
+				// Generate two uniform random numbers
+				r1 = (double) rand() / (double) RAND_MAX;
+				r2 = (double) rand() / (double) RAND_MAX;
+
+				// Convert to Gaussian using Box-Muller transform
+				re_f = sqrt(-2.0 * log(r1)) * cos(r2 * 2.0 * pi);
+				im_f = sqrt(-2.0 * log(r1)) * sin(r2 * 2.0 * pi);
+			}
+		
+		}
+	}
+	//---------------------------- No forcing
+	else {
 
 	}
 }
@@ -1357,11 +1397,6 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 	// -------------------------------------------------
 	ApplyDealiasing(w_hat, 1, N);
     
-    
-	// -------------------------------------------------
-	// Initialize the Forcing
-	// -------------------------------------------------
-	ApplyForcing(w_hat, N);
    
    	// -------------------------------------------------
    	// Get Max of Initial Condition
@@ -2327,8 +2362,13 @@ void EnstrophyFlux(double* enst_flux, double* enst_diss, RK_data_struct* RK_data
 		exit(1);
 	}
 
-	// Compute the nonlinear term
+	// Compute the nonlinear term & subtract the forcing as the flux computation should ignore focring
 	NonlinearRHSBatch(run_data->w_hat, dwhat_dt, RK_data->nabla_psi, RK_data->nabla_w);
+	if (sys_vars->local_forcing_proc) {
+		for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
+			dw_hat_dt[run_data->forcing_indx[i]] -= run_data->forcing[i];
+		}
+	}
 
 	// -------------------------------------
 	// Compute the Enstrophy Flux & Diss
@@ -2428,8 +2468,13 @@ void EnergyFlux(double* enrg_flux, double* enrg_diss, RK_data_struct* RK_data) {
 		exit(1);
 	}
 
-	// Compute the nonlinear term
+	// Compute the nonlinear term & subtract the forcing as the flux computation should ignore focring
 	NonlinearRHSBatch(run_data->w_hat, dwhat_dt, RK_data->nabla_psi, RK_data->nabla_w);
+	if (sys_vars->local_forcing_proc) {
+		for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
+			dw_hat_dt[run_data->forcing_indx[i]] -= run_data->forcing[i];
+		}
+	}
 
 	// -------------------------------------
 	// Compute the Energy Flux & Diss
@@ -2540,8 +2585,13 @@ void EnergyFluxSpectrum(RK_data_struct* RK_data) {
 		exit(1);
 	}
 
-	// Compute the nonlinear term
+	// Compute the nonlinear term & subtract the forcing as the flux computation should ignore focring
 	NonlinearRHSBatch(run_data->w_hat, dwhat_dt, RK_data->nabla_psi, RK_data->nabla_w);
+	if (sys_vars->local_forcing_proc) {
+		for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
+			dw_hat_dt[run_data->forcing_indx[i]] -= run_data->forcing[i];
+		}
+	}
 
 	// -------------------------------------
 	// Compute the Energy Flux Spectrum
@@ -2628,8 +2678,13 @@ void EnstrophyFluxSpectrum(RK_data_struct* RK_data) {
 		exit(1);
 	}
 
-	// Compute the nonlinear term
+	// Compute the nonlinear term & subtract the forcing as the flux computation should ignore focring
 	NonlinearRHSBatch(run_data->w_hat, dwhat_dt, RK_data->nabla_psi, RK_data->nabla_w);
+	if (sys_vars->local_forcing_proc) {
+		for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
+			dw_hat_dt[run_data->forcing_indx[i]] -= run_data->forcing[i];
+		}
+	}
 
 	// -------------------------------------
 	// Compute the Energy Flux Spectrum
@@ -2755,8 +2810,13 @@ void ComputeSystemMeasurables(double t, int iter, RK_data_struct* RK_data) {
 	#endif
 
 	#if defined(__ENRG_FLUX) || defined(__ENST_FLUX) || defined(__ENRG_FLUX_SPECT) || defined(__ENST_FLUX_SPECT)
-	// Compute the nonlinear term
+	// Compute the nonlinear term & subtract the forcing as the flux computation should ignore focring
 	NonlinearRHSBatch(run_data->w_hat, RK_data->RK1, RK_data->nabla_psi, RK_data->nabla_w);
+	if (sys_vars->local_forcing_proc) {
+		for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
+			RK_data->RK1[run_data->forcing_indx[i]] -= run_data->forcing[i];
+		}
+	}
 	#endif
 
 
@@ -3228,6 +3288,158 @@ void InitializeFFTWPlans(const long int* N) {
 		exit(1);
 	}
 }
+void InitializeForcing(void) {
+
+	// Initialize variables
+	int tmp, indx;
+	double k_abs;
+	double scale_fac_f0
+	int num_forced_modes   = 0;
+	int force_mode_counter = 0
+	double sum_k_pow       = 0.0;
+	double scaling_exp     = 0.0;
+	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
+
+	// -----------------------------------
+	// Initialize Forcing Objects 
+	// -----------------------------------
+	//--------------------------------- Apply Kolmogorov forcing
+	if(!(strcmp(sys_vars->forcing, "KOLM"))) {
+		// Loop through modes to identify local process(es) containing the modes to be forced
+		for (int i = 0; i < sys_vars->local_Nx; ++i) {
+			if (run_data->k[0][i] == 0) {
+				sys_vars->local_forcing_proc = 1;
+				num_forced_modes++;
+			}
+			else {
+				sys_vars->local_forcing_proc = 0;
+			}
+		}
+
+		// Get the number of forced modes
+		sys_vars->num_forced_modes = num_forced_modes;
+
+		// Allocate forcing data on the local forcing process only
+		if (sys_vars->local_forcing_proc) {
+			// -----------------------------------
+			// Allocate Memory 
+			// -----------------------------------
+			// Allocate the forcing array to hold the forcing
+			run_data->forcing = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * num_forced_modes);
+			if (run_data->forcing == NULL) {
+				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Forcing");
+				exit(1);
+			}
+			// Allocate array for the forced mode index
+			run_data->forcing_indx = (int* )fftw_malloc(sizeof(int) * num_forced_modes);
+			if (run_data->forcing_indx == NULL) {
+				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Forcing Indices");
+				exit(1);
+			}
+			// Allocate array for the forced mode wavenumbers
+			for (int i = 0; i < SYS_DIM; ++i) {
+				run_data->forcing_k[i] = (int* )fftw_malloc(sizeof(int) * num_forced_modes);
+				if (run_data->forcing_k[i] == NULL) {
+					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Forcing Wavevectors");
+					exit(1);
+				}
+			}
+
+			// -----------------------------------
+			// Fill Forcing Info
+			// -----------------------------------
+			// Get the forcing index
+			run_data->forcing_indx[0] = sys_vars->force_k;
+
+			// Get the forcing wavenumbers
+			run_data->forcing_k[0][0] = 0;
+			run_data->forcing_k[0][1] = run_vars->k[1][sys_vars->force_k];
+		}
+
+
+	}
+	//--------------------------------- Apply Stochastic forcing
+	else if(!(strcmp(sys_vars->forcing, "STOC"))) {
+		// Loop through modes to identify local process(es) containing the modes to be forced
+		for (int i = 0; i < sys_vars->local_Nx; ++i) {
+			for (int j = 0; j < Ny_Fourier; ++j) {
+				// Compute |k|
+				k_abs = sqrt((double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]));
+
+				// Count the forced modes
+				if ((k_abs > STOC_FORC_K_MIN && k_abs < STOC_FORC_K_MAX) && (run_data->k[1][j] != 0 || run_data->k[0][i] > 0)) {
+					sum_k_pow += pow(k_abs, 2.0 * scaling_exp);
+					num_forced_modes++;
+				}
+			}
+		}
+
+		// Get count of forced modes
+		sys_vars->num_forced_modes = num_forced_modes;
+
+		// Sync sum of forced wavenumbers
+		MPI_Allreduce(MPI_IN_PLACE, &sum_k, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+
+		// Allocate forcing data on the local forcing process only
+		if (sys_vars->local_forcing_proc) {
+			// -----------------------------------
+			// Allocate Memory 
+			// -----------------------------------
+			// Allocate the forcing array to hold the forcing
+			run_data->forcing = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * num_forced_modes);
+			if (run_data->forcing == NULL) {
+				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Forcing");
+				exit(1);
+			}
+			// Allocate array for the forced mode index
+			run_data->forcing_indx = (int* )fftw_malloc(sizeof(int) * num_forced_modes);
+			if (run_data->forcing_indx == NULL) {
+				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Forcing Indices");
+				exit(1);
+			}
+			// Allocate array for the forced mode wavenumbers
+			for (int i = 0; i < SYS_DIM; ++i) {
+				run_data->forcing_k[i] = (int* )fftw_malloc(sizeof(int) * num_forced_modes);
+				if (run_data->forcing_k[i] == NULL) {
+					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Forcing Wavevectors");
+					exit(1);
+				}
+			}
+
+
+			// -----------------------------------
+			// Fill Forcing Info
+			// -----------------------------------
+			scale_fac_f0       = sqrt(sys_vars->force_scale_var / (2.0 * sum_k));
+			force_mode_counter = 0;
+			for (int i = 0; i < sys_vars->local_Nx; ++i) {
+				tmp = i * Ny_Fourier
+				for (int j = 0; j < Ny_Fourier; ++j) {
+					indx = tmp + j;
+
+					// Compute |k|
+					k_abs = sqrt((double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]));
+
+					// Count the forced modes
+					if ((k_abs > STOC_FORC_K_MIN && k_abs < STOC_FORC_K_MAX) && (run_data->k[1][j] != 0 || run_data->k[0][i] > 0)) {
+						run_data->forcing[force_mode_counter]      = scale_fac_f0 * pow(k_abs, scaling_exp);
+						run_data->forcing_indx[force_mode_counter] = indx;
+						run_data->forcing_k[0][force_mode_counter] = run_vars->k[0][i];
+						run_data->forcing_k[1][force_mode_counter] = run_vars->k[1][j];
+						force_mode_counter++;
+					}
+				}
+			}
+		}
+	} 
+	//--------------------------------- If ZERO modes forcing selected
+	else if(!(strcmp(sys_vars->forcing, "ZERO"))) {
+
+	}
+	//--------------------------------- No forcing selected
+	else {
+	}
+}
 /**
  * Function to initialize and compute the system measurables and spectra of the initial conditions
  * @param RK_data The struct containing the Runge-Kutta arrays to compute the nonlinear term for the fluxes
@@ -3434,6 +3646,9 @@ void FreeMemory(RK_data_struct* RK_data) {
 	fftw_free(run_data->u_hat);
 	fftw_free(run_data->w);
 	fftw_free(run_data->w_hat);
+	fftw_free(run_data->forcing);
+	fftw_free(run_data->forcing_indx);
+	fftw_free(run_data->forcing_k);
 	#if defined(PHASE_ONLY)
 	fftw_free(run_data->a_k);
 	fftw_free(run_data->phi_k);

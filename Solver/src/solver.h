@@ -34,11 +34,12 @@ double DPMin(double a, double b);
 #endif
 void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* u, double* w);
 void ApplyDealiasing(fftw_complex* array, int array_dim, const long int* N);
-void ApplyForcing(fftw_complex* w_hat, const long int* N);
+void ComputeForcing(void);
 // Initialize the system functions
 void InitializeSpaceVariables(double** x, int** k, const long int* N);
 void InitializeIntegrationVariables(double* t0, double* t, double* dt, double* T, long int* trans_steps);
 void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, const long int* N);
+void InitializeForcing(void);
 double GetMaxData(char* dtype);
 void InitializeSystemMeasurables(RK_data_struct* RK_data);
 // Timestep

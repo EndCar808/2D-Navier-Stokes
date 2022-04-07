@@ -230,16 +230,30 @@ int GetCMLArgs(int argc, char** argv) {
 				if (!(strcmp(optarg,"ZERO")) && (force_flag == 0)) {
 					// Killing certain modes
 					strncpy(sys_vars->forcing, "ZERO", 64);
+					force_flag = 1;
 					break;
 				}
 				else if (!(strcmp(optarg,"KOLM"))  && (force_flag == 0)) {
 					// Kolmogorov forcing
 					strncpy(sys_vars->forcing, "KOLM", 64);
+					force_flag = 1;
+					break;
+				}
+				else if (!(strcmp(optarg,"STOC"))  && (force_flag == 0)) {
+					// Stochastic forcing
+					strncpy(sys_vars->forcing, "STOC", 64);
+					force_flag = 1;
 					break;
 				}
 				else if ((force_flag == 1)) {
 					// Get the forcing wavenumber
 					sys_vars->force_k = atoi(optarg);
+					force_flag = 2;
+				}
+				else if ((force_flag == 2)) {
+					// Get the force scaling variable
+					sys_vars->force_scale_var = atof(optarg);
+					force_flag = 2;
 				}
 				else {
 					// Set default forcing to None
