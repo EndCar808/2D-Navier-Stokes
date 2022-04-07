@@ -77,7 +77,7 @@ def parse_cml(argv):
         if opt in ['-i']:
             ## Read input directory
             cargs.in_dir = str(arg)
-            print("Input Folder: " + tc.C + "{}".format(cargs.in_dir) + tc.Rst)
+            print("\nInput Folder: " + tc.C + "{}".format(cargs.in_dir) + tc.Rst)
 
             cargs.out_dir = str(arg)
             print("Output Folder: " + tc.C + "{}".format(cargs.out_dir) + tc.Rst)
@@ -275,7 +275,8 @@ if __name__ == '__main__':
                         for process in processes:
                             process.join()
                 else:
-                    for t in range(5):
+                    num_triad_types = post_data.triad_R_across_sec.shape[1]
+                    for t in range(num_triad_types):
                         print("TRIAD TYPE: {}".format(t), end = " ")
                         ## Create tasks for the process pool
                         if cmdargs.full:
@@ -329,7 +330,8 @@ if __name__ == '__main__':
                         else:
                             plot_sector_phase_sync_snaps(i, cmdargs.out_dir_triads, post_data.phases[i, :, int(sys_vars.Nx/3 - 1):], post_data.theta, post_data.triad_R[i, int(cmdargs.triad_type), :], post_data.triad_Phi[i, int(cmdargs.triad_type), :], run_data.time[i], sys_vars.Nx, sys_vars.Ny)
                 else:
-                    for t in range(5):
+                    num_triad_types = post_data.triad_R_across_sec.shape[1]
+                    for t in range(num_triad_types):
                         print("TRIAD TYPE: {}".format(t), end = " ")
                         ## Loop through simulation and plot data
                         for i in range(sys_vars.ndata):

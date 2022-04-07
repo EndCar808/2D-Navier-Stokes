@@ -117,7 +117,8 @@ if __name__ == '__main__':
     ## Read in post processing data
     post_data = import_post_processing_data(post_file_path, sys_vars, method)
 
-
+    ## Number of triad types
+    num_triad_types = 7
     # -----------------------------------------
     # # --------  Compare Data
     # -----------------------------------------
@@ -135,7 +136,7 @@ if __name__ == '__main__':
 
     ax2 = fig.add_subplot(gs[0, 1])
     plot = []
-    for i in range(5):
+    for i in range(num_triad_types):
         l, = ax2.plot(run_data.time, np.sum(post_data.enst_flux_per_sec[:, i, :], axis = 1) * 4 * np.pi**2 / (sys_vars.Nx * sys_vars.Ny)**2)
         plot.append(l.get_color())
     ax2.set_xlabel(r"$t$")

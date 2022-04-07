@@ -43,7 +43,7 @@ if len(Ny) >= 1:
     for n in Ny:
         Nk.append(int(n / 2 + 1))
 else:
-    Nk = int(Ny / 2 + 1)
+    Nk = [int(Ny / 2 + 1)]
 
 ## System parameters
 nu             = 0.0

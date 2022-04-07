@@ -452,6 +452,8 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                 ## Get the enstrophy flux out of the set C
                 if 'EnstrophyFluxC' in list(f.keys()):
                     self.enst_flux_C = f["EnstrophyFluxC"][:]
+                if 'EnstrophyDissC' in list(f.keys()):
+                    self.enst_diss_C = f["EnstrophyDissC"][:]
                 ## Get the increment histogram data
                 if 'LongitudinalVelIncrements_BinRanges' in list(f.keys()):
                     self.long_vel_incr_ranges = f["LongitudinalVelIncrements_BinRanges"][:, :]
@@ -520,6 +522,8 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
             self.w_hat = np.ones((sim_data.ndata, sim_data.Nx, sim_data.Nk)) * np.complex(0.0, 0.0)
             ## Enstrophy Flux Spectrum
             self.enst_flux_spec = np.zeros((sim_data.ndata, sim_data.spec_size))
+            self.enst_diss_spec = np.zeros((sim_data.ndata, sim_data.spec_size))
+            self.d_enst_dt_spec = np.zeros((sim_data.ndata, sim_data.spec_size))
             self.kmax_frac      = float(in_file.split('_')[-3].split("[")[-1].split("]")[0])
             self.kmax_C         = int(self.kmax * self.kmax_frac)
             ## Enstrophy Flux Per Sector
@@ -586,6 +590,10 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                     data.w_hat[nn, :, :] = f[group]["w_hat"][:, :]
                 if 'EnstrophyFluxSpectrum' in list(f[group].keys()):
                     data.enst_flux_spec[nn, :] = f[group]["EnstrophyFluxSpectrum"][:]
+                if 'EnstrophyTimeDerivativeSpectrum' in list(f[group].keys()):
+                    data.d_enst_dt_spec[nn, :] = f[group]["EnstrophyTimeDerivativeSpectrum"][:]
+                if 'EnstrophyDissSpectrum' in list(f[group].keys()):
+                    data.enst_diss_spec[nn, :] = f[group]["EnstrophyDissSpectrum"][:]
                 if 'EnstrophyFluxPerSector' in list(f[group].keys()):
                     data.enst_flux_per_sec[nn, :, :] = f[group]["EnstrophyFluxPerSector"][:, :]
                 if 'EnstrophyFluxPerSectorAcrossSector' in list(f[group].keys()):

@@ -1958,11 +1958,15 @@ void EnstrophyFluxSpectrum(int snap) {
 				// Update spectrum bin
 				if ((j == 0) || (Ny_Fourier - 1)) {
 					// Update the current bin sum 
-					proc_data->enst_flux_spec[spec_indx] += 4.0 * M_PI * M_PI * norm_fac * creal(run_data->w_hat[indx] * conj(proc_data->dw_hat_dt[indx]) + conj(run_data->w_hat[indx]) * proc_data->dw_hat_dt[indx]);
+					proc_data->d_enst_dt_spec[spec_indx] += creal(run_data->w_hat[indx] * conj(proc_data->dw_hat_dt[indx]) + conj(run_data->w_hat[indx]) * proc_data->dw_hat_dt[indx]) * 4.0 * M_PI * M_PI * norm_fac;
+					proc_data->enst_diss_spec[spec_indx] += pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * 4.0 * M_PI * M_PI * norm_fac; 
+					proc_data->enst_flux_spec[spec_indx] += proc_data->d_enst_dt_spec[spec_indx] - proc_data->enst_diss_spec[spec_indx]; 
 				}
 				else {
 					// Update the running sum for the flux of energy
-					proc_data->enst_flux_spec[spec_indx] += 2.0 * 4.0 * M_PI * M_PI * norm_fac * creal(run_data->w_hat[indx] * conj(proc_data->dw_hat_dt[indx]) + conj(run_data->w_hat[indx]) * proc_data->dw_hat_dt[indx]);
+					proc_data->d_enst_dt_spec[spec_indx] += 2.0 * creal(run_data->w_hat[indx] * conj(proc_data->dw_hat_dt[indx]) + conj(run_data->w_hat[indx]) * proc_data->dw_hat_dt[indx]) * 4.0 * M_PI * M_PI * norm_fac;
+					proc_data->enst_diss_spec[spec_indx] += 2.0 * pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * 4.0 * M_PI * M_PI * norm_fac; 
+					proc_data->enst_flux_spec[spec_indx] += 2.0 * proc_data->d_enst_dt_spec[spec_indx] - proc_data->enst_diss_spec[spec_indx]; 
 				}
 
 			}
@@ -1974,10 +1978,13 @@ void EnstrophyFluxSpectrum(int snap) {
 	// -------------------------------------
 	// Accumulate the flux for each k
 	for (int i = 1; i < sys_vars->n_spec; ++i) {
+		proc_data->d_enst_dt_spec[i] += proc_data->d_enst_dt_spec[i - 1];
 		proc_data->enst_flux_spec[i] += proc_data->enst_flux_spec[i - 1];
+		proc_data->enst_diss_spec[i] += proc_data->enst_diss_spec[i - 1];
 		if (i == (int)(sys_vars->kmax_frac * sys_vars->kmax)) {
 			// Record the enstrophy flux out of the set C
 			proc_data->enst_flux_C[snap] = proc_data->enst_flux_spec[i];
+			proc_data->enst_diss_C[snap] = proc_data->enst_diss_spec[i];
 		}
 	}
 }
@@ -2242,16 +2249,34 @@ void AllocateMemory(const long int* N) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Nonlinear Term in Real Spcace");
 		exit(1);
 	}
+	// The time derivative of enstrophy spectrum
+	proc_data->d_enst_dt_spec = (double* )fftw_malloc(sizeof(double) * sys_vars->n_spec);
+	if (proc_data->d_enst_dt_spec == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Time Derivative of Enstrophy Spectrum");
+		exit(1);
+	}
 	// The enstrophy flux spectrum
 	proc_data->enst_flux_spec = (double* )fftw_malloc(sizeof(double) * sys_vars->n_spec);
 	if (proc_data->enst_flux_spec == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Enstrophy Flux Spectrum");
 		exit(1);
 	}
+	// The enstrophy flux spectrum
+	proc_data->enst_diss_spec = (double* )fftw_malloc(sizeof(double) * sys_vars->n_spec);
+	if (proc_data->enst_diss_spec == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Enstrophy Dissipation Spectrum");
+		exit(1);
+	}
 	// The enstrophy flux out of the set C
 	proc_data->enst_flux_C = (double* )fftw_malloc(sizeof(double) * sys_vars->num_snaps);
 	if (proc_data->enst_flux_C == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Enstrophy Flux Out of C");
+		exit(1);
+	}
+	// The enstrophy flux out of the set C
+	proc_data->enst_diss_C = (double* )fftw_malloc(sizeof(double) * sys_vars->num_snaps);
+	if (proc_data->enst_diss_C == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Enstrophy Dissipation in C");
 		exit(1);
 	}
 
@@ -2271,9 +2296,12 @@ void AllocateMemory(const long int* N) {
 	}
 	for (int i = 0; i < sys_vars->num_snaps; ++i) {
 		proc_data->enst_flux_C[i] = 0.0;
+		proc_data->enst_diss_C[i] = 0.0;
 	}
 	for (int i = 0; i < sys_vars->n_spec; ++i) {
+		proc_data->d_enst_dt_spec[i] = 0.0;
 		proc_data->enst_flux_spec[i] = 0.0;
+		proc_data->enst_diss_spec[i] = 0.0;
 	}
 	#endif
 
@@ -2627,12 +2655,11 @@ void AllocateMemory(const long int* N) {
 		for (int l = 0; l < NUM_K1_SECTORS; ++l) {
 
 			// Get the angles for the second sector
-			theta_k1 = MyMod(proc_data->theta[a] + k1_sector_angles[l] * proc_data->dtheta/2.0 + M_PI, 2.0 * M_PI) - M_PI;
+			theta_k1 = MyMod(proc_data->theta[a] + (k1_sector_angles[l] * proc_data->dtheta/2.0) + M_PI, 2.0 * M_PI) - M_PI;
 			alt_theta_lwr = theta_k1 - proc_data->dtheta / 2.0;
 			alt_theta_upr = theta_k1 + proc_data->dtheta / 2.0;
 
 			// Find the sector for k2 -> as the mid point of the sector of k3 - k1
-			theta_k1 = MyMod(proc_data->theta[a] + k1_sector_angles[l] * proc_data->dtheta / 2.0 + M_PI, 2.0 * M_PI) - M_PI;
 			k3 = cexp(I * proc_data->theta[a]);
 			k1 = cexp(I * theta_k1);
 
@@ -2945,7 +2972,10 @@ void FreeMemoryAndCleanUp(void) {
 	fftw_free(proc_data->dw_hat_dt);
 	fftw_free(proc_data->nonlinterm);
 	fftw_free(proc_data->enst_flux_C);
+	fftw_free(proc_data->enst_diss_C);
+	fftw_free(proc_data->d_enst_dt_spec);
 	fftw_free(proc_data->enst_flux_spec);
+	fftw_free(proc_data->enst_diss_spec);
 	#endif
 	#if defined(__SEC_PHASE_SYNC)
 	fftw_free(proc_data->theta);
