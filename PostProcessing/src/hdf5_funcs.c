@@ -618,7 +618,29 @@ void WriteDataToFile(double t, long int snap) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Enstrophy Dissipation Spectrum", t, snap);
         exit(1);
     }
-    #if defined(__NONLIN)
+	#endif
+	#if defined(__ENRG_FLUX)
+	// Write the energy flux spectrum
+	dset_dims_1d[0] = sys_vars->n_spec;
+	status = H5LTmake_dataset(group_id, "EnergyFluxSpectrum", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, proc_data->enrg_flux_spec);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Energy Flux Spectrum", t, snap);
+        exit(1);
+    }
+    // Write the time derivative of energy spectrum
+    status = H5LTmake_dataset(group_id, "EnergyTimeDerivativeSpectrum", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, proc_data->d_enrg_dt_spec);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Time Derivative of Energy Spectrum", t, snap);
+        exit(1);
+    }
+    // Write the energy dissipation spectrum
+    status = H5LTmake_dataset(group_id, "EnergyDissSpectrum", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, proc_data->enrg_diss_spec);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Energy Dissipation Spectrum", t, snap);
+        exit(1);
+    }
+	#endif
+    #if (defined(__ENST_FLUX) || defined(__ENRG_FLUX) || defined(__SEC_PHASE_SYNC)) && defined(__NONLIN)
     // Write the nonlinear term in Fourier space
     dset_dims_2d[0] = sys_vars->N[0];
     dset_dims_2d[1] = sys_vars->N[1];
@@ -628,7 +650,6 @@ void WriteDataToFile(double t, long int snap) {
         exit(1);
     }
     #endif
-	#endif
 
 
     // -------------------------------
@@ -998,6 +1019,22 @@ void FinalWriteAndClose(void) {
     status = H5LTmake_dataset(file_info->output_file_handle, "EnstrophyDissC", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, proc_data->enst_diss_C);
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!!!\n-->> Exiting...\n", "Enstrophy Dissipation in C");
+        exit(1);
+    }
+	#endif
+	///----------------------------------- Write the Energy Flux out of & Dissipation in C
+	#if defined(__ENST_FLUX)
+	// Write the energy flux out of the set C
+	dset_dims_1d[0] = sys_vars->num_snaps;
+	status = H5LTmake_dataset(file_info->output_file_handle, "EnergyFluxC", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, proc_data->enrg_flux_C);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!!!\n-->> Exiting...\n", "Energy Flux in C");
+        exit(1);
+    }
+    // Write the energy dissipation in the set C
+    status = H5LTmake_dataset(file_info->output_file_handle, "EnergyDissC", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, proc_data->enrg_diss_C);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!!!\n-->> Exiting...\n", "Energy Dissipation in C");
         exit(1);
     }
 	#endif

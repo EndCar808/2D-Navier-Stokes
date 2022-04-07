@@ -90,8 +90,10 @@ int main(int argc, char** argv) {
 	// --------------------------------
 	AllocateMemory(sys_vars->N);
 
-	InitializeFFTWPlans(sys_vars->N);
+	printf("Here\n");
 
+	InitializeFFTWPlans(sys_vars->N);
+	printf("Here\n");
 
 	//////////////////////////////
 	// Begin Snapshot Processing
@@ -122,8 +124,8 @@ int main(int argc, char** argv) {
 		EnstrophySpectrum();
         EnergySpectrum();
 		#endif
-		#if defined(__ENST_FLUX) || defined(__SEC_PHASE_SYNC)
-        EnstrophyFluxSpectrum(s);
+		#if defined(__ENST_FLUX) || defined(__ENRG_FLUX) || defined(__SEC_PHASE_SYNC)
+        FluxSpectra(s);
 		#endif
 
 		// --------------------------------

@@ -53,6 +53,8 @@ int GetCMLArgs(int argc, char** argv) {
 	sys_vars->kmax_frac = 1.0;
 	// Set the default amount of threads to use
 	sys_vars->num_threads = 1;
+	// Viscosity
+	sys_vars->NU = 1e-4;
 	// -------------------------------
 	// Parse CML Arguments
 	// -------------------------------
@@ -101,6 +103,14 @@ int GetCMLArgs(int argc, char** argv) {
 				sys_vars->kmax_frac = atof(optarg); 
 				if (sys_vars->kmax_frac <= 0 || sys_vars->kmax_frac > 1.0) {
 					fprintf(stderr, "\n["RED"ERROR"RESET"]: Error in reading in command line agument ["CYAN"%s"RESET"], the fraction of maximum wavevector must be in (0, 1], fraction provided ["CYAN"%lf"RESET"]\n--->> Now Exiting!\n", "sys_vars->kmax_frac", sys_vars->kmax_frac);
+					exit(1);
+				}
+				break;
+			case 'v':
+				// Get the fraction of kmax wavevectors to consider in the phase sync
+				sys_vars->NU = atof(optarg); 
+				if (sys_vars->NU < 0) {
+					fprintf(stderr, "\n["RED"ERROR"RESET"]: Error in reading in command line agument ["CYAN"%s"RESET"], the kinematic viscosity must positive, viscosity provided ["CYAN"%lf"RESET"]\n--->> Now Exiting!\n", "sys_vars->NU", sys_vars->NU);
 					exit(1);
 				}
 				break;

@@ -443,7 +443,7 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                     self.theta = f["SectorAngles"][:]
                     self.num_sect = self.theta.shape[0]
                 if 'SectorAngles' not in list(f.keys()):
-                    self.num_sect = int(in_f.split('_')[-4].split("[")[-1].split("]")[0])
+                    self.num_sect = int(in_f.split('_')[-3].split("[")[-1].split("]")[0])
                 ## Get the number of triads per sector
                 if 'NumTriadsPerSector' in list(f.keys()):
                     self.num_triads = f["NumTriadsPerSector"][:, :]
@@ -454,6 +454,11 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                     self.enst_flux_C = f["EnstrophyFluxC"][:]
                 if 'EnstrophyDissC' in list(f.keys()):
                     self.enst_diss_C = f["EnstrophyDissC"][:]
+                ## Get the energy flux out of the set C
+                if 'EnergyFluxC' in list(f.keys()):
+                    self.enrg_flux_C = f["EnergyFluxC"][:]
+                if 'EnergyDissC' in list(f.keys()):
+                    self.enrg_diss_C = f["EnergyDissC"][:]
                 ## Get the increment histogram data
                 if 'LongitudinalVelIncrements_BinRanges' in list(f.keys()):
                     self.long_vel_incr_ranges = f["LongitudinalVelIncrements_BinRanges"][:, :]
@@ -526,6 +531,10 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
             self.d_enst_dt_spec = np.zeros((sim_data.ndata, sim_data.spec_size))
             self.kmax_frac      = float(in_file.split('_')[-3].split("[")[-1].split("]")[0])
             self.kmax_C         = int(self.kmax * self.kmax_frac)
+            ## Energy Flux Spectrum
+            self.enrg_flux_spec = np.zeros((sim_data.ndata, sim_data.spec_size))
+            self.enrg_diss_spec = np.zeros((sim_data.ndata, sim_data.spec_size))
+            self.d_enrg_dt_spec = np.zeros((sim_data.ndata, sim_data.spec_size))
             ## Enstrophy Flux Per Sector
             self.enst_flux_per_sec = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_sect))
             self.enst_flux_per_sec_across_sec = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_sect, NUM_K1_SECTS))
@@ -594,6 +603,12 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                     data.d_enst_dt_spec[nn, :] = f[group]["EnstrophyTimeDerivativeSpectrum"][:]
                 if 'EnstrophyDissSpectrum' in list(f[group].keys()):
                     data.enst_diss_spec[nn, :] = f[group]["EnstrophyDissSpectrum"][:]
+                if 'EnergyFluxSpectrum' in list(f[group].keys()):
+                    data.enrg_flux_spec[nn, :] = f[group]["EnergyFluxSpectrum"][:]
+                if 'EnergyTimeDerivativeSpectrum' in list(f[group].keys()):
+                    data.d_enrg_dt_spec[nn, :] = f[group]["EnergyTimeDerivativeSpectrum"][:]
+                if 'EnergyDissSpectrum' in list(f[group].keys()):
+                    data.enrg_diss_spec[nn, :] = f[group]["EnergyDissSpectrum"][:]
                 if 'EnstrophyFluxPerSector' in list(f[group].keys()):
                     data.enst_flux_per_sec[nn, :, :] = f[group]["EnstrophyFluxPerSector"][:, :]
                 if 'EnstrophyFluxPerSectorAcrossSector' in list(f[group].keys()):

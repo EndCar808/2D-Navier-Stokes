@@ -1894,11 +1894,11 @@ void NonlinearRHS(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* nonlinte
 	ApplyDealiasing(dw_hat_dt, 1, sys_vars->N);
 }
 /**
- * Function to compute the enstrophy flux spectrum and enstorphy flux in C for the current snapshot of the simulation
+ * Function to compute the energy & enstrophy flux spectra and energy and enstorphy flux and dissipation in C for the current snapshot of the simulation
  * The results are gathered on the master rank before being written to file
  * @param snap    The current snapshot of the simulation
  */
-void EnstrophyFluxSpectrum(int snap) {
+void FluxSpectra(int snap) {
 
 	// Initialize variables
 	int tmp;
@@ -1958,15 +1958,29 @@ void EnstrophyFluxSpectrum(int snap) {
 				// Update spectrum bin
 				if ((j == 0) || (Ny_Fourier - 1)) {
 					// Update the current bin sum 
+					#if defined(__ENST_FLUX)
 					proc_data->d_enst_dt_spec[spec_indx] += creal(run_data->w_hat[indx] * conj(proc_data->dw_hat_dt[indx]) + conj(run_data->w_hat[indx]) * proc_data->dw_hat_dt[indx]) * 4.0 * M_PI * M_PI * norm_fac;
 					proc_data->enst_diss_spec[spec_indx] += pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * 4.0 * M_PI * M_PI * norm_fac; 
 					proc_data->enst_flux_spec[spec_indx] += proc_data->d_enst_dt_spec[spec_indx] - proc_data->enst_diss_spec[spec_indx]; 
+					#endif
+					#if defined(__ENRG_FLUX)
+					proc_data->d_enrg_dt_spec[spec_indx] += creal(run_data->w_hat[indx] * conj(proc_data->dw_hat_dt[indx]) + conj(run_data->w_hat[indx]) * proc_data->dw_hat_dt[indx]) * 4.0 * M_PI * M_PI * norm_fac / k_sqr;
+					proc_data->enrg_diss_spec[spec_indx] += pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * 4.0 * M_PI * M_PI * norm_fac / k_sqr; 
+					proc_data->enrg_flux_spec[spec_indx] += proc_data->d_enst_dt_spec[spec_indx] - proc_data->enst_diss_spec[spec_indx]; 
+					#endif
 				}
 				else {
-					// Update the running sum for the flux of energy
+					// Update the running sum for the flux
+					#if defined(__ENST_FLUX)
 					proc_data->d_enst_dt_spec[spec_indx] += 2.0 * creal(run_data->w_hat[indx] * conj(proc_data->dw_hat_dt[indx]) + conj(run_data->w_hat[indx]) * proc_data->dw_hat_dt[indx]) * 4.0 * M_PI * M_PI * norm_fac;
 					proc_data->enst_diss_spec[spec_indx] += 2.0 * pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * 4.0 * M_PI * M_PI * norm_fac; 
-					proc_data->enst_flux_spec[spec_indx] += 2.0 * proc_data->d_enst_dt_spec[spec_indx] - proc_data->enst_diss_spec[spec_indx]; 
+					proc_data->enst_flux_spec[spec_indx] += 2.0 * (proc_data->d_enst_dt_spec[spec_indx] - proc_data->enst_diss_spec[spec_indx]); 
+					#endif
+					#if defined(__ENRG_FLUX)
+					proc_data->d_enrg_dt_spec[spec_indx] += 2.0 * creal(run_data->w_hat[indx] * conj(proc_data->dw_hat_dt[indx]) + conj(run_data->w_hat[indx]) * proc_data->dw_hat_dt[indx]) * 4.0 * M_PI * M_PI * norm_fac / k_sqr;
+					proc_data->enrg_diss_spec[spec_indx] += 2.0 * pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * 4.0 * M_PI * M_PI * norm_fac / k_sqr; 
+					proc_data->enrg_flux_spec[spec_indx] += 2.0 * (proc_data->d_enst_dt_spec[spec_indx] - proc_data->enst_diss_spec[spec_indx]); 
+					#endif
 				}
 
 			}
@@ -1978,13 +1992,26 @@ void EnstrophyFluxSpectrum(int snap) {
 	// -------------------------------------
 	// Accumulate the flux for each k
 	for (int i = 1; i < sys_vars->n_spec; ++i) {
+		#if defined(__ENST_FLUX)
 		proc_data->d_enst_dt_spec[i] += proc_data->d_enst_dt_spec[i - 1];
 		proc_data->enst_flux_spec[i] += proc_data->enst_flux_spec[i - 1];
 		proc_data->enst_diss_spec[i] += proc_data->enst_diss_spec[i - 1];
+		#endif
+		#if defined(__ENRG_FLUX)
+		proc_data->d_enrg_dt_spec[i] += proc_data->d_enrg_dt_spec[i - 1];
+		proc_data->enrg_flux_spec[i] += proc_data->enrg_flux_spec[i - 1];
+		proc_data->enrg_diss_spec[i] += proc_data->enrg_diss_spec[i - 1];
+		#endif
 		if (i == (int)(sys_vars->kmax_frac * sys_vars->kmax)) {
 			// Record the enstrophy flux out of the set C
+			#if defined(__ENST_FLUX)
 			proc_data->enst_flux_C[snap] = proc_data->enst_flux_spec[i];
 			proc_data->enst_diss_C[snap] = proc_data->enst_diss_spec[i];
+			#endif
+			#if defined(__ENRG_FLUX)
+			proc_data->enrg_flux_C[snap] = proc_data->enrg_flux_spec[i];
+			proc_data->enrg_diss_C[snap] = proc_data->enrg_diss_spec[i];
+			#endif
 		}
 	}
 }
@@ -2030,7 +2057,7 @@ void AllocateMemory(const long int* N) {
 		}
 	}
 
-	#if defined(__REAL_STATS) || defined(__ENST_FLUX) || defined(__SEC_PHASE_SYNC) || defined(__VEL_INC_STATS) || defined(__STR_FUNC_STATS) || defined(__GRAD_STATS)
+	#if defined(__REAL_STATS) || defined(__ENST_FLUX) || defined(__ENRG_FLUX) || defined(__SEC_PHASE_SYNC) || defined(__VEL_INC_STATS) || defined(__STR_FUNC_STATS) || defined(__GRAD_STATS)
 	// Allocate current Fourier vorticity
 	run_data->w = (double* )fftw_malloc(sizeof(double) * Nx * Ny);
 	if (run_data->w == NULL) {
@@ -2223,7 +2250,7 @@ void AllocateMemory(const long int* N) {
 	}
 	#endif
 
-	#if defined(__ENST_FLUX) || defined(__SEC_PHASE_SYNC)
+	#if defined(__ENST_FLUX) || defined(__ENRG_FLUX) || defined(__SEC_PHASE_SYNC)
 	///-------------- Nonlinear RHS function arrays
 	/// RHS
 	proc_data->dw_hat_dt = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * Nx * Ny_Fourier * SYS_DIM);
@@ -2249,6 +2276,7 @@ void AllocateMemory(const long int* N) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Nonlinear Term in Real Spcace");
 		exit(1);
 	}
+	#if defined(__ENST_FLUX)
 	// The time derivative of enstrophy spectrum
 	proc_data->d_enst_dt_spec = (double* )fftw_malloc(sizeof(double) * sys_vars->n_spec);
 	if (proc_data->d_enst_dt_spec == NULL) {
@@ -2279,6 +2307,39 @@ void AllocateMemory(const long int* N) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Enstrophy Dissipation in C");
 		exit(1);
 	}
+	#endif
+	#if defined(__ENRG_FLUX)
+	// The time derivative of energy spectrum
+	proc_data->d_enrg_dt_spec = (double* )fftw_malloc(sizeof(double) * sys_vars->n_spec);
+	if (proc_data->d_enrg_dt_spec == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Time Derivative of Enstrophy Spectrum");
+		exit(1);
+	}
+	// The energy flux spectrum
+	proc_data->enrg_flux_spec = (double* )fftw_malloc(sizeof(double) * sys_vars->n_spec);
+	if (proc_data->enrg_flux_spec == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Enstrophy Flux Spectrum");
+		exit(1);
+	}
+	// The energy flux spectrum
+	proc_data->enrg_diss_spec = (double* )fftw_malloc(sizeof(double) * sys_vars->n_spec);
+	if (proc_data->enrg_diss_spec == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Enstrophy Dissipation Spectrum");
+		exit(1);
+	}
+	// The energy flux out of the set C
+	proc_data->enrg_flux_C = (double* )fftw_malloc(sizeof(double) * sys_vars->num_snaps);
+	if (proc_data->enrg_flux_C == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Enstrophy Flux Out of C");
+		exit(1);
+	}
+	// The energy flux out of the set C
+	proc_data->enrg_diss_C = (double* )fftw_malloc(sizeof(double) * sys_vars->num_snaps);
+	if (proc_data->enrg_diss_C == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Enstrophy Dissipation in C");
+		exit(1);
+	}
+	#endif
 
 	// Initialize arrays
 	for (int i = 0; i < Nx; ++i) {
@@ -2295,13 +2356,26 @@ void AllocateMemory(const long int* N) {
 		}
 	}
 	for (int i = 0; i < sys_vars->num_snaps; ++i) {
+		#if defined(__ENST_FLUX)
 		proc_data->enst_flux_C[i] = 0.0;
 		proc_data->enst_diss_C[i] = 0.0;
+		#endif
+		#if defined(__ENRG_FLUX)
+		proc_data->enrg_flux_C[i] = 0.0;
+		proc_data->enrg_diss_C[i] = 0.0;
+		#endif
 	}
 	for (int i = 0; i < sys_vars->n_spec; ++i) {
+		#if defined(__ENST_FLUX)
 		proc_data->d_enst_dt_spec[i] = 0.0;
 		proc_data->enst_flux_spec[i] = 0.0;
 		proc_data->enst_diss_spec[i] = 0.0;
+		#endif
+		#if defined(__ENRG_FLUX)
+		proc_data->d_enrg_dt_spec[i] = 0.0;
+		proc_data->enrg_flux_spec[i] = 0.0;
+		proc_data->enrg_diss_spec[i] = 0.0;
+		#endif
 	}
 	#endif
 
@@ -2801,7 +2875,7 @@ void InitializeFFTWPlans(const long int* N) {
 		exit(1);
 	}
 	#endif
-	#if defined(__ENST_FLUX) || defined(__SEC_PHASE_SYNC)
+	#if defined(__ENST_FLUX) || defined(__ENRG_FLUX) || defined(__SEC_PHASE_SYNC)
 	sys_vars->fftw_2d_dft_r2c = fftw_plan_dft_r2c_2d(Nx, Ny, run_data->w, run_data->w_hat, FFTW_ESTIMATE);
 	if (sys_vars->fftw_2d_dft_r2c == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to initialize basic FFTW Plans \n-->> Exiting!!!\n");
@@ -2809,7 +2883,7 @@ void InitializeFFTWPlans(const long int* N) {
 	}
 	#endif
 
-	#if defined(__ENST_FLUX) || defined(__SEC_PHASE_SYNC) || defined(__REAL_STATS) || defined(__GRAD_STATS)
+	#if defined(__ENST_FLUX) || defined(__ENRG_FLUX) || defined(__SEC_PHASE_SYNC) || defined(__REAL_STATS) || defined(__GRAD_STATS)
 	// Initialize Batch Fourier Transforms
 	sys_vars->fftw_2d_dft_batch_c2r = fftw_plan_many_dft_c2r(SYS_DIM, N_batch, SYS_DIM, run_data->u_hat, NULL, SYS_DIM, 1, run_data->u, NULL, SYS_DIM, 1, FFTW_MEASURE);
 	if (sys_vars->fftw_2d_dft_batch_c2r == NULL) {
@@ -2937,7 +3011,7 @@ void FreeMemoryAndCleanUp(void) {
 	fftw_free(run_data->w_hat);
 	fftw_free(run_data->time);
 	fftw_free(run_data->psi_hat);
-	#if defined(__REAL_STATS) || defined(__VEL_INC_STATS) || defined(__STR_FUNC_STATS) || defined(__ENST_FLUX) || defined(__SEC_PHASE_SYNC) || defined(__GRAD_STATS)
+	#if defined(__REAL_STATS) || defined(__VEL_INC_STATS) || defined(__STR_FUNC_STATS) || defined(__ENST_FLUX) || defined(__ENRG_FLUX) || defined(__SEC_PHASE_SYNC) || defined(__GRAD_STATS)
 	fftw_free(run_data->w);
 	fftw_free(run_data->u);
 	fftw_free(run_data->u_hat);
@@ -2966,16 +3040,25 @@ void FreeMemoryAndCleanUp(void) {
 	fftw_free(proc_data->enst_spec);
     fftw_free(proc_data->enrg_spec);
 	#endif
-	#if defined(__ENST_FLUX) || defined(__SEC_PHASE_SYNC)
+	#if defined(__ENST_FLUX) || defined(__ENRG_FLUX) || defined(__SEC_PHASE_SYNC)
 	fftw_free(proc_data->nabla_w);
 	fftw_free(proc_data->nabla_psi);
 	fftw_free(proc_data->dw_hat_dt);
 	fftw_free(proc_data->nonlinterm);
+	#if defined(__ENST_FLUX)
 	fftw_free(proc_data->enst_flux_C);
 	fftw_free(proc_data->enst_diss_C);
 	fftw_free(proc_data->d_enst_dt_spec);
 	fftw_free(proc_data->enst_flux_spec);
 	fftw_free(proc_data->enst_diss_spec);
+	#endif
+	#if defined(__ENRG_FLUX)
+	fftw_free(proc_data->enrg_flux_C);
+	fftw_free(proc_data->enrg_diss_C);
+	fftw_free(proc_data->d_enrg_dt_spec);
+	fftw_free(proc_data->enrg_flux_spec);
+	fftw_free(proc_data->enrg_diss_spec);
+	#endif
 	#endif
 	#if defined(__SEC_PHASE_SYNC)
 	fftw_free(proc_data->theta);
@@ -3062,10 +3145,10 @@ void FreeMemoryAndCleanUp(void) {
 	#if defined(__REAL_STATS) || defined(__VEL_INC_STATS) || defined(__STR_FUNC_STATS) || defined(__GRAD_STATS)
 	fftw_destroy_plan(sys_vars->fftw_2d_dft_c2r);
 	#endif
-	#if defined(__ENST_FLUX) || defined(__SEC_PHASE_SYNC)
+	#if defined(__ENST_FLUX) || defined(__ENRG_FLUX) || defined(__SEC_PHASE_SYNC)
 	fftw_destroy_plan(sys_vars->fftw_2d_dft_r2c);
 	#endif
-	#if defined(__ENST_FLUX) || defined(__SEC_PHASE_SYNC) || defined(__REAL_STATS) || defined(__GRAD_STATS)
+	#if defined(__ENST_FLUX) || defined(__ENRG_FLUX) || defined(__SEC_PHASE_SYNC) || defined(__REAL_STATS) || defined(__GRAD_STATS)
 	fftw_destroy_plan(sys_vars->fftw_2d_dft_batch_c2r);
 	#endif
 	#if defined(__GRAD_STATS)
