@@ -218,6 +218,7 @@ typedef struct runtime_data_struct {
 	double* enrg_flux_spect;  // Array to hold the energy flux spectrum
 	double* tg_soln;	  	  // Array for computing the Taylor Green vortex solution
 	fftw_complex* forcing;	  // Array to hold the forcing for the current timestep
+	double* forcing_scaling;  // Array to hold the initial scaling for the forced modes
 	int* forcing_indx;		  // Array to hold the indices of the forced modes
 	int* forcing_k[SYS_DIM];  // Array containg the wavenumbers for the forced modes
 } runtime_data_struct;
