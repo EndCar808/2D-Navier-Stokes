@@ -36,8 +36,8 @@ else:
 ###########################
 ## NOTE: If providing multiple values they must be in python list type e.g. [1, 2, 3]
 ## Space variables
-Nx = [512]
-Ny = [512]
+Nx = [1024]
+Ny = [1024]
 if len(Ny) >= 1:
     Nk = []
     for n in Ny:
@@ -74,13 +74,13 @@ post_input_dir  = output_dir + "SIM_DATA" + sys_tag
 post_output_dir = output_dir + "SIM_DATA" + sys_tag
 
 ## Job parameters
-executable                  = "Solver/bin/main_DB_SL_test"
+executable                  = "Solver/bin/solver"
 plot_script                 = "Plotting/plot_decay_snaps.py"
 plot_options                = "--full_snap --base_snap --plot --vid"
 solver                      = True
 postprocessing              = True
 plotting                    = True
-solver_procs                = 4
+solver_procs                = 16
 collect_data                = True
 num_solver_job_threads      = 1
 num_postprocess_job_threads = 1

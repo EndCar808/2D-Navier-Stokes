@@ -138,6 +138,9 @@
 #define DTEXP_E0 343.0/96.0		// The initial energy for the decaying turbulence exponential spectrum initial condition
 #define GDT_K0 5.0              // The peak wavenumber for the Gaussian decay turbulence initial condition
 #define GDT_C0 0.06             // The intial energy of the Gaussian decaying turbulence initial condition
+// Forcing parameters
+#define STOC_FORC_K_MIN	0.5		// The minimum value of the modulus forced wavevectors for the stochasitc (Gaussian) forcing
+#define STOC_FORC_K_MAX 2.5     // The maximum value of the modulus forced wavevectors for the stochastic (Gaussian) forcing
 // System checking parameters
 #define MIN_STEP_SIZE 1e-10 	// The minimum allowed stepsize for the solver 
 #define MAX_ITERS 1e+12			// The maximum iterations to perform
@@ -202,6 +205,8 @@ typedef struct runtime_data_struct {
 	double* a_k;			  // Fourier vorticity amplitudes
 	double* tmp_a_k;		  // Array to hold the amplitudes of the fourier vorticity before marching forward in time
 	double* phi_k;			  // Fourier vorticity phases
+	double* tot_div;		  // Array to hold the total diverence
+	double* tot_forc;		  // Array to hold the total forcing input into the sytem over the simulation
 	double* tot_energy;       // Array to hold the total energy over the simulation
 	double* tot_enstr;		  // Array to hold the total entrophy over the simulation
 	double* tot_palin;		  // Array to hold the total palinstrophy over the simulaiotns

@@ -128,88 +128,88 @@ void SpectralSolve(void) {
 	#else
 	int save_data_indx = 1;
 	#endif
-	while (t <= T) {
+	// while (t <= T) {
 
-		// -------------------------------	
-		// Integration Step
-		// -------------------------------
-		#if defined(__RK4)
-		RK4Step(dt, N, sys_vars->local_Nx, RK_data);
-		#elif defined(__RK5)
-		RK5DPStep(dt, N, iters, sys_vars->local_Nx, RK_data);
-		#elif defined(__DPRK5)
-		while (try) {
-			// Try a Dormand Prince step and compute the local error
-			RK5DPStep(dt, N, iters, sys_vars->local_Nx, RK_data);
+	// 	// -------------------------------	
+	// 	// Integration Step
+	// 	// -------------------------------
+	// 	#if defined(__RK4)
+	// 	RK4Step(dt, N, sys_vars->local_Nx, RK_data);
+	// 	#elif defined(__RK5)
+	// 	RK5DPStep(dt, N, iters, sys_vars->local_Nx, RK_data);
+	// 	#elif defined(__DPRK5)
+	// 	while (try) {
+	// 		// Try a Dormand Prince step and compute the local error
+	// 		RK5DPStep(dt, N, iters, sys_vars->local_Nx, RK_data);
 
-			// Compute the new timestep
-			dt_new = dt * DPMin(DP_DELTA_MAX, DPMax(DP_DELTA_MIN, DP_DELTA * pow(1.0 / RK_data->DP_err, 0.2)));
+	// 		// Compute the new timestep
+	// 		dt_new = dt * DPMin(DP_DELTA_MAX, DPMax(DP_DELTA_MIN, DP_DELTA * pow(1.0 / RK_data->DP_err, 0.2)));
 			
-			// If error is bad repeat else move on
-			if (RK_data->DP_err < 1.0) {
-				RK_data->DP_fails++;
-				dt = dt_new;
-				continue;
-			}
-			else {
-				dt = dt_new;
-				break;
-			}
-		}
-		#endif
+	// 		// If error is bad repeat else move on
+	// 		if (RK_data->DP_err < 1.0) {
+	// 			RK_data->DP_fails++;
+	// 			dt = dt_new;
+	// 			continue;
+	// 		}
+	// 		else {
+	// 			dt = dt_new;
+	// 			break;
+	// 		}
+	// 	}
+	// 	#endif
 
-		// -------------------------------
-		// Write To File
-		// -------------------------------
-		if ((iters > trans_steps) && (iters % sys_vars->SAVE_EVERY == 0)) {
-			#if defined(TESTING)
-			TaylorGreenSoln(t, N);
-			#endif
+	// 	// -------------------------------
+	// 	// Write To File
+	// 	// -------------------------------
+	// 	if ((iters > trans_steps) && (iters % sys_vars->SAVE_EVERY == 0)) {
+	// 		#if defined(TESTING)
+	// 		TaylorGreenSoln(t, N);
+	// 		#endif
 
-			// Record System Measurables
-			RecordSystemMeasures(t, save_data_indx, RK_data);
+	// 		// Record System Measurables
+	// 		RecordSystemMeasures(t, save_data_indx, RK_data);
 
-			// Write the appropriate datasets to file
-			WriteDataToFile(t, dt, save_data_indx);
+	// 		// Write the appropriate datasets to file
+	// 		WriteDataToFile(t, dt, save_data_indx);
 			
-			// Update saving data index
-			save_data_indx++;
-		}
-		// -------------------------------
-		// Print Update To Screen
-		// -------------------------------
-		#if defined(__PRINT_SCREEN)
-		#if defined(TRANSIENTS)
-		if (iters == trans_steps && !(sys_vars->rank)) {
-			printf("\n\n...Transient Iterations Complete!\n\n");
-		}
-		#endif
-		if (iters % sys_vars->SAVE_EVERY == 0) {
-			#if defined(TRANSIENTS)
-			if (iters <= sys_vars->trans_iters) {
-				// If currently performing transient iters, call system measure for printing to screen
-				RecordSystemMeasures(t, save_data_indx, RK_data);
-			}
-			#endif
-			PrintUpdateToTerminal(iters, t, dt, T, save_data_indx - 1);
-		}
-		#endif
+	// 		// Update saving data index
+	// 		save_data_indx++;
+	// 	}
+	// 	// -------------------------------
+	// 	// Print Update To Screen
+	// 	// -------------------------------
+	// 	#if defined(__PRINT_SCREEN)
+	// 	#if defined(TRANSIENTS)
+	// 	if (iters == trans_steps && !(sys_vars->rank)) {
+	// 		printf("\n\n...Transient Iterations Complete!\n\n");
+	// 	}
+	// 	#endif
+	// 	if (iters % sys_vars->SAVE_EVERY == 0) {
+	// 		#if defined(TRANSIENTS)
+	// 		if (iters <= sys_vars->trans_iters) {
+	// 			// If currently performing transient iters, call system measure for printing to screen
+	// 			RecordSystemMeasures(t, save_data_indx, RK_data);
+	// 		}
+	// 		#endif
+	// 		PrintUpdateToTerminal(iters, t, dt, T, save_data_indx - 1);
+	// 	}
+	// 	#endif
 
-		// -------------------------------
-		// Update & System Check
-		// -------------------------------
-		// Update timestep & iteration counter
-		iters++;
-		#if defined(__ADAPTIVE_STEP) 
-		GetTimestep(&dt);
-		t += dt; 
-		#elif !defined(__DPRK5) && !defined(__ADAPTIVE_STEP)
-		t = iters * dt;
-		#endif
+	// 	// -------------------------------
+	// 	// Update & System Check
+	// 	// -------------------------------
+	// 	// Update timestep & iteration counter
+	// 	iters++;
+	// 	#if defined(__ADAPTIVE_STEP) 
+	// 	GetTimestep(&dt);
+	// 	t += dt; 
+	// 	#elif !defined(__DPRK5) && !defined(__ADAPTIVE_STEP)
+	// 	t = iters * dt;
+	// 	#endif
 
-		// Check System: Determine if system has blown up or integration limits reached
-		SystemCheck(dt, iters);
-	}
+	// 	// Check System: Determine if system has blown up or integration limits reached
+	// 	SystemCheck(dt, iters);
+	// }
 	//////////////////////////////
 	// End Integration
 	//////////////////////////////
@@ -801,7 +801,7 @@ void ComputeForcing(void) {
 	double r1, r2;
 	double re_f, im_f;
 	ptrdiff_t local_Nx        = sys_vars->local_Nx;
-	const long int Ny         = N[1];
+	const long int Ny         = sys_vars->N[1];
 	const long int Ny_Fourier = Ny / 2 + 1;
 
 	// --------------------------------------------
@@ -830,8 +830,8 @@ void ComputeForcing(void) {
 				r2 = (double) rand() / (double) RAND_MAX;
 
 				// Convert to Gaussian using Box-Muller transform
-				re_f = sqrt(-2.0 * log(r1)) * cos(r2 * 2.0 * pi);
-				im_f = sqrt(-2.0 * log(r1)) * sin(r2 * 2.0 * pi);
+				re_f = sqrt(-2.0 * log(r1)) * cos(r2 * 2.0 * M_PI);
+				im_f = sqrt(-2.0 * log(r1)) * sin(r2 * 2.0 * M_PI);
 
 				// Now compute the forcing 
 				run_data->forcing[i] = run_data->forcing_scaling[i] * (re_f + im_f * I);
@@ -879,7 +879,7 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 				u[SYS_DIM * indx + 0] = cos(KAPPA * run_data->x[0][i]) * sin(KAPPA * run_data->x[1][j]);
 				u[SYS_DIM * indx + 1] = -sin(KAPPA * run_data->x[0][i]) * cos(KAPPA * run_data->x[1][j]);		
 			}
-		}
+		}	
 
 		// Transform velocities to Fourier space & dealias
 		fftw_mpi_execute_dft_r2c(sys_vars->fftw_2d_dft_batch_r2c, u, u_hat);
@@ -1383,11 +1383,15 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 		}		
 	}
 	// -------------------------------------------------
-	// Initialize the Dealiasing
+	// Initialize the Dealiasing & Force Conjugacy
 	// -------------------------------------------------
+	// Apply dealiasing to initial condition
 	ApplyDealiasing(w_hat, 1, N);
     
-   
+    // Ensure conjugacy in the ky = 0 modes of the intial condition
+    ForceConjugacy(w_hat, N);
+
+ 
    	// -------------------------------------------------
    	// Get Max of Initial Condition
    	// -------------------------------------------------
@@ -1456,6 +1460,42 @@ void InitializeSpaceVariables(double** x, int** k, const long int* N) {
 		}
 		x[1][i] = (double) i * 2.0 * M_PI / (double) Ny;
 	}
+}
+/**
+ * Function to force conjugacy of the initial condition
+ * @param w_hat The Fourier space worticity field
+ * @param N     The array containing the size of the system in each dimension
+ */
+void ForceConjugacy(fftw_complex* w_hat, const long int* N) {
+
+	// Initialize variables
+	int tmp;
+	int local_Nx       = (int) sys_vars->local_Nx;
+	int local_Nx_start = (int) sys_vars->local_Nx_start;
+	const long int Nx         = N[0];
+	const long int Ny_Fourier = N[1] / 2 + 1;
+
+	// Allocate tmp memory to hold the data to be conjugated
+	fftw_complex* conj_data = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * Nx);
+
+	// Loop through local process and store data in appropriate location in conj_data
+	for (int i = 0; i < local_Nx; ++i) {
+		tmp = i * Ny_Fourier;
+		conj_data[local_Nx_start + i] = run_data->w_hat[tmp];
+	}
+
+	// Gather the data on all process
+	MPI_Allgather(MPI_IN_PLACE, (int)local_Nx, MPI_C_DOUBLE_COMPLEX, conj_data, (int)local_Nx, MPI_C_DOUBLE_COMPLEX, MPI_COMM_WORLD);
+
+	// Now ensure the 
+	for (int i = 0; i < local_Nx; ++i) {
+		if (run_data->k[0][i] < 0) {
+			tmp = i * Ny_Fourier;
+
+			// Fill the conjugate modes with the conjugate of the postive k modes
+			run_data->w_hat[tmp] = conj(conj_data[abs(run_data->k[0][i])]);
+		}
+	}	
 }
 /**
  * Function to initialize all the integration time variables
@@ -2051,6 +2091,84 @@ void EnstrophySpectrum(void) {
 	}
 }
 /**
+ * Function to compute the total divergence of the velocity field
+ * @return  Total divergence
+ */
+double TotalDivergence(void) {
+
+	// Initialize variables
+	int tmp;
+	int indx;
+	fftw_complex k_sqr_inv;
+	fftw_complex u_z, v_z, div_u_z;
+	double tot_div = 0.0;
+	ptrdiff_t local_Nx 		  = sys_vars->local_Nx;
+	const long int Nx         = sys_vars->N[0];
+	const long int Ny         = sys_vars->N[1];
+	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
+	double norm_fac = 0.5 / pow(Nx * Ny, 2.0);
+
+
+	// ------------------------------------------
+	// Compute Fourier Space Velocity & Divergence
+	// ------------------------------------------
+	for (int i = 0; i < local_Nx; ++i) {
+		tmp = i * Ny_Fourier;
+		for (int j = 0; j < Ny_Fourier; ++j) {
+			indx = tmp + j;
+
+			if ((run_data->k[0][i] != 0) || (run_data->k[1][j] != 0)) {
+				// The I/k^2 prefactor
+				k_sqr_inv = 1.0 / (double )(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
+
+				// Get the fourier velocities
+				u_z = k_sqr_inv * ((double) run_data->k[1][j]) * run_data->w_hat[indx];
+				v_z = -k_sqr_inv * ((double) run_data->k[0][i]) * run_data->w_hat[indx];
+
+				// Get the divergence of u_z
+				div_u_z = I * ((double )run_data->k[0][i] * u_z + (double )run_data->k[1][j] * v_z);
+
+				if ((j == 0) || (j == Ny_Fourier - 1)) {
+					// Update the sum for the total energy
+					tot_div += cabs(div_u_z * conj(div_u_z));
+				}
+				else {
+					// Update the sum for the total energy
+					tot_div += 2.0 * cabs(div_u_z * conj(div_u_z));
+				}
+			}
+			else {
+				tot_div += 0.0;
+			}
+		}
+	}
+	
+	// Return result
+	return 4.0 * M_PI * M_PI * tot_div * norm_fac;
+}
+/**
+ * Function to compute the total forcing input into the system
+ * @return  The total forcing input
+ */
+double TotalForcing(void) {
+
+	// Initialize variables
+	double tot_forcing = 0.0;
+	const long int Nx         = sys_vars->N[0];
+	const long int Ny         = sys_vars->N[1];
+	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
+	double norm_fac = 0.5 / pow(Nx * Ny, 2.0);
+
+	// ------------------------------------------
+	// Compute The Total Forcing
+	// ------------------------------------------
+	for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
+		tot_forcing += 4.0 * cabs(sys_vars->forcing[i] * conj(run_data->w_hat[run_data->forcing_indx[i]]));
+	}
+
+	return norm_fac * tot_forcing;
+}
+/**
  * Function to compute the total energy in the system at the current timestep
  * @return  The total energy in the system
  */
@@ -2356,7 +2474,7 @@ void EnstrophyFlux(double* enst_flux, double* enst_diss, RK_data_struct* RK_data
 	NonlinearRHSBatch(run_data->w_hat, dwhat_dt, RK_data->nabla_psi, RK_data->nabla_w);
 	if (sys_vars->local_forcing_proc) {
 		for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
-			dw_hat_dt[run_data->forcing_indx[i]] -= run_data->forcing[i];
+			dwhat_dt[run_data->forcing_indx[i]] -= run_data->forcing[i];
 		}
 	}
 
@@ -2462,7 +2580,7 @@ void EnergyFlux(double* enrg_flux, double* enrg_diss, RK_data_struct* RK_data) {
 	NonlinearRHSBatch(run_data->w_hat, dwhat_dt, RK_data->nabla_psi, RK_data->nabla_w);
 	if (sys_vars->local_forcing_proc) {
 		for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
-			dw_hat_dt[run_data->forcing_indx[i]] -= run_data->forcing[i];
+			dwhat_dt[run_data->forcing_indx[i]] -= run_data->forcing[i];
 		}
 	}
 
@@ -2579,7 +2697,7 @@ void EnergyFluxSpectrum(RK_data_struct* RK_data) {
 	NonlinearRHSBatch(run_data->w_hat, dwhat_dt, RK_data->nabla_psi, RK_data->nabla_w);
 	if (sys_vars->local_forcing_proc) {
 		for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
-			dw_hat_dt[run_data->forcing_indx[i]] -= run_data->forcing[i];
+			dwhat_dt[run_data->forcing_indx[i]] -= run_data->forcing[i];
 		}
 	}
 
@@ -2672,7 +2790,7 @@ void EnstrophyFluxSpectrum(RK_data_struct* RK_data) {
 	NonlinearRHSBatch(run_data->w_hat, dwhat_dt, RK_data->nabla_psi, RK_data->nabla_w);
 	if (sys_vars->local_forcing_proc) {
 		for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
-			dw_hat_dt[run_data->forcing_indx[i]] -= run_data->forcing[i];
+			dwhat_dt[run_data->forcing_indx[i]] -= run_data->forcing[i];
 		}
 	}
 
@@ -2742,6 +2860,7 @@ void ComputeSystemMeasurables(double t, int iter, RK_data_struct* RK_data) {
 	const long int Ny         = sys_vars->N[1];
 	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
 	double k_sqr, pre_fac;
+	fftw_complex u_z, v_z, div_u_z;
 	double norm_fac  = 0.5 / pow(Nx * Ny, 2.0);
     double const_fac = 4.0 * pow(M_PI, 2.0);
     double lwr_sbst_lim_sqr = pow(LWR_SBST_LIM, 2.0);
@@ -2755,20 +2874,22 @@ void ComputeSystemMeasurables(double t, int iter, RK_data_struct* RK_data) {
     #endif
 
     // If adaptive stepping check if within memory limits
-    if (print_indx >= sys_vars->num_print_steps) {
+    if ((iter >= sys_vars->num_print_steps) && (iter % 100 == 0)) {
     	// Print warning to screen if we have exceeded the memory limits for the system measurables arrays
-    	printf("\n["MAGENTA"WARNING"RESET"] --- Unable to write system measures at Indx: [%d] t: [%lf] ---- Number of intergration steps is now greater then memory allocated\n", print_indx, t);
+    	printf("\n["MAGENTA"WARNING"RESET"] --- Unable to write system measures at Indx: [%d] t: [%lf] ---- Number of intergration steps is now greater then memory allocated\n", iter, t);
     }
 
 	// ------------------------------------
 	// Initialize Measurables
 	// ------------------------------------
 	#if defined(__SYS_MEASURES)
-	if (print_indx < sys_vars->num_print_steps) {
+	if (iter < sys_vars->num_print_steps) {
 		// Initialize totals
 		run_data->tot_enstr[iter]  = 0.0;
 		run_data->tot_palin[iter]  = 0.0;
 		run_data->tot_energy[iter] = 0.0;
+		run_data->tot_forc[iter]   = 0.0;
+		run_data->tot_div[iter]    = 0.0;
 		run_data->enrg_diss[iter]  = 0.0;
 		run_data->enst_diss[iter]  = 0.0;
 		#if defined(__ENRG_FLUX)
@@ -2809,6 +2930,10 @@ void ComputeSystemMeasurables(double t, int iter, RK_data_struct* RK_data) {
 	}
 	#endif
 
+	// Compute the total forcing
+	for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
+		run_data->tot_forc[iter] += cabs(run_data->forcing[i] * run_data->w_hat[run_data->forcing_indx[i]]);
+	}
 
 	// -------------------------------------
 	// Compute Measurables in Fourier Space
@@ -2822,7 +2947,7 @@ void ComputeSystemMeasurables(double t, int iter, RK_data_struct* RK_data) {
 
 			///--------------------------------- System Measures
 			#if defined(__SYS_MEASURES)
-		    if (print_indx < sys_vars->num_print_steps) {
+		    if (iter < sys_vars->num_print_steps) {
 				if ((run_data->k[0][i] != 0) || (run_data->k[1][j] != 0)) {
 					// The |k|^2 prefactor
 					k_sqr = (double )(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
@@ -2838,10 +2963,18 @@ void ComputeSystemMeasurables(double t, int iter, RK_data_struct* RK_data) {
 					pre_fac = sys_vars->NU * k_sqr; 
 					#endif
 
+					// Get the fourier velocities
+					u_z = I * ((double )run_data->k[1][j]) * run_data->w_hat[indx] / k_sqr;
+					v_z = -I * ((double )run_data->k[0][i]) * run_data->w_hat[indx] / k_sqr;
+
+					// Get the diverence of the Fourier velocity
+					div_u_z = I * ((double )run_data->k[0][i] * u_z + (double )run_data->k[1][j] * v_z);
+
 					// Update the sums
 					if ((j == 0) || (j == Ny_Fourier - 1)) { // only count the 0 and N/2 modes once as they have no conjugate
 						run_data->tot_energy[iter] += cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * (1.0 / k_sqr);
 						run_data->tot_enstr[iter]  += cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+						run_data->tot_div[iter]    += cabs(div_u_z * conj(div_u_z));
 						run_data->tot_palin[iter]  += k_sqr * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
 						run_data->enrg_diss[iter]  += pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * (1.0 / k_sqr);
 						run_data->enst_diss[iter]  += pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
@@ -2859,6 +2992,7 @@ void ComputeSystemMeasurables(double t, int iter, RK_data_struct* RK_data) {
 					else {
 						run_data->tot_energy[iter] += 2.0 * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * (1.0 / k_sqr);
 						run_data->tot_enstr[iter]  += 2.0 * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+						run_data->tot_div[iter]    += 2.0 * cabs(div_u_z * conj(div_u_z));
 						run_data->tot_palin[iter]  += 2.0 * k_sqr * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
 						run_data->enrg_diss[iter]  += 2.0 * pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * (1.0 / k_sqr);
 						run_data->enst_diss[iter]  += 2.0 * pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
@@ -2931,12 +3065,14 @@ void ComputeSystemMeasurables(double t, int iter, RK_data_struct* RK_data) {
 	// Normalize Measureables 
 	// ------------------------------------	
 	#if defined(__SYS_MEASURES)
-	if (print_indx < sys_vars->num_print_steps) {
+	if (iter < sys_vars->num_print_steps) {
 		// Normalize results and take into account computation in Fourier space
 		run_data->enrg_diss[iter]  *= 2.0 * const_fac * norm_fac;
 		run_data->enst_diss[iter]  *= 2.0 * const_fac * norm_fac;
 		run_data->tot_enstr[iter]  *= const_fac * norm_fac;
 		run_data->tot_palin[iter]  *= const_fac * norm_fac;
+		run_data->tot_forc[iter]   *= const_fac * norm_fac;
+		run_data->tot_div[iter]    *= const_fac * norm_fac;
 		run_data->tot_energy[iter] *= const_fac * norm_fac;
 	}
 	#endif
@@ -2974,6 +3110,9 @@ void RecordSystemMeasures(double t, int print_indx, RK_data_struct* RK_data) {
 		run_data->tot_enstr[print_indx]  = TotalEnstrophy();
 		run_data->tot_energy[print_indx] = TotalEnergy();
 		run_data->tot_palin[print_indx]  = TotalPalinstrophy();
+		// Total Forcing and Divergence
+		run_data->tot_forc[print_indx] = TotalForcing();
+		run_data->tot_div[print_indx]    = TotalDivergence();
 		// Energy and enstrophy dissipation rates
 		run_data->enrg_diss[print_indx] = EnergyDissipationRate();
 		run_data->enst_diss[print_indx] = EnstrophyDissipationRate();
@@ -3286,9 +3425,9 @@ void InitializeForcing(void) {
 	// Initialize variables
 	int tmp, indx;
 	double k_abs;
-	double scale_fac_f0
+	double scale_fac_f0;
 	int num_forced_modes   = 0;
-	int force_mode_counter = 0
+	int force_mode_counter = 0;
 	double sum_k_pow       = 0.0;
 	double scaling_exp     = 0.0;
 	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
@@ -3352,7 +3491,7 @@ void InitializeForcing(void) {
 
 			// Get the forcing wavenumbers
 			run_data->forcing_k[0][0] = 0;
-			run_data->forcing_k[0][1] = run_vars->k[1][sys_vars->force_k];
+			run_data->forcing_k[0][1] = run_data->k[1][sys_vars->force_k];
 
 			// Get the forcing scaling 
 			run_data->forcing_scaling[0] = 1.0;
@@ -3378,7 +3517,7 @@ void InitializeForcing(void) {
 		sys_vars->num_forced_modes = num_forced_modes;
 
 		// Sync sum of forced wavenumbers
-		MPI_Allreduce(MPI_IN_PLACE, &sum_k, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+		MPI_Allreduce(MPI_IN_PLACE, &sum_k_pow, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
 		// Allocate forcing data on the local forcing process only
 		if (sys_vars->local_forcing_proc) {
@@ -3417,10 +3556,10 @@ void InitializeForcing(void) {
 			// Fill Forcing Info
 			// -----------------------------------
 			// Initialize variables
-			scale_fac_f0       = sqrt(sys_vars->force_scale_var / (2.0 * sum_k));
+			scale_fac_f0       = sqrt(sys_vars->force_scale_var / (2.0 * sum_k_pow));
 			force_mode_counter = 0;
 			for (int i = 0; i < sys_vars->local_Nx; ++i) {
-				tmp = i * Ny_Fourier
+				tmp = i * Ny_Fourier;
 				for (int j = 0; j < Ny_Fourier; ++j) {
 					indx = tmp + j;
 
@@ -3431,8 +3570,8 @@ void InitializeForcing(void) {
 					if ((k_abs > STOC_FORC_K_MIN && k_abs < STOC_FORC_K_MAX) && (run_data->k[1][j] != 0 || run_data->k[0][i] > 0)) {
 						run_data->forcing_scaling[force_mode_counter] = scale_fac_f0 * pow(k_abs, scaling_exp);
 						run_data->forcing_indx[force_mode_counter]    = indx;
-						run_data->forcing_k[0][force_mode_counter]    = run_vars->k[0][i];
-						run_data->forcing_k[1][force_mode_counter]    = run_vars->k[1][j];
+						run_data->forcing_k[0][force_mode_counter]    = run_data->k[0][i];
+						run_data->forcing_k[1][force_mode_counter]    = run_data->k[1][j];
 						force_mode_counter++;
 					}
 				}
@@ -3502,8 +3641,8 @@ void InitializeForcing(void) {
 						run_data->forcing[force_mode_counter]         = 0.0 + 0.0 * I;
 						run_data->forcing_scaling[force_mode_counter] = 0.0;
 						run_data->forcing_indx[force_mode_counter]    = indx;
-						run_data->forcing_k[0][force_mode_counter]    = run_vars->k[0][i];
-						run_data->forcing_k[1][force_mode_counter]    = run_vars->k[1][j];
+						run_data->forcing_k[0][force_mode_counter]    = run_data->k[0][i];
+						run_data->forcing_k[1][force_mode_counter]    = run_data->k[1][j];
 						force_mode_counter++;
 					}
 				}
@@ -3565,6 +3704,20 @@ void InitializeSystemMeasurables(RK_data_struct* RK_data) {
 		exit(1);
 	}	
 
+	// Total Forcing Input
+	run_data->tot_forc = (double* )fftw_malloc(sizeof(double) * print_steps);
+	if (run_data->tot_forc == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Total Forcing Input");
+		exit(1);
+	}	
+
+	// Total Divergence
+	run_data->tot_div = (double* )fftw_malloc(sizeof(double) * print_steps);
+	if (run_data->tot_div == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Total Divergence");
+		exit(1);
+	}	
+
 	// Energy Dissipation Rate
 	run_data->enrg_diss = (double* )fftw_malloc(sizeof(double) * print_steps);
 	if (run_data->enrg_diss == NULL) {
@@ -3579,7 +3732,7 @@ void InitializeSystemMeasurables(RK_data_struct* RK_data) {
 		exit(1);
 	}	
 	#endif
-	#if defined(__ENST_SPECT )
+	#if defined(__ENST_SPECT)
 	// Enstrophy Spectrum
 	run_data->enst_spect = (double* )fftw_malloc(sizeof(double) * n_spect);
 	if (run_data->enst_spect == NULL) {
@@ -3587,7 +3740,7 @@ void InitializeSystemMeasurables(RK_data_struct* RK_data) {
 		exit(1);
 	}	
 	#endif
-	#if defined(__ENRG_SPECT )
+	#if defined(__ENRG_SPECT)
 	// Energy Spectrum
 	run_data->enrg_spect = (double* )fftw_malloc(sizeof(double) * n_spect);
 	if (run_data->enrg_spect == NULL) {
@@ -3635,7 +3788,7 @@ void InitializeSystemMeasurables(RK_data_struct* RK_data) {
 		}	
 	}
 	#endif
-	#if defined(__ENST_FLUX_SPECT )
+	#if defined(__ENST_FLUX_SPECT)
 	// Enstrophy Spectrum
 	run_data->enst_flux_spect = (double* )fftw_malloc(sizeof(double) * n_spect);
 	if (run_data->enst_flux_spect == NULL) {
@@ -3643,7 +3796,7 @@ void InitializeSystemMeasurables(RK_data_struct* RK_data) {
 		exit(1);
 	}	
 	#endif
-	#if defined(__ENRG_FLUX_SPECT )
+	#if defined(__ENRG_FLUX_SPECT)
 	// Energy Spectrum
 	run_data->enrg_flux_spect = (double* )fftw_malloc(sizeof(double) * n_spect);
 	if (run_data->enrg_flux_spect == NULL) {
@@ -3664,6 +3817,12 @@ void InitializeSystemMeasurables(RK_data_struct* RK_data) {
 
 	// Total Palinstrophy
 	run_data->tot_palin[0] = TotalPalinstrophy();
+
+	// Total Forcing Input
+	run_data->tot_forc[0] = TotalForcing();
+
+	// Total Divergence
+	run_data->tot_div[0] = TotalDivergence();
 
 	// Energy dissipation rate
 	run_data->enrg_diss[0] = EnergyDissipationRate();
@@ -3742,6 +3901,8 @@ void FreeMemory(RK_data_struct* RK_data) {
 	#if defined(__SYS_MEASURES)
 	fftw_free(run_data->tot_energy);
 	fftw_free(run_data->tot_enstr);
+	fftw_free(run_data->tot_div);
+	fftw_free(run_data->tot_forc);
 	fftw_free(run_data->tot_palin);
 	fftw_free(run_data->enrg_diss);
 	fftw_free(run_data->enst_diss);

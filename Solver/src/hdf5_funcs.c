@@ -1215,6 +1215,8 @@ void FinalWriteAndCloseOutputFile(const long int* N, int iters, int save_data_in
 		MPI_Reduce(MPI_IN_PLACE, run_data->tot_energy, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		MPI_Reduce(MPI_IN_PLACE, run_data->tot_enstr, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		MPI_Reduce(MPI_IN_PLACE, run_data->tot_palin, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(MPI_IN_PLACE, run_data->tot_forc, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(MPI_IN_PLACE, run_data->tot_div, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		MPI_Reduce(MPI_IN_PLACE, run_data->enrg_diss, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		MPI_Reduce(MPI_IN_PLACE, run_data->enst_diss, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		#endif
@@ -1242,6 +1244,14 @@ void FinalWriteAndCloseOutputFile(const long int* N, int iters, int save_data_in
 		// Palinstrophy
 		if ( (H5LTmake_dataset(file_info->output_file_handle, "TotalPalinstrophy", D1, dims1D, H5T_NATIVE_DOUBLE, run_data->tot_palin)) < 0) {
 			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "TotalPalinstrophy");
+		}
+		// Forcing Input
+		if ( (H5LTmake_dataset(file_info->output_file_handle, "TotalForcing", D1, dims1D, H5T_NATIVE_DOUBLE, run_data->tot_forc)) < 0) {
+			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "TotalForcing");
+		}
+		// Divergence
+		if ( (H5LTmake_dataset(file_info->output_file_handle, "TotalDivergence", D1, dims1D, H5T_NATIVE_DOUBLE, run_data->tot_div)) < 0) {
+			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "TotalDivergence");
 		}
 		// Energy dissipation rate
 		if ( (H5LTmake_dataset(file_info->output_file_handle, "EnergyDissipation", D1, dims1D, H5T_NATIVE_DOUBLE, run_data->enrg_diss)) < 0) {
@@ -1279,6 +1289,8 @@ void FinalWriteAndCloseOutputFile(const long int* N, int iters, int save_data_in
 		MPI_Reduce(run_data->tot_energy, NULL,  sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		MPI_Reduce(run_data->tot_enstr, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		MPI_Reduce(run_data->tot_palin, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(run_data->tot_forc, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(run_data->tot_div, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		MPI_Reduce(run_data->enrg_diss, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		MPI_Reduce(run_data->enst_diss, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		#endif
