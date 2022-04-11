@@ -46,30 +46,31 @@ else:
     Nk = [int(Ny / 2 + 1)]
 
 ## System parameters
-nu             = 0.0
-ekmn_alpha     = 1.
-hypervisc      = 0 
+nu             = 2e-8
+ekmn_alpha     = 0.0
+hypervisc      = 2.0 
 ekmn_hypo_diff = 0
 
 ## Time parameters
 t0        = 0.0
-T         = 10.0
-dt        = 1e-4
-cfl       = np.sqrt(3)
+T         = 100.0
+dt        = 25e-4
+cfl       = 0.8
 step_type = False
 
 ## Solver parameters
-ic         = "DOUBLE_SHEAR_LAYER"
-forcing    = "NONE"
-force_k    = 0
-save_every = 100
+ic          = "DECAY_TURB"
+forcing     = "STOCH"
+force_k     = 1.0
+force_scale = 1.0
+save_every  = 500
 
 ## Directory/File parameters
 input_dir       = "NONE"
-output_dir      = "./Data/Tmp/"
+output_dir      = os.getenv('NS_DATA_DIR')   ##"./Data/Tmp/"
 file_only_mode  = False
-solver_tag      = "DBL-Test"
-sys_tag         = "_EULER_RK4_FULL_"
+solver_tag      = "Stoch-Hyper-Long"
+sys_tag         = "_NAVIER_RK4_FULL_"   ## _EULER_RK4_FULL_
 post_input_dir  = output_dir + "SIM_DATA" + sys_tag
 post_output_dir = output_dir + "SIM_DATA" + sys_tag
 
@@ -78,8 +79,8 @@ executable                  = "Solver/bin/solver"
 plot_script                 = "Plotting/plot_decay_snaps.py"
 plot_options                = "--full_snap --base_snap --plot --vid"
 solver                      = True
-postprocessing              = True
-plotting                    = True
+postprocessing              = False
+plotting                    = False
 solver_procs                = 16
 collect_data                = True
 num_solver_job_threads      = 1
@@ -111,6 +112,7 @@ config['SOLVER'] = {
     'initial_condition'  : ic,
     'forcing'            : forcing,
     'forcing_wavenumber' : force_k,
+    'forcing_scale'      : force_scale,
     'save_data_every'    : save_every
 }
 

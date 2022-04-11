@@ -43,10 +43,11 @@ dt        = 1e-3
 step_type = True
 cfl       = np.sqrt(3)
 ## Solver parameters
-ic         = "DECAY_TURB"
-forcing    = "NONE"
-force_k    = 0
-save_every = 2
+ic          = "DECAY_TURB"
+forcing     = "NONE"
+force_k     = 0
+force_scale = 1.0
+save_every  = 2
 ## Directory/File parameters
 input_dir       = "NONE"
 output_dir      = "./Data/Tmp/"
@@ -109,7 +110,9 @@ for section in parser.sections():
         if 'forcing' in parser[section]:
             forcing = str(parser[section]['forcing'])
         if 'forcing_wavenumber' in parser[section]:
-            force_k = int(parser[section]['forcing_wavenumber'])
+            force_k = int(float(parser[section]['forcing_wavenumber']))
+        if 'forcing_scale' in parser[section]:
+            force_scale = int(float(parser[section]['forcing_scale']))
         if 'save_data_every' in parser[section]:
             save_every = int(parser[section]['save_data_every'])
     if section in ['TIME']:
@@ -180,7 +183,7 @@ if solver:
         solver_error  = []
 
     ## Generate command list 
-    cmd_list = [["mpirun -n {} {} -o {} -n {} -n {} -s {:3.1f} -e {:3.1f} -c {:1.6f} -h {:1.6f} -v {:1.10f} -d {:1.6f} -i {} -t {} -f {} -f {} -p {}".format(solver_procs, executable, output_dir, nx, ny, t0, t, c, h, v, ekmn_alpha, u0, s_tag, forcing, force_k, save_every)] for nx, ny in zip(Nx, Ny) for t in T for h in dt for u0 in ic for v in nu for c in cfl for s_tag in solver_tag]
+    cmd_list = [["mpirun -n {} {} -o {} -n {} -n {} -s {:3.1f} -e {:3.1f} -c {:1.6f} -h {:1.6f} -v {:1.10f} -d {:1.6f} -i {} -t {} -f {} -f {} -f {} -p {}".format(solver_procs, executable, output_dir, nx, ny, t0, t, c, h, v, ekmn_alpha, u0, s_tag, forcing, force_k, force_scale, save_every)] for nx, ny in zip(Nx, Ny) for t in T for h in dt for u0 in ic for v in nu for c in cfl for s_tag in solver_tag]
    
 
     ## Create grouped iterable of subprocess calls to Popen() - see grouper recipe in itertools

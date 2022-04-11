@@ -128,88 +128,94 @@ void SpectralSolve(void) {
 	#else
 	int save_data_indx = 1;
 	#endif
-	// while (t <= T) {
+	while (t <= T) {
 
-	// 	// -------------------------------	
-	// 	// Integration Step
-	// 	// -------------------------------
-	// 	#if defined(__RK4)
-	// 	RK4Step(dt, N, sys_vars->local_Nx, RK_data);
-	// 	#elif defined(__RK5)
-	// 	RK5DPStep(dt, N, iters, sys_vars->local_Nx, RK_data);
-	// 	#elif defined(__DPRK5)
-	// 	while (try) {
-	// 		// Try a Dormand Prince step and compute the local error
-	// 		RK5DPStep(dt, N, iters, sys_vars->local_Nx, RK_data);
+		// -------------------------------	
+		// Integration Step
+		// -------------------------------
+		#if defined(__RK4)
+		RK4Step(dt, N, sys_vars->local_Nx, RK_data);
+		#elif defined(__RK5)
+		RK5DPStep(dt, N, iters, sys_vars->local_Nx, RK_data);
+		#elif defined(__DPRK5)
+		while (try) {
+			// Try a Dormand Prince step and compute the local error
+			RK5DPStep(dt, N, iters, sys_vars->local_Nx, RK_data);
 
-	// 		// Compute the new timestep
-	// 		dt_new = dt * DPMin(DP_DELTA_MAX, DPMax(DP_DELTA_MIN, DP_DELTA * pow(1.0 / RK_data->DP_err, 0.2)));
+			// Compute the new timestep
+			dt_new = dt * DPMin(DP_DELTA_MAX, DPMax(DP_DELTA_MIN, DP_DELTA * pow(1.0 / RK_data->DP_err, 0.2)));
 			
-	// 		// If error is bad repeat else move on
-	// 		if (RK_data->DP_err < 1.0) {
-	// 			RK_data->DP_fails++;
-	// 			dt = dt_new;
-	// 			continue;
-	// 		}
-	// 		else {
-	// 			dt = dt_new;
-	// 			break;
-	// 		}
-	// 	}
-	// 	#endif
+			// If error is bad repeat else move on
+			if (RK_data->DP_err < 1.0) {
+				RK_data->DP_fails++;
+				dt = dt_new;
+				continue;
+			}
+			else {
+				dt = dt_new;
+				break;
+			}
+		}
+		#endif
 
-	// 	// -------------------------------
-	// 	// Write To File
-	// 	// -------------------------------
-	// 	if ((iters > trans_steps) && (iters % sys_vars->SAVE_EVERY == 0)) {
-	// 		#if defined(TESTING)
-	// 		TaylorGreenSoln(t, N);
-	// 		#endif
+		// -------------------------------
+		// Write To File
+		// -------------------------------
+		if (iters % sys_vars->SAVE_EVERY == 0) {
+			#if defined(TESTING)
+			TaylorGreenSoln(t, N);
+			#endif
 
-	// 		// Record System Measurables
-	// 		RecordSystemMeasures(t, save_data_indx, RK_data);
+			// Record System Measurables
+			RecordSystemMeasures(t, save_data_indx, RK_data);
 
-	// 		// Write the appropriate datasets to file
-	// 		WriteDataToFile(t, dt, save_data_indx);
-			
-	// 		// Update saving data index
-	// 		save_data_indx++;
-	// 	}
-	// 	// -------------------------------
-	// 	// Print Update To Screen
-	// 	// -------------------------------
-	// 	#if defined(__PRINT_SCREEN)
-	// 	#if defined(TRANSIENTS)
-	// 	if (iters == trans_steps && !(sys_vars->rank)) {
-	// 		printf("\n\n...Transient Iterations Complete!\n\n");
-	// 	}
-	// 	#endif
-	// 	if (iters % sys_vars->SAVE_EVERY == 0) {
-	// 		#if defined(TRANSIENTS)
-	// 		if (iters <= sys_vars->trans_iters) {
-	// 			// If currently performing transient iters, call system measure for printing to screen
-	// 			RecordSystemMeasures(t, save_data_indx, RK_data);
-	// 		}
-	// 		#endif
-	// 		PrintUpdateToTerminal(iters, t, dt, T, save_data_indx - 1);
-	// 	}
-	// 	#endif
+			// If and when transient steps are complete write to file
+			if (iters > trans_steps) {
+				// Write the appropriate datasets to file 
+				WriteDataToFile(t, dt, save_data_indx);
+				
+				// Update saving data index
+				save_data_indx++;
+			}
+		}
+		// -------------------------------
+		// Print Update To Screen
+		// -------------------------------
+		#if defined(__PRINT_SCREEN)
+		#if defined(TRANSIENTS)
+		// Print update that transient iters have been complete
+		if ((iters == trans_steps) && !(sys_vars->rank)) {
+			printf("\n\n...Transient Iterations Complete!\n\n");
+		}
+		#endif
+		if (iters % sys_vars->SAVE_EVERY == 0) {
+			// Print update of the system to the terminal 
+			if (iters <= sys_vars->trans_iters) {
+				// If performing transient iterations the system measures are stored in the 0th index
+				PrintUpdateToTerminal(iters, t, dt, T, 0);
+			}
+			else {
+				// Print update of the non transient iterations to the terminal 
+				PrintUpdateToTerminal(iters, t, dt, T, save_data_indx - 1);
+			}
+		}
+		#endif
 
-	// 	// -------------------------------
-	// 	// Update & System Check
-	// 	// -------------------------------
-	// 	// Update timestep & iteration counter
-	// 	iters++;
-	// 	#if defined(__ADAPTIVE_STEP) 
-	// 	GetTimestep(&dt);
-	// 	t += dt; 
-	// 	#elif !defined(__DPRK5) && !defined(__ADAPTIVE_STEP)
-	// 	t = iters * dt;
-	// 	#endif
+		// -------------------------------
+		// Update & System Check
+		// -------------------------------
+		// Update timestep & iteration counter
+		iters++;
+		#if defined(__ADAPTIVE_STEP) 
+		GetTimestep(&dt);
+		t += dt; 
+		#elif !defined(__DPRK5) && !defined(__ADAPTIVE_STEP)
+		t = iters * dt;
+		#endif
 
-	// 	// Check System: Determine if system has blown up or integration limits reached
-	// 	SystemCheck(dt, iters);
-	// }
+		// Check System: Determine if system has blown up or integration limits reached
+		SystemCheck(dt, iters);
+	}
 	//////////////////////////////
 	// End Integration
 	//////////////////////////////
