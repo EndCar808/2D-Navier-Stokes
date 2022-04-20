@@ -46,7 +46,7 @@ def parse_cml(argv):
         Class for command line arguments
         """
 
-        def __init__(self, in_dir = None, out_dir = None, in_file = None, parallel = False, plotting = False, video = False, triads = False, phases = False, triad_type = None, full = False):
+        def __init__(self, in_dir = None, out_dir = None, in_file = None, num_procs = 20, parallel = False, plotting = False, video = False, triads = False, phases = False, triad_type = None, full = False):
             self.in_dir         = in_dir
             self.out_dir_phases = out_dir
             self.out_dir_triads = out_dir
@@ -59,6 +59,8 @@ def parse_cml(argv):
             self.triad_type     = triad_type
             self.full           = full
             self.triad_plot_type = None
+            self.num_procs = num_procs
+            self.tag = "None"
 
 
     ## Initialize class
@@ -66,7 +68,7 @@ def parse_cml(argv):
 
     try:
         ## Gather command line arguments
-        opts, args = getopt.getopt(argv, "i:o:f:", ["par", "plot", "vid", "phase", "triads=", "full="])
+        opts, args = getopt.getopt(argv, "i:o:f:p:t:", ["par", "plot", "vid", "phase", "triads=", "full="])
     except:
         print("[" + tc.R + "ERROR" + tc.Rst + "] ---> Incorrect Command Line Arguements.")
         sys.exit()
@@ -82,10 +84,14 @@ def parse_cml(argv):
             cargs.out_dir = str(arg)
             print("Output Folder: " + tc.C + "{}".format(cargs.out_dir) + tc.Rst)
 
-        if opt in ['-f']:
+        elif opt in ['-f']:
             ## Read input directory
             cargs.in_file = str(arg)
             print("Input Post Processing File: " + tc.C + "{}".format(cargs.in_file) + tc.Rst)
+
+        elif opt in ['-p']:
+            ## Read in number of processes
+            cargs.num_procs = int(arg)
 
         elif opt in ['--par']:
             ## Read in parallel indicator
@@ -115,6 +121,9 @@ def parse_cml(argv):
 
             ## Read in the triad type
             cargs.triad_type = str(arg)
+
+        elif opt in ['-t']:
+            cargs.tag = str(arg)
 
     return cargs
 
@@ -215,7 +224,7 @@ if __name__ == '__main__':
 
             if cmdargs.parallel:
                 ## No. of processes
-                proc_lim = 20
+                proc_lim = cmdargs.num_procs
 
                 ## Create tasks for the process pool
                 if cmdargs.full:
@@ -249,7 +258,7 @@ if __name__ == '__main__':
 
             if cmdargs.parallel:
                 ## No. of processes
-                proc_lim = 20
+                proc_lim = cmdargs.num_procs
 
                 if cmdargs.triad_type != "all":
                     print("TRIAD TYPE: {}".format(t), end = " ")
@@ -316,7 +325,7 @@ if __name__ == '__main__':
                         ## Prin summary of timmings to screen
                         print("\n" + tc.Y + "Finished making video..." + tc.Rst)
                         print("Video Location: " + tc.C + videoName + tc.Rst + "\n")
-            else:
+            else:   
                 if cmdargs.triad_type != "all":
                     ## Loop through simulation and plot data
                     for i in range(sys_vars.ndata):
@@ -381,7 +390,7 @@ if __name__ == '__main__':
             ## Video variables
             framesPerSec = 30
             inputFile    = cmdargs.out_dir_phases + "Phase_Sync_SNAP_%05d.png"
-            videoName    = cmdargs.out_dir_phases + "PhaseSync_N[{},{}]_u0[{}]_NSECT[{}]_KFRAC[{}].mp4".format(sys_vars.Nx, sys_vars.Ny, sys_vars.u0, post_data.num_sect, post_data.kmax_frac)
+            videoName    = cmdargs.out_dir_phases + "PhaseSync_N[{},{}]_u0[{}]_NSECT[{}]_KFRAC[{}]_TAG[{}].mp4".format(sys_vars.Nx, sys_vars.Ny, sys_vars.u0, post_data.num_sect, post_data.kmax_frac, cmdargs.tag)
             cmd = "ffmpeg -y -r {} -f image2 -s 1920x1080 -i {} -vf 'pad=ceil(iw/2)*2:ceil(ih/2)*2' -vcodec libx264 -crf 25 -pix_fmt yuv420p {}".format(framesPerSec, inputFile, videoName)
             # cmd = "ffmpeg -r {} -f image2 -s 1280×720 -i {} -vcodec libx264 -preset ultrafast -crf 35 -pix_fmt yuv420p {}".format(framesPerSec, inputFile, videoName)
 
@@ -400,7 +409,7 @@ if __name__ == '__main__':
             ## Video variables
             framesPerSec = 30
             inputFile    = cmdargs.out_dir_triads + "Phase_Sync_SNAP_%05d.png"
-            videoName    = cmdargs.out_dir_triads + "TriadPhaseSync_N[{},{}]_u0[{}]_NSECT[{}]_KFRAC[{}]_TYPE[{}].mp4".format(sys_vars.Nx, sys_vars.Ny, sys_vars.u0, post_data.num_sect, post_data.kmax_frac, int(cmdargs.triad_type))
+            videoName    = cmdargs.out_dir_triads + "TriadPhaseSync_N[{},{}]_u0[{}]_NSECT[{}]_KFRAC[{}]_TYPE[{}]_TAG[{}].mp4".format(sys_vars.Nx, sys_vars.Ny, sys_vars.u0, post_data.num_sect, post_data.kmax_frac, int(cmdargs.triad_type), cmdargs.tag)
             cmd = "ffmpeg -y -r {} -f image2 -s 1920x1080 -i {} -vf 'pad=ceil(iw/2)*2:ceil(ih/2)*2' -vcodec libx264 -crf 25 -pix_fmt yuv420p {}".format(framesPerSec, inputFile, videoName)
             # cmd = "ffmpeg -r {} -f image2 -s 1280×720 -i {} -vcodec libx264 -preset ultrafast -crf 35 -pix_fmt yuv420p {}".format(framesPerSec, inputFile, videoName)
 

@@ -167,7 +167,10 @@ for section in parser.sections():
             num_postprocess_job_threads = int(parser[section]['num_postprocess_job_threads'])
         if 'num_plotting_job_threads' in parser[section]:
             num_plotting_job_threads = int(parser[section]['num_plotting_job_threads'])
-        
+
+## Get the path to the runs output directory
+par_runs_output_dir, = os.path.split(output_dir)
+par_runs_output_dir + '/ParallelRunsDump/'
 #########################
 ##      RUN SOLVER     ##
 #########################
@@ -216,12 +219,12 @@ if solver:
         d_t = now.strftime("%d%b%Y_%H:%M:%S")
 
         # Write output to file
-        with open("Data/ParallelRunsDump/par_run_solver_output_{}_{}.txt".format(config_file.lstrip('InitFiles/').rstrip(".ini"), d_t), "w") as file:
+        with open(par_runs_output_dir + "par_run_solver_output_{}_{}.txt".format(config_file.lstrip('InitFiles/').rstrip(".ini"), d_t), "w") as file:
             for item in solver_output:
                 file.write("%s\n" % item)
 
         # Write error to file
-        with open("Data/ParallelRunsDump/par_run_solver_error_{}_{}.txt".format(config_file.lstrip('InitFiles/').rstrip(".ini"), d_t), "w") as file:
+        with open(par_runs_output_dir + "par_run_solver_error_{}_{}.txt".format(config_file.lstrip('InitFiles/').rstrip(".ini"), d_t), "w") as file:
             for i, item in enumerate(solver_error):
                 file.write("%s\n" % cmd_list[i])
                 file.write("%s\n" % item)
@@ -274,12 +277,12 @@ if postprocessing:
         d_t = now.strftime("%d%b%Y_%H:%M:%S")
 
         # Write output to file
-        with open("Data/ParallelRunsDump/par_run_post_output_{}_{}.txt".format(config_file.lstrip('InitFiles/').rstrip(".ini"), d_t), "w") as file:
+        with open(par_runs_output_dir + "par_run_post_output_{}_{}.txt".format(config_file.lstrip('InitFiles/').rstrip(".ini"), d_t), "w") as file:
             for item in post_output:
                 file.write("%s\n" % item)
 
         # Write error to file
-        with open("Data/ParallelRunsDump/par_run_post_error_{}_{}.txt".format(config_file.lstrip('InitFiles/').rstrip(".ini"), d_t), "w") as file:
+        with open(par_runs_output_dir + "par_run_post_error_{}_{}.txt".format(config_file.lstrip('InitFiles/').rstrip(".ini"), d_t), "w") as file:
             for i, item in enumerate(post_error):
                 file.write("%s\n" % cmd_list[i])
                 file.write("%s\n" % item)
@@ -332,12 +335,12 @@ if plotting:
         d_t = now.strftime("%d%b%Y_%H:%M:%S")
 
         # Write output to file
-        with open("Data/ParallelRunsDump/par_run_plot_output_{}_{}.txt".format(config_file.lstrip('InitFiles/').rstrip(".ini"), d_t), "w") as file:
+        with open(par_runs_output_dir + "par_run_plot_output_{}_{}.txt".format(config_file.lstrip('InitFiles/').rstrip(".ini"), d_t), "w") as file:
             for item in plot_output:
                 file.write("%s\n" % item)
 
         # Write error to file
-        with open("Data/ParallelRunsDump/par_run_plot_error_{}_{}.txt".format(config_file.lstrip('InitFiles/').rstrip(".ini"), d_t), "w") as file:
+        with open(par_runs_output_dir + "par_run_plot_error_{}_{}.txt".format(config_file.lstrip('InitFiles/').rstrip(".ini"), d_t), "w") as file:
             for i, item in enumerate(plot_error):
                 file.write("%s\n" % cmd_list[i])
                 file.write("%s\n" % item)

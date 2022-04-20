@@ -790,7 +790,7 @@ def plot_sector_phase_sync_snaps_full_sec(i, out_dir, w, enst_spec, enst_flux, e
 
        ## Set up figure
        fig = plt.figure(figsize = (20, 13))
-       gs  = GridSpec(3, 3, hspace = 0.4)
+       gs  = GridSpec(3, 3, hspace = 0.3)
        
        ## Generate colour map
        my_hsv = cm.jet
@@ -798,17 +798,40 @@ def plot_sector_phase_sync_snaps_full_sec(i, out_dir, w, enst_spec, enst_flux, e
        my_hot = cm.hot
        my_hot.set_under(color = "white")
 
+       ## Create appropriate ticks and ticklabels for the sector angles
+       dtheta = theta[1] - theta[0]
+       if np.isclose(theta[0] - dtheta / 2, -np.pi):
+              angticks      = [-np.pi, -3*np.pi/4.0, -np.pi/2, -np.pi/4.0, 0.0, np.pi/4.0, np.pi/2.0, 3*np.pi/4.0, np.pi]
+              angtickLabels = [r"$-\pi$", r"$-\frac{3\pi}{4}$", r"$-\frac{\pi}{2}$", r"$-\frac{\pi}{4}$", r"$0$", r"$\frac{\pi}{4}$", r"$\frac{\pi}{2}$", r"$\frac{3\pi}{2}$", r"$\pi$"]  
+              theta_min     = -np.pi
+              theta_max     = np.pi
+       else:
+              angticks      = [-np.pi/2, -3*np.pi/8, -np.pi/4.0, -np.pi/8, 0.0, np.pi/8, np.pi/4.0, 3*np.pi/8, np.pi/2.0]
+              angtickLabels = [r"$-\frac{\pi}{2}$", r"$-\frac{3\pi}{8}$", r"$-\frac{\pi}{4}$", r"$-\frac{\pi}{8}$", r"$0$", r"$\frac{\pi}{8}$", r"$\frac{\pi}{4}$", r"$\frac{3\pi}{8}$", r"$\frac{\pi}{2}$"]
+              theta_min     = -np.pi/2
+              theta_max     = np.pi/2
+       if R_a_sec.shape[-1] != R_a_sec.shape[1]:
+              alpha_angticks      = []
+              alpha_angticklabels = []
+              alpha_min = theta_min
+              alpha_max = theta_max              
+       else:
+              alpha_angticks      = angticks
+              alpha_angticklabels = angtickLabels 
+              alpha_min = theta_min
+              alpha_max = theta_max
+
        #--------------------------
        # Plot Phases  
        #--------------------------
        ax1 = fig.add_subplot(gs[0, 0:2])
        im1 = ax1.imshow(np.fliplr(np.transpose(phases)), extent = (int(-Nx / 3 + 1), int(Nx / 3), int(Ny / 3), 0), cmap = my_hsv, vmin = 0., vmax = 2. * np.pi) 
        ang = np.arange(0, np.pi + np.pi / 100, np.pi / 100)
-       angticks      = [0, np.pi/8, np.pi/4.0, 3*np.pi/8, np.pi/2, 5*np.pi/8, 6*np.pi/8.0, 7*np.pi/8, np.pi]
-       angtickLabels = [r"$-\frac{\pi}{2}$", r"$-\frac{3\pi}{8}$", r"$-\frac{\pi}{4}$", r"$-\frac{\pi}{8}$", r"$0$", r"$\frac{\pi}{8}$", r"$\frac{\pi}{4}$", r"$\frac{3\pi}{8}$", r"$\frac{\pi}{2}$"]
+       kspace_angticks      = [0, np.pi/8, np.pi/4.0, 3*np.pi/8, np.pi/2, 5*np.pi/8, 6*np.pi/8.0, 7*np.pi/8, np.pi]
+       kspace_angtickLabels = [r"$-\frac{\pi}{2}$", r"$-\frac{3\pi}{8}$", r"$-\frac{\pi}{4}$", r"$-\frac{\pi}{8}$", r"$0$", r"$\frac{\pi}{8}$", r"$\frac{\pi}{4}$", r"$\frac{3\pi}{8}$", r"$\frac{\pi}{2}$"]
        angtickLabels.reverse()
        rmax_ext = int(Nx / 3 + 20)
-       for tick, label in zip(angticks, angtickLabels):
+       for tick, label in zip(kspace_angticks, kspace_angtickLabels):
               if tick == 0:
                      ax1.text(x = (rmax_ext - 7.5) * np.cos(tick), y = (rmax_ext - 7.5) * np.sin(tick) + 5.0, s = label) ## shift the +-pi/2 to the right 
               elif tick > np.pi/2:
@@ -851,13 +874,11 @@ def plot_sector_phase_sync_snaps_full_sec(i, out_dir, w, enst_spec, enst_flux, e
        #--------------------------
        # Plot Order Parameters
        #--------------------------
-       angticks      = [-np.pi/2, -3*np.pi/8, -np.pi/4.0, -np.pi/8, 0.0, np.pi/8, np.pi/4.0, 3*np.pi/8, np.pi/2.0]
-       angtickLabels = [r"$-\frac{\pi}{2}$", r"$-\frac{3\pi}{8}$", r"$-\frac{\pi}{4}$", r"$-\frac{\pi}{8}$", r"$0$", r"$\frac{\pi}{8}$", r"$\frac{\pi}{4}$", r"$\frac{3\pi}{8}$", r"$\frac{\pi}{2}$"]
        ax3 = fig.add_subplot(gs[1, 0])
        div3   = make_axes_locatable(ax3)
        axtop3 = div3.append_axes("top", size = "100%", pad = 0.2)
        axtop3.plot(theta, Phi, '.-', color = "orange")
-       axtop3.set_xlim(-np.pi/2, np.pi/2)
+       axtop3.set_xlim(theta_min, theta_max)
        axtop3.set_xticks(angticks)
        axtop3.set_xticklabels([])
        axtop3.set_ylim(-np.pi-0.2, np.pi+0.2)
@@ -867,8 +888,8 @@ def plot_sector_phase_sync_snaps_full_sec(i, out_dir, w, enst_spec, enst_flux, e
        axtop3.set_title(r"Order Parameters")
        axtop3.set_ylabel(r"$\Phi$")
        ax3.plot(theta, R)
+       ax3.set_xlim(theta_min, theta_max)
        ax3.set_xticks(angticks)
-       ax3.set_xlim(-np.pi/2, np.pi/2)
        ax3.set_xticklabels(angtickLabels)
        ax3.set_ylim(0 - 0.05, 1 + 0.05)
        ax3.set_xlabel(r"$\theta$")
@@ -880,7 +901,7 @@ def plot_sector_phase_sync_snaps_full_sec(i, out_dir, w, enst_spec, enst_flux, e
        #--------------------------------
        ax4 = fig.add_subplot(gs[1, 1])
        ax4.plot(theta, enst_flux, '.-')
-       ax4.set_xlim(-np.pi/2, np.pi/2)
+       ax4.set_xlim(theta_min, theta_max)
        ax4.set_xticks(angticks)
        ax4.set_xticklabels(angtickLabels)
        ax4.set_xlabel(r"$\theta$")
@@ -907,13 +928,13 @@ def plot_sector_phase_sync_snaps_full_sec(i, out_dir, w, enst_spec, enst_flux, e
        # Plot Sync Across Sectors 
        #--------------------------------
        ax6 = fig.add_subplot(gs[2, 0])
-       im6 = ax6.imshow(R_a_sec, extent = (-np.pi/2, np.pi/2, -np.pi/2, np.pi/2), cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1]), vmin = 0.0, vmax = 1.0)
+       im6 = ax6.imshow(R_a_sec, extent = (theta_min, theta_max, alpha_min, alpha_max), cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1]), vmin = 0.0, vmax = 1.0)
        ax6.set_xticks(angticks)
        ax6.set_xticklabels(angtickLabels)
        ax6.set_yticks(angticks)
        ax6.set_yticklabels(angtickLabels)
-       ax6.set_xlabel(r"$\theta$")
-       ax6.set_ylabel(r"$\alpha$")
+       ax6.set_ylabel(r"$\theta$")
+       ax6.set_xlabel(r"$\alpha$")
        ax6.set_title(r"Sync Across Sectors")
        div6  = make_axes_locatable(ax6)
        cbax6 = div6.append_axes("right", size = "10%", pad = 0.05)
@@ -924,13 +945,13 @@ def plot_sector_phase_sync_snaps_full_sec(i, out_dir, w, enst_spec, enst_flux, e
        # Plot Avg Phase Across Sectors  
        #--------------------------------
        ax7 = fig.add_subplot(gs[2, 1])
-       im7 = ax7.imshow(Phi_a_sec, extent = (-np.pi/2, np.pi/2, -np.pi/2, np.pi/2), cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1]), vmin = -np.pi, vmax = np.pi)
+       im7 = ax7.imshow(Phi_a_sec, extent = (theta_min, theta_max, alpha_min, alpha_max), cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1]), vmin = -np.pi, vmax = np.pi)
        ax7.set_xticks(angticks)
        ax7.set_xticklabels(angtickLabels)
        ax7.set_yticks(angticks)
        ax7.set_yticklabels(angtickLabels)
-       ax7.set_xlabel(r"$\theta$")
-       ax7.set_ylabel(r"$\alpha$")
+       ax7.set_ylabel(r"$\theta$")
+       ax7.set_xlabel(r"$\alpha$")
        ax7.set_title(r"Average Angle Across Sectors")
        div7  = make_axes_locatable(ax7)
        cbax7 = div7.append_axes("right", size = "10%", pad = 0.05)
@@ -943,13 +964,13 @@ def plot_sector_phase_sync_snaps_full_sec(i, out_dir, w, enst_spec, enst_flux, e
        # Plot Enstrophy Flux Across Sectors  
        #--------------------------------
        ax8 = fig.add_subplot(gs[2, 2])
-       im8 = ax8.imshow(enst_flux_a_sec, extent = (-np.pi/2, np.pi/2, -np.pi/2, np.pi/2), cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1]), norm = mpl.colors.LogNorm())
+       im8 = ax8.imshow(enst_flux_a_sec, extent = (theta_min, theta_max, alpha_min, alpha_max), cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1]), norm = mpl.colors.SymLogNorm(linthresh = 0.1))
        ax8.set_xticks(angticks)
        ax8.set_xticklabels(angtickLabels)
        ax8.set_yticks(angticks)
        ax8.set_yticklabels(angtickLabels)
-       ax8.set_xlabel(r"$\theta$")
-       ax8.set_ylabel(r"$\alpha$")
+       ax8.set_ylabel(r"$\theta$")
+       ax8.set_xlabel(r"$\alpha$")
        ax8.set_title(r"Enstrophy Flux Across Sectors")
        div8  = make_axes_locatable(ax8)
        cbax8 = div8.append_axes("right", size = "10%", pad = 0.05)

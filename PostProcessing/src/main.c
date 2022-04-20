@@ -90,10 +90,8 @@ int main(int argc, char** argv) {
 	// --------------------------------
 	AllocateMemory(sys_vars->N);
 
-	printf("Here\n");
-
 	InitializeFFTWPlans(sys_vars->N);
-	printf("Here\n");
+	
 
 	//////////////////////////////
 	// Begin Snapshot Processing

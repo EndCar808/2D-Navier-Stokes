@@ -440,10 +440,12 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
             with h5py.File(in_file, 'r') as f:
                 ## Get the number of sectors
                 if 'SectorAngles' in list(f.keys()):
-                    self.theta = f["SectorAngles"][:]
-                    self.num_sect = self.theta.shape[0]
+                    self.theta        = f["SectorAngles"][:]
+                    self.num_sect     = self.theta.shape[0]
+                    self.num_k1_sects = self.num_sect
                 if 'SectorAngles' not in list(f.keys()):
-                    self.num_sect = int(in_f.split('_')[-3].split("[")[-1].split("]")[0])
+                    self.num_sect     = int(in_f.split('_')[-3].split("[")[-1].split("]")[0])
+                    self.num_k1_sects = self.num_sect
                 ## Get the number of triads per sector
                 if 'NumTriadsPerSector' in list(f.keys()):
                     self.num_triads = f["NumTriadsPerSector"][:, :]
@@ -502,12 +504,13 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                     self.grad_w_y_ranges = f["VorticityGradient_y_BinRanges"][:]
                 if 'VorticityGradient_y_BinCounts' in list(f.keys()):
                     self.grad_w_y_counts = f["VorticityGradient_y_BinCounts"][:]
+
+                ## Get the number of k1 sectors 
+                if 'TriadPhaseSyncAcrossSector' in list(f['Snap_00000'].keys()):
+                    self.num_k1_sects = f['Snap_00000']['TriadPhaseSyncAcrossSector'][:, :, :].shape[-1]
             
             ## Set the number of Triad Types
             NUM_TRIAD_TYPES = 7
-            ## Set the number of k1 sectors
-            NUM_K1_SECTS = 8
-
 
             ## Get the max wavenumber
             self.kmax = int(sim_data.Nx / 3)
@@ -529,7 +532,7 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
             self.enst_flux_spec = np.zeros((sim_data.ndata, sim_data.spec_size))
             self.enst_diss_spec = np.zeros((sim_data.ndata, sim_data.spec_size))
             self.d_enst_dt_spec = np.zeros((sim_data.ndata, sim_data.spec_size))
-            self.kmax_frac      = float(in_file.split('_')[-3].split("[")[-1].split("]")[0])
+            self.kmax_frac      = float(in_file.split('_')[-2].split("[")[-1].split("]")[0])
             self.kmax_C         = int(self.kmax * self.kmax_frac)
             ## Energy Flux Spectrum
             self.enrg_flux_spec = np.zeros((sim_data.ndata, sim_data.spec_size))
@@ -537,14 +540,14 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
             self.d_enrg_dt_spec = np.zeros((sim_data.ndata, sim_data.spec_size))
             ## Enstrophy Flux Per Sector
             self.enst_flux_per_sec = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_sect))
-            self.enst_flux_per_sec_across_sec = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_sect, NUM_K1_SECTS))
+            self.enst_flux_per_sec_across_sec = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_sect, self.num_k1_sects))
             ## Phase Sync arrays
             self.phase_R              = np.zeros((sim_data.ndata, self.num_sect))
             self.phase_Phi            = np.zeros((sim_data.ndata, self.num_sect))
             self.triad_R              = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_sect))
             self.triad_Phi            = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_sect))
-            self.triad_R_across_sec   = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_sect, NUM_K1_SECTS))
-            self.triad_Phi_across_sec = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_sect, NUM_K1_SECTS))
+            self.triad_R_across_sec   = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_sect, self.num_k1_sects))
+            self.triad_Phi_across_sec = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_sect, self.num_k1_sects))
             ## Phase Sync Stats
             self.phase_sector_counts = np.zeros((sim_data.ndata, self.num_sect, 200))
             self.phase_sector_ranges = np.zeros((sim_data.ndata, self.num_sect, 201))

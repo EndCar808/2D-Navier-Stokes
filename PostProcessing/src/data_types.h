@@ -64,9 +64,9 @@
 // #define __VEL_INC_STATS
 // #define __STR_FUNC_STATS
 // #define __GRAD_STATS
-// #define __FULL_FIELD
+#define __FULL_FIELD
 // #define __SPECTRA
-// #define __SEC_PHASE_SYNC
+#define __SEC_PHASE_SYNC
 #define __ENST_FLUX
 #define __ENRG_FLUX
 
@@ -98,13 +98,21 @@
 #define N_BINS_SEC 1000         // The number of bins in the sector pdfs
 #define N_BINS_SEC_INTIME 200   // The number of bins in the sector pdfs in time
 #define NUM_TRIAD_TYPES 6 		// The number of triad types contributing to the flux
-#define NUM_K1_SECTORS 8		// The number of k1 sectors to search over
-#define	K1_X  0
-#define	K1_Y  1
-#define	K2_X  2
-#define	K2_Y  3
-#define	K3_X  4
-#define	K3_Y  5
+#define NUM_K1_SECTORS 8		// The number of k1 sectors to search over in a reduced search @ +/- 30, 45, 60 & 90 degrees
+#define NUM_K_DATA 12           // The number of wavevector data to precompute and store
+#define	K1_X 	  0
+#define	K1_Y 	  1
+#define	K2_X 	  2
+#define	K2_Y  	  3
+#define	K3_X  	  4
+#define	K3_Y  	  5
+#define	K1_SQR	  6
+#define	K2_SQR	  7
+#define	K3_SQR	  8
+#define	K1_ANGLE  9
+#define	K2_ANGLE  10
+#define	K3_ANGLE  11
+
 // ---------------------------------------------------------------------
 //  Global Struct Definitions
 // ---------------------------------------------------------------------
@@ -149,6 +157,7 @@ typedef struct system_vars_struct {
 	int num_threads;					// The number of OMP threads to use
 	int thread_id;						// The ID of the OMP threads
 	int num_triad_per_sec_est;          // The estimate number of triads per sector
+	int num_k1_sectors;					// Variable to control the number of k1 sectors
 } system_vars_struct;
 
 // Runtime data struct

@@ -37,6 +37,7 @@ int GetCMLArgs(int argc, char** argv) {
 	int c;
 	int output_dir_flag = 0;
 	int input_dir_flag  = 0;
+	int sector_flag     = 0;
 
 	// -------------------------------
 	// Initialize Default Values
@@ -55,6 +56,8 @@ int GetCMLArgs(int argc, char** argv) {
 	sys_vars->num_threads = 1;
 	// Viscosity
 	sys_vars->NU = 1e-4;
+	// Default number of k1 sectors
+	sys_vars->num_k1_sectors = NUM_K1_SECTORS;
 	// -------------------------------
 	// Parse CML Arguments
 	// -------------------------------
@@ -83,13 +86,27 @@ int GetCMLArgs(int argc, char** argv) {
 				}
 				break;
 			case 'a':
-				// Get the number of sectors to use
-				sys_vars->num_sect = atoi(optarg); 
-				if (sys_vars->num_sect <= 0) {
-					fprintf(stderr, "\n["RED"ERROR"RESET"]: Error in reading in command line agument ["CYAN"%s"RESET"], number of sector angles must be strictly positive, number provided ["CYAN"%d"RESET"]\n--->> Now Exiting!\n", "sys_vars->num_sect", sys_vars->num_sect);
-					exit(1);
+				if (sector_flag == 0) {
+					// Get the number of sectors to use
+					sys_vars->num_sect = atoi(optarg); 
+					sector_flag++;
+					if (sys_vars->num_sect <= 0) {
+						fprintf(stderr, "\n["RED"ERROR"RESET"]: Error in reading in command line agument ["CYAN"%s"RESET"], number of sector angles must be strictly positive, number provided ["CYAN"%d"RESET"]\n--->> Now Exiting!\n", "sys_vars->num_sect", sys_vars->num_sect);
+						exit(1);
+					}
+					break;	
 				}
-				break;
+				else if (sector_flag == 1) {
+					// If full search is turned on set the number of k1 sectors to the number of sectors
+					sys_vars->num_k1_sectors = sys_vars->num_sect;
+					if (sys_vars->num_sect <= 0) {
+						fprintf(stderr, "\n["RED"ERROR"RESET"]: Error in reading in command line agument ["CYAN"%s"RESET"], number of sector angles must be strictly positive, number provided ["CYAN"%d"RESET"]\n--->> Now Exiting!\n", "sys_vars->num_sect", sys_vars->num_sect);
+						exit(1);
+					}
+				}
+				else {
+					break;
+				}				
 			case 'p':
 				// Get the number of omp threads to use
 				sys_vars->num_threads = atoi(optarg); 
