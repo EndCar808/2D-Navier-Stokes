@@ -121,18 +121,18 @@ def sim_data(input_dir, method = "default"):
 
         ## Initialize class
         def __init__(self, Nx = 0, Ny = 0, Nk = 0, nu = 0.0, t0 = 0.0, T = 0.0, ndata = 0, u0 = "TG_VORT", cfl = 0.0, spec_size = 0, dt = 0., dx = 0., dy = 0.):
-            self.Nx     = int(Nx)
-            self.Ny     = int(Ny)
-            self.Nk     = int(Nk)
-            self.nu     = float(nu)
-            self.t0     = float(t0)
-            self.T      = float(T)
-            self.ndata  = int(ndata)
-            self.u0     = str(u0)
-            self.cfl    = float(cfl)
-            self.dt     = float(dt)
-            self.dx     = float(dx)
-            self.dy     = float(dy)
+            self.Nx        = int(Nx)
+            self.Ny        = int(Ny)
+            self.Nk        = int(Nk)
+            self.nu        = float(nu)
+            self.t0        = float(t0)
+            self.T         = float(T)
+            self.ndata     = int(ndata)
+            self.u0        = str(u0)
+            self.cfl       = float(cfl)
+            self.dt        = float(dt)
+            self.dx        = float(dx)
+            self.dy        = float(dy)
             self.spec_size = int(spec_size)
 
 
@@ -271,6 +271,11 @@ def import_data(input_file, sim_data, method = "default"):
             self.y     = np.zeros((sim_data.Ny, ))
             self.k2    = np.zeros((sim_data.Nx, sim_data.Nk))
             self.k2Inv = np.zeros((sim_data.Nx, sim_data.Nk))
+            ## Data indicators
+            self.no_w     = False
+            self.no_w_hat = False
+            self.no_u     = False
+            self.no_u_hat = False
 
     ## Create instance of data class
     data = SolverData()
@@ -292,12 +297,20 @@ def import_data(input_file, sim_data, method = "default"):
             if "Iter" in group:
                 if 'w' in list(f[group].keys()):
                     data.w[nn, :, :] = f[group]["w"][:, :]
+                if 'w' not in list(f[group].keys()):
+                    data.no_w = True
                 if 'w_hat' in list(f[group].keys()):
                     data.w_hat[nn, :, :] = f[group]["w_hat"][:, :]
+                if 'w_hat' not in list(f[group].keys()):
+                    data.no_w_hat = True
                 if 'u' in list(f[group].keys()):
                     data.u[nn, :, :] = f[group]["u"][:, :, :]
+                if 'u' not in list(f[group].keys()):
+                    data.no_u = True
                 if 'u_hat' in list(f[group].keys()):
                     data.u_hat[nn, :, :] = f[group]["u_hat"][:, :, :]
+                if 'u_hat' not in list(f[group].keys()):
+                    data.no_u_hat = True
                 if 'TGSoln' in list(f[group].keys()):
                     data.tg_soln[nn, :, :] = f[group]["TGSoln"][:, :]
                 data.time[nn] = f[group].attrs["TimeValue"]

@@ -169,7 +169,7 @@ for section in parser.sections():
             num_plotting_job_threads = int(parser[section]['num_plotting_job_threads'])
 
 ## Get the path to the runs output directory
-par_runs_output_dir, = os.path.split(output_dir)
+par_runs_output_dir = os.path.split(output_dir)[0]
 par_runs_output_dir + '/ParallelRunsDump/'
 #########################
 ##      RUN SOLVER     ##
@@ -198,6 +198,10 @@ if solver:
             ## Print command to screen
             print("Executing the following command:\n\t" + tc.C + "{}".format(proc.args[0]) + tc.Rst)
             
+            ## Print output to terminal as it comes
+            for line in proc.stdout:
+                sys.stdout.write(line)
+
             # Communicate with process to retrive output and error
             [run_CodeOutput, run_CodeErr] = proc.communicate()
 
@@ -255,6 +259,10 @@ if postprocessing:
         for proc in filter(None, processes): # filters out 'None' fill values if proc_limit does not divide evenly into cmd_list
             ## Print command to screen
             print("Executing the following command:\n\t" + tc.C + "{}".format(proc.args[0]) + tc.Rst)
+
+            ## Print output to terminal as it comes
+            for line in proc.stdout:
+                sys.stdout.write(line)
             
             # Communicate with process to retrive output and error
             [run_CodeOutput, run_CodeErr] = proc.communicate()
@@ -313,6 +321,10 @@ if plotting:
         for proc in filter(None, processes): # filters out 'None' fill values if proc_limit does not divide evenly into cmd_list
             ## Print command to screen
             print("Executing the following command:\n\t" + tc.C + "{}".format(proc.args[0]) + tc.Rst)
+
+            ## Print output to terminal as it comes
+            for line in proc.stdout:
+                sys.stdout.write(line)
             
             # Communicate with process to retrive output and error
             [run_CodeOutput, run_CodeErr] = proc.communicate()

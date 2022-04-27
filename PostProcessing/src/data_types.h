@@ -60,13 +60,13 @@
 #endif
 
 // Post processing Modes
-// #define __REAL_STATS
-// #define __VEL_INC_STATS
-// #define __STR_FUNC_STATS
-// #define __GRAD_STATS
+#define __REAL_STATS
+#define __VEL_INC_STATS
+#define __STR_FUNC_STATS
+#define __GRAD_STATS
 #define __FULL_FIELD
 // #define __SPECTRA
-#define __SEC_PHASE_SYNC
+// #define __SEC_PHASE_SYNC
 #define __ENST_FLUX
 #define __ENRG_FLUX
 
@@ -99,19 +99,22 @@
 #define N_BINS_SEC_INTIME 200   // The number of bins in the sector pdfs in time
 #define NUM_TRIAD_TYPES 6 		// The number of triad types contributing to the flux
 #define NUM_K1_SECTORS 8		// The number of k1 sectors to search over in a reduced search @ +/- 30, 45, 60 & 90 degrees
-#define NUM_K_DATA 12           // The number of wavevector data to precompute and store
-#define	K1_X 	  0
-#define	K1_Y 	  1
-#define	K2_X 	  2
-#define	K2_Y  	  3
-#define	K3_X  	  4
-#define	K3_Y  	  5
-#define	K1_SQR	  6
-#define	K2_SQR	  7
-#define	K3_SQR	  8
-#define	K1_ANGLE  9
-#define	K2_ANGLE  10
-#define	K3_ANGLE  11
+#define NUM_K_DATA 15           // The number of wavevector data to precompute and store
+#define	K1_X 	  0 			// The index for the k1_x wavenuber
+#define	K1_Y 	  1 			// The index for the k1_y wavenuber
+#define	K2_X 	  2 			// The index for the k2_x wavenuber
+#define	K2_Y  	  3 			// The index for the k2_y wavenuber
+#define	K3_X  	  4 			// The index for the k3_x wavenuber
+#define	K3_Y  	  5 			// The index for the k3_y wavenuber
+#define	K1_SQR	  6 			// The index for the |k1|^2
+#define	K2_SQR	  7 			// The index for the |k2|^2
+#define	K3_SQR	  8 			// The index for the |k3|^2
+#define	K1_ANGLE  9 			// The index for the anlge of k1
+#define	K2_ANGLE  10 			// The index for the anlge of k2
+#define	K3_ANGLE  11 			// The index for the anlge of k3
+#define	K1_ANGLE_NEG  12 		// The index for the anlge of -k1
+#define	K2_ANGLE_NEG  13 		// The index for the anlge of -k2
+#define	K3_ANGLE_NEG  14 		// The index for the anlge of -k3
 
 // ---------------------------------------------------------------------
 //  Global Struct Definitions
@@ -230,7 +233,12 @@ typedef struct postprocess_data_struct {
 
 // Post processing stats data struct
 typedef struct stats_data_struct {
-	gsl_rstat_workspace r_stat;  									// Workplace for the running stats
+	gsl_rstat_workspace* r_stat_grad_u[SYS_DIM + 1];		  		// Workplace for the running stats for the gradients of velocity (both for each direction and combined)
+	gsl_rstat_workspace* r_stat_grad_w[SYS_DIM + 1];		  		// Workplace for the running stats for the gradients of vorticity (both for each direction and combined)
+	gsl_rstat_workspace* r_stat_w;									// Workplace for the running stats for the velocity (both for each direction and combined)
+	gsl_rstat_workspace* r_stat_u[SYS_DIM + 1];						// Workplace for the running stats for the vorticity (both for each direction and combined)
+	gsl_rstat_workspace* r_stat_vel_incr[INCR_TYPES][NUM_INCR];		// Workplace for the running stats for the velocity increments
+	gsl_rstat_workspace* r_stat_vort_incr[INCR_TYPES][NUM_INCR];	// Workplace for the running stats for the vorticity increments
 	gsl_histogram* w_pdf;		 									// Histogram struct for the vorticity distribution
 	gsl_histogram* u_pdf;		  									// Histrogam struct for the velocity distribution
 	gsl_histogram* vel_incr[INCR_TYPES][NUM_INCR]; 					// Array to hold the PDFs of the longitudinal and transverse velocity increments for each increment

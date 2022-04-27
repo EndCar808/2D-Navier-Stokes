@@ -167,7 +167,8 @@ void SpectralSolve(void) {
 			#endif
 
 			// Record System Measurables
-			RecordSystemMeasures(t, save_data_indx, RK_data);
+			// RecordSystemMeasures(t, save_data_indx, RK_data);
+			ComputeSystemMeasurables(t, save_data_indx, RK_data);
 
 			// If and when transient steps are complete write to file
 			if (iters > trans_steps) {
@@ -280,7 +281,7 @@ void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdif
 	/// RK STAGES
 	/////////////////////
 	// ----------------------- Stage 1
-	NonlinearRHSBatch(run_data->w_hat, RK_data->RK1, RK_data->nabla_psi, RK_data->nabla_w);
+	NonlinearRHSBatch(run_data->w_hat, RK_data->RK1, RK_data->nonlin, RK_data->nabla_psi, RK_data->nabla_w);
 	for (int i = 0; i < local_Nx; ++i) {
 		tmp = i * Ny_Fourier;
 		for (int j = 0; j < Ny_Fourier; ++j) {
@@ -291,7 +292,7 @@ void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdif
 		}
 	}
 	// ----------------------- Stage 2
-	NonlinearRHSBatch(RK_data->RK_tmp, RK_data->RK2, RK_data->nabla_psi, RK_data->nabla_w);
+	NonlinearRHSBatch(RK_data->RK_tmp, RK_data->RK2, RK_data->nonlin, RK_data->nabla_psi, RK_data->nabla_w);
 	for (int i = 0; i < local_Nx; ++i) {
 		tmp = i * Ny_Fourier;
 		for (int j = 0; j < Ny_Fourier; ++j) {
@@ -302,7 +303,7 @@ void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdif
 		}
 	}
 	// ----------------------- Stage 3
-	NonlinearRHSBatch(RK_data->RK_tmp, RK_data->RK3, RK_data->nabla_psi, RK_data->nabla_w);
+	NonlinearRHSBatch(RK_data->RK_tmp, RK_data->RK3, RK_data->nonlin, RK_data->nabla_psi, RK_data->nabla_w);
 	for (int i = 0; i < local_Nx; ++i) {
 		tmp = i * Ny_Fourier;
 		for (int j = 0; j < Ny_Fourier; ++j) {
@@ -313,7 +314,7 @@ void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdif
 		}
 	}
 	// ----------------------- Stage 4
-	NonlinearRHSBatch(RK_data->RK_tmp, RK_data->RK4, RK_data->nabla_psi, RK_data->nabla_w);
+	NonlinearRHSBatch(RK_data->RK_tmp, RK_data->RK4, RK_data->nonlin, RK_data->nabla_psi, RK_data->nabla_w);
 	for (int i = 0; i < local_Nx; ++i) {
 		tmp = i * Ny_Fourier;
 		for (int j = 0; j < Ny_Fourier; ++j) {
@@ -324,7 +325,7 @@ void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdif
 		}
 	}
 	// ----------------------- Stage 5
-	NonlinearRHSBatch(RK_data->RK_tmp, RK_data->RK5, RK_data->nabla_psi, RK_data->nabla_w);
+	NonlinearRHSBatch(RK_data->RK_tmp, RK_data->RK5, RK_data->nonlin, RK_data->nabla_psi, RK_data->nabla_w);
 	for (int i = 0; i < local_Nx; ++i) {
 		tmp = i * Ny_Fourier;
 		for (int j = 0; j < Ny_Fourier; ++j) {
@@ -335,7 +336,7 @@ void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdif
 		}
 	}
 	// ----------------------- Stage 6
-	NonlinearRHSBatch(RK_data->RK_tmp, RK_data->RK6, RK_data->nabla_psi, RK_data->nabla_w);
+	NonlinearRHSBatch(RK_data->RK_tmp, RK_data->RK6, RK_data->nonlin, RK_data->nabla_psi, RK_data->nabla_w);
 	#if defined(__DPRK5)
 	for (int i = 0; i < local_Nx; ++i) {
 		tmp = i * Ny_Fourier;
@@ -347,7 +348,7 @@ void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdif
 		}
 	}
 	// ----------------------- Stage 7
-	NonlinearRHSBatch(RK_data->RK_tmp, RK_data->RK7, RK_data->nabla_psi, RK_data->nabla_w);
+	NonlinearRHSBatch(RK_data->RK_tmp, RK_data->RK7, RK_data->nonlin, RK_data->nabla_psi, RK_data->nabla_w);
 	#endif
 
 	/////////////////////
@@ -411,7 +412,7 @@ void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdif
 	}
 	#if defined(__NONLIN)
 	// Record the nonlinear for the updated Fourier vorticity
-	NonlinearRHSBatch(run_data->w_hat, run_data->nonlinterm, RK_data->nabla_psi, RK_data->nabla_w);
+	NonlinearRHSBatch(run_data->w_hat, run_data->nonlinterm, RK_data->nonlin, RK_data->nabla_psi, RK_data->nabla_w);
 	#endif
 	#if defined(__DPRK5)
 	if (iters > 1) {
@@ -522,7 +523,7 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Nx, RK_da
 	/// RK STAGES
 	/////////////////////
 	// ----------------------- Stage 1
-	NonlinearRHSBatch(run_data->w_hat, RK_data->RK1, RK_data->nabla_psi, RK_data->nabla_w);
+	NonlinearRHSBatch(run_data->w_hat, RK_data->RK1, RK_data->nonlin, RK_data->nabla_psi, RK_data->nabla_w);
 	for (int i = 0; i < local_Nx; ++i) {
 		tmp = i * Ny_Fourier;
 		for (int j = 0; j < Ny_Fourier; ++j) {
@@ -533,7 +534,7 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Nx, RK_da
 		}
 	}
 	// ----------------------- Stage 2
-	NonlinearRHSBatch(RK_data->RK_tmp, RK_data->RK2, RK_data->nabla_psi, RK_data->nabla_w);
+	NonlinearRHSBatch(RK_data->RK_tmp, RK_data->RK2, RK_data->nonlin, RK_data->nabla_psi, RK_data->nabla_w);
 	for (int i = 0; i < local_Nx; ++i) {
 		tmp = i * Ny_Fourier;
 		for (int j = 0; j < Ny_Fourier; ++j) {
@@ -544,7 +545,7 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Nx, RK_da
 		}
 	}
 	// ----------------------- Stage 3
-	NonlinearRHSBatch(RK_data->RK_tmp, RK_data->RK3, RK_data->nabla_psi, RK_data->nabla_w);
+	NonlinearRHSBatch(RK_data->RK_tmp, RK_data->RK3, RK_data->nonlin, RK_data->nabla_psi, RK_data->nabla_w);
 	for (int i = 0; i < local_Nx; ++i) {
 		tmp = i * Ny_Fourier;
 		for (int j = 0; j < Ny_Fourier; ++j) {
@@ -555,7 +556,7 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Nx, RK_da
 		}
 	}
 	// ----------------------- Stage 4
-	NonlinearRHSBatch(RK_data->RK_tmp, RK_data->RK4, RK_data->nabla_psi, RK_data->nabla_w);
+	NonlinearRHSBatch(RK_data->RK_tmp, RK_data->RK4, RK_data->nonlin, RK_data->nabla_psi, RK_data->nabla_w);
 	
 	
 	/////////////////////
@@ -602,7 +603,7 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Nx, RK_da
 	}
 	#if defined(__NONLIN)
 	// Record the nonlinear term with the updated Fourier vorticity
-	NonlinearRHSBatch(run_data->w_hat, run_data->nonlinterm, RK_data->nabla_psi, RK_data->nabla_w);
+	NonlinearRHSBatch(run_data->w_hat, run_data->nonlinterm, RK_data->nonlin, RK_data->nabla_psi, RK_data->nabla_w);
 	#endif
 }
 #endif
@@ -615,7 +616,7 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Nx, RK_da
  * @param u         Array to hold the real space velocities
  * @param nabla_w   Array to hold the real space vorticity derivatives
  */
-void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* u, double* nabla_w) {
+void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* nonlinear, double* u, double* nabla_w) {
 
 	// Initialize variables
 	int tmp, indx;
@@ -626,10 +627,6 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* u, 
 	fftw_complex k_sqr;
 	double vel1;
 	double vel2;
-
-	// Allocate temporay memory for the nonlinear term in Real Space
-	double* nonlinterm = (double* )malloc(sizeof(double) * local_Nx * (Ny + 2));
-
 
 	// -----------------------------------
 	// Compute Fourier Space Velocities
@@ -652,18 +649,14 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* u, 
 				dw_hat_dt[SYS_DIM * (indx) + 0] = 0.0 + 0.0 * I;
 				dw_hat_dt[SYS_DIM * (indx) + 1] = 0.0 + 0.0 * I;
 			}
-			// printf("-k_sqr[%d, %d]: %1.16lf %1.16lf I \t kx[%d]: %1.16lf \t wh[%d, %d]: %1.16lf %1.16lf I \n", i, j, creal(-1.0 * k_sqr), cimag(-1.0 * k_sqr), i, ((double) run_data->k[0][i]), i, j, creal(w_hat[indx]), cimag(w_hat[indx]));
 		}
 	}
-	// printf("\n");
-	// PrintVectorFourier(dw_hat_dt, sys_vars->N, "uh", "vh");
 
 	// ----------------------------------
 	// Transform to Real Space
 	// ----------------------------------
 	// Batch transform both fourier velocites to real space
 	fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_batch_c2r), dw_hat_dt, u);
-	// PrintVectorReal(u, sys_vars->N, "u", "v");
 
 	// ---------------------------------------------
 	// Compute Fourier Space Vorticity Derivatives
@@ -677,13 +670,8 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* u, 
 			// Fill vorticity derivatives array
 			dw_hat_dt[SYS_DIM * indx + 0] = I * ((double) run_data->k[0][i]) * w_hat[indx];
 			dw_hat_dt[SYS_DIM * indx + 1] = I * ((double) run_data->k[1][j]) * w_hat[indx]; 
-			// if (!(sys_vars->rank)) {
-			// 	printf("dwdx_h[%d]: %1.16lf %1.16lf I \t dwdy_h[%d]: %1.16lf %1.16lf I\n", indx, creal(dw_hat_dt[SYS_DIM * indx + 0]), cimag(dw_hat_dt[SYS_DIM * indx + 0]), indx, creal(dw_hat_dt[SYS_DIM * indx + 1]), cimag(dw_hat_dt[SYS_DIM * indx + 1]));
-			// }
 		}
 	}
-	// printf("\n\n");
-	// PrintVectorFourier(dw_hat_dt, sys_vars->N, "dwh_dx", "dwh_dy");
 
 	// ----------------------------------
 	// Transform to Real Space
@@ -691,7 +679,6 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* u, 
 	// Batch transform both fourier vorticity derivatives to real space
 	fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_batch_c2r), dw_hat_dt, nabla_w);
 	
-	// PrintVectorReal(nabla_w, sys_vars->N, "dw_dx", "dw_dy");
 
 	// -----------------------------------
 	// Perform Convolution in Real Space
@@ -705,22 +692,16 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* u, 
  			// Perform multiplication of the nonlinear term 
  			vel1 = u[SYS_DIM * indx + 0];
  			vel2 = u[SYS_DIM * indx + 1];
- 			nonlinterm[indx] = 1.0 * (vel1 * nabla_w[SYS_DIM * indx + 0] + vel2 * nabla_w[SYS_DIM * indx + 1]);
- 			// nonlinterm[indx] *= 1.0 / pow((Nx * Ny), 1.0);
+ 			nonlinear[indx] = 1.0 * (vel1 * nabla_w[SYS_DIM * indx + 0] + vel2 * nabla_w[SYS_DIM * indx + 1]);
  		}
  	}
-
- 	// PrintScalarReal(nonlinterm, sys_vars->N, "RHS");
-
-
 
  	// -------------------------------------
  	// Transform Nonlinear Term To Fourier
  	// -------------------------------------
  	// Transform Fourier nonlinear term back to Fourier space
- 	fftw_mpi_execute_dft_r2c((sys_vars->fftw_2d_dft_r2c), nonlinterm, dw_hat_dt);
+ 	fftw_mpi_execute_dft_r2c((sys_vars->fftw_2d_dft_r2c), nonlinear, dw_hat_dt);
 
- 	// PrintScalarFourier(dw_hat_dt, sys_vars->N, "b_RHSh");
 
  	for (int i = 0; i < local_Nx; ++i) {
  		tmp = i * (Ny_Fourier);
@@ -742,9 +723,6 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* u, 
 			dw_hat_dt[run_data->forcing_indx[i]] += run_data->forcing[i]; 
 		}
 	}
-
- 	// Free memory
- 	free(nonlinterm);
 }
 /**
  * Function to apply the selected dealiasing filter to the input array. Can be Fourier vorticity or velocity
@@ -945,7 +923,7 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 		// ---------------------------------------
 		fftw_mpi_execute_dft_r2c((sys_vars->fftw_2d_dft_r2c), run_data->w, w_hat);
 	}
-	else if (!(strcmp(sys_vars->u0, "DECAY_TURB")) || !(strcmp(sys_vars->u0, "DECAY_TURB_II")) || !(strcmp(sys_vars->u0, "DECAY_TURB_EXP")) || !(strcmp(sys_vars->u0, "DECAY_TURB_EXP_II"))) {
+	else if (!(strcmp(sys_vars->u0, "DECAY_TURB_BB")) || !(strcmp(sys_vars->u0, "DECAY_TURB_NB")) || !(strcmp(sys_vars->u0, "DECAY_TURB_EXP")) || !(strcmp(sys_vars->u0, "DECAY_TURB_EXP_II"))) {
 		// --------------------------------------------------------
 		// Decaying Turbulence ICs
 		// --------------------------------------------------------
@@ -978,11 +956,11 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 					// Compute the form of the initial energy
 					sqrt_k = sqrt((double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]));
 
-					if (!(strcmp(sys_vars->u0, "DECAY_TURB"))) {
+					if (!(strcmp(sys_vars->u0, "DECAY_TURB_BB"))) {
 						// Computet the Broad band initial spectrum
 						spec_1d = sqrt_k / (1.0 + pow(sqrt_k, 4.0) / DT_K0);
 					} 
-					else if (!(strcmp(sys_vars->u0, "DECAY_TURB_II"))) {
+					else if (!(strcmp(sys_vars->u0, "DECAY_TURB_NB"))) {
 						// Compute the Narrow Band initial spectrum
 						spec_1d = pow(sqrt_k, 6.0) / pow((1.0 + sqrt_k / (2.0 * DT2_K0)), 18.0);
 					}
@@ -1055,11 +1033,11 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 			for (int j = 0; j < Ny_Fourier; ++j) {
 				indx = tmp + j;
 
-				if (!(strcmp(sys_vars->u0, "DECAY_TURB"))) {
+				if (!(strcmp(sys_vars->u0, "DECAY_TURB_BB"))) {
 					// Compute the Fouorier vorticity
 					w_hat[indx] *= sqrt(DT_E0 / enrg);
 				}
-				else if (!(strcmp(sys_vars->u0, "DECAY_TURB_II"))) {
+				else if (!(strcmp(sys_vars->u0, "DECAY_TURB_NB"))) {
 					// Compute the Fouorier vorticity
 					w_hat[indx] *= sqrt(DT2_E0 / enrg);
 				}
@@ -1748,13 +1726,13 @@ void PrintUpdateToTerminal(int iters, double t, double dt, double T, int save_da
 
 		// Print Update to screen
 		if( !(sys_vars->rank) ) {	
-			printf("Iter: %d\tt: %1.6lf/%1.3lf\tdt: %g\t Max Vort: %1.4lf\tKE: %1.5lf\tENS: %1.5lf\tPAL: %1.5lf\tL2: %g\tLinf: %g\n", iters, t, dt, T, max_vort, run_data->tot_energy[save_data_indx], run_data->tot_enstr[save_data_indx], run_data->tot_palin[save_data_indx], norms[0], norms[1]);
+			printf("Iter: %d\tt: %1.6lf/%1.3lf\tdt: %g\t Max Vort: %1.4lf\tKE: %1.5g\tENS: %1.5g\tPAL: %1.5g\tL2: %1.5g\tLinf: %1.5g\n", iters, t, dt, T, max_vort, run_data->tot_energy[save_data_indx], run_data->tot_enstr[save_data_indx], run_data->tot_palin[save_data_indx], norms[0], norms[1]);
 		}
 	}
 	else {
 		// Print Update to screen
 		if( !(sys_vars->rank) ) {	
-			printf("Iter: %d\tt: %1.6lf/%1.3lf\tdt: %g\t Max Vort: %1.4lf\tTKE: %1.8lf\tENS: %1.8lf\tPAL: %g\tE_Diss: %g\tEns_Diss: %g\n", iters, t, T, dt, max_vort, run_data->tot_energy[save_data_indx], run_data->tot_enstr[save_data_indx], run_data->tot_palin[save_data_indx], run_data->enrg_diss[save_data_indx], run_data->enst_diss[save_data_indx]);
+			printf("Iter: %d\tt: %1.6lf/%1.3lf\tdt: %g\t Max Vort: %1.4lf\tTKE: %1.8lf\tENS: %1.8lf\tPAL: %1.5g\tE_Diss: %1.5g\tEns_Diss: %1.5g\n", iters, t, T, dt, max_vort, run_data->tot_energy[save_data_indx], run_data->tot_enstr[save_data_indx], run_data->tot_palin[save_data_indx], run_data->enrg_diss[save_data_indx], run_data->enst_diss[save_data_indx]);
 		}
 	}
 	#else
@@ -1763,7 +1741,7 @@ void PrintUpdateToTerminal(int iters, double t, double dt, double T, int save_da
 
 	// Print to screen
 	if( !(sys_vars->rank) ) {	
-		printf("Iter: %d/%ld\tt: %1.6lf/%1.3lf\tdt: %g\tMax Vort: %1.4lf\tKE: %1.5lf\tENS: %1.5lf\tPAL: %1.5lf\n", iters, sys_vars->num_t_steps, t, T, dt, max_vort, run_data->tot_energy[save_data_indx], run_data->tot_enstr[save_data_indx], run_data->tot_palin[save_data_indx]);
+		printf("Iter: %d/%ld\tt: %1.6lf/%1.3lf\tdt: %g\tMax Vort: %1.4lf\tKE: %1.5g\tENS: %1.5g\tPAL: %1.5g\n", iters, sys_vars->num_t_steps, t, T, dt, max_vort, run_data->tot_energy[save_data_indx], run_data->tot_enstr[save_data_indx], run_data->tot_palin[save_data_indx]);
 	}
 	#endif	
 }
@@ -2323,9 +2301,8 @@ double EnergyDissipationRate(void) {
 	int tmp;
 	int indx;
 	double pre_fac;
-	#if defined(HYPER_VISC) || defined(EKMN_DRAG)
 	double k_sqr;
-	#endif
+	fftw_complex tmp_u_x, tmp_u_y;
 	ptrdiff_t local_Nx 		  = sys_vars->local_Nx;
 	const long int Nx         = sys_vars->N[0];
 	const long int Ny         = sys_vars->N[1];
@@ -2344,32 +2321,36 @@ double EnergyDissipationRate(void) {
 		for (int j = 0; j < Ny_Fourier; ++j) {
 			indx = tmp + j;
 
-			#if defined(HYPER_VISC) || defined(EKMN_DRAG)
 			// Compute |k|^2
 			k_sqr = (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
-			#endif
 
-			// Get the appropriate prefactor
-			#if defined(HYPER_VISC) && defined(EKMN_DRAG) 
-			// Both Hyperviscosity and Ekman drag
-			pre_fac = sys_vars->NU * pow(k_sqr, VIS_POW) + sys_vars->EKMN_ALPHA * pow(k_sqr, EKMN_POW);
-			#elif !defined(HYPER_VISC) && defined(EKMN_DRAG) 
-			// No hyperviscosity but we have Ekman drag
-			pre_fac = sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA * pow(k_sqr, EKMN_POW);
-			#elif defined(HYPER_VISC) && !defined(EKMN_DRAG) 
-			// Hyperviscosity only
-			pre_fac = sys_vars->NU * pow(k_sqr, VIS_POW);
-			#else 
-			// No hyper viscosity or no ekman drag -> just normal viscosity
-			pre_fac = sys_vars->NU; 
-			#endif
+			if ((run_data->k[0][i] != 0) || (run_data->k[1][j] != 0)) {
+				// Get the Fourier velocities
+				tmp_u_x = (I / k_sqr) * (run_data->k[1][j] * run_data->w_hat[indx]);
+				tmp_u_y = (I / k_sqr) * (-run_data->k[0][i] * run_data->w_hat[indx]);
 
-			// Update the running sum for the palinstrophy -> first and last modes have no conjugate so only count once
-			if((j == 0) || (j == Ny_Fourier - 1)) {
-				enrgy_diss += pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
-			}
-			else {
-				enrgy_diss += 2.0 * pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+				// Get the appropriate prefactor
+				#if defined(HYPER_VISC) && defined(EKMN_DRAG) 
+				// Both Hyperviscosity and Ekman drag
+				pre_fac = sys_vars->NU * pow(k_sqr, VIS_POW) + sys_vars->EKMN_ALPHA * pow(k_sqr, EKMN_POW);
+				#elif !defined(HYPER_VISC) && defined(EKMN_DRAG) 
+				// No hyperviscosity but we have Ekman drag
+				pre_fac = sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA * pow(k_sqr, EKMN_POW);
+				#elif defined(HYPER_VISC) && !defined(EKMN_DRAG) 
+				// Hyperviscosity only
+				pre_fac = sys_vars->NU * pow(k_sqr, VIS_POW);
+				#else 
+				// No hyper viscosity or no ekman drag -> just normal viscosity
+				pre_fac = sys_vars->NU * k_sqr; 
+				#endif
+
+				// Update the running sum for the palinstrophy -> first and last modes have no conjugate so only count once
+				if((j == 0) || (j == Ny_Fourier - 1)) {
+					enrgy_diss += pre_fac * cabs(tmp_u_x * conj(tmp_u_x) + tmp_u_y * conj(tmp_u_y));
+				}
+				else {
+					enrgy_diss += 2.0 * pre_fac * cabs(tmp_u_x * conj(tmp_u_x) + tmp_u_y * conj(tmp_u_y));
+				}
 			}
 		}
 	}
@@ -2477,7 +2458,7 @@ void EnstrophyFlux(double* enst_flux, double* enst_diss, RK_data_struct* RK_data
 	}
 
 	// Compute the nonlinear term & subtract the forcing as the flux computation should ignore focring
-	NonlinearRHSBatch(run_data->w_hat, dwhat_dt, RK_data->nabla_psi, RK_data->nabla_w);
+	NonlinearRHSBatch(run_data->w_hat, dwhat_dt, RK_data->nonlin, RK_data->nabla_psi, RK_data->nabla_w);
 	if (sys_vars->local_forcing_proc) {
 		for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
 			dwhat_dt[run_data->forcing_indx[i]] -= run_data->forcing[i];
@@ -2583,7 +2564,7 @@ void EnergyFlux(double* enrg_flux, double* enrg_diss, RK_data_struct* RK_data) {
 	}
 
 	// Compute the nonlinear term & subtract the forcing as the flux computation should ignore focring
-	NonlinearRHSBatch(run_data->w_hat, dwhat_dt, RK_data->nabla_psi, RK_data->nabla_w);
+	NonlinearRHSBatch(run_data->w_hat, dwhat_dt, RK_data->nonlin, RK_data->nabla_psi, RK_data->nabla_w);
 	if (sys_vars->local_forcing_proc) {
 		for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
 			dwhat_dt[run_data->forcing_indx[i]] -= run_data->forcing[i];
@@ -2700,7 +2681,7 @@ void EnergyFluxSpectrum(RK_data_struct* RK_data) {
 	}
 
 	// Compute the nonlinear term & subtract the forcing as the flux computation should ignore focring
-	NonlinearRHSBatch(run_data->w_hat, dwhat_dt, RK_data->nabla_psi, RK_data->nabla_w);
+	NonlinearRHSBatch(run_data->w_hat, dwhat_dt, RK_data->nonlin, RK_data->nabla_psi, RK_data->nabla_w);
 	if (sys_vars->local_forcing_proc) {
 		for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
 			dwhat_dt[run_data->forcing_indx[i]] -= run_data->forcing[i];
@@ -2793,7 +2774,7 @@ void EnstrophyFluxSpectrum(RK_data_struct* RK_data) {
 	}
 
 	// Compute the nonlinear term & subtract the forcing as the flux computation should ignore focring
-	NonlinearRHSBatch(run_data->w_hat, dwhat_dt, RK_data->nabla_psi, RK_data->nabla_w);
+	NonlinearRHSBatch(run_data->w_hat, dwhat_dt, RK_data->nonlin, RK_data->nabla_psi, RK_data->nabla_w);
 	if (sys_vars->local_forcing_proc) {
 		for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
 			dwhat_dt[run_data->forcing_indx[i]] -= run_data->forcing[i];
@@ -2928,7 +2909,7 @@ void ComputeSystemMeasurables(double t, int iter, RK_data_struct* RK_data) {
 
 	#if defined(__ENRG_FLUX) || defined(__ENST_FLUX) || defined(__ENRG_FLUX_SPECT) || defined(__ENST_FLUX_SPECT)
 	// Compute the nonlinear term & subtract the forcing as the flux computation should ignore focring
-	NonlinearRHSBatch(run_data->w_hat, RK_data->RK1, RK_data->nabla_psi, RK_data->nabla_w);
+	NonlinearRHSBatch(run_data->w_hat, RK_data->RK1, RK_data->nonlin, RK_data->nabla_psi, RK_data->nabla_w);
 	if (sys_vars->local_forcing_proc) {
 		for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
 			RK_data->RK1[run_data->forcing_indx[i]] -= run_data->forcing[i];
@@ -2982,7 +2963,7 @@ void ComputeSystemMeasurables(double t, int iter, RK_data_struct* RK_data) {
 						run_data->tot_enstr[iter]  += cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
 						run_data->tot_div[iter]    += cabs(div_u_z * conj(div_u_z));
 						run_data->tot_palin[iter]  += k_sqr * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
-						run_data->enrg_diss[iter]  += pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * (1.0 / k_sqr);
+						run_data->enrg_diss[iter]  += pre_fac * cabs(u_z * conj(u_z) + v_z * conj(v_z));
 						run_data->enst_diss[iter]  += pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
 						if ((k_sqr >= lwr_sbst_lim_sqr) && (k_sqr < upr_sbst_lim_sqr)) { // define the subset to consider for the flux and dissipation
 							#if defined(__ENRG_FLUX)
@@ -3000,7 +2981,7 @@ void ComputeSystemMeasurables(double t, int iter, RK_data_struct* RK_data) {
 						run_data->tot_enstr[iter]  += 2.0 * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
 						run_data->tot_div[iter]    += 2.0 * cabs(div_u_z * conj(div_u_z));
 						run_data->tot_palin[iter]  += 2.0 * k_sqr * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
-						run_data->enrg_diss[iter]  += 2.0 * pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * (1.0 / k_sqr);
+						run_data->enrg_diss[iter]  += 2.0 * pre_fac * cabs(u_z * conj(u_z) + v_z * conj(v_z));
 						run_data->enst_diss[iter]  += 2.0 * pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
 						if ((k_sqr >= lwr_sbst_lim_sqr) && (k_sqr < upr_sbst_lim_sqr)) { // define the subset to consider for the flux and dissipation
 							#if defined(__ENRG_FLUX)
@@ -3273,6 +3254,11 @@ void AllocateMemory(const long int* NBatch, RK_data_struct* RK_data) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for Integration Array ["CYAN"%s"RESET"] \n-->> Exiting!!!\n", "nabla_w");
 		exit(1);
 	}
+	RK_data->nonlin   = (double* )fftw_malloc(sizeof(double) * 2 * sys_vars->alloc_local);
+	if (RK_data->nonlin == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for Integration Array ["CYAN"%s"RESET"] \n-->> Exiting!!!\n", "nonlin");
+		exit(1);
+	}
 	RK_data->RK1       = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->alloc_local_batch);
 	if (RK_data->RK1 == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for Integration Array ["CYAN"%s"RESET"] \n-->> Exiting!!!\n", "RK1");
@@ -3336,6 +3322,7 @@ void AllocateMemory(const long int* NBatch, RK_data_struct* RK_data) {
 			indx_real = tmp_real + j;
 			indx_four = tmp_four + j;
 			
+			RK_data->nonlin[indx_real]					= 0.0;
 			run_data->u[SYS_DIM * indx_real + 0]        = 0.0;
 			run_data->u[SYS_DIM * indx_real + 1] 	  	= 0.0;
 			RK_data->nabla_w[SYS_DIM * indx_real + 0] 	= 0.0;
@@ -3814,59 +3801,64 @@ void InitializeSystemMeasurables(RK_data_struct* RK_data) {
 	// ----------------------------
 	// Get Measurables of the ICs
 	// ----------------------------
-	#if defined(__SYS_MEASURES)
-	// Total Energy
-	run_data->tot_energy[0] = TotalEnergy();
+	ComputeSystemMeasurables(0.0, 0, RK_data);
 
-	// Total Enstrophy
-	run_data->tot_enstr[0] = TotalEnstrophy();
+	// // ----------------------------
+	// // Get Measurables of the ICs
+	// // ----------------------------
+	// #if defined(__SYS_MEASURES)
+	// // Total Energy
+	// run_data->tot_energy[0] = TotalEnergy();
 
-	// Total Palinstrophy
-	run_data->tot_palin[0] = TotalPalinstrophy();
+	// // Total Enstrophy
+	// run_data->tot_enstr[0] = TotalEnstrophy();
 
-	// Total Forcing Input
-	run_data->tot_forc[0] = TotalForcing();
+	// // Total Palinstrophy
+	// run_data->tot_palin[0] = TotalPalinstrophy();
 
-	// Total Divergence
-	run_data->tot_div[0] = TotalDivergence();
+	// // Total Forcing Input
+	// run_data->tot_forc[0] = TotalForcing();
 
-	// Energy dissipation rate
-	run_data->enrg_diss[0] = EnergyDissipationRate();
+	// // Total Divergence
+	// run_data->tot_div[0] = TotalDivergence();
 
-	// Enstrophy dissipation rate
-	run_data->enst_diss[0] = EnstrophyDissipationRate();
-	#endif
-	#if defined(__ENST_FLUX)
-	// Enstrophy Flux and dissipation from/to Subset of modes
-	EnstrophyFlux(&(run_data->enst_flux_sbst[0]), &(run_data->enst_diss_sbst[0]), RK_data);
-	#endif
-	#if defined(__ENRG_FLUX)
-	// Energy Flux and dissipation from/to a subset of modes
-	EnergyFlux(&(run_data->enrg_flux_sbst[0]), &(run_data->enrg_diss_sbst[0]), RK_data);
-	#endif
-	// Time
-	#if defined(__TIME)
-	if (!(sys_vars->rank)) {
-		run_data->time[0] = sys_vars->t0;
-	}
-	#endif
+	// // Energy dissipation rate
+	// run_data->enrg_diss[0] = EnergyDissipationRate();
 
-	// ----------------------------
-	// Get Spectra of the ICs
-	// ----------------------------
-	// Call spectra functions
-	#if defined(__ENST_SPECT)
-	EnstrophySpectrum();
-	#endif
-	#if defined(__ENRG_SPECT)
-	EnergySpectrum();
-	#endif
-	#if defined(__ENRG_FLUX_SPECT)
-	EnergyFluxSpectrum(RK_data);
-	#endif
-	#if defined(__ENST_FLUX_SPECT)
-	EnstrophyFluxSpectrum(RK_data);
-	#endif
+	// // Enstrophy dissipation rate
+	// run_data->enst_diss[0] = EnstrophyDissipationRate();
+	// #endif
+	// #if defined(__ENST_FLUX)
+	// // Enstrophy Flux and dissipation from/to Subset of modes
+	// EnstrophyFlux(&(run_data->enst_flux_sbst[0]), &(run_data->enst_diss_sbst[0]), RK_data);
+	// #endif
+	// #if defined(__ENRG_FLUX)
+	// // Energy Flux and dissipation from/to a subset of modes
+	// EnergyFlux(&(run_data->enrg_flux_sbst[0]), &(run_data->enrg_diss_sbst[0]), RK_data);
+	// #endif
+	// // Time
+	// #if defined(__TIME)
+	// if (!(sys_vars->rank)) {
+	// 	run_data->time[0] = sys_vars->t0;
+	// }
+	// #endif
+
+	// // ----------------------------
+	// // Get Spectra of the ICs
+	// // ----------------------------
+	// // Call spectra functions
+	// #if defined(__ENST_SPECT)
+	// EnstrophySpectrum();
+	// #endif
+	// #if defined(__ENRG_SPECT)
+	// EnergySpectrum();
+	// #endif
+	// #if defined(__ENRG_FLUX_SPECT)
+	// EnergyFluxSpectrum(RK_data);
+	// #endif
+	// #if defined(__ENST_FLUX_SPECT)
+	// EnstrophyFluxSpectrum(RK_data);
+	// #endif
 }
 /**
  * Wrapper function that frees any memory dynamcially allocated in the programme
@@ -3956,6 +3948,7 @@ void FreeMemory(RK_data_struct* RK_data) {
 	fftw_free(RK_data->w_hat_last);
 	#endif
 	fftw_free(RK_data->RK_tmp);
+	fftw_free(RK_data->nonlin);
 	fftw_free(RK_data->nabla_w);
 	fftw_free(RK_data->nabla_psi);
 

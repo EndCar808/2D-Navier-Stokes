@@ -216,6 +216,29 @@ def transform_w(w):
 
     return w_hat
 
+def run_plot_cmd_par(groups_args):
+
+    ## Loop of grouped iterable
+    for procs in zip_longest(*groups_args): 
+        pipes     = []
+        processes = []
+        for p in filter(None, procs):
+            recv, send = mprocs.Pipe(False)
+            processes.append(p)
+            pipes.append(recv)
+            p.start()
+
+        for process in processes:
+            process.join()
+
+def run_video_cmd(cmd):
+
+    process = Popen(cmd, shell = True, stdout = PIPE, stdin = PIPE, universal_newlines = True)
+    [runCodeOutput, runCodeErr] = process.communicate()
+    print(runCodeOutput)
+    print(runCodeErr)
+    process.wait()
+
 ######################
 ##       MAIN       ##
 ######################
@@ -238,13 +261,26 @@ if __name__ == '__main__':
     run_data = import_data(cmdargs.in_dir, sys_vars, method)
 
     ## Read in spectra data
-    if cmdargs.spec_file == None and os.path.isdir(cmdargs.in_dir + "Spectra_HDF_Data.h5:") == True:
+    if cmdargs.spec_file == None and os.path.isfile(cmdargs.in_dir + "Spectra_HDF_Data.h5") == True:
         spec_data = import_spectra_data(cmdargs.in_dir, sys_vars, method)
-    elif os.path.isdir(cmdargs.in_dir + "Spectra_HDF_Data.h5:") != True:
+    elif os.path.isdir(cmdargs.in_dir + "Spectra_HDF_Data.h5") != True:
         pass
     else:
         spec_data = import_spectra_data(cmdargs.spec_file, sys_vars, method)
 
+    # spec_data = import_spectra_data(spectra_file, sys_vars, method)
+
+    # -----------------------------------------
+    ## --------  Data Prep
+    # -----------------------------------------
+    ## Compute real space vorticity if it does not exist in data 
+    if run_data.no_w:
+        print("\nPreparing real space vorticity...", end = " ")
+        for i in range(sys_vars.ndata):
+            run_data.w[i, :, :] = np.fft.irfft2(run_data.w_hat[i, :, :])
+        print("Finished!")
+
+    ## Read in post data if indicated/it exists 
     if cmdargs.use_post:
         ## Read in post processing data
         post_data = import_post_processing_data(cmdargs.in_dir + cmdargs.post_file, sys_vars, "alt")
@@ -308,24 +344,45 @@ if __name__ == '__main__':
                 proc_lim = 20
 
                 ## Create tasks for the process pool
-                groups_args = [(mprocs.Process(target = plot_summary_snaps, args = (cmdargs.out_dir, i, run_data.w[i, :, :], run_data.w_hat[i, :, :], run_data.x, run_data.y, wmin, wmax, run_data.kx, run_data.ky, int(sys_vars.Nx / 3), run_data.tot_enrg[:i], run_data.tot_enst[:i], run_data.tot_palin[:i], spec_data.enrg_spectrum[i, :], spec_data.enst_spectrum[i, :], run_data.enrg_diss[:i], run_data.enst_diss[:i], run_data.enrg_flux_sbst[:i], run_data.enrg_diss_sbst[:i], run_data.enst_flux_sbst[:i], run_data.enst_diss_sbst[:i], run_data.time, sys_vars.Nx, sys_vars.Ny)) for i in range(run_data.w.shape[0]))] * proc_lim
+                cmdlist = [(mprocs.Process(target = plot_summary_snaps, args = (cmdargs.out_dir, i, 
+                                                                                run_data.w[i, :, :], 
+                                                                                run_data.x, run_data.y, 
+                                                                                wmin, wmax, 
+                                                                                run_data.kx, run_data.ky, 
+                                                                                int(sys_vars.Nx / 3), 
+                                                                                run_data.tot_enrg[:i], 
+                                                                                run_data.tot_enst[:i], 
+                                                                                run_data.tot_palin[:i], 
+                                                                                spec_data.enrg_spectrum[i, :], 
+                                                                                spec_data.enst_spectrum[i, :], 
+                                                                                run_data.enrg_diss[:i], run_data.enst_diss[:i], 
+                                                                                run_data.enrg_flux_sbst[:i], run_data.enrg_diss_sbst[:i], 
+                                                                                run_data.enst_flux_sbst[:i], run_data.enst_diss_sbst[:i], 
+                                                                                run_data.time, 
+                                                                                sys_vars.Nx, sys_vars.Ny)) for i in range(run_data.w.shape[0]))] * proc_lim
 
-                ## Loop of grouped iterable
-                for procs in zip_longest(*groups_args): 
-                    pipes     = []
-                    processes = []
-                    for p in filter(None, procs):
-                        recv, send = mprocs.Pipe(False)
-                        processes.append(p)
-                        pipes.append(recv)
-                        p.start()
-
-                    for process in processes:
-                        process.join()
+                ## Run plotting command 
+                run_plot_cmd_par(cmdlist)
             else:
                 ## Loop over snapshots
                 for i in range(sys_vars.ndata):
-                    plot_summary_snaps(cmdargs.out_dir, i, run_data.w[i, :, :], run_data.w_hat[i, :, :], run_data.x, run_data.y, wmin, wmax, run_data.kx, run_data.ky, int(sys_vars.Nx / 3), run_data.tot_enrg[:i], run_data.tot_enst[:i], run_data.tot_palin[:i], spec_data.enrg_spectrum[i, :], spec_data.enst_spectrum[i, :], run_data.enrg_diss[:i], run_data.enst_diss[:i], run_data.enrg_flux_sbst[:i], run_data.enrg_diss_sbst[:i], run_data.enst_flux_sbst[:i], run_data.enst_diss_sbst[:i], run_data.time, sys_vars.Nx, sys_vars.Ny)
+                    i = i + 100
+                    plot_summary_snaps(cmdargs.out_dir, i, 
+                                        run_data.w[i, :, :], 
+                                        run_data.x, run_data.y, 
+                                        wmin, wmax, 
+                                        run_data.kx, run_data.ky, 
+                                        int(sys_vars.Nx / 3), 
+                                        run_data.tot_enrg[:i], 
+                                        run_data.tot_enst[:i], 
+                                        run_data.tot_palin[:i], 
+                                        spec_data.enrg_spectrum[i, :], 
+                                        spec_data.enst_spectrum[i, :], 
+                                        run_data.enrg_diss[:i], run_data.enst_diss[:i], 
+                                        run_data.enrg_flux_sbst[:i], run_data.enrg_diss_sbst[:i], 
+                                        run_data.enst_flux_sbst[:i], run_data.enst_diss_sbst[:i], 
+                                        run_data.time, 
+                                        sys_vars.Nx, sys_vars.Ny)
 
         ## Print phase summary snaps
         if cmdargs.phase_snap:
@@ -335,25 +392,34 @@ if __name__ == '__main__':
                 proc_lim = 20
 
                 ## Create tasks for the process pool
-                vort = np.fft.irfft2(run_data.w_hat[:, :])
-                groups_args = [(mprocs.Process(target = plot_phase_snaps, args = (cmdargs.phase_dir, i, np.fft.irfft2(run_data.w_hat[i, :, :]), phases[i, :, :], enrg_spectrum[i, :, :], enst_spectrum[i, :, :], spec_limits, wmin, wmax, run_data.x, run_data.y, run_data.time, sys_vars.Nx, sys_vars.Nx, run_data.kx, run_data.ky)) for i in range(run_data.w.shape[0]))] * proc_lim
+                cmdlist = [(mprocs.Process(target = plot_phase_snaps, args = (cmdargs.phase_dir, i, 
+                                                                              run_data.w_hat[i, :, :], 
+                                                                              phases[i, :, :], 
+                                                                              enrg_spectrum[i, :, :], 
+                                                                              enst_spectrum[i, :, :], 
+                                                                              spec_limits, 
+                                                                              wmin, wmax, 
+                                                                              run_data.x, run_data.y, 
+                                                                              run_data.time, 
+                                                                              sys_vars.Nx, sys_vars.Nx, 
+                                                                              run_data.kx, run_data.ky)) for i in range(run_data.w.shape[0]))] * proc_lim
 
-                ## Loop of grouped iterable
-                for procs in zip_longest(*groups_args): 
-                    pipes     = []
-                    processes = []
-                    for p in filter(None, procs):
-                        recv, send = mprocs.Pipe(False)
-                        processes.append(p)
-                        pipes.append(recv)
-                        p.start()
-
-                    for process in processes:
-                        process.join()
+                ## Run plotting command 
+                run_plot_cmd_par(cmdlist)
             else:
                 ## Loop over snahpshots
                 for i in range(sys_vars.ndata):
-                    plot_phase_snaps(cmdargs.phase_dir, i, run_data.w[i, :, :], phases[i, :, :], enrg_spectrum[i, :, :], enst_spectrum[i, :, :], spec_limits, wmin, wmax, run_data.x, run_data.y, run_data.time, sys_vars.Nx, sys_vars.Nx, run_data.kx, run_data.ky)
+                    plot_phase_snaps(cmdargs.phase_dir, i, 
+                                     run_data.w[i, :, :], 
+                                     phases[i, :, :], 
+                                     enrg_spectrum[i, :, :], 
+                                     enst_spectrum[i, :, :], 
+                                     spec_limits, 
+                                     wmin, wmax, 
+                                     run_data.x, run_data.y, 
+                                     run_data.time, 
+                                     sys_vars.Nx, sys_vars.Nx, 
+                                     run_data.kx, run_data.ky)
 
         ## End timer
         end = TIME.perf_counter()
@@ -377,11 +443,8 @@ if __name__ == '__main__':
             # cmd = "ffmpeg -r {} -f image2 -s 1280×720 -i {} -vcodec libx264 -preset ultrafast -crf 35 -pix_fmt yuv420p {}".format(framesPerSec, inputFile, videoName)
 
 
-            process = Popen(cmd, shell = True, stdout = PIPE, stdin = PIPE, universal_newlines = True)
-            [runCodeOutput, runCodeErr] = process.communicate()
-            print(runCodeOutput)
-            print(runCodeErr)
-            process.wait()
+            ## Run make video command
+            run_video_cmd(cmd)
 
             ## Prin summary of timmings to screen
             print("\n" + tc.Y + "Finished making video..." + tc.Rst)
@@ -400,11 +463,8 @@ if __name__ == '__main__':
             ## Start timer
             start = TIME.perf_counter()
 
-            process = Popen(cmd, shell = True, stdout = PIPE, stdin = PIPE, universal_newlines = True)
-            [runCodeOutput, runCodeErr] = process.communicate()
-            print(runCodeOutput)
-            print(runCodeErr)
-            process.wait()
+            ## Run make video command
+            run_video_cmd(cmd)
 
             ## Prin summary of timmings to screen
             print("\n" + tc.Y + "Finished making video..." + tc.Rst)
@@ -418,72 +478,3 @@ if __name__ == '__main__':
         print("\n\nPlotting Time:" + tc.C + " {:5.8f}s\n\n".format(plot_time) + tc.Rst)
     if cmdargs.video:
         print("Movie Time:" + tc.C + " {:5.8f}s\n\n".format(end - start) + tc.Rst)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    # kx = np.append(np.arange(0, sys_vars.Nk), np.linspace(-sys_vars.Ny//2 + 1, -1, sys_vars.Ny//2 - 1))
-    # ky = np.append(np.arange(0, sys_vars.Nk), np.linspace(-sys_vars.Ny//2 + 1, -1, sys_vars.Ny//2 - 1))
-    # print()
-    # print(kx)
-    # print(ky)
-    # print()
-    # print(np.fft.ifftshift(kx))
-
-    # kx = kx[:, np.newaxis] * np.ones((sys_vars.Nx, sys_vars.Ny))
-    # print(kx)
-    # axes = tuple(range(kx.ndim))
-    # print(kx.ndim)
-    # print(axes)
-
-    # for dim in kx.shape:
-    #     print("dim: {}".format(dim))
-    # shift = [-(dim // 2 + 1) for dim in kx.shape]
-    # print(shift)
-
-    # shift = -(x.shape[axes] // 2)
-    # shift = [-(x.shape[ax] // 2) for ax in axes]
-    # print()
-    # print(np.flipud(fft_ishift_freq(kx)))
-
-    # print()
-    # print(np.roll(kx, shift = [-2, -2], axis = (0, 1)))
-    # t = 1
-    # ffw_h = FullField(run_data.w_hat[t, :, :])
-    # print(sys_vars.Nx, sys_vars.Ny)
-    # print(ffw_h.shape)
-    # for i in range(ffw_h.shape[0]):
-    #     for j in range(ffw_h.shape[1]):
-    #         # print("wh[{}, {}]: {:0.5f} {:0.5f}I ".format(i, j, np.real(ffw_h[i, j]), np.imag(ffw_h[i, j])), end = "")
-    #         print("wh[{}, {}]: {:0.5f} ".format(i, j, np.angle(ffw_h[i, j])), end = "")
-    #     print()
-    # print()
-    # ffsw_h = FullFieldShifted(run_data.w_hat[t, :, :], run_data.kx, run_data.ky)
-    # # for i in range(ffsw_h.shape[0]):
-    # #     for j in range(ffsw_h.shape[1]):
-    # #         print("wh[{}, {}]: {:0.5f} {:0.5f}I ".format(i, j, np.real(ffsw_h[i, j]), np.imag(ffsw_h[i, j])), end = "")
-    # #     print()
-    # # print()
-    # print(ffw_h.shape)
-    # print(ffsw_h.shape)
-    # print(np.allclose(ffw_h[abs(run_data.kx) < int(sys_vars.Nx/3), abs(run_data.ky) < int(sys_vars.Nx/3)], ffsw_h))

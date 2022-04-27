@@ -241,6 +241,7 @@ typedef struct RK_data_struct {
 	fftw_complex* w_hat_last; // Array to hold the values of the Fourier space vorticity from the previous iteration - used in the stepsize control in DP scheme
 	double* nabla_psi;		  // Batch array the velocities u = d\psi_dy and v = -d\psi_dx
 	double* nabla_w;		  // Batch array to hold \nabla\omega - the vorticity derivatives
+	double* nonlin;           // Array to hold the result of the nonlinear term in real space
 	double DP_err; 			  // Variable to hold the error between the embedded methods in the Dormand Prince scheme
 	int DP_fails;
 } RK_data_struct;

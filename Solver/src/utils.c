@@ -176,14 +176,14 @@ int GetCMLArgs(int argc, char** argv) {
 					strncpy(sys_vars->u0, "TESTING", 64);
 					break;
 				}
-				else if (!(strcmp(optarg,"DECAY_TURB"))) {
+				else if (!(strcmp(optarg,"DECAY_TURB_BB"))) {
 					// Decay Turbulence -> Broadband
-					strncpy(sys_vars->u0, "DECAY_TURB", 64);
+					strncpy(sys_vars->u0, "DECAY_TURB_BB", 64);
 					break;
 				}
-				else if (!(strcmp(optarg,"DECAY_TURB_II"))) {
+				else if (!(strcmp(optarg,"DECAY_TURB_NB"))) {
 					// Decay Turbulence -> Narrow Band
-					strncpy(sys_vars->u0, "DECAY_TURB_II", 64);
+					strncpy(sys_vars->u0, "DECAY_TURB_NB", 64);
 					break;
 				}
 				else if (!(strcmp(optarg,"DECAY_TURB_ALT"))) {

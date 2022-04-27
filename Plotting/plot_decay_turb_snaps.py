@@ -24,7 +24,7 @@ from numba import njit
 import pyfftw as fftw
 
 from functions import tc, sim_data, import_data, import_spectra_data
-from plot_functions import plot_decay_snaps, plot_decay_snaps_2
+from plot_functions import plot_flow_summary, plot_flow_summary_2
 
 
 ###############################
@@ -212,7 +212,7 @@ if __name__ == '__main__':
                 proc_lim = 10
 
                 ## Create tasks for the process pool
-                groups_args = [(mprocs.Process(target = plot_decay_snaps, args = (cmdargs.out_dir, i, run_data.w[i, :, :], wmin, wmax, m_min, m_max, run_data.x, run_data.y, run_data.time, sys_params.Nx, sys_params.Ny, run_data.kx, run_data.ky, run_data.tot_enrg, run_data.tot_enst, run_data.tot_palin)) for i in range(run_data.w.shape[0]))] * proc_lim
+                groups_args = [(mprocs.Process(target = plot_flow_summary, args = (cmdargs.out_dir, i, run_data.w[i, :, :], wmin, wmax, m_min, m_max, run_data.x, run_data.y, run_data.time, sys_params.Nx, sys_params.Ny, run_data.kx, run_data.ky, run_data.tot_enrg, run_data.tot_enst, run_data.tot_palin)) for i in range(run_data.w.shape[0]))] * proc_lim
 
                 ## Loop of grouped iterable
                 for procs in zip_longest(*groups_args): 
@@ -229,9 +229,9 @@ if __name__ == '__main__':
             else:
                 # Loop over snapshots
                 for i in range(sys_params.ndata):
-                    plot_decay_snaps(cmdargs.out_dir, i, run_data.w[i, :, :], wmin, wmax, m_min, m_max, run_data.x, run_data.y, run_data.time, sys_params.Nx, sys_params.Ny, run_data.kx, run_data.ky, run_data.tot_enrg, run_data.tot_enst, run_data.tot_palin)
+                    plot_flow_summary(cmdargs.out_dir, i, run_data.w[i, :, :], wmin, wmax, m_min, m_max, run_data.x, run_data.y, run_data.time, sys_params.Nx, sys_params.Ny, run_data.kx, run_data.ky, run_data.tot_enrg, run_data.tot_enst, run_data.tot_palin)
                 # i = sys_params.ndata - 1
-                # plot_decay_snaps(cmdargs.out_dir, i, run_data.w[i, :, :], wmin, wmax, run_data.x, run_data.y, run_data.time, sys_params.Nx, sys_params.Ny, run_data.kx, run_data.ky, run_data.tot_enrg, run_data.tot_enst, run_data.tot_palin)
+                # plot_flow_summary(cmdargs.out_dir, i, run_data.w[i, :, :], wmin, wmax, run_data.x, run_data.y, run_data.time, sys_params.Nx, sys_params.Ny, run_data.kx, run_data.ky, run_data.tot_enrg, run_data.tot_enst, run_data.tot_palin)
 
         ## End timer
         end = TIME.perf_counter()

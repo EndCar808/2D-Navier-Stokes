@@ -91,8 +91,14 @@ int main(int argc, char** argv) {
 	AllocateMemory(sys_vars->N);
 
 	InitializeFFTWPlans(sys_vars->N);
-	
 
+	// --------------------------------
+	//  Perform Precomputations
+	// --------------------------------
+	#if defined(__GRAD_STATS)
+	Precompute();
+	#endif
+	
 	//////////////////////////////
 	// Begin Snapshot Processing
 	//////////////////////////////

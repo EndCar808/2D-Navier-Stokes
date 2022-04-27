@@ -40,7 +40,7 @@ class tc:
 ##########################################
 ##       SOLVER SUMMARY FUNCTIONS       ##
 ##########################################
-def plot_summary_snaps(out_dir, i, w, w_hat, x, y, w_min, w_max, kx, ky, kx_max, tot_en, tot_ens, tot_pal, enrg_spec, enst_spec, enrg_diss, enst_diss, enrg_flux_sb, enrg_diss_sb, enst_flux_sb, enst_diss_sb, time, Nx, Ny):
+def plot_summary_snaps(out_dir, i, w, x, y, w_min, w_max, kx, ky, kx_max, tot_en, tot_ens, tot_pal, enrg_spec, enst_spec, enrg_diss, enst_diss, enrg_flux_sb, enrg_diss_sb, enst_flux_sb, enst_diss_sb, time, Nx, Ny):
 
     """
     Plots summary snaps for each iteration of the simulation. Plot: vorticity, energy and enstrophy spectra, dissipation, flux and totals.
@@ -50,8 +50,8 @@ def plot_summary_snaps(out_dir, i, w, w_hat, x, y, w_min, w_max, kx, ky, kx_max,
     print("SNAP: {}".format(i))
 
     ## Create Figure
-    fig = plt.figure(figsize = (16, 8))
-    gs  = GridSpec(4, 2, hspace = 0.6, wspace = 0.3)
+    fig = plt.figure(figsize = (16, 9))
+    gs  = GridSpec(3, 2, hspace = 0.6, wspace = 0.3)
 
     ##-------------------------
     ## Plot vorticity   
@@ -79,40 +79,33 @@ def plot_summary_snaps(out_dir, i, w, w_hat, x, y, w_min, w_max, kx, ky, kx_max,
     #-------------------------
     kindx = int(Nx / 3 + 1)
     ax2 = fig.add_subplot(gs[0, 1])
-    # kpower = (1 / (kx[11:61] ** 4))
-    # ax2.plot(kx[11:61], kpower , linestyle = ':', linewidth = 0.5, color = 'black')
     ax2.plot(enrg_spec[:kindx]) #  / np.sum(enrg_spec[:kindx])
-    ax2.set_xlabel(r"$|k|$")
+    ax2.set_xlabel(r"$|\mathbf{k}|$")
     ax2.set_ylabel(r"$\mathcal{K}(| \mathbf{k} |)$") #  / \sum \mathcal{K}(|k|)
     ax2.set_title(r"Energy Spectrum")
-    # ax2.set_ylim(1e-20, 10)
     ax2.set_yscale('log')
     ax2.set_xscale('log')
-    # ax2.text(x = kx[61],  y = kpower[-1], s = r"$k^{-4}$")
-
+    ax2.grid(which = "major", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
     #--------------------------
     # Plot Enstrophy Spectrum   
     #--------------------------
     ax3 = fig.add_subplot(gs[1, 1]) 
-    # kpower = (1 / (np.power(kx[11:61], 5 / 3)))
-    # ax3.plot(kx[11:61], kpower, linestyle = ':', linewidth = 0.5, color = 'black')
     ax3.plot(enst_spec[:kindx]) # / np.sum(enst_spec[:kindx])
-    ax3.set_xlabel(r"$|k|$")
+    ax3.set_xlabel(r"$|\mathbf{k}|$")
     ax3.set_ylabel(r"$\mathcal{E}(|\mathbf{k}|)") #/ \sum \mathcal{E}(|k|)$
     ax3.set_title(r"Enstrophy Spectrum")
-    # ax3.set_ylim(1e-20, 10)
     ax3.set_yscale('log')
     ax3.set_xscale('log')
-    # ax3.text(x = kx[61],  y = kpower[-1], s = r"$k^{-5/3}$")
+    ax3.grid(which = "major", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
 
 
     #--------------------------
     # Plot System Measures   
     #-------------------------- 
     ax4 = fig.add_subplot(gs[2, 0])
-    ax4.plot(time[:i], tot_en)
-    ax4.plot(time[:i], tot_ens)
-    ax4.plot(time[:i], tot_pal)
+    ax4.plot(time[:i], tot_en / tot_en[0])
+    ax4.plot(time[:i], tot_ens / tot_ens[0])
+    ax4.plot(time[:i], tot_pal / tot_pal[0])
     ax4.set_xlabel(r"$t$")
     ax4.set_xlim(time[0], time[-1])
     ax4.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
@@ -128,27 +121,27 @@ def plot_summary_snaps(out_dir, i, w, w_hat, x, y, w_min, w_max, kx, ky, kx_max,
     ax5.set_yscale("log")
     ax5.legend([r"Energy Diss", r"Enstrophy Diss"])
 
-    #--------------------------
-    # Plot Energy Flux 
-    #-------------------------- 
-    ax6 = fig.add_subplot(gs[3, 0])
-    ax6.plot(time[:i], enrg_flux_sb)
-    ax6.plot(time[:i], enrg_diss_sb)
-    ax6.set_xlabel(r"$t$")
-    ax6.set_xlim(time[0], time[-1])
-    ax6.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
-    ax6.legend([r"Energy Flux", r"Energy Diss"])
+    # #--------------------------
+    # # Plot Energy Flux 
+    # #-------------------------- 
+    # ax6 = fig.add_subplot(gs[3, 0])
+    # ax6.plot(time[:i], enrg_flux_sb)
+    # ax6.plot(time[:i], enrg_diss_sb)
+    # ax6.set_xlabel(r"$t$")
+    # ax6.set_xlim(time[0], time[-1])
+    # ax6.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+    # ax6.legend([r"Energy Flux", r"Energy Diss"])
 
-    #--------------------------
-    # Plot Energy Flux 
-    #-------------------------- 
-    ax7 = fig.add_subplot(gs[3, 1])
-    ax7.plot(time[:i], enst_flux_sb)
-    ax7.plot(time[:i], enst_diss_sb)
-    ax7.set_xlabel(r"$t$")
-    ax7.set_xlim(time[0], time[-1])
-    ax7.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
-    ax7.legend([r"Enstrophy Flux", r"Enstrophy Diss"])
+    # #--------------------------
+    # # Plot Energy Flux 
+    # #-------------------------- 
+    # ax7 = fig.add_subplot(gs[3, 1])
+    # ax7.plot(time[:i], enst_flux_sb)
+    # ax7.plot(time[:i], enst_diss_sb)
+    # ax7.set_xlabel(r"$t$")
+    # ax7.set_xlim(time[0], time[-1])
+    # ax7.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+    # ax7.legend([r"Enstrophy Flux", r"Enstrophy Diss"])
 
     ## Save figure
     plt.savefig(out_dir + "SNAP_{:05d}.png".format(i), bbox_inches='tight') 
@@ -274,7 +267,7 @@ def plot_phase_snaps(out_dir, i, w, phases, enrg_spec, enst_spec, spec_lims, w_m
     plt.savefig(out_dir + "Phase_SNAP_{:05d}.png".format(i), bbox_inches='tight') 
     plt.close()
 
-def plot_decay_snaps(out_dir, i, w, w_min, w_max, measure_min, measure_max, x, y, time, Nx, Ny, kx, ky, tot_en, tot_ens, tot_pal):
+def plot_flow_summary(out_dir, i, w, w_min, w_max, measure_min, measure_max, x, y, time, Nx, Ny, kx, ky, tot_en, tot_ens, tot_pal):
 
     """
     Plots summary snap of the solver data for the current iteration. Plots vorticity, full zero centre phases and spectra.
