@@ -32,6 +32,8 @@ void Precompute(void) {
 	const long int Nx         = sys_vars->N[0];
 	const long int Ny         = sys_vars->N[1];
 	const long int Ny_Fourier = Ny / 2 + 1;
+	int increment[NUM_INCR] = {1, N_max_incr};
+	double long_increment, trans_increment;
 	double norm_fac = 1.0 / (Nx * Ny);
 	double std_u, std_w;
 
@@ -44,10 +46,10 @@ void Precompute(void) {
 		ReadInData(s);
 
 		// --------------------------------
-		// Compute Gradient Stats
+		// Precompute Stats
 		// --------------------------------
-		#if defined(__GRAD_STATS)
 		// Compute the graident in Fourier space
+		#if defined(__GRAD_STATS)
 		for (int i = 0; i < Nx; ++i) {
 			tmp = i * Ny_Fourier;
 			for (int j = 0; j < Ny_Fourier; ++j) {
@@ -62,16 +64,20 @@ void Precompute(void) {
 				proc_data->grad_u_hat[SYS_DIM * indx + 1] = I * run_data->k[1][j] * run_data->u_hat[SYS_DIM * indx + 1];
 			}
 		}
-
-		// Perform inverse transform and normalize to get the gradients in real space
+		// Perform inverse transform to get the gradients in real space
 		fftw_execute_dft_c2r(sys_vars->fftw_2d_dft_batch_c2r, proc_data->grad_w_hat, proc_data->grad_w);
 		fftw_execute_dft_c2r(sys_vars->fftw_2d_dft_batch_c2r, proc_data->grad_u_hat, proc_data->grad_u);
+		#endif
+
+		// Loop over real space
 		for (int i = 0; i < Nx; ++i) {
-			tmp = i * Ny_Fourier;
-			for (int j = 0; j < Ny_Fourier; ++j) {
+			tmp = i * Ny;
+			for (int j = 0; j < Ny; ++j) {
 				indx = tmp + j;
 
-				// Normalize the gradients
+
+				#if defined(__GRAD_STATS)
+				// Normalize the gradients 
 				proc_data->grad_w[SYS_DIM * indx + 0] *= norm_fac;
 				proc_data->grad_w[SYS_DIM * indx + 1] *= norm_fac;
 				proc_data->grad_u[SYS_DIM * indx + 0] *= norm_fac;
@@ -92,13 +98,38 @@ void Precompute(void) {
 						}
 					}
 				}
+				#endif
+
+				#if defined(__VEL_INC_STATS)
+				// Compute velocity increments and update histograms
+				for (int r_indx = 0; r_indx < NUM_INCR; ++r_indx) {
+					// Get the current increment
+					r = increment[r_indx];
+
+					//------------- Get the longitudinal and transverse Velocity increments
+					long_increment  = run_data->u[SYS_DIM * (((i + r) % Nx) * Ny + j) + 0] - run_data->u[SYS_DIM * (i * Ny + j) + 0];
+					trans_increment = run_data->u[SYS_DIM * (((i + r) % Nx) * Ny + j) + 1] - run_data->u[SYS_DIM * (i * Ny + j) + 1];
+
+					// Update the stats accumulators
+					gsl_rstat_add(long_increment, stats_data->r_stat_vel_incr[0][r_indx]);
+					gsl_rstat_add(trans_increment, stats_data->r_stat_vel_incr[1][r_indx]);
+
+
+					//------------- Get the longitudinal and transverse Vorticity increments
+					long_increment  = run_data->w[((i + r) % Nx) * Ny + j] - run_data->w[i * Ny + j];
+					trans_increment = run_data->w[i * Ny + ((j + r) % Ny)] - run_data->w[i * Ny + j];
+
+					// Update the stats accumulators
+					gsl_rstat_add(long_increment, stats_data->r_stat_vort_incr[0][r_indx]);
+					gsl_rstat_add(trans_increment, stats_data->r_stat_vort_incr[1][r_indx]);			
+				}
+				#endif
 			}
 		}
-		#endif
 	}
 
 	// --------------------------------
-	// Initialize Gradient Histogram
+	// Initialize Gradient Histograms
 	// --------------------------------
 	#if defined(__GRAD_STATS)
 	for (int i = 0; i < INCR_TYPES; ++i) {
@@ -117,6 +148,33 @@ void Precompute(void) {
 		if (gsl_status != 0) {
 			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set bin ranges for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Vorticity Increments");
 			exit(1);
+		}
+	}
+	#endif
+
+	// --------------------------------
+	// Initialize Increment Histograms
+	// --------------------------------
+	#if defined(__VEL_INC_STATS)
+	// Set the bin limits for the velocity increments
+	for (int i = 0; i < INCR_TYPES; ++i) {
+		for (int j = 0; j < NUM_INCR; ++j) {
+			// Get the std of the incrments
+			std_u = gsl_rstat_sd(stats_data->r_stat_vel_incr[i][j]);
+			std_w = gsl_rstat_sd(stats_data->r_stat_vort_incr[i][j]);
+
+			// Velocity increments
+			gsl_status = gsl_histogram_set_ranges_uniform(stats_data->vel_incr[i][j], -BIN_LIM * std_u, BIN_LIM * std_u);
+			if (gsl_status != 0) {
+				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set bin ranges for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Velocity Increments");
+				exit(1);
+			}
+			// Vorticity increments
+			gsl_status = gsl_histogram_set_ranges_uniform(stats_data->w_incr[i][j], -BIN_LIM *std_w, BIN_LIM * std_w);
+			if (gsl_status != 0) {
+				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set bin ranges for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Vorticity Increments");
+				exit(1);
+			}
 		}
 	}
 	#endif
@@ -306,11 +364,6 @@ void RealSpaceStats(int s) {
 					exit(1);
 				}
 
-				// Update the stats accumulators
-				gsl_rstat_add(long_increment, stats_data->r_stat_vel_incr[0][r_indx]);
-				gsl_rstat_add(trans_increment, stats_data->r_stat_vel_incr[1][r_indx]);
-
-
 				//------------- Get the longitudinal and transverse Vorticity increments
 				long_increment  = run_data->w[((i + r) % Nx) * Ny + j] - run_data->w[i * Ny + j];
 				trans_increment = run_data->w[i * Ny + ((j + r) % Ny)] - run_data->w[i * Ny + j];
@@ -325,11 +378,7 @@ void RealSpaceStats(int s) {
 				if (gsl_status != 0) {
 					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Transverse Vorticity Increment", s, gsl_status, trans_increment);
 					exit(1);
-				}
-
-				// Update the stats accumulators
-				gsl_rstat_add(long_increment, stats_data->r_stat_vort_incr[0][r_indx]);
-				gsl_rstat_add(trans_increment, stats_data->r_stat_vort_incr[1][r_indx]);			
+				}			
 			}
 			#endif
 		}
@@ -1230,24 +1279,6 @@ void AllocateMemory(const long int* N) {
 			// Initialize running stats for the increments
 			stats_data->r_stat_vel_incr[i][j]  = gsl_rstat_alloc();
 			stats_data->r_stat_vort_incr[i][j] = gsl_rstat_alloc();
-		}
-	}
-
-	// Set the bin limits for the velocity increments
-	for (int i = 0; i < INCR_TYPES; ++i) {
-		for (int j = 0; j < NUM_INCR; ++j) {
-			// Velocity increments
-			gsl_status = gsl_histogram_set_ranges_uniform(stats_data->vel_incr[i][j], -BIN_LIM - 0.5, BIN_LIM + 0.5);
-			if (gsl_status != 0) {
-				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set bin ranges for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Velocity Increments");
-				exit(1);
-			}
-			// Vorticity increments
-			gsl_status = gsl_histogram_set_ranges_uniform(stats_data->w_incr[i][j], -BIN_LIM - 0.5, BIN_LIM + 0.5);
-			if (gsl_status != 0) {
-				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set bin ranges for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Vorticity Increments");
-				exit(1);
-			}
 		}
 	}
 	#endif

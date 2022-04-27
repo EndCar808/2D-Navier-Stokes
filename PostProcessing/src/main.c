@@ -95,7 +95,7 @@ int main(int argc, char** argv) {
 	// --------------------------------
 	//  Perform Precomputations
 	// --------------------------------
-	#if defined(__GRAD_STATS)
+	#if defined(__GRAD_STATS) || defined(__VEL_INCR_STATS)
 	Precompute();
 	#endif
 	
