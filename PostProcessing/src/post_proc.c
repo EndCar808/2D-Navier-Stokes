@@ -32,6 +32,8 @@ void Precompute(void) {
 	const long int Nx         = sys_vars->N[0];
 	const long int Ny         = sys_vars->N[1];
 	const long int Ny_Fourier = Ny / 2 + 1;
+	int r;
+	int N_max_incr = (int) (GSL_MIN(Nx, Ny) / 2);
 	int increment[NUM_INCR] = {1, N_max_incr};
 	double long_increment, trans_increment;
 	double norm_fac = 1.0 / (Nx * Ny);
