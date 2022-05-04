@@ -36,8 +36,8 @@ else:
 ###########################
 ## NOTE: If providing multiple values they must be in python list type e.g. [1, 2, 3]
 ## Space variables
-Nx = [1024]
-Ny = [1024]
+Nx = [64]
+Ny = [64]
 if len(Ny) >= 1:
     Nk = []
     for n in Ny:
@@ -46,7 +46,7 @@ else:
     Nk = [int(Ny / 2 + 1)]
 
 ## System parameters
-nu             = 2e-8
+nu             = 3.125e-06
 ekmn_alpha     = 0.0
 hypervisc      = 2.0 
 ekmn_hypo_diff = 0
@@ -59,29 +59,29 @@ cfl       = 0.8
 step_type = False
 
 ## Solver parameters
-ic          = "DECAY_TURB"
-forcing     = "STOCH"
+ic          = ["DECAY_TURB_BB", "DECAY_TURB_NB", "DECAY_TURB_EXP"]
+forcing     = "NONE"
 force_k     = 1.0
 force_scale = 1.0
-save_every  = 500
+save_every  = 100
 
 ## Directory/File parameters
 input_dir       = "NONE"
-output_dir      = os.getenv('NS_DATA_DIR')   ##"./Data/Tmp/"
+output_dir      = "./Data/Tmp/" #os.getenv('NS_DATA_DIR')   ##"./Data/Tmp/"
 file_only_mode  = False
-solver_tag      = "Stoch-Hyper-Long"
+solver_tag      = "Decay-Turb-Post-Test"
 sys_tag         = "_NAVIER_RK4_FULL_"   ## _EULER_RK4_FULL_
 post_input_dir  = output_dir + "SIM_DATA" + sys_tag
 post_output_dir = output_dir + "SIM_DATA" + sys_tag
 
 ## Job parameters
 executable                  = "Solver/bin/solver"
-plot_script                 = "Plotting/plot_decay_snaps.py"
-plot_options                = "--full_snap --base_snap --plot --vid"
+plot_script                 = "Plotting/plot_jet_sync.py"
+plot_options                = "--triads=0 --par --plot --vid -f PostProcessing_HDF_Data_SECTORS[24]_KFRAC[0.50]_TAG[" + solver_tag + "].h5 --full=sec -t Test-Sync"
 solver                      = True
-postprocessing              = False
-plotting                    = False
-solver_procs                = 16
+postprocessing              = True
+plotting                    = True
+solver_procs                = 4
 collect_data                = True
 num_solver_job_threads      = 1
 num_postprocess_job_threads = 1

@@ -16,7 +16,6 @@
 //  User Libraries and Headers
 // ---------------------------------------------------------------------
 #include "data_types.h"
-#include "hdf5_funcs.h"
 #include "utils.h"
 #include "post_proc.h"
 // ---------------------------------------------------------------------
@@ -56,7 +55,7 @@ int main(int argc, char** argv) {
 	//  Begin Timing
 	// --------------------------------
 	// Initialize timing counter
-	clock_t begin = omp_get_wtime();
+	clock_t main_begin = omp_get_wtime();
 
 	// --------------------------------
 	//  Get Command Line Arguements
@@ -75,108 +74,22 @@ int main(int argc, char** argv) {
 		}
 	}
 
-	// --------------------------------
-	//  Open Input File and Get Data
-	// --------------------------------
-	OpenInputAndInitialize(); 
-
-	// --------------------------------
-	//  Open Output File
-	// --------------------------------
-	OpenOutputFile();
-
-	// --------------------------------
-	//  Allocate Processing Memmory
-	// --------------------------------
-	AllocateMemory(sys_vars->N);
-
-	InitializeFFTWPlans(sys_vars->N);
-
-	// --------------------------------
-	//  Perform Precomputations
-	// --------------------------------
-	#if defined(__GRAD_STATS) || defined(__VEL_INCR_STATS)
-	Precompute();
-	#endif
-	
 	//////////////////////////////
-	// Begin Snapshot Processing
+	// Call Post Processing
 	//////////////////////////////
-	printf("\nStarting Snapshot Processing:\n");
-	for (int s = 0; s < sys_vars->num_snaps; ++s) { 
-		
-		// Print update to screen
-		printf("Snapshot: %d\n", s);
-	
-		// --------------------------------
-		//  Read in Data
-		// --------------------------------
-		ReadInData(s);
-
-		// --------------------------------
-		//  Real Space Stats
-		// --------------------------------
-		#if defined(__REAL_STATS) || defined(__VEL_INCR_STATS) || defined(__STR_FUNC_STATS) || defined(__GRAD_STATS)
-		RealSpaceStats(s);
-		#endif
-
-		// --------------------------------
-		//  Spectra Data
-		// --------------------------------
-		#if defined(__SPECTRA)
-		// Compute the enstrophy spectrum
-		EnstrophySpectrum();
-        EnergySpectrum();
-		#endif
-		#if defined(__ENST_FLUX) || defined(__ENRG_FLUX) || defined(__SEC_PHASE_SYNC)
-        FluxSpectra(s);
-		#endif
-
-		// --------------------------------
-		//  Full Field Data
-		// --------------------------------
-		#if defined(__FULL_FIELD) || defined(__SEC_PHASE_SYNC)
-		FullFieldData();
-		#endif
-
-		// --------------------------------
-		//  Phase Sync
-		// --------------------------------
-		#if defined(__SEC_PHASE_SYNC) 
-		SectorPhaseOrderBruteForceFast(s);
-		// SectorPhaseOrder(s);
-		// SectorPhaseOrderPar(s);		
-		#endif
-
-		// --------------------------------
-		//  Write Data to File
-		// --------------------------------
-		WriteDataToFile(run_data->time[s], s);
-	}
-	///////////////////////////////
-	// End Snapshot Processing
-	///////////////////////////////
-
-	// ---------------------------------
-	//  Final Write of Data and Close 
-	// ---------------------------------
-	// Write any remaining datasets to output file
-	FinalWriteAndClose();
-	
-	// --------------------------------
-	//  Clean Up
-	// --------------------------------
-	// Free allocated memory
-	FreeMemoryAndCleanUp();
+	PostProcessing();
+	//////////////////////////////
+	// Call Post Processing
+	//////////////////////////////
 
 	// --------------------------------
 	//  End Timing
 	// --------------------------------
 	// Finish timing
-	clock_t end = omp_get_wtime();
+	clock_t main_end = omp_get_wtime();
 
 	// calculate execution time
-	double time_spent = (double)(end - begin);
+	double time_spent = (double)(main_end - main_begin);
 	int hh = (int) time_spent / 3600;
 	int mm = ((int )time_spent - hh * 3600) / 60;
 	int ss = time_spent - hh * 3600 - mm * 60;

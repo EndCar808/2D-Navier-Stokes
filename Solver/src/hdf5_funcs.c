@@ -37,7 +37,7 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 	const long int Ny 		  = N[1];
 	const long int Ny_Fourier = N[1] / 2 + 1;
 	hid_t main_group_id;
-	#if defined(__ENST_SPECT) || defined(__ENRG_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__ENRG_FLUX_SPECT)
+	#if defined(__ENST_SPECT) || defined(__ENRG_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__ENRG_FLUX_SPECT) || defined(__PHASE_SYNC)
 	hid_t spectra_group_id;
 	#endif
 	char group_name[128];
@@ -80,7 +80,7 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 		exit(1);
 	}
 
-	#if defined(__ENST_SPECT) || defined(__ENRG_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__ENRG_FLUX_SPECT)
+	#if defined(__ENST_SPECT) || defined(__ENRG_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__ENRG_FLUX_SPECT) || defined(__PHASE_SYNC)
 	if (!sys_vars->rank){
 		// Create the spectra output file
 		file_info->spectra_file_handle = H5Fcreate(file_info->spectra_file_name, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
@@ -95,6 +95,7 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 	////////////////////////////////
 	/// Write Initial Condtions
 	////////////////////////////////
+	#if !defined(TRANSIENTS)
 	// --------------------------------------
 	// Create Group for Initial Conditions
 	// --------------------------------------
@@ -103,7 +104,7 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 	
 	// Create group for the current iteration data
 	main_group_id = CreateGroup(file_info->output_file_handle, file_info->output_file_name, group_name, 0.0, dt, 0);
-	#if defined(__ENST_SPECT) || defined(__ENRG_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__ENRG_FLUX_SPECT)
+	#if defined(__ENST_SPECT) || defined(__ENRG_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__ENRG_FLUX_SPECT) || defined(__PHASE_SYNC)
 	if (!sys_vars->rank) {
 		spectra_group_id = CreateGroup(file_info->spectra_file_handle, file_info->spectra_file_name, group_name, 0.0, dt, 0);
 	}
@@ -112,7 +113,6 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 	// --------------------------------------
 	// Write Initial Conditions
 	// --------------------------------------
-	#if !defined(TRANSIENTS)
 	// Create dimension arrays
 	static const int d_set_rank2D = 2;
 	hsize_t dset_dims2D[d_set_rank2D];        // array to hold dims of the dataset to be created
@@ -126,6 +126,7 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 	#endif
 
 
+	///-------------------------------------- Real Space Voriticity
 	#if defined(__VORT_REAL)
 	// Transform vorticity back to real space and normalize
 	fftw_mpi_execute_dft_c2r(sys_vars->fftw_2d_dft_c2r, run_data->w_hat, run_data->w);
@@ -150,6 +151,8 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 	// Write the real space vorticity
 	WriteDataReal(0.0, 0, main_group_id, "w", H5T_NATIVE_DOUBLE, d_set_rank2D, dset_dims2D, slab_dims2D, mem_space_dims2D, sys_vars->local_Nx_start, run_data->w);
 	#endif
+
+	///-------------------------------------- Fourier Space Voriticity
 	#if defined(__VORT_FOUR)
 	// Create dimension arrays
 	dset_dims2D[0] 	  = Nx;
@@ -162,6 +165,7 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 	// Write the real space vorticity
 	WriteDataFourier(0.0, 0, main_group_id, "w_hat", file_info->COMPLEX_DTYPE, d_set_rank2D, dset_dims2D, slab_dims2D, mem_space_dims2D, sys_vars->local_Nx_start, run_data->w_hat);
 	#endif
+
 	#if defined(__MODES) || defined(__REALSPACE)
 	fftw_complex k_sqr;
 
@@ -186,6 +190,8 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 		}
 	}
 	#endif
+	
+	///-------------------------------------- Fourier Space Velocity	
 	#if defined(__MODES)
 	// Create dimension arrays
 	dset_dims3D[0] 	    = Nx;
@@ -201,6 +207,8 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 	// Write the real space vorticity
 	WriteDataFourier(0.0, 0, main_group_id, "u_hat", file_info->COMPLEX_DTYPE, d_set_rank3D, dset_dims3D, slab_dims3D, mem_space_dims3D, sys_vars->local_Nx_start, run_data->u_hat);
 	#endif
+
+	///-------------------------------------- Real Space Velocity
 	#if defined(__REALSPACE)
 	// Transform velocities back to real space and normalize
 	fftw_mpi_execute_dft_c2r(sys_vars->fftw_2d_dft_batch_c2r, run_data->u_hat, run_data->u);
@@ -229,6 +237,8 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 	// Write the real space vorticity
 	WriteDataReal(0.0, 0, main_group_id, "u", H5T_NATIVE_DOUBLE, d_set_rank3D, dset_dims3D, slab_dims3D, mem_space_dims3D, sys_vars->local_Nx_start, run_data->u);
 	#endif
+
+	///-------------------------------------- Fourier Phases & Amplitudes of the Vorticity
 	#if defined(PHASE_ONLY)
 	// Record the Fourier amplitudes and phases
 	for (int i = 0; i < sys_vars->local_Nx; ++i) {
@@ -257,6 +267,8 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 	// Write the Fourier phases
 	WriteDataFourier(0.0, 0, main_group_id, "phi_k", H5T_NATIVE_DOUBLE, d_set_rank2D, dset_dims2D, slab_dims2D, mem_space_dims2D, sys_vars->local_Nx_start, run_data->phi_k);
 	#endif
+
+	///-------------------------------------- Taylor Green Initial Condition
 	#if defined(TESTING)
 	if (!(strcmp(sys_vars->u0, "TG_VEL")) || !(strcmp(sys_vars->u0, "TG_VORT"))) {
 		// Create dimension arrays
@@ -271,7 +283,9 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 		WriteDataReal(0.0, 0, main_group_id, "TGSoln", H5T_NATIVE_DOUBLE, d_set_rank2D, dset_dims2D, slab_dims2D, mem_space_dims2D, sys_vars->local_Nx_start, run_data->tg_soln);	
 	}
 	#endif
-	#if defined(__ENST_SPECT) || defined(__ENRG_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__ENRG_FLUX_SPECT)
+
+	///-------------------------------------- Spectra & Phase Sync
+	#if defined(__ENST_SPECT) || defined(__ENRG_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__ENRG_FLUX_SPECT) || defined(__PHASE_SYNC)
 	// Gather Spectra data and write to file
 	if (!sys_vars->rank) {
 		// Gather spectra data on master process & write to file
@@ -291,6 +305,19 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 		MPI_Reduce(MPI_IN_PLACE, run_data->enrg_flux_spect, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		WriteDataSpect(0.0, 0, spectra_group_id, sys_vars->n_spect, "EnergyFluxSpectrum", run_data->enrg_flux_spect);
 		#endif
+		#if defined(__PHASE_SYNC)
+		MPI_Reduce(MPI_IN_PLACE, run_data->phase_order_k, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+
+		// Create temp mem
+		double amp_k[sys_vars->n_spect];
+		double phase_k[sys_vars->n_spect];
+		for (int i = 0; i < sys_vars->n_spect; ++i) {
+			amp_k[i]   = cabs(run_data->phase_order_k[i]);
+			phase_k[i] = carg(run_data->phase_order_k[i]);
+		}
+		WriteDataSpect(0.0, 0, spectra_group_id, sys_vars->n_spect, "PhaseOrder_Theta_k", phase_k);
+		WriteDataSpect(0.0, 0, spectra_group_id, sys_vars->n_spect, "PhaseOrder_R_k", amp_k);
+		#endif
 	}
 	else {
 		// Reduce all other process to master rank
@@ -305,6 +332,9 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 		#endif
 		#if defined(__ENRG_FLUX_SPECT)
 		MPI_Reduce(run_data->enrg_flux_spect, NULL,  sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		#endif
+		#if defined(__PHASE_SYNC)
+		MPI_Reduce(run_data->phase_order_k, NULL,  sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		#endif
 	}
 	#endif
@@ -322,7 +352,7 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close output file ["CYAN"%s"RESET"] at: Iter = ["CYAN"%d"RESET"] t = ["CYAN"%lf"RESET"]\n-->> Exiting...\n", file_info->output_file_name, 0, 0.0);
 		exit(1);		
 	}
-	#if defined(__ENST_SPECT) || defined(__ENRG_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__ENRG_FLUX_SPECT)
+	#if defined(__ENST_SPECT) || defined(__ENRG_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__ENRG_FLUX_SPECT) || defined(__PHASE_SYNC)
 	if (!sys_vars->rank) {
 		status = H5Gclose(spectra_group_id);
 		status = H5Fclose(file_info->spectra_file_handle);
@@ -411,7 +441,7 @@ void GetOutputDirPath(void) {
 			printf("\nMain Output File: "CYAN"%s"RESET"\n\n", file_info->output_file_name);
 		}
 
-		#if defined(__ENST_SPECT) || defined(__ENRG_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__ENRG_FLUX_SPECT)
+		#if defined(__ENST_SPECT) || defined(__ENRG_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__ENRG_FLUX_SPECT) || defined(__PHASE_SYNC)
 		if ( !(sys_vars->rank) ) {
 			// Construct Spectra file path
 			strcpy(tmp_path, file_info->output_dir);
@@ -509,7 +539,7 @@ void WriteDataToFile(double t, double dt, long int iters) {
 	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
 	herr_t status;
 	hid_t main_group_id;
-	#if defined(__ENST_SPECT) || defined(__ENRG_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__ENRG_FLUX_SPECT)
+	#if defined(__ENST_SPECT) || defined(__ENRG_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__ENRG_FLUX_SPECT) || defined(__PHASE_SYNC)
 	hid_t spectra_group_id;
 	#endif
 	hid_t plist_id;
@@ -550,7 +580,7 @@ void WriteDataToFile(double t, double dt, long int iters) {
 	}
 	H5Pclose(plist_id);
 
-	#if defined(__ENST_SPECT) || defined(__ENRG_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__ENRG_FLUX_SPECT)
+	#if defined(__ENST_SPECT) || defined(__ENRG_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__ENRG_FLUX_SPECT) || defined(__PHASE_SYNC)
 	if (!sys_vars->rank) {
 		// Check if spectra file exists - open it if it does if not create it
 		if (access(file_info->output_file_name, F_OK) != 0) {
@@ -580,7 +610,7 @@ void WriteDataToFile(double t, double dt, long int iters) {
 	
 	// Create group for the current iteration data
 	main_group_id = CreateGroup(file_info->output_file_handle, file_info->output_file_name, group_name, t, dt, iters);
-	#if defined(__ENST_SPECT) || defined(__ENRG_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__ENRG_FLUX_SPECT)
+	#if defined(__ENST_SPECT) || defined(__ENRG_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__ENRG_FLUX_SPECT) || defined(__PHASE_SYNC)
 	if (!sys_vars->rank) {
 		spectra_group_id = CreateGroup(file_info->spectra_file_handle, file_info->spectra_file_name, group_name, t, dt, iters);
 	}
@@ -589,6 +619,7 @@ void WriteDataToFile(double t, double dt, long int iters) {
 	// -------------------------------
 	// Write Data to File
 	// -------------------------------
+	///--------------------------------------- Real Space Vorticity
 	#if defined(__VORT_REAL)
 	// Transform Fourier space vorticiy to real space and normalize
 	fftw_mpi_execute_dft_c2r(sys_vars->fftw_2d_dft_c2r, run_data->w_hat, run_data->w);
@@ -613,6 +644,8 @@ void WriteDataToFile(double t, double dt, long int iters) {
 	// Write the real space vorticity
 	WriteDataReal(t, (int)iters, main_group_id, "w", H5T_NATIVE_DOUBLE, d_set_rank2D, dset_dims2D, slab_dims2D, mem_space_dims2D, sys_vars->local_Nx_start, run_data->w);
 	#endif
+
+	///--------------------------------------- Fourier Space Vorticity
 	#if defined(__VORT_FOUR)
 	// Create dimension arrays
 	dset_dims2D[0] = Nx;
@@ -647,6 +680,8 @@ void WriteDataToFile(double t, double dt, long int iters) {
 		}
 	}
 	#endif
+
+	///--------------------------------------- Fourier Space Velocities
 	#if defined(__MODES)
 	// Create dimension arrays
 	dset_dims3D[0] 	    = Nx;
@@ -662,6 +697,8 @@ void WriteDataToFile(double t, double dt, long int iters) {
 	// Write the real space vorticity
 	WriteDataFourier(t, (int)iters, main_group_id, "u_hat", file_info->COMPLEX_DTYPE, d_set_rank3D, dset_dims3D, slab_dims3D, mem_space_dims3D, sys_vars->local_Nx_start, run_data->u_hat);
 	#endif
+
+	///--------------------------------------- Real Space Velocities
 	#if defined(__REALSPACE)
 	// Transform velocities back to real space and normalize
 	fftw_mpi_execute_dft_c2r(sys_vars->fftw_2d_dft_batch_c2r, run_data->u_hat, run_data->u);
@@ -690,6 +727,8 @@ void WriteDataToFile(double t, double dt, long int iters) {
 	// Write the real space vorticity
 	WriteDataReal(t, (int)iters, main_group_id, "u", H5T_NATIVE_DOUBLE, d_set_rank3D, dset_dims3D, slab_dims3D, mem_space_dims3D, sys_vars->local_Nx_start, run_data->u);
 	#endif
+
+	///--------------------------------------- Fourier Space Nonlinear Term
 	#if defined(__NONLIN)
 	// Create dimension arrays for the Fourier nonlinear term
 	dset_dims2D[0] 	  = Nx;
@@ -702,6 +741,8 @@ void WriteDataToFile(double t, double dt, long int iters) {
 	// Write the Fourier nonlinear term
 	WriteDataFourier(t, (int)iters, main_group_id, "NonlinearTerm", file_info->COMPLEX_DTYPE, d_set_rank2D, dset_dims2D, slab_dims2D, mem_space_dims2D, sys_vars->local_Nx_start, run_data->nonlinterm);
 	#endif
+
+	///--------------------------------------- Foureir Phases & Amplitudes of the Vorticity
 	#if defined(PHASE_ONLY)
 	// Record the Fourier amplitudes and phases
 	for (int i = 0; i < sys_vars->local_Nx; ++i) {
@@ -730,6 +771,8 @@ void WriteDataToFile(double t, double dt, long int iters) {
 	// Write the Fourier phases
 	WriteDataFourier(t, (int)iters, main_group_id, "phi_k", H5T_NATIVE_DOUBLE, d_set_rank2D, dset_dims2D, slab_dims2D, mem_space_dims2D, sys_vars->local_Nx_start, run_data->phi_k);
 	#endif
+
+	///--------------------------------------- Taylor Green Exact Solution
 	#if defined(TESTING)
 	if (!(strcmp(sys_vars->u0, "TG_VEL")) || !(strcmp(sys_vars->u0, "TG_VORT"))) {
 		// Create dimension arrays
@@ -744,7 +787,9 @@ void WriteDataToFile(double t, double dt, long int iters) {
 		WriteDataReal(t, (int)iters, main_group_id, "TGSoln", H5T_NATIVE_DOUBLE, d_set_rank2D, dset_dims2D, slab_dims2D, mem_space_dims2D, sys_vars->local_Nx_start, run_data->tg_soln);	
 	}
 	#endif
-	#if defined(__ENST_SPECT) || defined(__ENRG_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__ENRG_FLUX_SPECT)
+
+	///--------------------------------------- Spectra and Phase Sync
+	#if defined(__ENST_SPECT) || defined(__ENRG_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__ENRG_FLUX_SPECT) || defined(__PHASE_SYNC)
 	// Gather Spectra data and write to file
 	if (!sys_vars->rank) {
 		// Gather spectra data on master process & write to file
@@ -764,6 +809,20 @@ void WriteDataToFile(double t, double dt, long int iters) {
 		MPI_Reduce(MPI_IN_PLACE, run_data->enrg_flux_spect, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		WriteDataSpect(t, iters, spectra_group_id, sys_vars->n_spect, "EnergyFluxSpectrum", run_data->enrg_flux_spect);
 		#endif
+		#if defined(__PHASE_SYNC)
+		MPI_Reduce(MPI_IN_PLACE, run_data->phase_order_k, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		WriteDataSpect(t, iters, spectra_group_id, sys_vars->n_spect, "PhaseOrder_k", run_data->phase_order_k);
+
+		// Create temp mem
+		double amp_k[sys_vars->n_spect];
+		double phase_k[sys_vars->n_spect];
+		for (int i = 0; i < sys_vars->n_spect; ++i) {
+			amp_k[i]   = cabs(run_data->phase_order_k[i]);
+			phase_k[i] = carg(run_data->phase_order_k[i]);
+		}
+		WriteDataSpect(t, iters, spectra_group_id, sys_vars->n_spect, "PhaseOrder_Theta_k", phase_k);
+		WriteDataSpect(t, iters, spectra_group_id, sys_vars->n_spect, "PhaseOrder_R_k", amp_k);
+		#endif
 	}
 	else {
 		// Reduce all other process to master rank
@@ -779,6 +838,9 @@ void WriteDataToFile(double t, double dt, long int iters) {
 		#if defined(__ENRG_FLUX_SPECT)
 		MPI_Reduce(run_data->enrg_flux_spect, NULL, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		#endif
+		#if defined(__PHASE_SYNC)
+		MPI_Reduce(run_data->phase_order_k, NULL, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		#endif
 	}
 	#endif 
 
@@ -791,7 +853,7 @@ void WriteDataToFile(double t, double dt, long int iters) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close output file ["CYAN"%s"RESET"] at: Iter = ["CYAN"%ld"RESET"] t = ["CYAN"%lf"RESET"]\n-->> Exiting...\n", file_info->output_file_name, iters, t);
 		exit(1);
 	}
-	#if defined(__ENST_SPECT) || defined(__ENRG_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__ENRG_FLUX_SPECT)
+	#if defined(__ENST_SPECT) || defined(__ENRG_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__ENRG_FLUX_SPECT) || defined(__PHASE_SYNC)
 	if (!sys_vars->rank) {
 		status = H5Gclose(spectra_group_id);
 		status = H5Fclose(file_info->spectra_file_handle);

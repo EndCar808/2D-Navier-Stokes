@@ -1,27 +1,23 @@
 /**
-* @file utils.h
+* @file phase_sync.h  
 * @author Enda Carroll
 * @date Sept 2021
-* @brief Header file for the utils.c file
+* @brief File containing function prototpyes for phase sync file
 */
 // ---------------------------------------------------------------------
 //  Standard Libraries and Headers
 // ---------------------------------------------------------------------
 
-
 // ---------------------------------------------------------------------
 //  User Libraries and Headers
 // ---------------------------------------------------------------------
 
-
-
 // ---------------------------------------------------------------------
-//  Function Prototypes
+//  Function Prototpyes
 // ---------------------------------------------------------------------
-int GetCMLArgs(int argc, char** argv);
-double MyMod(double x, double y);
-void InitializeSpaceVariables(double** x, int** k, const long int* N);
-void PrintTime(double start, double end);
-// ---------------------------------------------------------------------	
+void PhaseSyncSector(int s);
+void AllocatePhaseSyncMemory(const long int* N);
+void FreePhaseSyncObjects(void);
+// ---------------------------------------------------------------------
 //  End of File
-// ---------------------------------------------------------------------	
+// ---------------------------------------------------------------------

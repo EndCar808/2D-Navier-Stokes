@@ -13,7 +13,8 @@
 #include <string.h> 
 #include <math.h>
 #include <complex.h>
-
+#include <time.h>
+#include <sys/time.h>
 // ---------------------------------------------------------------------
 //  User Libraries and Headers
 // ---------------------------------------------------------------------
@@ -198,6 +199,25 @@ void InitializeSpaceVariables(double** x, int** k, const long int* N) {
 		}
 		x[1][i] = (double) i * 2.0 * M_PI / (double) Ny;
 	}
+}
+/**
+ * Converts time in seconds into hours, minutes, seconds and prints to screen
+ * @param start The wall time at the start of timing
+ * @param end   The wall time at the end of timing
+ */
+void PrintTime(time_t start, time_t end) {
+
+	// Get time spent in seconds
+	double time_spent = (double)(end - start);
+
+	// Get the hours, minutes and seconds
+	int hh = (int) time_spent / 3600;
+	int mm = ((int )time_spent - hh * 3600) / 60;
+	int ss = time_spent - (hh * 3600) - (mm * 60);
+
+	// Print hours minutes and second to screen
+	printf("Time taken: ["CYAN"%5.10lf"RESET"] --> "CYAN"%d"RESET" hrs : "CYAN"%d"RESET" mins : "CYAN"%d"RESET" secs\n\n", time_spent, hh, mm, ss);
+
 }
 // ---------------------------------------------------------------------
 //  Function Definitions

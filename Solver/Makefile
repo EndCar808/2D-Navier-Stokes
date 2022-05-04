@@ -42,13 +42,13 @@ endif
 #  Executable flags
 # ---------------------------------------------------------------------
 # Flags to be passed to the solver for normal runs
-SOLVER_FLAGS := -D__NAVIER -D__HYPER -D__TRANSIENTS #-D__ADAPTIVE_STEP -D__CFL_STEP -D__EKMN_DRAG
+SOLVER_FLAGS := -D__NAVIER -D__HYPER #-D__TRANSIENTS -D__ADAPTIVE_STEP -D__CFL_STEP -D__EKMN_DRAG
 
 # Phase only flags to be passed to solver
 PHASE_ONLY := -D__NAVIER -D__HYPER -D__PHASE_ONLY -D__TRANSIENTS
 
 # Dataset Flags to be passed to the solver
-DSET_FLAGS := -D__SYS_MEASURES -D__ENST_FLUX -D__ENRG_FLUX -D__ENST_SPECT -D__ENRG_SPECT -D__ENST_FLUX_SPECT -D__ENRG_FLUX_SPECT # -D__VORT_REAL #-D__REALSPACE # -D__MODES  
+DSET_FLAGS := -D__SYS_MEASURES -D__ENST_FLUX -D__ENRG_FLUX -D__ENST_SPECT -D__ENRG_SPECT -D__ENST_FLUX_SPECT -D__ENRG_FLUX_SPECT -D__PHASE_SYNC # -D__VORT_REAL #-D__REALSPACE # -D__MODES  
  
 # Flags to be passed to the solver for testing
 TG_TEST_FLAGS    := -D__NAVIER -D__TESTING -D__DEBUG #-D__ADAPTIVE_STEP -D__CFL_STEP -D__TRANSIENTS

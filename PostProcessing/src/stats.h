@@ -1,27 +1,23 @@
 /**
-* @file utils.h
+* @file stats.h  
 * @author Enda Carroll
 * @date Sept 2021
-* @brief Header file for the utils.c file
+* @brief File containing function prototpyes for stats file
 */
 // ---------------------------------------------------------------------
 //  Standard Libraries and Headers
 // ---------------------------------------------------------------------
 
-
 // ---------------------------------------------------------------------
 //  User Libraries and Headers
 // ---------------------------------------------------------------------
 
-
-
 // ---------------------------------------------------------------------
-//  Function Prototypes
+//  Function Prototpyes
 // ---------------------------------------------------------------------
-int GetCMLArgs(int argc, char** argv);
-double MyMod(double x, double y);
-void InitializeSpaceVariables(double** x, int** k, const long int* N);
-void PrintTime(double start, double end);
-// ---------------------------------------------------------------------	
+void AllocateStatsMemory(const long int* N);
+void RealSpaceStats(int s);
+void FreeStatsObjects(void);
+// ---------------------------------------------------------------------
 //  End of File
-// ---------------------------------------------------------------------	
+// ---------------------------------------------------------------------

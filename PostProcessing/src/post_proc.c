@@ -13,17 +13,122 @@
 #include <string.h> 
 #include <math.h>
 #include <complex.h>
-
+#include <time.h>
+#include <sys/time.h>
 // ---------------------------------------------------------------------
 //  User Libraries and Headers
 // ---------------------------------------------------------------------
-#include "data_types.h"
 #include "utils.h"
+#include "stats.h"
+#include "post_proc.h"
+#include "data_types.h"
 #include "hdf5_funcs.h"
-
+#include "phase_sync.h"
+#include "full_field.h"
 // ---------------------------------------------------------------------
 //  Function Definitions
 // ---------------------------------------------------------------------
+/** 
+* Performs post processing of the solver data
+*/
+void PostProcessing(void) {
+
+	// --------------------------------
+	//  Open Input File and Get Data
+	// --------------------------------
+	OpenInputAndInitialize(); 
+
+	// --------------------------------
+	//  Open Output File
+	// --------------------------------
+	OpenOutputFile();
+
+	// --------------------------------
+	//  Allocate Processing Memmory
+	// --------------------------------
+	AllocateMemory(sys_vars->N);
+
+	InitializeFFTWPlans(sys_vars->N);
+
+	// --------------------------------
+	//  Perform Precomputations
+	// --------------------------------
+	#if defined(__GRAD_STATS) || defined(__VEL_INCR_STATS)
+	Precompute();
+	#endif
+	
+	//////////////////////////////
+	// Begin Snapshot Processing
+	//////////////////////////////
+	printf("\n\nStarting Snapshot Processing:\n");
+	for (int s = 0; s < sys_vars->num_snaps; ++s) { // 
+		
+		// Print update to screen
+		printf("Snapshot: %d\n", s);
+	
+		// --------------------------------
+		//  Read in Data
+		// --------------------------------
+		ReadInData(s);
+
+		// --------------------------------
+		//  Real Space Stats
+		// --------------------------------
+		#if defined(__REAL_STATS) || defined(__VEL_INCR_STATS) || defined(__STR_FUNC_STATS) || defined(__GRAD_STATS)
+		RealSpaceStats(s);
+		#endif
+
+		// --------------------------------
+		//  Spectra Data
+		// --------------------------------
+		#if defined(__SPECTRA)
+		// Compute the enstrophy spectrum
+		EnstrophySpectrum();
+        EnergySpectrum();
+		#endif
+		#if defined(__ENST_FLUX) || defined(__ENRG_FLUX) || defined(__SEC_PHASE_SYNC)
+        FluxSpectra(s);
+		#endif
+
+		// --------------------------------
+		//  Full Field Data
+		// --------------------------------
+		#if defined(__FULL_FIELD) || defined(__SEC_PHASE_SYNC)
+		FullFieldData();
+		#endif
+
+		// --------------------------------
+		//  Phase Sync
+		// --------------------------------
+		#if defined(__SEC_PHASE_SYNC) 
+		PhaseSyncSector(s);		
+		#endif
+
+		// --------------------------------
+		//  Write Data to File
+		// --------------------------------
+		WriteDataToFile(run_data->time[s], s);
+	}
+	///////////////////////////////
+	// End Snapshot Processing
+	///////////////////////////////
+
+	// ---------------------------------
+	//  Final Write of Data and Close 
+	// ---------------------------------
+	// Write any remaining datasets to output file
+	FinalWriteAndClose();
+	
+	// --------------------------------
+	//  Clean Up
+	// --------------------------------
+	// Free allocated memory
+	FreeMemoryAndCleanUp();
+}
+/**
+ * Performs a run over the data to precompute and quantities needed before performing
+ * the proper run over the data
+ */
 void Precompute(void) {
 
 	// Initialize variables
@@ -38,6 +143,11 @@ void Precompute(void) {
 	double long_increment, trans_increment;
 	double norm_fac = 1.0 / (Nx * Ny);
 	double std_u, std_w;
+
+	// Print to screen that a pre computation step is need and begin timeing it
+	printf("\n["YELLOW"NOTE"RESET"] --- Performing a precomputation step...");
+	struct timeval begin, end;
+	gettimeofday(&begin, NULL);
 
 	// --------------------------------
 	// Loop Through Snapshots
@@ -180,995 +290,10 @@ void Precompute(void) {
 		}
 	}
 	#endif
-}
-/**
- * Function to compute the real space stats both for the current snapshot and throughout the simulaion
- * @param s The index of the current snapshot
- */
-void RealSpaceStats(int s) {
 
-	// Initialize variables
-	int tmp;
-	int indx;
-	int gsl_status;
-	double w_max, w_min;
-	double u_max, u_min;
-	const long int Nx = sys_vars->N[0];
-	const long int Ny = sys_vars->N[1];
-	#if defined(__VEL_INC_STATS) || defined(__STR_FUNC_STATS) || defined(__GRAD_STATS)
-	int r;
-	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
-	double long_increment, trans_increment;
-	double long_increment_abs, trans_increment_abs;
-	int N_max_incr = (int) (GSL_MIN(Nx, Ny) / 2);
-	int increment[NUM_INCR] = {1, N_max_incr};
-	double norm_fac = 1.0 / (Nx * Ny);
-	#endif
-
-
-	// --------------------------------
-	// Get In-Time Histogram Limits
-	// --------------------------------
-	#if defined(__REAL_STATS)
-	// Get min and max data for histogram limits
-	w_max = 0.0;
-	w_min = 1e8;
-	gsl_stats_minmax(&w_min, &w_max, run_data->w, 1, Nx * Ny);
-
-	u_max = 0.0; 
-	u_min = 1e8;
-	gsl_stats_minmax(&u_min, &u_max, run_data->u, 1, Nx * Ny * SYS_DIM);
-	if (fabs(u_min) > u_max) {
-		u_max = fabs(u_min);
-	}
-
-	// Set histogram ranges for the current snapshot
-	gsl_status = gsl_histogram_set_ranges_uniform(stats_data->w_pdf, w_min - 0.5, w_max + 0.5);
-	if (gsl_status != 0) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set bin ranges for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", "Real Vorticity", s);
-		exit(1);
-	}
-	gsl_status = gsl_histogram_set_ranges_uniform(stats_data->u_pdf, 0.0 - 0.1, u_max + 0.5);
-	if (gsl_status != 0) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set bin ranges for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", "Real Velocity", s);
-		exit(1);
-	}
-	#endif
-
-	// --------------------------------
-	// Compute Gradients
-	// --------------------------------
-	#if defined(__GRAD_STATS)
-	// Compute the graident in Fourier space
-	for (int i = 0; i < Nx; ++i) {
-		tmp = i * Ny_Fourier;
-		for (int j = 0; j < Ny_Fourier; ++j) {
-			indx = tmp + j;
-
-			// Compute the gradients of the vorticity
-			proc_data->grad_w_hat[SYS_DIM * indx + 0] = I * run_data->k[0][i] * run_data->w_hat[indx];
-			proc_data->grad_w_hat[SYS_DIM * indx + 1] = I * run_data->k[1][j] * run_data->w_hat[indx];
-
-			// Compute the gradients of the vorticity
-			proc_data->grad_u_hat[SYS_DIM * indx + 0] = I * run_data->k[0][i] * run_data->u_hat[SYS_DIM * indx + 0];
-			proc_data->grad_u_hat[SYS_DIM * indx + 1] = I * run_data->k[1][j] * run_data->u_hat[SYS_DIM * indx + 1];
-		}
-	}
-
-	// Perform inverse transform and normalize to get the gradients in real space
-	fftw_execute_dft_c2r(sys_vars->fftw_2d_dft_batch_c2r, proc_data->grad_w_hat, proc_data->grad_w);
-	fftw_execute_dft_c2r(sys_vars->fftw_2d_dft_batch_c2r, proc_data->grad_u_hat, proc_data->grad_u);
-	for (int i = 0; i < Nx; ++i) {
-		tmp = i * Ny_Fourier;
-		for (int j = 0; j < Ny_Fourier; ++j) {
-			indx = tmp + j;
-
-			// Normalize the gradients
-			proc_data->grad_w[SYS_DIM * indx + 0] *= norm_fac;
-			proc_data->grad_w[SYS_DIM * indx + 1] *= norm_fac;
-			proc_data->grad_u[SYS_DIM * indx + 0] *= norm_fac;
-			proc_data->grad_u[SYS_DIM * indx + 1] *= norm_fac;
-		}
-	}
-	#endif
-
-	// --------------------------------
-	// Update Histogram Counts
-	// --------------------------------
-	// Update histograms with the data from the current snapshot
-	for (int i = 0; i < Nx; ++i) {
-		tmp = i * Ny;
-		for (int j = 0; j < Ny; ++j) {
-			indx = tmp + j;
-
-			#if defined(__REAL_STATS)
-			///-------------------------------- Velocity & Vorticity Fields
-			// Add current values to appropriate bins
-			gsl_status = gsl_histogram_increment(stats_data->w_pdf, run_data->w[indx]);
-			if (gsl_status != 0) {
-				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Real Vorticity", s, gsl_status, run_data->w[indx]);
-				exit(1);
-			}
-			gsl_status = gsl_histogram_increment(stats_data->u_pdf, fabs(run_data->u[SYS_DIM * indx + 0]));
-			if (gsl_status != 0) {
-				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Real Velocity", s, gsl_status, fabs(run_data->u[SYS_DIM * indx + 0]));
-				exit(1);
-			}
-			gsl_status = gsl_histogram_increment(stats_data->u_pdf, fabs(run_data->u[SYS_DIM * indx + 1]));
-			if (gsl_status != 0) {
-				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Real Velocity", s, gsl_status, fabs(run_data->u[SYS_DIM * indx + 1]));
-				exit(1);
-			}
-
-			// Update stats accumulators
-			gsl_rstat_add(run_data->w[indx], stats_data->r_stat_w);			
-			for (int i = 0; i < SYS_DIM + 1; ++i) {
-				if (i < SYS_DIM) {
-					// Add to the individual directions accumulators
-					gsl_rstat_add(run_data->u[SYS_DIM * indx + i], stats_data->r_stat_u[i]);
-				}
-				else {
-					// Add to the combined accumulator
-					for (int j = 0; j < SYS_DIM; ++j) {
-						gsl_rstat_add(run_data->u[SYS_DIM * indx + j], stats_data->r_stat_u[SYS_DIM]);	
-					}
-				}
-			}
-			#endif
-
-			///-------------------------------- Gradient Fields
-			#if defined(__GRAD_STATS)
-			// Update Velocity gradient histograms
-			gsl_status = gsl_histogram_increment(stats_data->vel_grad[0], proc_data->grad_u[SYS_DIM * indx + 0] * (norm_fac));
-			if (gsl_status != 0) {
-				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "X Velocity Gradient", s, gsl_status, proc_data->grad_u[SYS_DIM * indx + 0] * (norm_fac));
-				exit(1);
-			}
-			gsl_status = gsl_histogram_increment(stats_data->vel_grad[1], proc_data->grad_u[SYS_DIM * indx + 1] * (norm_fac));
-			if (gsl_status != 0) {
-				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Y Velocity Gradient", s, gsl_status, proc_data->grad_u[SYS_DIM * indx + 1] * (norm_fac));
-				exit(1);
-			}
-
-			// Update Vorticity gradient histograms
-			gsl_status = gsl_histogram_increment(stats_data->vort_grad[0], proc_data->grad_w[SYS_DIM * indx + 0] * (norm_fac));
-			if (gsl_status != 0) {
-				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "X Vorticity Gradient", s, gsl_status, proc_data->grad_w[SYS_DIM * indx + 0] * (norm_fac));
-				exit(1);
-			}
-			gsl_status = gsl_histogram_increment(stats_data->vort_grad[1], proc_data->grad_w[SYS_DIM * indx + 1] * (norm_fac));
-			if (gsl_status != 0) {
-				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Y Vorticity Gradient", s, gsl_status, proc_data->grad_w[SYS_DIM * indx + 1] * (norm_fac));
-				exit(1);
-			}
-			#endif
-
-			///-------------------------------- Velocity & Vorticity Incrments
-			#if defined(__VEL_INC_STATS)
-			// Compute velocity increments and update histograms
-			for (int r_indx = 0; r_indx < NUM_INCR; ++r_indx) {
-				// Get the current increment
-				r = increment[r_indx];
-
-				//------------- Get the longitudinal and transverse Velocity increments
-				long_increment  = run_data->u[SYS_DIM * (((i + r) % Nx) * Ny + j) + 0] - run_data->u[SYS_DIM * (i * Ny + j) + 0];
-				trans_increment = run_data->u[SYS_DIM * (((i + r) % Nx) * Ny + j) + 1] - run_data->u[SYS_DIM * (i * Ny + j) + 1];
-
-				// Update the histograms
-				gsl_status = gsl_histogram_increment(stats_data->vel_incr[0][r_indx], long_increment);
-				if (gsl_status != 0) {
-					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Longitudinal Velocity Increment", s, gsl_status, long_increment);
-					exit(1);
-				}
-				gsl_status = gsl_histogram_increment(stats_data->vel_incr[1][r_indx], trans_increment);
-				if (gsl_status != 0) {
-					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Transverse Velocity Increment", s, gsl_status, trans_increment);
-					exit(1);
-				}
-
-				//------------- Get the longitudinal and transverse Vorticity increments
-				long_increment  = run_data->w[((i + r) % Nx) * Ny + j] - run_data->w[i * Ny + j];
-				trans_increment = run_data->w[i * Ny + ((j + r) % Ny)] - run_data->w[i * Ny + j];
-
-				// Update the histograms
-				gsl_status = gsl_histogram_increment(stats_data->w_incr[0][r_indx], long_increment);
-				if (gsl_status != 0) {
-					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Longitudinal Vorticity Increment", s, gsl_status, long_increment);
-					exit(1);
-				}
-				gsl_status = gsl_histogram_increment(stats_data->w_incr[1][r_indx], trans_increment);
-				if (gsl_status != 0) {
-					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Transverse Vorticity Increment", s, gsl_status, trans_increment);
-					exit(1);
-				}			
-			}
-			#endif
-		}
-	}
-
-	// --------------------------------
-	// Compute Structure Functions
-	// --------------------------------
-	#if defined(__STR_FUNC_STATS)
-	for (int p = 2; p < STR_FUNC_MAX_POW; ++p) {
-		for (int r_inc = 1; r_inc <= N_max_incr; ++r_inc) {
-			// Initialize increments
-			long_increment      = 0.0;
-			trans_increment     = 0.0;
-			long_increment_abs  = 0.0;
-			trans_increment_abs = 0.0;
-			for (int i = 0; i < Nx; ++i) {
-				tmp = i * Ny;
-				for (int j = 0; j < Ny; ++j) {
-					indx = tmp + j;
-				
-					// Get increments
-					long_increment      += pow(run_data->u[SYS_DIM * (((i + r_inc) % Nx) * Ny + j) + 0] - run_data->u[SYS_DIM * (i * Ny + j) + 0], p);
-					trans_increment     += pow(run_data->u[SYS_DIM * (((i + r_inc) % Nx) * Ny + j) + 1] - run_data->u[SYS_DIM * (i * Ny + j) + 1], p);
-					long_increment_abs  += pow(fabs(run_data->u[SYS_DIM * (((i + r_inc) % Nx) * Ny + j) + 0] - run_data->u[SYS_DIM * (i * Ny + j) + 0]), p);
-					trans_increment_abs += pow(fabs(run_data->u[SYS_DIM * (((i + r_inc) % Nx) * Ny + j) + 1] - run_data->u[SYS_DIM * (i * Ny + j) + 1]), p);
-				}
-			}
-			// Compute str function - normalize here
-			stats_data->str_func[0][p - 2][r_inc - 1]     += long_increment * norm_fac;	
-			stats_data->str_func[1][p - 2][r_inc - 1]     += trans_increment * norm_fac;
-			stats_data->str_func_abs[0][p - 2][r_inc - 1] += long_increment_abs * norm_fac;	
-			stats_data->str_func_abs[1][p - 2][r_inc - 1] += trans_increment_abs * norm_fac;
-		}
-	}
-	#endif	
-}
-/**
- * Function used to fill the full field arrays
- */
-void FullFieldData() {
-
-	// Initialize variables
-	int tmp, tmp1, tmp2;
-	int indx;
-	double k_sqr, k_sqr_fac, phase, amp;
-	const long int Nx 		  = sys_vars->N[0];
-	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
-
-	// --------------------------------
-	// Fill The Full Field Arrays
-	// --------------------------------
-	for (int i = 0; i < Nx; ++i) {
-		if (abs(run_data->k[0][i]) < sys_vars->kmax) {
-			tmp  = i * Ny_Fourier;	
-			tmp1 = (sys_vars->kmax - 1 - run_data->k[0][i]) * (2 * sys_vars->kmax - 1); // kx > 0 - are the first kmax rows hence the -kx
-			tmp2 = (sys_vars->kmax - 1 + run_data->k[0][i]) * (2 * sys_vars->kmax - 1); // kx < 0 - are the next kmax rows hence the +kx
-			for (int j = 0; j < Ny_Fourier; ++j) {
-				indx = tmp + j;
-				if (abs(run_data->k[1][j]) < sys_vars->kmax) {
-
-					// Compute |k|^2 and 1 / |k|^2
-					k_sqr = (double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]); 
-					if (run_data->k[0][i] != 0 || run_data->k[1][j] != 0) {
-						k_sqr_fac = 1.0 / k_sqr;
-					}
-					else {
-						k_sqr_fac = 0.0;	
-					}
-
-					// Pre-compute data
-					phase = fmod(carg(run_data->w_hat[indx]) + 2.0 * M_PI, 2.0 * M_PI);
-					amp   = cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
-
-					// fill the full field phases and spectra
-	 				if (k_sqr < sys_vars->kmax_sqr) {
-	 					// No conjugate for ky = 0
-	 					if (run_data->k[1][j] == 0) {
-	 						// proc_data->k_full[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]] = 
-	 						proc_data->phases[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]] = phase;
-	 						proc_data->amps[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = cabs(run_data->w_hat[indx]);
-	 						proc_data->enrg[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = amp * k_sqr_fac;
-	 						proc_data->enst[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = amp;
-	 					}
-	 					else {
-	 						// Fill data and its conjugate
-	 						proc_data->phases[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]] = phase;
-	 						proc_data->phases[tmp2 + sys_vars->kmax - 1 - run_data->k[1][j]] = fmod(-phase + 2.0 * M_PI, 2.0 * M_PI);
-	 						proc_data->amps[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]] 	 = cabs(run_data->w_hat[indx]);
-	 						proc_data->amps[tmp2 + sys_vars->kmax - 1 - run_data->k[1][j]]   = cabs(run_data->w_hat[indx]);
-	 						proc_data->enrg[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = amp * k_sqr_fac;
-	 						proc_data->enrg[tmp2 + sys_vars->kmax - 1 - run_data->k[1][j]]   = amp * k_sqr_fac;
-	 						proc_data->enst[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = amp;
-	 						proc_data->enst[tmp2 + sys_vars->kmax - 1 - run_data->k[1][j]]   = amp;
-	 					}
-	 				}
-	 				else {
-	 					// All dealiased modes set to zero
-						if (run_data->k[1][j] == 0) {
-	 						proc_data->phases[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]] = -50.0;
-	 						proc_data->amps[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = -50.0;
-	 						proc_data->enrg[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = -50.0;
-	 						proc_data->enst[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = -50.0;
-	 					}
-	 					else {	
-	 						proc_data->phases[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]] = -50.0;
-	 						proc_data->phases[tmp2 + sys_vars->kmax - 1 - run_data->k[1][j]] = -50.0;
-	 						proc_data->amps[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = -50.0;
-	 						proc_data->amps[tmp2 + sys_vars->kmax - 1 - run_data->k[1][j]]   = -50.0;
-	 						proc_data->enrg[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = -50.0;
-	 						proc_data->enrg[tmp2 + sys_vars->kmax - 1 - run_data->k[1][j]]   = -50.0;
-	 						proc_data->enst[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = -50.0;
-	 						proc_data->enst[tmp2 + sys_vars->kmax - 1 - run_data->k[1][j]]   = -50.0;
-	 					}
-	 				}
-				}	
-			}						
-		}
-	}
-}
-/**
- * Function to compute the phase synchroniztion data sector by sector in wavenumber space for the current snaphsot
- * @param s The index of the current snapshot
- */
-void SectorPhaseOrderBruteForceFast(int s) {
-
-	// Initialize variables
-	int k1_x, k1_y, k2_x, k2_y, k3_x, k3_y;
-	int tmp_k1, tmp_k2, tmp_k3;
-	double k1_sqr, k2_sqr, k3_sqr;
-	double flux_pre_fac;
-	double flux_wght;
-	double triad_phase;
-	double gen_triad_phase;
-	double S_k3, S_k3_lwr, S_k3_upr; 
-	double k1_angle, k2_angle, k3_angle;
-	double k1_angle_neg, k2_angle_neg, k3_angle_neg;
-	int gsl_status;
-
-
-	// Loop through the sectors for k3
-	for (int a = 0; a < sys_vars->num_sect; ++a) {	
-
-		// Get the sector for k3
-		S_k3 = proc_data->theta[a];
-		S_k3_upr = S_k3 + proc_data->dtheta/2.0;
-		S_k3_lwr = S_k3 - proc_data->dtheta/2.0;
-
-		// Initialize counters number of triads and enstrophy flux for each triad type
-		for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
-			proc_data->num_triads[i][a] = 0;
-			proc_data->enst_flux[i][a] = 0.0;
-		}
-
-		// Loop through the sectors for k1
-		for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
-
-			// Initialize counters for number of triads and enstrophy flux across sectors for each triad type
-			for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
-				proc_data->num_triads_across_sec[i][a][l] = 0;
-				proc_data->enst_flux_across_sec[i][a][l] = 0.0;
-			}
-			
-			// Loop through wavevectors
-			if (proc_data->num_wave_vecs[a][l] != 0) {
-				for (int n = 0; n < proc_data->num_wave_vecs[a][l]; ++n) {
-					
-					// Get k1 and k2 and k3
-					k1_x = proc_data->phase_sync_wave_vecs[a][l][K1_X][n];
-					k1_y = proc_data->phase_sync_wave_vecs[a][l][K1_Y][n];
-					k2_x = proc_data->phase_sync_wave_vecs[a][l][K2_X][n];
-					k2_y = proc_data->phase_sync_wave_vecs[a][l][K2_Y][n];
-					k3_x = proc_data->phase_sync_wave_vecs[a][l][K3_X][n];
-					k3_y = proc_data->phase_sync_wave_vecs[a][l][K3_Y][n];
-
-					// Get the mod square of the wavevectors
-					k1_sqr = proc_data->phase_sync_wave_vecs[a][l][K1_SQR][n];
-					k2_sqr = proc_data->phase_sync_wave_vecs[a][l][K2_SQR][n];
-					k3_sqr = proc_data->phase_sync_wave_vecs[a][l][K3_SQR][n];
-
-					// Get the angles of the wavevectors
-					k1_angle     = proc_data->phase_sync_wave_vecs[a][l][K1_ANGLE][n];
-					k2_angle     = proc_data->phase_sync_wave_vecs[a][l][K2_ANGLE][n];
-					k3_angle     = proc_data->phase_sync_wave_vecs[a][l][K3_ANGLE][n];
-					k1_angle_neg = proc_data->phase_sync_wave_vecs[a][l][K1_ANGLE_NEG][n];
-					k2_angle_neg = proc_data->phase_sync_wave_vecs[a][l][K2_ANGLE_NEG][n];
-					k3_angle_neg = proc_data->phase_sync_wave_vecs[a][l][K3_ANGLE_NEG][n];
-
-					// Get correct phase index -> recall that to access kx > 0, use -kx
-					tmp_k1 = (sys_vars->kmax - 1 - k1_x) * (2 * sys_vars->kmax - 1);	
-					tmp_k2 = (sys_vars->kmax - 1 - k2_x) * (2 * sys_vars->kmax - 1);
-					tmp_k3 = (sys_vars->kmax - 1 - k3_x) * (2 * sys_vars->kmax - 1);
-					
-					// Compute the flux pre factor
-					flux_pre_fac = (double) (k1_x * k2_y - k2_x * k1_y) * (1.0 / k1_sqr - 1.0 / k2_sqr);
-
-					// Get the flux weight term
-					flux_wght = flux_pre_fac * (proc_data->amps[tmp_k1 + sys_vars->kmax - 1 + k1_y] * proc_data->amps[tmp_k2 + sys_vars->kmax - 1 + k2_y] * proc_data->amps[tmp_k3 + sys_vars->kmax - 1 + k3_y]);
-
-					// Get the triad phase
-					triad_phase = proc_data->phases[tmp_k1 + sys_vars->kmax - 1 + k1_y] + proc_data->phases[tmp_k2 + sys_vars->kmax - 1 + k2_y] - proc_data->phases[tmp_k3 + sys_vars->kmax - 1 + k3_y];
-
-					// Update the Kuramoto order parameters for each triad type: Split into First (postive) term -> which has three scenarios; second (negative) term; zero contribution terms; and ignored terms
-					if ( (k3_sqr > sys_vars->kmax_C_sqr && ((k3_angle >= S_k3_lwr && k3_angle < S_k3_upr) || (k3_angle_neg >= S_k3_lwr && k3_angle_neg < S_k3_upr))) 
-						&& !(k1_sqr > sys_vars->kmax_C_sqr && ((k1_angle >= S_k3_lwr && k1_angle < S_k3_upr) || (k1_angle_neg >= S_k3_lwr && k1_angle_neg < S_k3_upr))) 
-						&& !(k2_sqr > sys_vars->kmax_C_sqr && ((k2_angle >= S_k3_lwr && k2_angle < S_k3_upr) || (k2_angle_neg >= S_k3_lwr && k2_angle_neg < S_k3_upr))) ) {
-						
-						// Define the generalized triad phase for the first term in the flux
-						gen_triad_phase = fmod(triad_phase + 2.0 * M_PI + carg(flux_wght), 2.0 * M_PI) - M_PI;
-						
-						//------------------------------------------ TRIAD TYPE 0
-						// Update the combined triad phase order parameter with the appropriate contribution
-						proc_data->triad_phase_order[0][a]               += cexp(I * gen_triad_phase);
-						proc_data->triad_phase_order_across_sec[0][a][l] += cexp(I * gen_triad_phase);
-
-						// Update the triad counter for the combined triad type
-						proc_data->num_triads[0][a]++;
-						proc_data->num_triads_across_sec[0][a][l]++;
-
-						// Update the flux contribution for type 0
-						proc_data->enst_flux[0][a]               += flux_wght * cos(triad_phase);
-						proc_data->enst_flux_across_sec[0][a][l] += flux_wght * cos(triad_phase);
-
-						// ------ Update the PDFs of the combined triads
-						gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf[0][a], gen_triad_phase);
-						if (gsl_status != 0) {
-							fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 0", a, s, gsl_status, gen_triad_phase);
-							exit(1);
-						}
-						gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf_t[0][a], gen_triad_phase);
-						if (gsl_status != 0) {
-							fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 0 In Time", a, s, gsl_status, gen_triad_phase);
-							exit(1);
-						}
-						gsl_status = gsl_histogram_accumulate(proc_data->triad_sect_wghtd_pdf_t[0][a], gen_triad_phase, fabs(flux_wght));
-						if (gsl_status != 0) {
-							fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase Weighted PDF Type 0 In Time", a, s, gsl_status, gen_triad_phase);
-							exit(1);
-						}
-
-						if (flux_pre_fac < 0) {
-							//------------------------------------------ TRIAD TYPE 1
-							proc_data->triad_phase_order[1][a]               += cexp(I * gen_triad_phase);
-							proc_data->triad_phase_order_across_sec[1][a][l] += cexp(I * gen_triad_phase);
-							proc_data->num_triads[1][a]++;		
-							proc_data->num_triads_across_sec[1][a][l]++;		
-
-							// Update the flux contribution for tpye 1
-							proc_data->enst_flux[1][a]               += flux_wght * cos(triad_phase);
-							proc_data->enst_flux_across_sec[1][a][l] += flux_wght * cos(triad_phase);
-
-							// Update the PDFs
-							gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf[1][a], gen_triad_phase);
-							if (gsl_status != 0) {
-								fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 1", a, s, gsl_status, gen_triad_phase);
-								exit(1);
-							}
-							gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf_t[1][a], gen_triad_phase);
-							if (gsl_status != 0) {
-								fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 1 In Time", a, s, gsl_status, gen_triad_phase);
-								exit(1);
-							}
-							gsl_status = gsl_histogram_accumulate(proc_data->triad_sect_wghtd_pdf_t[1][a], gen_triad_phase, fabs(flux_wght));
-							if (gsl_status != 0) {
-								fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase Weighted PDF Type 1 In Time", a, s, gsl_status, gen_triad_phase);
-								exit(1);
-							}
-						}
-						else if (flux_pre_fac > 0) {
-							
-							//------------------------------------------ TRIAD TYPE 2
-							proc_data->triad_phase_order[2][a]               += cexp(I * gen_triad_phase);
-							proc_data->triad_phase_order_across_sec[2][a][l] += cexp(I * gen_triad_phase);
-
-							// Update the number of triads
-							proc_data->num_triads[2][a]++;		
-							proc_data->num_triads_across_sec[2][a][l]++;		
-
-							// Update the flux contribution for tpye 2
-							proc_data->enst_flux[2][a]               += flux_wght * cos(triad_phase);
-							proc_data->enst_flux_across_sec[2][a][l] += flux_wght * cos(triad_phase);
-
-							// Update the PDFs
-							gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf[2][a], gen_triad_phase);
-							if (gsl_status != 0) {
-								fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase Type 2 PDF", a, s, gsl_status, gen_triad_phase);
-								exit(1);
-							}
-							gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf_t[2][a], gen_triad_phase);
-							if (gsl_status != 0) {
-								fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 2 In Time", a, s, gsl_status, gen_triad_phase);
-								exit(1);
-							}
-							gsl_status = gsl_histogram_accumulate(proc_data->triad_sect_wghtd_pdf_t[2][a], gen_triad_phase, fabs(flux_wght));
-							if (gsl_status != 0) {
-								fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase Weighted PDF Type 2 In Time", a, s, gsl_status, gen_triad_phase);
-								exit(1);
-							}
-						}
-					}
-					else if ( !(k3_sqr > sys_vars->kmax_C_sqr && ((k3_angle >= S_k3_lwr && k3_angle < S_k3_upr) || (k3_angle_neg >= S_k3_lwr && k3_angle_neg < S_k3_upr))) 
-						&& (k1_sqr > sys_vars->kmax_C_sqr && ((k1_angle >= S_k3_lwr && k1_angle < S_k3_upr) || (k1_angle_neg >= S_k3_lwr && k1_angle_neg < S_k3_upr))) 
-						&& (k2_sqr > sys_vars->kmax_C_sqr && ((k2_angle >= S_k3_lwr && k2_angle < S_k3_upr) || (k2_angle_neg >= S_k3_lwr && k2_angle_neg < S_k3_upr))) ) {
-						
-						// Define the generalized triad phase for the triads in the second (negative) flux term
-						gen_triad_phase = fmod(triad_phase + 2.0 * M_PI + carg(-flux_wght), 2.0 * M_PI) - M_PI;
-						
-						//------------------------------------------ TRIAD TYPE 0
-						// Update the combined triad phase order parameter with the appropriate contribution
-						proc_data->triad_phase_order[0][a]               += cexp(I * gen_triad_phase);
-						proc_data->triad_phase_order_across_sec[0][a][l] += cexp(I * gen_triad_phase);
-
-						// Update the triad counter for the combined triad type
-						proc_data->num_triads[0][a]++;
-						proc_data->num_triads_across_sec[0][a][l]++;
-
-						// Update the flux contribution for type 0
-						proc_data->enst_flux[0][a]               += flux_wght * cos(triad_phase);
-						proc_data->enst_flux_across_sec[0][a][l] += flux_wght * cos(triad_phase);
-
-						// ------ Update the PDFs of the combined triads
-						gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf[0][a], gen_triad_phase);
-						if (gsl_status != 0) {
-							fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 0", a, s, gsl_status, gen_triad_phase);
-							exit(1);
-						}
-						gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf_t[0][a], gen_triad_phase);
-						if (gsl_status != 0) {
-							fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 0 In Time", a, s, gsl_status, gen_triad_phase);
-							exit(1);
-						}
-						gsl_status = gsl_histogram_accumulate(proc_data->triad_sect_wghtd_pdf_t[0][a], gen_triad_phase, fabs(-flux_wght));
-						if (gsl_status != 0) {
-							fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase Weighted PDF Type 0 In Time", a, s, gsl_status, gen_triad_phase);
-							exit(1);
-						}
-
-						if (flux_pre_fac < 0) {
-							//------------------------------------------ TRIAD TYPE 3
-							proc_data->triad_phase_order[3][a]               += cexp(I * gen_triad_phase);
-							proc_data->triad_phase_order_across_sec[3][a][l] += cexp(I * gen_triad_phase);
-							proc_data->num_triads[3][a]++;		
-							proc_data->num_triads_across_sec[3][a][l]++;		
-
-							// Update the flux contribution for tpye 1
-							proc_data->enst_flux[3][a]               += flux_wght * cos(triad_phase);
-							proc_data->enst_flux_across_sec[3][a][l] += flux_wght * cos(triad_phase);
-
-							// Update the PDFs
-							gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf[3][a], gen_triad_phase);
-							if (gsl_status != 0) {
-								fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 3", a, s, gsl_status, gen_triad_phase);
-								exit(1);
-							}
-							gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf_t[3][a], gen_triad_phase);
-							if (gsl_status != 0) {
-								fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 3 In Time", a, s, gsl_status, gen_triad_phase);
-								exit(1);
-							}
-							gsl_status = gsl_histogram_accumulate(proc_data->triad_sect_wghtd_pdf_t[3][a], gen_triad_phase, fabs(-flux_wght));
-							if (gsl_status != 0) {
-								fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase Weighted PDF Type 3 In Time", a, s, gsl_status, gen_triad_phase);
-								exit(1);
-							}
-						}
-						if (flux_pre_fac > 0) {
-							//------------------------------------------ TRIAD TYPE 4
-							proc_data->triad_phase_order[4][a]               += cexp(I * gen_triad_phase);
-							proc_data->triad_phase_order_across_sec[4][a][l] += cexp(I * gen_triad_phase);
-
-							// Update the number of triads
-							proc_data->num_triads[4][a]++;		
-							proc_data->num_triads_across_sec[4][a][l]++;		
-
-							// Update the flux contribution for tpye 2
-							proc_data->enst_flux[4][a]               += flux_wght * cos(triad_phase);
-							proc_data->enst_flux_across_sec[4][a][l] += flux_wght * cos(triad_phase);
-
-							// Update the PDFs
-							gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf[4][a], gen_triad_phase);
-							if (gsl_status != 0) {
-								fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 4", a, s, gsl_status, gen_triad_phase);
-								exit(1);
-							}
-							gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf_t[4][a], gen_triad_phase);
-							if (gsl_status != 0) {
-								fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 4 In Time", a, s, gsl_status, gen_triad_phase);
-								exit(1);
-							}
-							gsl_status = gsl_histogram_accumulate(proc_data->triad_sect_wghtd_pdf_t[4][a], gen_triad_phase, fabs(-flux_wght));
-							if (gsl_status != 0) {
-								fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase Weighted PDF Type 4 In Time", a, s, gsl_status, gen_triad_phase);
-								exit(1);
-							}
-						}
-					}
-					else if (flux_pre_fac == 0.0 || flux_wght == 0.0) {
-
-						// Define the generalized triad phase for the zero contribution terms
-						gen_triad_phase = fmod(triad_phase + 2.0 * M_PI + carg(flux_wght), 2.0 * M_PI) - M_PI;
-
-						//------------------------------------------ TRIAD TYPE 5
-						proc_data->triad_phase_order[5][a]               += cexp(I * gen_triad_phase);
-						proc_data->triad_phase_order_across_sec[5][a][l] += cexp(I * gen_triad_phase);
-
-						// Update the number of triads
-						proc_data->num_triads[5][a]++;		
-						proc_data->num_triads_across_sec[5][a][l]++;		
-
-						// Update the flux contribution for tpye 2
-						proc_data->enst_flux[5][a]               += flux_wght * cos(triad_phase);
-						proc_data->enst_flux_across_sec[5][a][l] += flux_wght * cos(triad_phase);
-
-						// Update the PDFs
-						gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf[5][a], gen_triad_phase);
-						if (gsl_status != 0) {
-							fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 5", a, s, gsl_status, gen_triad_phase);
-							exit(1);
-						}
-						gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf_t[5][a], gen_triad_phase);
-						if (gsl_status != 0) {
-							fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 5 In Time", a, s, gsl_status, gen_triad_phase);
-							exit(1);
-						}
-						gsl_status = gsl_histogram_accumulate(proc_data->triad_sect_wghtd_pdf_t[5][a], gen_triad_phase, fabs(flux_wght)); 
-						if (gsl_status != 0) {
-							fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase Weighted PDF Type 5 In Time", a, s, gsl_status, gen_triad_phase);
-							exit(1);
-						}
-					}
-					else {
-
-						// Define the generalized triad phase for the ignored terms
-						gen_triad_phase = fmod(triad_phase + 2.0 * M_PI + carg(flux_wght), 2.0 * M_PI) - M_PI;
-
-						//------------------------------------------ TRIAD TYPE 6
-						proc_data->triad_phase_order[6][a]               += cexp(I * gen_triad_phase);
-						proc_data->triad_phase_order_across_sec[6][a][l] += cexp(I * gen_triad_phase);
-
-						// Update the number of triads
-						proc_data->num_triads[6][a]++;		
-						proc_data->num_triads_across_sec[6][a][l]++;		
-
-						// Update the flux contribution for tpye 2
-						proc_data->enst_flux[6][a]               += flux_wght * cos(triad_phase);
-						proc_data->enst_flux_across_sec[6][a][l] += flux_wght * cos(triad_phase);
-
-						// Update the PDFs
-						gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf[6][a], gen_triad_phase);
-						if (gsl_status != 0) {
-							fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 6", a, s, gsl_status, gen_triad_phase);
-							exit(1);
-						}
-						gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf_t[6][a], gen_triad_phase);
-						if (gsl_status != 0) {
-							fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 6 In Time", a, s, gsl_status, gen_triad_phase);
-							exit(1);
-						}
-						gsl_status = gsl_histogram_accumulate(proc_data->triad_sect_wghtd_pdf_t[6][a], gen_triad_phase, fabs(flux_wght)); 
-						if (gsl_status != 0) {
-							fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase Weighted PDF Type 6 In Time", a, s, gsl_status, gen_triad_phase);
-							exit(1);
-						}
-					}
-				}
-			}
-		}
-	}
-
-	//------------------- Record the data for the triads
-	for (int a = 0; a < sys_vars->num_sect; ++a) {
-		for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
-			// Normalize the phase order parameters
-			if (proc_data->num_triads[i][a] != 0) {
-				proc_data->triad_phase_order[i][a] /= proc_data->num_triads[i][a];
-			}
-			
-			// Record the phase syncs and average phases
-			proc_data->triad_R[i][a]   = cabs(proc_data->triad_phase_order[i][a]);
-			proc_data->triad_Phi[i][a] = carg(proc_data->triad_phase_order[i][a]);
-			for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
-				if (proc_data->num_triads_across_sec[i][a][l] != 0) {
-					proc_data->triad_phase_order_across_sec[i][a][l] /= proc_data->num_triads_across_sec[i][a][l];
-				}
-				
-				// Record the phase syncs and average phases
-				proc_data->triad_R_across_sec[i][a][l]   = cabs(proc_data->triad_phase_order_across_sec[i][a][l]);
-				proc_data->triad_Phi_across_sec[i][a][l] = carg(proc_data->triad_phase_order_across_sec[i][a][l]); 
-			}
-		}
-	}
-
-	// for (int a = 0; a < sys_vars->num_sect; ++a) {
-	// 	for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
-	// 		for (int type = 0; type < NUM_TRIAD_TYPES + 1; ++type) {
-	// 			printf("a: %d l: %d\ttype: %d Num: %d\t triad_phase_order: %lf %lf I\t R: %lf, Phi %lf \t Flux: %1.16lf\n", a, l, type, proc_data->num_triads_across_sec[type][a][l], creal(proc_data->triad_phase_order_across_sec[type][a][l]), cimag(proc_data->triad_phase_order_across_sec[type][a][l]), proc_data->triad_R_across_sec[type][a][l], proc_data->triad_Phi_across_sec[type][a][l], proc_data->enst_flux_across_sec[type][a][l]);
-	// 		}
-	// 		printf("\n");
-	// 	}
-	// 	printf("\n-------------------------------------\n\n");
-	// }
-
-	//------------- Reset order parameters for next iteration
-	for (int a = 0; a < sys_vars->num_sect; ++a) {
-		for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
-			for (int type = 0; type < NUM_TRIAD_TYPES; ++type) {
-				proc_data->triad_phase_order[type][a]               = 0.0 + 0.0 * I;
-				proc_data->triad_phase_order_across_sec[type][a][l] = 0.0 + 0.0 * I;
-			}
-		}
-	}
-}
-/**
- * Function to apply the selected dealiasing filter to the input array. Can be Fourier vorticity or velocity
- * @param array    	The array containing the Fourier modes to dealiased
- * @param array_dim The extra array dimension -> will be 1 for scalar or 2 for vector
- * @param N        	Array containing the dimensions of the system
- */
-void ApplyDealiasing(fftw_complex* array, int array_dim, const long int* N) {
-
-	// Initialize variables
-	int tmp, indx;
-	const long int Nx         = N[0];
-	const long int Ny         = N[1];
-	const long int Ny_Fourier = Ny / 2 + 1;
-	#if defined(__DEALIAS_HOU_LI)
-	double hou_li_filter;
-	#endif
-
-	// --------------------------------------------
-	// Apply Appropriate Filter 
-	// --------------------------------------------
-	for (int i = 0; i < Nx; ++i) {
-		tmp = i * Ny_Fourier;
-		for (int j = 0; j < Ny_Fourier; ++j) {
-			indx = array_dim * (tmp + j);
-
-			#if defined(__DEALIAS_23)
-			if (sqrt((double) run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]) > Nx / 3) {
-				for (int l = 0; l < array_dim; ++l) {
-					// Set dealised modes to 0
-					array[indx + l] = 0.0 + 0.0 * I;	
-				}
-			}
-			else {
-				for (int l = 0; l < array_dim; ++l) {
-					// Apply DFT normaliztin to undealiased modes
-					array[indx + l] = array[indx + l];	
-				}				
-			}
-			#elif __DEALIAS_HOU_LI
-			// Compute Hou-Li filter
-			hou_li_filter = exp(-36.0 * pow((sqrt(pow(run_data->k[0][i] / (Nx / 2), 2.0) + pow(run_data->k[1][j] / (Ny / 2), 2.0))), 36.0));
-
-			for (int l = 0; l < array_dim; ++l) {
-				// Apply filter and DFT normaliztion
-				array[indx + l] *= hou_li_filter;
-			}
-			#endif
-		}
-	}
-}
-/**
- * Function to compute the nonlinear term of the equation motion for the Fourier space vorticity
- * @param w_hat      The Fourier space vorticity
- * @param dw_hat_dt  The result of the nonlinear term
- * @param nonlinterm The nonlinear term in real space
- * @param u          The real space velocity
- * @param nabla_w    The gradient of the real space velocity
- */
-void NonlinearRHS(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* nonlinterm, double* u, double* nabla_w) {
-
-	// Initialize variables
-	int tmp, indx;
-	double vel1;
-	double vel2;
-	fftw_complex k_sqr;
-	const long int Nx         = sys_vars->N[0];
-	const long int Ny         = sys_vars->N[1];
-	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
-
-	// ----------------------------------
-	//  Compute Fourier Space Velocity
-	// ----------------------------------
-	for (int i = 0; i < Nx; ++i) {
-		tmp = i * (Ny_Fourier);
-		for (int j = 0; j < Ny_Fourier; ++j) {
-			indx = tmp + j;
-
-			if ((run_data->k[0][i] != 0) || (run_data->k[1][j]  != 0)) {
-				// Laplacian prefactor
-				k_sqr = I / (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
-
-				// Fill fill fourier velocities array
-				dw_hat_dt[SYS_DIM * (indx) + 0] = k_sqr * ((double) run_data->k[1][j]) * w_hat[indx];
-				dw_hat_dt[SYS_DIM * (indx) + 1] = -1.0 * k_sqr * ((double) run_data->k[0][i]) * w_hat[indx];
-			}
-			else {
-				dw_hat_dt[SYS_DIM * (indx) + 0] = 0.0 + 0.0 * I;
-				dw_hat_dt[SYS_DIM * (indx) + 1] = 0.0 + 0.0 * I;
-			}
-			// printf("-k_sqr[%d, %d]: %1.16lf %1.16lf I \t kx[%d]: %1.16lf \t wh[%d, %d]: %1.16lf %1.16lf I \n", i, j, creal(-1.0 * k_sqr), cimag(-1.0 * k_sqr), i, ((double) run_data->k[0][i]), i, j, creal(w_hat[indx]), cimag(w_hat[indx]));
-		}
-	}
-
-	// ----------------------------------
-	//  Transform to Real Space
-	// ----------------------------------
-	// Perform transformation on the Fourier velocities
-	fftw_execute_dft_c2r(sys_vars->fftw_2d_dft_batch_c2r, dw_hat_dt, u);
-
-	// ----------------------------------
-	//  Compute Gradient of Voriticty
-	// ----------------------------------
-	for (int i = 0; i < Nx; ++i) {
-		tmp = i * (Ny_Fourier);
-		for (int j = 0; j < Ny_Fourier; ++j) {
-			indx = tmp + j;
-
-			// Fill vorticity derivatives array
-			dw_hat_dt[SYS_DIM * indx + 0] = I * ((double) run_data->k[0][i]) * w_hat[indx];
-			dw_hat_dt[SYS_DIM * indx + 1] = I * ((double) run_data->k[1][j]) * w_hat[indx]; 
-		}
-	}
-
-	// ----------------------------------
-	//  Transform to Real Space
-	// ----------------------------------
-	// Perform transformation of the gradient of Fourier space vorticity
-	fftw_execute_dft_c2r(sys_vars->fftw_2d_dft_batch_c2r, dw_hat_dt, nabla_w);
-
-	// ----------------------------------
-	//  Multiply in Real Space
-	// ----------------------------------
-	for (int i = 0; i < Nx; ++i) {
-		tmp = i * Ny;
-		for (int j = 0; j < Ny; ++j) {
-			indx = tmp + j; 
- 			
- 			// Perform multiplication of the nonlinear term 
- 			vel1 = u[SYS_DIM * indx + 0];
- 			vel2 = u[SYS_DIM * indx + 1];
- 			nonlinterm[indx] = 1.0 * (vel1 * nabla_w[SYS_DIM * indx + 0] + vel2 * nabla_w[SYS_DIM * indx + 1]);
- 		}
- 	}
-
-	// ----------------------------------
-	//  Transform to Fourier Space
-	// ----------------------------------
-	// Perform Fourier transform
-	fftw_execute_dft_r2c(sys_vars->fftw_2d_dft_r2c, nonlinterm, dw_hat_dt);
-
-	// Normalize result
-	for (int i = 0; i < Nx; ++i) {
-		tmp = i * (Ny_Fourier);
-		for (int j = 0; j < Ny_Fourier; ++j) {
-			indx = tmp + j;
-
-			dw_hat_dt[indx] *= 1.0 / pow((Nx * Ny), 2.0);
-		}
-	}
-
-	// ----------------------------------
-	//  Perform Dealiasing
-	// ----------------------------------
-	ApplyDealiasing(dw_hat_dt, 1, sys_vars->N);
-}
-/**
- * Function to compute the energy & enstrophy flux spectra and energy and enstorphy flux and dissipation in C for the current snapshot of the simulation
- * The results are gathered on the master rank before being written to file
- * @param snap    The current snapshot of the simulation
- */
-void FluxSpectra(int snap) {
-
-	// Initialize variables
-	int tmp;
-	int indx;
-	double k_sqr;
-	int spec_indx;
-	const long int Nx         = sys_vars->N[0];
-	const long int Ny         = sys_vars->N[1];
-	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
-	double pre_fac = 0.0;
-	double norm_fac = 0.5 / pow(Nx * Ny, 2.0);
-
-	// ------------------------------------
-	// Initialize Spectrum Array
-	// ------------------------------------
-	for (int i = 0; i < sys_vars->n_spec; ++i) {
-		proc_data->enst_flux_spec[i] = 0.0;
-	}
-
-	// -----------------------------------
-	// Compute the Derivative
-	// -----------------------------------
-	// Compute the nonlinear term
-	NonlinearRHS(run_data->w_hat, proc_data->dw_hat_dt, proc_data->nonlinterm, proc_data->nabla_psi, proc_data->nabla_w);
-
-	// -------------------------------------
-	// Compute the Energy Flux Spectrum
-	// -------------------------------------
-	// Loop over Fourier vorticity
-	for (int i = 0; i < Nx; ++i) {
-		tmp = i * Ny_Fourier;
-		for (int j = 0; j < Ny_Fourier; ++j) {
-			indx = tmp + j;
-
-			if ((run_data->k[0][i] != 0) || (run_data->k[1][j] != 0)) {
-				// Compute |k|^2
-				k_sqr = (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
-
-				// Get the appropriate prefactor
-				#if defined(HYPER_VISC) && defined(EKMN_DRAG) 
-				// Both Hyperviscosity and Ekman drag
-				pre_fac = sys_vars->NU * pow(k_sqr, VIS_POW) + sys_vars->EKMN_ALPHA * pow(k_sqr, EKMN_POW);
-				#elif !defined(HYPER_VISC) && defined(EKMN_DRAG) 
-				// No hyperviscosity but we have Ekman drag
-				pre_fac = sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA * pow(k_sqr, EKMN_POW);
-				#elif defined(HYPER_VISC) && !defined(EKMN_DRAG) 
-				// Hyperviscosity only
-				pre_fac = sys_vars->NU * pow(k_sqr, VIS_POW);
-				#else 
-				// No hyper viscosity or no ekman drag -> just normal viscosity
-				pre_fac = sys_vars->NU * k_sqr; 
-				#endif
-
-				// Get the spectrum index
-				spec_indx = (int) ceil(sqrt(k_sqr));
-
-				// Update spectrum bin
-				if ((j == 0) || (Ny_Fourier - 1)) {
-					// Update the current bin sum 
-					#if defined(__ENST_FLUX)
-					proc_data->d_enst_dt_spec[spec_indx] += creal(run_data->w_hat[indx] * conj(proc_data->dw_hat_dt[indx]) + conj(run_data->w_hat[indx]) * proc_data->dw_hat_dt[indx]) * 4.0 * M_PI * M_PI * norm_fac;
-					proc_data->enst_diss_spec[spec_indx] += pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * 4.0 * M_PI * M_PI * norm_fac; 
-					proc_data->enst_flux_spec[spec_indx] += proc_data->d_enst_dt_spec[spec_indx] - proc_data->enst_diss_spec[spec_indx]; 
-					#endif
-					#if defined(__ENRG_FLUX)
-					proc_data->d_enrg_dt_spec[spec_indx] += creal(run_data->w_hat[indx] * conj(proc_data->dw_hat_dt[indx]) + conj(run_data->w_hat[indx]) * proc_data->dw_hat_dt[indx]) * 4.0 * M_PI * M_PI * norm_fac / k_sqr;
-					proc_data->enrg_diss_spec[spec_indx] += pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * 4.0 * M_PI * M_PI * norm_fac / k_sqr; 
-					proc_data->enrg_flux_spec[spec_indx] += proc_data->d_enst_dt_spec[spec_indx] - proc_data->enst_diss_spec[spec_indx]; 
-					#endif
-				}
-				else {
-					// Update the running sum for the flux
-					#if defined(__ENST_FLUX)
-					proc_data->d_enst_dt_spec[spec_indx] += 2.0 * creal(run_data->w_hat[indx] * conj(proc_data->dw_hat_dt[indx]) + conj(run_data->w_hat[indx]) * proc_data->dw_hat_dt[indx]) * 4.0 * M_PI * M_PI * norm_fac;
-					proc_data->enst_diss_spec[spec_indx] += 2.0 * pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * 4.0 * M_PI * M_PI * norm_fac; 
-					proc_data->enst_flux_spec[spec_indx] += 2.0 * (proc_data->d_enst_dt_spec[spec_indx] - proc_data->enst_diss_spec[spec_indx]); 
-					#endif
-					#if defined(__ENRG_FLUX)
-					proc_data->d_enrg_dt_spec[spec_indx] += 2.0 * creal(run_data->w_hat[indx] * conj(proc_data->dw_hat_dt[indx]) + conj(run_data->w_hat[indx]) * proc_data->dw_hat_dt[indx]) * 4.0 * M_PI * M_PI * norm_fac / k_sqr;
-					proc_data->enrg_diss_spec[spec_indx] += 2.0 * pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * 4.0 * M_PI * M_PI * norm_fac / k_sqr; 
-					proc_data->enrg_flux_spec[spec_indx] += 2.0 * (proc_data->d_enst_dt_spec[spec_indx] - proc_data->enst_diss_spec[spec_indx]); 
-					#endif
-				}
-
-			}
-		}
-	}
-
-	// -------------------------------------
-	// Accumulate The Flux
-	// -------------------------------------
-	// Accumulate the flux for each k
-	for (int i = 1; i < sys_vars->n_spec; ++i) {
-		#if defined(__ENST_FLUX)
-		proc_data->d_enst_dt_spec[i] += proc_data->d_enst_dt_spec[i - 1];
-		proc_data->enst_flux_spec[i] += proc_data->enst_flux_spec[i - 1];
-		proc_data->enst_diss_spec[i] += proc_data->enst_diss_spec[i - 1];
-		#endif
-		#if defined(__ENRG_FLUX)
-		proc_data->d_enrg_dt_spec[i] += proc_data->d_enrg_dt_spec[i - 1];
-		proc_data->enrg_flux_spec[i] += proc_data->enrg_flux_spec[i - 1];
-		proc_data->enrg_diss_spec[i] += proc_data->enrg_diss_spec[i - 1];
-		#endif
-		if (i == (int)(sys_vars->kmax_frac * sys_vars->kmax)) {
-			// Record the enstrophy flux out of the set C
-			#if defined(__ENST_FLUX)
-			proc_data->enst_flux_C[snap] = proc_data->enst_flux_spec[i];
-			proc_data->enst_diss_C[snap] = proc_data->enst_diss_spec[i];
-			#endif
-			#if defined(__ENRG_FLUX)
-			proc_data->enrg_flux_C[snap] = proc_data->enrg_flux_spec[i];
-			proc_data->enrg_diss_C[snap] = proc_data->enrg_diss_spec[i];
-			#endif
-		}
-	}
+	// Finish timing pre compute step and print to screen
+	gettimeofday(&end, NULL);
+	// PrintTime(begin.tv_sec, end.tv_sec);
 }
 /**
  * Wrapper function used to allocate the nescessary data objects
@@ -1177,11 +302,10 @@ void FluxSpectra(int snap) {
 void AllocateMemory(const long int* N) {
 
 	// Initialize variables
-	int gsl_status;
 	int tmp1, tmp2, tmp3;
 	const long int Nx = N[0];
 	const long int Ny = N[1];
-	const long int Ny_Fourier = N[1] / 2 + 1;
+	const long int Ny_Fourier = Ny / 2 + 1;
 
 	// Compute maximum wavenumber
 	sys_vars->kmax = (int) (Nx / 3);	
@@ -1212,6 +336,9 @@ void AllocateMemory(const long int* N) {
 		}
 	}
 
+	// --------------------------------	
+	//  Allocate Stats Data
+	// --------------------------------
 	#if defined(__REAL_STATS) || defined(__ENST_FLUX) || defined(__ENRG_FLUX) || defined(__SEC_PHASE_SYNC) || defined(__VEL_INC_STATS) || defined(__STR_FUNC_STATS) || defined(__GRAD_STATS)
 	// Allocate current Fourier vorticity
 	run_data->w = (double* )fftw_malloc(sizeof(double) * Nx * Ny);
@@ -1234,86 +361,10 @@ void AllocateMemory(const long int* N) {
 		exit(1);
 	}
 
-	#if defined(__GRAD_STATS)
-	// Allocate Fourier gradient arrays
-	proc_data->grad_u_hat = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * Nx * Ny_Fourier * SYS_DIM);
-	if (proc_data->grad_u_hat == NULL) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Fourier Velocity");
-		exit(1);
-	}
-	proc_data->grad_w_hat = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * Nx * Ny_Fourier * SYS_DIM);
-	if (proc_data->grad_w_hat == NULL) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Fourier Velocity");
-		exit(1);
-	}
-	// Allocate Real Space gradient arrays
-	proc_data->grad_u = (double* )fftw_malloc(sizeof(double) * Nx * Ny * SYS_DIM);
-	if (proc_data->grad_u == NULL) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Velocity");
-		exit(1);
-	}
-	proc_data->grad_w = (double* )fftw_malloc(sizeof(double) * Nx * Ny * SYS_DIM);
-	if (proc_data->grad_w == NULL) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Velocity");
-		exit(1);
-	}
-
-	// Initialize the gradient histograms
-	for (int i = 0; i < INCR_TYPES; ++i) {
-		stats_data->vel_grad[i]  = gsl_histogram_alloc(N_BINS);
-		stats_data->vort_grad[i] = gsl_histogram_alloc(N_BINS);
-	}
-
-	// Initialize the running stats for the gradients
-	for (int i = 0; i < SYS_DIM + 1; ++i) {
-		stats_data->r_stat_grad_u[i] = gsl_rstat_alloc();
-		stats_data->r_stat_grad_w[i] = gsl_rstat_alloc();
-	}
+	//--------------------- Allocate memory for the stats objects
+	#if defined(__REAL_STATS) || defined(__GRAD_STATS) || defined(__VEL_INC_STATS) || defined(__STR_FUNC_STATS)
+	AllocateStatsMemory(N);
 	#endif
-	#if defined(__VEL_INC_STATS)
-	// Initialize GSL objects for the increments
-	for (int i = 0; i < INCR_TYPES; ++i) {
-		for (int j = 0; j < NUM_INCR; ++j) {
-			// Initialize a histogram objects for each increments for each direction	
-			stats_data->w_incr[i][j]   = gsl_histogram_alloc(N_BINS);
-			stats_data->vel_incr[i][j] = gsl_histogram_alloc(N_BINS);
-			
-			// Initialize running stats for the increments
-			stats_data->r_stat_vel_incr[i][j]  = gsl_rstat_alloc();
-			stats_data->r_stat_vort_incr[i][j] = gsl_rstat_alloc();
-		}
-	}
-	#endif
-	#if defined(__STR_FUNC_STATS)
-	// Allocate memory for each structure function for each of the increment directions
-	int N_max_incr = (int) GSL_MIN(Nx, Ny) / 2;
-	for (int i = 0; i < INCR_TYPES; ++i) {
-		for (int j = 2; j < STR_FUNC_MAX_POW; ++j) {
-			stats_data->str_func[i][j - 2] = (double* )fftw_malloc(sizeof(double) * (N_max_incr));
-			if (stats_data->str_func[i][j - 2] == NULL) {
-				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Structure Functions");
-				exit(1);
-			}
-			stats_data->str_func_abs[i][j - 2] = (double* )fftw_malloc(sizeof(double) * (N_max_incr));
-			if (stats_data->str_func_abs[i][j - 2] == NULL) {
-				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Structure Functions Absolute");
-				exit(1);
-			}
-
-			// Initialize array
-			for (int r = 0; r < N_max_incr; ++r) {
-				stats_data->str_func[i][j - 2][r]     = 0.0;
-				stats_data->str_func_abs[i][j - 2][r] = 0.0;
-			}
-		}
-	}
-	#endif
-
-	// Initialize the running stats for the velocity and vorticity fields
-	stats_data->r_stat_w = gsl_rstat_alloc();
-	for (int i = 0; i < SYS_DIM + 1; ++i) {
-		stats_data->r_stat_u[i] = gsl_rstat_alloc();
-	}
 
 	// Initialize the arrays
 	for (int i = 0; i < Nx; ++i) {
@@ -1331,774 +382,18 @@ void AllocateMemory(const long int* N) {
 	}
 	#endif
 	
-	// --------------------------------	
-	//  Allocate Full Field Arrays
-	// --------------------------------
-	#if defined(__FULL_FIELD)
-	// Allocate memory for the full field phases
-	proc_data->phases = (double* )fftw_malloc(sizeof(double) * (2 * sys_vars->kmax - 1) * (2 * sys_vars->kmax - 1));
-	if (proc_data->phases == NULL) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Full Field Phases");
-		exit(1);
-	}
-
-	// Allocate memory for the full field amplitudes
-	proc_data->amps = (double* )fftw_malloc(sizeof(double) * (2 * sys_vars->kmax - 1) * (2 * sys_vars->kmax - 1));
-	if (proc_data->amps == NULL) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Full Field Phases");
-		exit(1);
-	}
-
-	// Allocate memory for the full field enstrophy spectrum
-	proc_data->enst = (double* )fftw_malloc(sizeof(double) * (2 * sys_vars->kmax - 1) * (2 * sys_vars->kmax - 1));
-	if (proc_data->enst == NULL) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Full Field Enstrophy");
-		exit(1);
-	}	
-
-	// Allocate memory for the full field enrgy spectrum
-	proc_data->enrg = (double* )fftw_malloc(sizeof(double) * (2 * sys_vars->kmax - 1) * (2 * sys_vars->kmax - 1));
-	if (proc_data->enrg == NULL) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Full Field Energy");
-		exit(1);
-	}	
-
-	// Initialize arrays
-	for (int i = 0; i < (2 * sys_vars->kmax - 1); ++i) {
-		tmp3 = i * (2 * sys_vars->kmax - 1);
-		for (int j = 0; j < (2 * sys_vars->kmax - 1); ++j) {
-			proc_data->phases[tmp3 + j] = 0.0;
-			proc_data->enst[tmp3 + j]   = 0.0;
-			proc_data->enrg[tmp3 + j]   = 0.0;
-			proc_data->amps[tmp3 + j]   = 0.0;
-		}
-	}	
-	#endif
-
-
-	// --------------------------------	
-	//  Allocate Spectra Arrays
-	// --------------------------------
-	// Get the size of the spectra
-	sys_vars->n_spec = (int) sqrt(pow((double)Nx / 2.0, 2.0) + pow((double)Ny / 2.0, 2.0)) + 1;
-
-	#if defined(__SPECTRA)
-	// Allocate memory for the enstrophy spectrum
-	proc_data->enst_spec = (double* )fftw_malloc(sizeof(double) * sys_vars->n_spec);
-	if (proc_data->enst_spec == NULL) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "1D Enstrophy Spectrum");
-		exit(1);
-	}
-    
-    // Allocate memory for the enstrophy spectrum
-	proc_data->enrg_spec = (double* )fftw_malloc(sizeof(double) * sys_vars->n_spec);
-	if (proc_data->enrg_spec == NULL) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "1D Energy Spectrum");
-		exit(1);
-	}
-
-	// Initialize arrays
-	for (int i = 0; i < sys_vars->n_spec; ++i) {
-		proc_data->enst_spec[i] = 0.0;
-        proc_data->enrg_spec[i] = 0.0;
-	}
-	#endif
-
-	#if defined(__ENST_FLUX) || defined(__ENRG_FLUX) || defined(__SEC_PHASE_SYNC)
-	///-------------- Nonlinear RHS function arrays
-	/// RHS
-	proc_data->dw_hat_dt = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * Nx * Ny_Fourier * SYS_DIM);
-	if (proc_data->dw_hat_dt == NULL) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "RHS");
-		exit(1);
-	}
-	// The gradient of the real space vorticity
-	proc_data->nabla_w = (double* )fftw_malloc(sizeof(double) * Nx * Ny * SYS_DIM);
-	if (proc_data->nabla_w == NULL) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Gradient of Real Space Vorticity");
-		exit(1);
-	}
-	// The gradient of the real stream function
-	proc_data->nabla_psi = (double* )fftw_malloc(sizeof(double) * Nx * Ny * SYS_DIM);
-	if (proc_data->nabla_psi == NULL) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Gradient of Real Space Vorticity");
-		exit(1);
-	}
-	// The nonlinear term in real space
-	proc_data->nonlinterm = (double* )fftw_malloc(sizeof(double) * Nx * Ny);
-	if (proc_data->nonlinterm == NULL) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Nonlinear Term in Real Spcace");
-		exit(1);
-	}
-	#if defined(__ENST_FLUX)
-	// The time derivative of enstrophy spectrum
-	proc_data->d_enst_dt_spec = (double* )fftw_malloc(sizeof(double) * sys_vars->n_spec);
-	if (proc_data->d_enst_dt_spec == NULL) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Time Derivative of Enstrophy Spectrum");
-		exit(1);
-	}
-	// The enstrophy flux spectrum
-	proc_data->enst_flux_spec = (double* )fftw_malloc(sizeof(double) * sys_vars->n_spec);
-	if (proc_data->enst_flux_spec == NULL) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Enstrophy Flux Spectrum");
-		exit(1);
-	}
-	// The enstrophy flux spectrum
-	proc_data->enst_diss_spec = (double* )fftw_malloc(sizeof(double) * sys_vars->n_spec);
-	if (proc_data->enst_diss_spec == NULL) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Enstrophy Dissipation Spectrum");
-		exit(1);
-	}
-	// The enstrophy flux out of the set C
-	proc_data->enst_flux_C = (double* )fftw_malloc(sizeof(double) * sys_vars->num_snaps);
-	if (proc_data->enst_flux_C == NULL) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Enstrophy Flux Out of C");
-		exit(1);
-	}
-	// The enstrophy flux out of the set C
-	proc_data->enst_diss_C = (double* )fftw_malloc(sizeof(double) * sys_vars->num_snaps);
-	if (proc_data->enst_diss_C == NULL) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Enstrophy Dissipation in C");
-		exit(1);
-	}
-	#endif
-	#if defined(__ENRG_FLUX)
-	// The time derivative of energy spectrum
-	proc_data->d_enrg_dt_spec = (double* )fftw_malloc(sizeof(double) * sys_vars->n_spec);
-	if (proc_data->d_enrg_dt_spec == NULL) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Time Derivative of Enstrophy Spectrum");
-		exit(1);
-	}
-	// The energy flux spectrum
-	proc_data->enrg_flux_spec = (double* )fftw_malloc(sizeof(double) * sys_vars->n_spec);
-	if (proc_data->enrg_flux_spec == NULL) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Enstrophy Flux Spectrum");
-		exit(1);
-	}
-	// The energy flux spectrum
-	proc_data->enrg_diss_spec = (double* )fftw_malloc(sizeof(double) * sys_vars->n_spec);
-	if (proc_data->enrg_diss_spec == NULL) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Enstrophy Dissipation Spectrum");
-		exit(1);
-	}
-	// The energy flux out of the set C
-	proc_data->enrg_flux_C = (double* )fftw_malloc(sizeof(double) * sys_vars->num_snaps);
-	if (proc_data->enrg_flux_C == NULL) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Enstrophy Flux Out of C");
-		exit(1);
-	}
-	// The energy flux out of the set C
-	proc_data->enrg_diss_C = (double* )fftw_malloc(sizeof(double) * sys_vars->num_snaps);
-	if (proc_data->enrg_diss_C == NULL) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Enstrophy Dissipation in C");
-		exit(1);
-	}
-	#endif
-
-	// Initialize arrays
-	for (int i = 0; i < Nx; ++i) {
-		for (int j = 0; j < Ny; ++j) {
-			if(j < Ny_Fourier) {
-				proc_data->dw_hat_dt[SYS_DIM * (i * Ny_Fourier + j) + 0] = 0.0 + 0.0 * I;
-				proc_data->dw_hat_dt[SYS_DIM * (i * Ny_Fourier + j) + 1] = 0.0 + 0.0 * I;
-			}
-			proc_data->nabla_w[SYS_DIM * (i * Ny + j) + 0]   = 0.0;
-			proc_data->nabla_w[SYS_DIM * (i * Ny + j) + 1]   = 0.0;
-			proc_data->nabla_psi[SYS_DIM * (i * Ny + j) + 0] = 0.0;
-			proc_data->nabla_psi[SYS_DIM * (i * Ny + j) + 1] = 0.0;
-			proc_data->nonlinterm[i * Ny + j]                = 0.0;
-		}
-	}
-	for (int i = 0; i < sys_vars->num_snaps; ++i) {
-		#if defined(__ENST_FLUX)
-		proc_data->enst_flux_C[i] = 0.0;
-		proc_data->enst_diss_C[i] = 0.0;
-		#endif
-		#if defined(__ENRG_FLUX)
-		proc_data->enrg_flux_C[i] = 0.0;
-		proc_data->enrg_diss_C[i] = 0.0;
-		#endif
-	}
-	for (int i = 0; i < sys_vars->n_spec; ++i) {
-		#if defined(__ENST_FLUX)
-		proc_data->d_enst_dt_spec[i] = 0.0;
-		proc_data->enst_flux_spec[i] = 0.0;
-		proc_data->enst_diss_spec[i] = 0.0;
-		#endif
-		#if defined(__ENRG_FLUX)
-		proc_data->d_enrg_dt_spec[i] = 0.0;
-		proc_data->enrg_flux_spec[i] = 0.0;
-		proc_data->enrg_diss_spec[i] = 0.0;
-		#endif
-	}
+	// -------------------------------------
+	//  Allocate Full Field & Spectra Data
+	// -------------------------------------
+	#if defined(__FULL_FIELD) || defined(__SPECTRA) || defined(__ENST_FLUX) || defined(__ENRG_FLUX) || defined(__SEC_PHASE_SYNC)
+	AllocateFullFieldMemory(N);
 	#endif
 
 	// --------------------------------	
 	//  Allocate Phase Sync Data
 	// --------------------------------
 	#if defined(__SEC_PHASE_SYNC)
-	// Get the various kmax variables
-	sys_vars->kmax_sqr   = pow(sys_vars->kmax, 2.0);
-	sys_vars->kmax_C   	 = (int) ceil(sys_vars->kmax_frac * sys_vars->kmax);
-	sys_vars->kmax_C_sqr = pow(sys_vars->kmax_C, 2.0);
-
-	///--------------- Sector Angles
-	// Allocate the array of sector angles
-	proc_data->theta = (double* )fftw_malloc(sizeof(double) * (sys_vars->num_sect));
-	if (proc_data->theta == NULL) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Phase Sync Sector Angles");
-		exit(1);
-	}
-
-	///------------------ Number of Triads & Enstrophy Flux
-	for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
-		///--------------- Number of Triads
-		// Allocate memory for the phase order parameter for the triad phases
-		proc_data->num_triads[i] = (int* )fftw_malloc(sizeof(int) * sys_vars->num_sect);
-		if (proc_data->num_triads[i] == NULL) {
-			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Number of Triads Per Sector");
-			exit(1);
-		}
-
-		///--------------- Enstrophy Flux
-		proc_data->enst_flux[i] = (double* )fftw_malloc(sizeof(double) * (sys_vars->num_sect));
-		if (proc_data->enst_flux[i] == NULL) {
-			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Enstrophy Flux Per Sector");
-			exit(1);
-		}
-
-		///-------------- Number of Triads and Enstrophy Flux across sectors
-		// Allocate memory for the number of triads per sector
-		proc_data->num_triads_across_sec[i] = (int** )fftw_malloc(sizeof(int* ) * sys_vars->num_sect);
-		if (proc_data->num_triads_across_sec[i] == NULL) {
-			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Number of Triads Per Sector");
-			exit(1);
-		}
-		// Allocate memory for the flux of enstrophy across sectors
-		proc_data->enst_flux_across_sec[i] = (double** )fftw_malloc(sizeof(double* ) * sys_vars->num_sect);
-		if (proc_data->enst_flux_across_sec[i] == NULL) {
-			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Enstrophy Flux Per Sector");
-			exit(1);
-		}	
-		for (int l = 0; l < sys_vars->num_sect; ++l) {
-			proc_data->num_triads_across_sec[i][l] = (int* )fftw_malloc(sizeof(int) * sys_vars->num_k1_sectors);
-			if (proc_data->num_triads_across_sec[i][l] == NULL) {
-				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Number of Triads Per Sector");
-				exit(1);
-			}
-			proc_data->enst_flux_across_sec[i][l] = (double* )fftw_malloc(sizeof(double) * sys_vars->num_k1_sectors);
-			if (proc_data->enst_flux_across_sec[i][l] == NULL) {
-				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Enstrophy Flux Per Sector");
-				exit(1);
-			}
-		}
-	}
-	// Allocate memory for the precomputed sector midpoint angle sums -> this is used to determine which sector k2 is
-	proc_data->mid_angle_sum = (double* )fftw_malloc(sizeof(double) * sys_vars->num_sect * sys_vars->num_k1_sectors);
-	if (proc_data->mid_angle_sum == NULL) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Midpoint Sector Angles");
-		exit(1);
-	}
-
-
-
-	///--------------- Precomputed wavevector arctangents
-	// Allocate memory for the arctangent arrays
-	proc_data->phase_angle = (double* )fftw_malloc(sizeof(double) * Nx * Ny_Fourier);
-	if (proc_data->phase_angle == NULL) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "ArcTangents of Negative k2");
-		exit(1);
-	}
-
-	// Fill the array for the individual phases with the precomputed arctangents
-	for (int i = 0; i < Nx; ++i) {
-		for (int j = 0; j < Ny_Fourier; ++j) {
-			proc_data->phase_angle[i * Ny_Fourier + j] = atan2((double) run_data->k[0][i], (double)run_data->k[1][j]);
-		}
-	}
-
-	///--------------- Individual Phases
-	// Allocate memory for the phase order parameter for the individual phases
-	proc_data->phase_order = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->num_sect);
-	if (proc_data->phase_order == NULL) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Phase Sync Phase Order Parameter");
-		exit(1);
-	}
-	// Allocate the array of phase sync per sector for the individual phases
-	proc_data->phase_R = (double* )fftw_malloc(sizeof(double) * sys_vars->num_sect);
-	if (proc_data->phase_R == NULL) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Phase Sync Parameter");
-		exit(1);
-	}
-	// Allocate the array of average phase per sector for the individual phases
-	proc_data->phase_Phi = (double* )fftw_malloc(sizeof(double) * sys_vars->num_sect);
-	if (proc_data->phase_Phi == NULL) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Average Phase");
-		exit(1);
-	}
-
-	///------------- Triad Phases
-	// Allocate memory for each  of the triad types
-	for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
-		// Allocate memory for the phase order parameter for the triad phases
-		proc_data->triad_phase_order[i] = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->num_sect);
-		if (proc_data->triad_phase_order[i] == NULL) {
-			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Triad Phase Sync Phase Order Parameter");
-			exit(1);
-		}
-		// Allocate the array of phase sync per sector for the triad phases
-		proc_data->triad_R[i] = (double* )fftw_malloc(sizeof(double) * sys_vars->num_sect);
-		if (proc_data->triad_R[i] == NULL) {
-			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Triad Phase Sync Parameter");
-			exit(1);
-		}
-		// Allocate the array of average phase per sector for the triad phases
-		proc_data->triad_Phi[i] = (double* )fftw_malloc(sizeof(double) * sys_vars->num_sect);
-		if (proc_data->triad_Phi[i] == NULL) {
-			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Average Triad Phase");
-			exit(1);
-		}
-
-		///------------- Allocate memory for arrays across sectors
-		/// Allocate memory for the phase order parameter for the triad phases
-		proc_data->triad_phase_order_across_sec[i] = (fftw_complex** )fftw_malloc(sizeof(fftw_complex*) * sys_vars->num_sect);
-		if (proc_data->triad_phase_order_across_sec[i] == NULL) {
-			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Triad Phase Sync Phase Order Parameter");
-			exit(1);
-		}
-		// Allocate the array of phase sync per sector for the triad phases
-		proc_data->triad_R_across_sec[i] = (double** )fftw_malloc(sizeof(double*) * sys_vars->num_sect);
-		if (proc_data->triad_R_across_sec[i] == NULL) {
-			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Triad Phase Sync Parameter");
-			exit(1);
-		}
-		// Allocate the array of average phase per sector for the triad phases
-		proc_data->triad_Phi_across_sec[i] = (double** )fftw_malloc(sizeof(double*) * sys_vars->num_sect);
-		if (proc_data->triad_Phi_across_sec[i] == NULL) {
-			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Average Triad Phase");
-			exit(1);
-		}
-		for (int l = 0; l < sys_vars->num_sect; ++l) {
-			/// Allocate memory for the phase order parameter for the triad phases
-			proc_data->triad_phase_order_across_sec[i][l] = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->num_k1_sectors);
-			if (proc_data->triad_phase_order_across_sec[i][l] == NULL) {
-				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Triad Phase Sync Phase Order Parameter");
-				exit(1);
-			}
-			// Allocate the array of phase sync per sector for the triad phases
-			proc_data->triad_R_across_sec[i][l] = (double* )fftw_malloc(sizeof(double) * sys_vars->num_k1_sectors);
-			if (proc_data->triad_R_across_sec[i][l] == NULL) {
-				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Triad Phase Sync Parameter");
-				exit(1);
-			}
-			// Allocate the array of average phase per sector for the triad phases
-			proc_data->triad_Phi_across_sec[i][l] = (double* )fftw_malloc(sizeof(double) * sys_vars->num_k1_sectors);
-			if (proc_data->triad_Phi_across_sec[i][l] == NULL) {
-				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Average Triad Phase");
-				exit(1);
-			}
-		}
-	}
-	
-	///--------------- Phase Order Stats Objects
-	// Allocate memory for the arrays stats objects
-	proc_data->phase_sect_pdf         = (gsl_histogram** )fftw_malloc(sizeof(gsl_histogram) * sys_vars->num_sect);
-	proc_data->phase_sect_pdf_t       = (gsl_histogram** )fftw_malloc(sizeof(gsl_histogram) * sys_vars->num_sect);
-	proc_data->phase_sect_wghtd_pdf_t = (gsl_histogram** )fftw_malloc(sizeof(gsl_histogram) * sys_vars->num_sect);
-	for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
-		proc_data->triad_sect_pdf[i]         = (gsl_histogram** )fftw_malloc(sizeof(gsl_histogram) * sys_vars->num_sect);
-		proc_data->triad_sect_pdf_t[i]       = (gsl_histogram** )fftw_malloc(sizeof(gsl_histogram) * sys_vars->num_sect);
-		proc_data->triad_sect_wghtd_pdf_t[i] = (gsl_histogram** )fftw_malloc(sizeof(gsl_histogram) * sys_vars->num_sect);
-	}
-	
-
-	// Allocate stats objects for each sector and set ranges
-	for (int i = 0; i < sys_vars->num_sect; ++i) {
-		// Allocate pdfs for the individual phases
-		proc_data->phase_sect_pdf[i] = gsl_histogram_alloc(N_BINS_SEC);
-		if (proc_data->phase_sect_pdf[i] == NULL) {
-			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Sector Phase PDF");
-			exit(1);
-		}	
-		proc_data->phase_sect_pdf_t[i] = gsl_histogram_alloc(N_BINS_SEC_INTIME);
-		if (proc_data->phase_sect_pdf_t[i] == NULL) {
-			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Sector Phase PDF In Time");
-			exit(1);
-		}	
-		proc_data->phase_sect_wghtd_pdf_t[i] = gsl_histogram_alloc(N_BINS_SEC_INTIME);
-		if (proc_data->phase_sect_wghtd_pdf_t[i] == NULL) {
-			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Sector Phase Weighted PDF In Time");
-			exit(1);
-		}	
-		// Set bin ranges for the individual phases
-		gsl_status = gsl_histogram_set_ranges_uniform(proc_data->phase_sect_pdf[i], -M_PI - 0.05,  M_PI + 0.05);
-		if (gsl_status != 0) {
-			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set bin ranges for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Sector Phases PDF");
-			exit(1);
-		}
-		gsl_status = gsl_histogram_set_ranges_uniform(proc_data->phase_sect_pdf_t[i], -M_PI - 0.05,  M_PI + 0.05);
-		if (gsl_status != 0) {
-			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set bin ranges for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Sector Phases PDF In Time");
-			exit(1);
-		}
-		gsl_status = gsl_histogram_set_ranges_uniform(proc_data->phase_sect_wghtd_pdf_t[i], -M_PI - 0.05,  M_PI + 0.05);
-		if (gsl_status != 0) {
-			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set bin ranges for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Sector Phases Weighted PDF In Time");
-			exit(1);
-		}
-
-		// Allocate and set ranges for each of the triad types
-		for (int j = 0; j < NUM_TRIAD_TYPES + 1; ++j) {
-			// Allocate pdfs for the triad phases
-			proc_data->triad_sect_pdf[j][i] = gsl_histogram_alloc(N_BINS_SEC);
-			if (proc_data->triad_sect_pdf[j][i] == NULL) {
-				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF");
-				exit(1);
-			}	
-			proc_data->triad_sect_pdf_t[j][i] = gsl_histogram_alloc(N_BINS_SEC_INTIME);
-			if (proc_data->triad_sect_pdf_t[j][i] == NULL) {
-				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF In Time");
-				exit(1);
-			}
-			proc_data->triad_sect_wghtd_pdf_t[j][i] = gsl_histogram_alloc(N_BINS_SEC_INTIME);
-			if (proc_data->triad_sect_wghtd_pdf_t[j][i] == NULL) {
-				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase Weighted PDF In Time");
-				exit(1);
-			}	
-			// Set bin ranges for the triad phases
-			gsl_status = gsl_histogram_set_ranges_uniform(proc_data->triad_sect_pdf[j][i], -M_PI - 0.05,  M_PI + 0.05);
-			if (gsl_status != 0) {
-				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set bin ranges for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phases PDF");
-				exit(1);
-			}
-			gsl_status = gsl_histogram_set_ranges_uniform(proc_data->triad_sect_pdf_t[j][i], -M_PI - 0.05,  M_PI + 0.05);
-			if (gsl_status != 0) {
-				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set bin ranges for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phases PDF In Time");
-				exit(1);
-			}
-			gsl_status = gsl_histogram_set_ranges_uniform(proc_data->triad_sect_wghtd_pdf_t[j][i], -M_PI - 0.05,  M_PI + 0.05);
-			if (gsl_status != 0) {
-				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set bin ranges for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phases PDF In Time");
-				exit(1);
-			}
-		}
-	}
-
-	//---------- Allocate memory for the wavevector arrays
-	proc_data->phase_sync_wave_vecs = (int**** )fftw_malloc(sizeof(int***) * sys_vars->num_sect);
-	if (proc_data->phase_sync_wave_vecs == NULL) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Phase Sync Wavevectors");
-		exit(1);
-	}
-	for (int a = 0; a < sys_vars->num_sect; ++a) {
-		proc_data->phase_sync_wave_vecs[a] = (int*** )fftw_malloc(sizeof(int**) * sys_vars->num_k1_sectors);
-		if (proc_data->phase_sync_wave_vecs[a] == NULL) {
-			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Phase Sync Wavevectors");
-			exit(1);
-		}	
-	}
-	for (int a = 0; a < sys_vars->num_sect; ++a) {
-		for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
-			proc_data->phase_sync_wave_vecs[a][l] = (int** )fftw_malloc(sizeof(int*) * NUM_K_DATA);
-			if (proc_data->phase_sync_wave_vecs[a][l] == NULL) {
-				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Phase Sync Wavevectors");
-				exit(1);
-			}	
-		}
-	}
-	int num_triad_est               = (int) 3 * ceil(M_PI * pow(sys_vars->N[0], 2.0) + 2.0 * sqrt(2) * M_PI * sys_vars->N[0]);
-	sys_vars->num_triad_per_sec_est = num_triad_est;
-	for (int a = 0; a < sys_vars->num_sect; ++a) {
-		for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
-			for (int n = 0; n < NUM_K_DATA; ++n) {
-				proc_data->phase_sync_wave_vecs[a][l][n] = (int* )fftw_malloc(sizeof(int) * num_triad_est);
-				if (proc_data->phase_sync_wave_vecs[a][l][n] == NULL) {
-					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Phase Sync Wavevectors");
-					exit(1);
-				}
-			}	
-		}
-	}
-
-	//------------ Allocate memory for the number of wavevector triads per sector
-	proc_data->num_wave_vecs = (int** )fftw_malloc(sizeof(int*) * sys_vars->num_sect);
-	if (proc_data->num_wave_vecs == NULL) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Number of Phase Sync Wavevectors");
-		exit(1);
-	}
-	for (int a = 0; a < sys_vars->num_sect; ++a) {
-		proc_data->num_wave_vecs[a] = (int* )fftw_malloc(sizeof(int) * sys_vars->num_k1_sectors);
-		if (proc_data->num_wave_vecs[a] == NULL) {
-			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Number of Phase Sync Wavevectors");
-			exit(1);
-		}	
-	}
-	for (int a = 0; a < sys_vars->num_sect; ++a) {
-		for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
-			proc_data->num_wave_vecs[a][l] = sys_vars->num_triad_per_sec_est;
-		}
-	}
-	
-	//--------------- Initialize arrays
-	proc_data->dtheta = 2.0 * M_PI / (double )sys_vars->num_sect;
-	for (int i = 0; i < sys_vars->num_sect; ++i) {
-		proc_data->theta[i] = -M_PI + i * proc_data->dtheta + proc_data->dtheta / 2.0;
-		proc_data->phase_R[i]     = 0.0;
-		proc_data->phase_Phi[i]   = 0.0;
-		proc_data->phase_order[i] = 0.0 + 0.0 * I;
-		for (int j = 0; j < NUM_TRIAD_TYPES + 1; ++j) {
-			proc_data->num_triads[j][i]        = 0;
-			proc_data->enst_flux[j][i]   	   = 0.0;
-			proc_data->triad_R[j][i]     	   = 0.0;
-			proc_data->triad_Phi[j][i]         = 0.0;
-			proc_data->triad_phase_order[j][i] = 0.0 + 0.0 * I;
-			for (int k = 0; k < sys_vars->num_k1_sectors; ++k) {
-				proc_data->num_triads_across_sec[j][i][k]        = 0;
-				proc_data->enst_flux_across_sec[j][i][k]   	  	 = 0.0;
-				proc_data->triad_R_across_sec[j][i][k]     	  	 = 0.0;
-				proc_data->triad_Phi_across_sec[j][i][k]         = 0.0;
-				proc_data->triad_phase_order_across_sec[j][i][k] = 0.0 + 0.0 * I;
-			}
-		}
-	}
-
-	//------------------- Fill the wavevector arrays
-	int nn;
-	double theta_k1;
-	int k_x, k_y, k1_x, k1_y, k2_x, k2_y;
-	double k1_sqr, k1_angle, k2_sqr, k2_angle, k_sqr, k_angle;
-	double k_angle_neg, k1_angle_neg, k2_angle_neg;
-	fftw_complex k1, k3;
-	double theta_lwr, theta_upr, alt_theta_upr, alt_theta_lwr, k2_sect_lwr, k2_sect_upr;
-	double k1_sector_angles[NUM_K1_SECTORS] = {-sys_vars->num_sect/2.0, -sys_vars->num_sect/3.0, -sys_vars->num_sect/4.0, -sys_vars->num_sect/6.0, sys_vars->num_sect/6.0, sys_vars->num_sect/4.0, sys_vars->num_sect/3.0, sys_vars->num_sect/2.0};
-
-	// Loop through the sectors for k3
-	for (int a = 0; a < sys_vars->num_sect; ++a) {
-		
-		// Get the angles for the current sector
-		theta_lwr = proc_data->theta[a] - proc_data->dtheta / 2.0;
-		theta_upr = proc_data->theta[a] + proc_data->dtheta / 2.0;
-
-		// Loop through second sector choice
-		for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
-
-			// Get the angles for the second sector
-			if (sys_vars->num_k1_sectors == NUM_K1_SECTORS) {
-				theta_k1 = MyMod(proc_data->theta[a] + (k1_sector_angles[l] * proc_data->dtheta/2.0) + M_PI, 2.0 * M_PI) - M_PI;
-			}
-			else {
-				theta_k1 = proc_data->theta[(a + l) % sys_vars->num_sect];
-			}
-			alt_theta_lwr = theta_k1 - proc_data->dtheta / 2.0;
-			alt_theta_upr = theta_k1 + proc_data->dtheta / 2.0;
-
-			// Find the sector for k2 -> as the mid point of the sector of k3 - k1
-			k3 = cexp(I * proc_data->theta[a]);
-			k1 = cexp(I * theta_k1);
-
-			// Compute the mid angle for the sector of k2
-			if (theta_k1 == proc_data->theta[a]) {
-				// Either k1, k2 and k3 are all in the same sector
-				proc_data->mid_angle_sum[a * sys_vars->num_k1_sectors + l] = proc_data->theta[a];
-			}
-			else {
-				// Or we find the sector for k2 using arg{(k3 - k1) / (k3^* - k1^*)}
-				proc_data->mid_angle_sum[a * sys_vars->num_k1_sectors + l] = creal(1.0 / (2.0 * I) * (clog(k3 - k1) - clog(conj(k3) - conj(k1))));
-			}
-
-			// Ensure the angle is a mid angle of a sector
-			for (int i = 0; i < sys_vars->num_sect; ++i) {
-				if (proc_data->mid_angle_sum[a * sys_vars->num_k1_sectors + l] >= proc_data->theta[i] - proc_data->dtheta/2.0 && proc_data->mid_angle_sum[a * sys_vars->num_k1_sectors + l] < proc_data->theta[i] + proc_data->dtheta/2.0) {
-					proc_data->mid_angle_sum[a * sys_vars->num_k1_sectors + l] = proc_data->theta[i];
-				}
-			}
-
-			// Compute the boundaries for the k2 sector
-			k2_sect_lwr = proc_data->mid_angle_sum[a * sys_vars->num_k1_sectors + l] - proc_data->dtheta/2.0;
-			k2_sect_upr = proc_data->mid_angle_sum[a * sys_vars->num_k1_sectors + l] + proc_data->dtheta/2.0;
-			
-			// Initialize increment
-			nn = 0;
-
-			// Loop through the k wavevector (k is the k3 wavevector)
-			for (int tmp_k_x = 0; tmp_k_x <= 2 * (int) (sys_vars->N[0] / 2) - 1; ++tmp_k_x) {
-				
-				// Get k_x
-				k_x = tmp_k_x - (int) (sys_vars->N[0] / 2) + 1;
-
-				for (int tmp_k_y = 0; tmp_k_y <= 2 * (int) (sys_vars->N[0] / 2) - 1; ++tmp_k_y) {
-					
-					// Get k_y
-					k_y = tmp_k_y - (int) (sys_vars->N[0] / 2) + 1;
-
-					// Get polar coords for the k wavevector
-					k_sqr       = (double) (k_x * k_x + k_y * k_y);
-					k_angle     = atan2((double)k_x, (double)k_y);
-					k_angle_neg = atan2((double)-k_x, (double)-k_y);
-					
-					if ((k_sqr > 0 && k_sqr < sys_vars->kmax_sqr) && ((k_angle >= theta_lwr && k_angle < theta_upr) || ((k_angle_neg >= theta_lwr && k_angle_neg < theta_upr)))) {
-
-						// Loop through the k1 wavevector
-						for (int tmp_k1_x = 0; tmp_k1_x <= 2 * (int) (sys_vars->N[0] / 2) - 1; ++tmp_k1_x) {
-							
-							// Get k1_x
-							k1_x = tmp_k1_x - (int) (sys_vars->N[0] / 2) + 1;
-
-							for (int tmp_k1_y = 0; tmp_k1_y <= 2 * (int) (sys_vars->N[0] / 2) - 1; ++tmp_k1_y) {
-								
-								// Get k1_y
-								k1_y = tmp_k1_y - (int) (sys_vars->N[0] / 2) + 1;
-
-								// Get polar coords for k1
-								k1_sqr       = (double) (k1_x * k1_x + k1_y * k1_y);
-								k1_angle     = atan2((double) k1_x, (double) k1_y);
-								k1_angle_neg = atan2((double)-k1_x, (double)-k1_y);
-
-								if((k1_sqr > 0 && k1_sqr < sys_vars->kmax_sqr) && (k1_angle >= alt_theta_lwr && k1_angle < alt_theta_upr)) {									
-									
-									// Find the k2 wavevector
-									k2_x = k_x - k1_x;
-									k2_y = k_y - k1_y;
-									
-									// Get polar coords for k2
-									k2_sqr       = (double) (k2_x * k2_x + k2_y * k2_y);
-									k2_angle     = atan2((double)k2_x, (double) k2_y);
-									k2_angle_neg = atan2((double)-k2_x, (double) -k2_y);
-
-									if ((k2_sqr > 0 && k2_sqr < sys_vars->kmax_sqr) && (k2_angle >= k2_sect_lwr && k2_angle < k2_sect_upr)) {
-										// Add k1 vector
-										proc_data->phase_sync_wave_vecs[a][l][K1_X][nn] = k1_x;
-										proc_data->phase_sync_wave_vecs[a][l][K1_Y][nn] = k1_y;
-										// Add the k2 vector
-										proc_data->phase_sync_wave_vecs[a][l][K2_X][nn] = k2_x;
-										proc_data->phase_sync_wave_vecs[a][l][K2_Y][nn] = k2_y;
-										// Add the k3 vector
-										proc_data->phase_sync_wave_vecs[a][l][K3_X][nn] = k_x;
-										proc_data->phase_sync_wave_vecs[a][l][K3_Y][nn] = k_y;
-										// Add the |k1|^2, |k2|^2, |k3|^2 
-										proc_data->phase_sync_wave_vecs[a][l][K1_SQR][nn] = k1_sqr;
-										proc_data->phase_sync_wave_vecs[a][l][K2_SQR][nn] = k2_sqr;
-										proc_data->phase_sync_wave_vecs[a][l][K3_SQR][nn] = k_sqr;
-										// Add the angles for +/- k1, k2, k3
-										proc_data->phase_sync_wave_vecs[a][l][K1_ANGLE][nn]     = k1_angle;
-										proc_data->phase_sync_wave_vecs[a][l][K2_ANGLE][nn]     = k2_angle;
-										proc_data->phase_sync_wave_vecs[a][l][K3_ANGLE][nn]     = k_angle;
-										proc_data->phase_sync_wave_vecs[a][l][K1_ANGLE_NEG][nn] = k1_angle_neg;
-										proc_data->phase_sync_wave_vecs[a][l][K2_ANGLE_NEG][nn] = k2_angle_neg;
-										proc_data->phase_sync_wave_vecs[a][l][K3_ANGLE_NEG][nn] = k_angle_neg;
-										
-										// Increment
-										nn++;
-									}
-								}
-							}
-						}
-					}
-					else if ((k_sqr > 0 && k_sqr < sys_vars->kmax_sqr) && !((k_angle >= theta_lwr && k_angle < theta_upr) || ((k_angle_neg >= theta_lwr && k_angle_neg < theta_upr)))) {
-
-						// Loop through the k1 wavevector
-						for (int tmp_k1_x = 0; tmp_k1_x <= 2 * (int) (sys_vars->N[0] / 2) - 1; ++tmp_k1_x) {
-							
-							// Get k1_x
-							k1_x = tmp_k1_x - (int) (sys_vars->N[0] / 2) + 1;
-
-							for (int tmp_k1_y = 0; tmp_k1_y <= 2 * (int) (sys_vars->N[0] / 2) - 1; ++tmp_k1_y) {
-								
-								// Get k1_y
-								k1_y = tmp_k1_y - (int) (sys_vars->N[0] / 2) + 1;
-
-								// Get polar coords for k1
-								k1_sqr       = (double) (k1_x * k1_x + k1_y * k1_y);
-								k1_angle     = atan2((double) k1_x, (double) k1_y);
-								k1_angle_neg = atan2((double)-k1_x, (double)-k1_y);
-
-								if((k1_sqr > 0 && k1_sqr < sys_vars->kmax_sqr) && ((k1_angle >= theta_lwr && k1_angle < theta_lwr) && (k1_angle_neg >= theta_lwr && k1_angle_neg < theta_lwr))) {									
-									
-									// Find the k2 wavevector
-									k2_x = k_x - k1_x;
-									k2_y = k_y - k1_y;
-									
-									// Get polar coords for k2
-									k2_sqr       = (double) (k2_x * k2_x + k2_y * k2_y);
-									k2_angle     = atan2((double)k2_x, (double) k2_y);
-									k2_angle_neg = atan2((double)-k2_x, (double) -k2_y);
-
-									if ((k2_sqr > 0 && k2_sqr < sys_vars->kmax_sqr) && ((k2_angle >= theta_lwr && k2_angle < theta_upr) && (k2_angle_neg >= theta_lwr && k2_angle_neg < theta_upr))) {
-										// Add k1 vector
-										proc_data->phase_sync_wave_vecs[a][l][K1_X][nn] = k1_x;
-										proc_data->phase_sync_wave_vecs[a][l][K1_Y][nn] = k1_y;
-										// Add the k2 vector
-										proc_data->phase_sync_wave_vecs[a][l][K2_X][nn] = k2_x;
-										proc_data->phase_sync_wave_vecs[a][l][K2_Y][nn] = k2_y;
-										// Add the k3 vector
-										proc_data->phase_sync_wave_vecs[a][l][K3_X][nn] = k_x;
-										proc_data->phase_sync_wave_vecs[a][l][K3_Y][nn] = k_y;
-										// Add the |k1|^2, |k2|^2, |k3|^2 
-										proc_data->phase_sync_wave_vecs[a][l][K1_SQR][nn] = k1_sqr;
-										proc_data->phase_sync_wave_vecs[a][l][K2_SQR][nn] = k2_sqr;
-										proc_data->phase_sync_wave_vecs[a][l][K3_SQR][nn] = k_sqr;
-										// Add the angles for +/- k1, k2, k3
-										proc_data->phase_sync_wave_vecs[a][l][K1_ANGLE][nn]     = k1_angle;
-										proc_data->phase_sync_wave_vecs[a][l][K2_ANGLE][nn]     = k2_angle;
-										proc_data->phase_sync_wave_vecs[a][l][K3_ANGLE][nn]     = k_angle;
-										proc_data->phase_sync_wave_vecs[a][l][K1_ANGLE_NEG][nn] = k1_angle_neg;
-										proc_data->phase_sync_wave_vecs[a][l][K2_ANGLE_NEG][nn] = k2_angle_neg;
-										proc_data->phase_sync_wave_vecs[a][l][K3_ANGLE_NEG][nn] = k_angle_neg;
-										
-										// Increment
-										nn++;
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-			// Record the number of triad wavevectors
-			proc_data->num_wave_vecs[a][l] = nn;
-			// printf("a: %d l: %d \t num: %d\test: %d\n", a, l, nn, sys_vars->num_triad_per_sec_est);
-		}
-		// printf("\n");
-	}
-
-	//-------------------- Realloc the last dimension in wavevector array to its correct size
-	for (int a = 0; a < sys_vars->num_sect; ++a) {
-		for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
-			for (int n = 0; n < NUM_K_DATA; ++n) {
-				if (proc_data->num_wave_vecs[a][l] == 0) {
-					// Free empty phase sync wavevector arrays
-					fftw_free(proc_data->phase_sync_wave_vecs[a][l][n]);
-				}
-				else {
-					// Otherwise reallocate the correct amount of memory
-					proc_data->phase_sync_wave_vecs[a][l][n] = (int* )realloc(proc_data->phase_sync_wave_vecs[a][l][n] , sizeof(int) * proc_data->num_wave_vecs[a][l]);
-					if (proc_data->phase_sync_wave_vecs[a][l][n] == NULL) {
-						fprintf(stderr, "\n["MAGENTA"WARNING"RESET"] --- Unable to Reallocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Phase Sync Wavevectors");
-						exit(1);
-					}
-				}
-			}	
-		}
-	}
-	#endif
-
-	// --------------------------------	
-	//  Allocate Stats Data
-	// --------------------------------
-	#if defined(__REAL_STATS)
-	// Allocate vorticity histograms
-	stats_data->w_pdf = gsl_histogram_alloc(N_BINS);
-	if (stats_data->w_pdf == NULL) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Vorticity Histogram");
-		exit(1);
-	}	
-
-	// Allocate velocity histograms
-	stats_data->u_pdf = gsl_histogram_alloc(N_BINS);
-	if (stats_data->u_pdf == NULL) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Velocity In Time Histogram");
-		exit(1);
-	}	
+	AllocatePhaseSyncMemory(N);
 	#endif
 }
 /**
@@ -2147,104 +442,6 @@ void InitializeFFTWPlans(const long int* N) {
 	#endif
 }
 /**
-* Function to compute 1Denergy spectrum from the Fourier vorticity
-*/
-void EnergySpectrum(void) {
-    
-    // Initialize variables
-    int tmp, indx;
-	int spec_indx;
-	const long int Nx 		  = sys_vars->N[0];
-	const long int Ny 		  = sys_vars->N[1];
-	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
-	double norm_fac  = 0.5 / pow(Nx * Ny, 2.0);
-	double const_fac = 4.0 * pow(M_PI, 2.0); 
-    double k_sqr;
-    
-    // --------------------------------
-	//  Initialize Spectrum
-	// --------------------------------	
-    for(int i = 0; i < sys_vars->n_spec; ++i) {
-        proc_data->enrg_spec[i] = 0.0;
-    }
-    
-
-    // --------------------------------
-	//  Compute spectrum
-	// --------------------------------	
-    for(int i = 0; i < Nx; ++i) {
-        tmp = i * Ny_Fourier;
-        for(int j = 0; j < Ny_Fourier; ++j) {
-            indx = tmp + j;
-            
-            // Compute the spectral index
-            spec_indx = (int) round(sqrt((double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j])));
-            
-            if ((run_data->k[0][i] == 0) && (run_data->k[1][j] == 0)) {
-				proc_data->enrg_spec[spec_indx] += 0.0;
-			}
-			else {
-                // Compute the normalization factor 1.0 / |k|^2
-                k_sqr = 1.0 / ((double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]));
-            
-                if ((j == 0) || (j == Ny_Fourier - 1)) {
-                    proc_data->enrg_spec[spec_indx] += const_fac * norm_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * k_sqr;
-                }
-                else {
-                    proc_data->enrg_spec[spec_indx] += 2.0 * const_fac * norm_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * k_sqr;
-                }
-            }
-        }
-    }
-}
-/**
- * Function to compute the 1D enstrophy spectrum from the Fourier vorticity
- */
-void EnstrophySpectrum(void) {
-
-	// Initialize variables
-	int tmp, indx;
-	int spec_indx;
-	const long int Nx 		  = sys_vars->N[0];
-	const long int Ny 		  = sys_vars->N[1];
-	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
-	double norm_fac  = 0.5 / pow(Nx * Ny, 2.0);
-	double const_fac = 4.0 * pow(M_PI, 2.0); 
-
-	// --------------------------------
-	//  Initialize Spectrum
-	// --------------------------------	
-    for(int i = 0; i < sys_vars->n_spec; ++i) {
-        proc_data->enst_spec[i] = 0.0;
-    }
-
-
-	// --------------------------------
-	//  Compute spectrum
-	// --------------------------------	
-	for (int i = 0; i < Nx; ++i) {
-		tmp = i * Ny_Fourier;
-		for (int j = 0; j < Ny_Fourier; ++j) {
-			indx = tmp + j;
-
-			// Compute spectrum index/bin
-			spec_indx = (int )round(sqrt(pow(run_data->k[0][i], 2.0) + pow(run_data->k[1][j], 2.0)));
-
-			if ((run_data->k[0][i] == 0) && (run_data->k[1][j] == 0)) {
-				proc_data->enst_spec[spec_indx] += 0.0;
-			}
-			else {
-				if ((j == 0) || (j == Ny_Fourier - 1)) {
-					proc_data->enst_spec[spec_indx] += const_fac * norm_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
-				}
-				else {
-					proc_data->enst_spec[spec_indx] += 2.0 * const_fac * norm_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
-				}
-			}
-		}
-	}
-}
-/**
  * Wrapper function to free memory and close any objects before exiting
  */
 void FreeMemoryAndCleanUp(void) {
@@ -2256,145 +453,28 @@ void FreeMemoryAndCleanUp(void) {
 	fftw_free(run_data->w_hat);
 	fftw_free(run_data->time);
 	fftw_free(run_data->psi_hat);
-	#if defined(__REAL_STATS) || defined(__VEL_INC_STATS) || defined(__STR_FUNC_STATS) || defined(__ENST_FLUX) || defined(__ENRG_FLUX) || defined(__SEC_PHASE_SYNC) || defined(__GRAD_STATS)
-	fftw_free(run_data->w);
-	fftw_free(run_data->u);
-	fftw_free(run_data->u_hat);
-	#if defined(__STR_FUNC_STATS)
-	for (int i = 2; i < STR_FUNC_MAX_POW; ++i) {
-		fftw_free(stats_data->str_func[0][i - 2]);
-		fftw_free(stats_data->str_func[1][i - 2]);
-		fftw_free(stats_data->str_func_abs[0][i - 2]);
-		fftw_free(stats_data->str_func_abs[1][i - 2]);
-	}
-	#endif
-	#if defined(__GRAD_STATS)
-	fftw_free(proc_data->grad_u_hat);
-	fftw_free(proc_data->grad_w_hat);
-	fftw_free(proc_data->grad_u);
-	fftw_free(proc_data->grad_w);
-	#endif
-	#endif
-	#if defined(__FULL_FIELD) || defined(__SEC_PHASE_SYNC)
-	fftw_free(proc_data->phases);
-	fftw_free(proc_data->amps);
-	fftw_free(proc_data->enrg);
-	fftw_free(proc_data->enst);
-	#endif
-	#if defined(__SPECTRA)
-	fftw_free(proc_data->enst_spec);
-    fftw_free(proc_data->enrg_spec);
-	#endif
-	#if defined(__ENST_FLUX) || defined(__ENRG_FLUX) || defined(__SEC_PHASE_SYNC)
-	fftw_free(proc_data->nabla_w);
-	fftw_free(proc_data->nabla_psi);
-	fftw_free(proc_data->dw_hat_dt);
-	fftw_free(proc_data->nonlinterm);
-	#if defined(__ENST_FLUX)
-	fftw_free(proc_data->enst_flux_C);
-	fftw_free(proc_data->enst_diss_C);
-	fftw_free(proc_data->d_enst_dt_spec);
-	fftw_free(proc_data->enst_flux_spec);
-	fftw_free(proc_data->enst_diss_spec);
-	#endif
-	#if defined(__ENRG_FLUX)
-	fftw_free(proc_data->enrg_flux_C);
-	fftw_free(proc_data->enrg_diss_C);
-	fftw_free(proc_data->d_enrg_dt_spec);
-	fftw_free(proc_data->enrg_flux_spec);
-	fftw_free(proc_data->enrg_diss_spec);
-	#endif
-	#endif
-	#if defined(__SEC_PHASE_SYNC)
-	fftw_free(proc_data->theta);
-	fftw_free(proc_data->mid_angle_sum);
-	fftw_free(proc_data->phase_angle);
-	fftw_free(proc_data->phase_order);
-	fftw_free(proc_data->phase_R);
-	fftw_free(proc_data->phase_Phi);
-	for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
-		fftw_free(proc_data->enst_flux[i]);
-		fftw_free(proc_data->triad_phase_order[i]);
-		fftw_free(proc_data->triad_R[i]);
-		fftw_free(proc_data->triad_Phi[i]);
-		fftw_free(proc_data->num_triads[i]);
-		for (int l = 0; l < sys_vars->num_sect; ++l) {
-			fftw_free(proc_data->enst_flux_across_sec[i][l]);
-			fftw_free(proc_data->triad_phase_order_across_sec[i][l]);
-			fftw_free(proc_data->triad_R_across_sec[i][l]);
-			fftw_free(proc_data->triad_Phi_across_sec[i][l]);
-			fftw_free(proc_data->num_triads_across_sec[i][l]);
-		}
-		fftw_free(proc_data->enst_flux_across_sec[i]);
-		fftw_free(proc_data->triad_phase_order_across_sec[i]);
-		fftw_free(proc_data->triad_R_across_sec[i]);
-		fftw_free(proc_data->triad_Phi_across_sec[i]);
-		fftw_free(proc_data->num_triads_across_sec[i]);
-	}
-	for (int a = 0; a < sys_vars->num_sect; ++a) {
-		for (int l = 0; l < sys_vars->num_k1_sectors; ++l){
-			if (proc_data->num_wave_vecs[a][l] != 0) {
-				for (int n = 0; n < NUM_K_DATA; ++n) {
-					fftw_free(proc_data->phase_sync_wave_vecs[a][l][n]);
-				}	
-			}
-			fftw_free(proc_data->phase_sync_wave_vecs[a][l]);
-		}
-		fftw_free(proc_data->phase_sync_wave_vecs[a]);
-	}
-	for (int a = 0; a < sys_vars->num_sect; ++a) {
-		fftw_free(proc_data->num_wave_vecs[a]);
-	}
-	#endif
 	for (int i = 0; i < SYS_DIM; ++i) {
 		fftw_free(run_data->x[i]);
 		fftw_free(run_data->k[i]);
 	}
-	// --------------------------------
-	//  Free GSL objects
-	// --------------------------------
-	// Free histogram structs
-	#if defined(__REAL_STATS)
-	gsl_histogram_free(stats_data->w_pdf);
-	gsl_histogram_free(stats_data->u_pdf);
-	gsl_rstat_free(stats_data->r_stat_w);
-	for (int i = 0; i < SYS_DIM + 1; ++i) {
-		gsl_rstat_free(stats_data->r_stat_u[i]);
-	}
-	#endif
-	#if defined(__VEL_INC_STATS)
-	for (int i = 0; i < INCR_TYPES; ++i) {
-		for (int j = 0; j < NUM_INCR; ++j) {
-			gsl_histogram_free(stats_data->vel_incr[j][i]);
-			gsl_histogram_free(stats_data->w_incr[j][i]);
-			gsl_rstat_free(stats_data->r_stat_vel_incr[j][i]);
-			gsl_rstat_free(stats_data->r_stat_vort_incr[j][i]);
-		}	
-	}
-	#endif
-	#if defined(__GRAD_STATS)
-	for (int i = 0; i < INCR_TYPES; ++i) {
-		gsl_histogram_free(stats_data->vel_grad[i]);
-		gsl_histogram_free(stats_data->vort_grad[i]);
-	}
-	for (int i = 0; i < SYS_DIM + 1; ++i) {
-		gsl_rstat_free(stats_data->r_stat_grad_u[i]);
-		gsl_rstat_free(stats_data->r_stat_grad_w[i]);
-	}
-	#endif
-	#if defined(__SEC_PHASE_SYNC)
-	for (int i = 0; i < sys_vars->num_sect; ++i) {
-		gsl_histogram_free(proc_data->phase_sect_pdf[i]);
-		gsl_histogram_free(proc_data->phase_sect_pdf_t[i]);
-		gsl_histogram_free(proc_data->phase_sect_wghtd_pdf_t[i]);
-		for (int j = 0; j < NUM_TRIAD_TYPES + 1; ++j) {
-			gsl_histogram_free(proc_data->triad_sect_pdf[j][i]);
-			gsl_histogram_free(proc_data->triad_sect_pdf_t[j][i]);
-			gsl_histogram_free(proc_data->triad_sect_wghtd_pdf_t[j][i]);
-		}	
-	}	
+	#if defined(__REAL_STATS) || defined(__VEL_INC_STATS) || defined(__STR_FUNC_STATS) || defined(__ENST_FLUX) || defined(__ENRG_FLUX) || defined(__SEC_PHASE_SYNC) || defined(__GRAD_STATS)
+	fftw_free(run_data->w);
+	fftw_free(run_data->u);
+	fftw_free(run_data->u_hat);
 	#endif
 
+	#if defined(__REAL_STATS) || defined(__VEL_INC_STATS) || defined(__STR_FUNC_STATS) || defined(__GRAD_STATS)
+	FreeStatsObjects();
+	#endif
+
+	#if defined(__SEC_PHASE_SYNC)
+	FreePhaseSyncObjects();
+	#endif
+	
+	#if defined(__FULL_FIELD) || defined(__SEC_PHASE_SYNC) || defined(__SPECTRA) || defined(__ENST_FLUX) || defined(__ENRG_FLUX)
+	FreeFullFieldObjects();
+	#endif
+	
 	// --------------------------------
 	//  Free FFTW Plans
 	// --------------------------------

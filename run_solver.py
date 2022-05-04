@@ -106,7 +106,7 @@ for section in parser.sections():
     if section in ['SOLVER']:
         if 'initial_condition' in parser[section]:
             for n in parser[section]['initial_condition'].lstrip('[').rstrip(']').split(', '):
-                ic.append(str(parser[section]['initial_condition']))
+                ic.append(str(n.lstrip('"').rstrip('"')))
         if 'forcing' in parser[section]:
             forcing = str(parser[section]['forcing'])
         if 'forcing_wavenumber' in parser[section]:
@@ -153,6 +153,8 @@ for section in parser.sections():
             plot_script = str(parser[section]['plot_script'])
         if 'plot_options' in parser[section]:
             plot_options = str(parser[section]['plot_options'])
+        if 'post_options' in parser[section]:
+            post_options = str(parser[section]['post_options'])
         if 'call_solver' in parser[section]:
             solver = bool(utils.strtobool(parser[section]['call_solver']))
         if 'call_postprocessing' in parser[section]:
@@ -170,7 +172,7 @@ for section in parser.sections():
 
 ## Get the path to the runs output directory
 par_runs_output_dir = os.path.split(output_dir)[0]
-par_runs_output_dir + '/ParallelRunsDump/'
+par_runs_output_dir += '/ParallelRunsDump/'
 #########################
 ##      RUN SOLVER     ##
 #########################
@@ -246,10 +248,11 @@ if postprocessing:
     if collect_data:
         post_output = []
         post_error  = []
+    
 
     ## Generate command list 
-    cmd_list = [["PostProcessing/bin/main -i {} -o {}".format(post_input_dir + "N[{},{}]_T[{}-{}]_NU[{:1.6f}]_CFL[{:1.2f}]_u0[{}]_TAG[{}]/".format(nx, ny, int(t0), int(t), v, c, u0, s_tag), post_output_dir + "N[{},{}]_T[{}-{}]_NU[{:1.6f}]_CFL[{:1.2f}]_u0[{}]_TAG[{}]/".format(nx, ny, int(t0), int(t), v, c, u0, s_tag))] for nx, ny in zip(Nx, Ny) for t in T for v in nu for c in cfl for u0 in ic for s_tag in solver_tag]
-    
+    cmd_list = [["PostProcessing/bin/main -i {} -o {} {}".format(post_input_dir + "N[{},{}]_T[{}-{}]_NU[{:1.6f}]_CFL[{:1.2f}]_u0[{}]_TAG[{}]/".format(nx, ny, int(t0), int(t), v, c, u0, s_tag), post_output_dir + "N[{},{}]_T[{}-{}]_NU[{:1.6f}]_CFL[{:1.2f}]_u0[{}]_TAG[{}]/".format(nx, ny, int(t0), int(t), v, c, u0, s_tag), post_options)] for nx, ny in zip(Nx, Ny) for t in T for v in nu for c in cfl for u0 in ic for s_tag in solver_tag]
+
 
     ## Create grouped iterable of subprocess calls to Popen() - see grouper recipe in itertools
     groups = [(Popen(cmd, shell = True, stdout = PIPE, stdin = PIPE, stderr = PIPE, universal_newlines = True) for cmd in cmd_list)] * proc_limit 
@@ -312,6 +315,7 @@ if plotting:
 
     ## Generate command list 
     cmd_list = [["python3 {} -i {} {}".format(plot_script, post_input_dir + "N[{},{}]_T[{}-{}]_NU[{:1.6f}]_CFL[{:1.2f}]_u0[{}]_TAG[{}]/".format(nx, ny, int(t0), int(t), v, c, u0, s_tag), plot_options)] for nx, ny in zip(Nx, Ny) for t in T for v in nu for c in cfl for u0 in ic for s_tag in solver_tag]
+
 
     ## Create grouped iterable of subprocess calls to Popen() - see grouper recipe in itertools
     groups = [(Popen(cmd, shell = True, stdout = PIPE, stdin = PIPE, stderr = PIPE, universal_newlines = True) for cmd in cmd_list)] * proc_limit 

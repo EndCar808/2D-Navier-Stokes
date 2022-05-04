@@ -365,8 +365,7 @@ if __name__ == '__main__':
                 run_plot_cmd_par(cmdlist)
             else:
                 ## Loop over snapshots
-                for i in range(sys_vars.ndata):
-                    i = i + 100
+                for i in range(1, sys_vars.ndata):
                     plot_summary_snaps(cmdargs.out_dir, i, 
                                         run_data.w[i, :, :], 
                                         run_data.x, run_data.y, 
@@ -436,7 +435,7 @@ if __name__ == '__main__':
         start = TIME.perf_counter()
 
         if cmdargs.summ_snap:
-            framesPerSec = 30
+            framesPerSec = 60
             inputFile    = cmdargs.out_dir + "SNAP_%05d.png"
             videoName    = cmdargs.out_dir + "2D_NavierStokes_N[{},{}]_u0[{}].mp4".format(sys_vars.Nx, sys_vars.Ny, sys_vars.u0)
             cmd = "ffmpeg -y -r {} -f image2 -s 1920x1080 -i {} -vf 'pad=ceil(iw/2)*2:ceil(ih/2)*2' -vcodec libx264 -crf 25 -pix_fmt yuv420p {}".format(framesPerSec, inputFile, videoName)
@@ -451,7 +450,7 @@ if __name__ == '__main__':
             print("Video Location: " + tc.C + videoName + tc.Rst + "\n")
 
         if cmdargs.phase_snap:
-            framesPerSec = 30
+            framesPerSec = 60
             inputFile    = cmdargs.phase_dir + "Phase_SNAP_%05d.png"
             if cmdargs.use_post:
                 videoName    = cmdargs.phase_dir + "2D_POSTDATA_NavierStokes_N[{},{}]_u0[{}]_Phases_new.mp4".format(sys_vars.Nx, sys_vars.Ny, sys_vars.u0)
@@ -470,8 +469,12 @@ if __name__ == '__main__':
             print("\n" + tc.Y + "Finished making video..." + tc.Rst)
             print("Video Location: " + tc.C + videoName + tc.Rst + "\n")
 
+            
+
         ## Start timer
         end = TIME.perf_counter()
+
+
 
     ## Print summary of timmings to screen
     if cmdargs.plotting:

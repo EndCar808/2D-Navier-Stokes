@@ -108,6 +108,8 @@
 // #define __ENRG_SPECT
 // #define __ENST_FLUX_SPECT
 // #define __ENRG_FLUX_SPECT
+// Choose whether to compute the phase sync data
+// #define __PHASE_SYNC
 // Choose whether to save the time, collocation points and wavenumbers
 #define __TIME
 #define __COLLOC_PTS
@@ -138,6 +140,10 @@
 #define DTEXP_E0 343.0/96.0		// The initial energy for the decaying turbulence exponential spectrum initial condition
 #define GDT_K0 5.0              // The peak wavenumber for the Gaussian decay turbulence initial condition
 #define GDT_C0 0.06             // The intial energy of the Gaussian decaying turbulence initial condition
+#define RING_MIN_K 3.0			// The minimum absolute wavevector value to set the ring initial condition
+#define RING_MAX_K 10.0			// The maximum absolute wavevector value to set the ring initial condition
+#define EXP_ENS_MIN_K 6.0 		// The minimum absolute wavevector value for the Exponential Enstrophy initial condition
+#define EXP_ENS_POW 6.0 		// The power for wavevectors for the Exponential enstrophy distribution
 // Forcing parameters
 #define STOC_FORC_K_MIN	0.5		// The minimum value of the modulus forced wavevectors for the stochasitc (Gaussian) forcing
 #define STOC_FORC_K_MAX 2.5     // The maximum value of the modulus forced wavevectors for the stochastic (Gaussian) forcing
@@ -194,38 +200,39 @@ typedef struct system_vars_struct {
 
 // Runtime data struct
 typedef struct runtime_data_struct {
-	double* x[SYS_DIM];       // Array to hold collocation pts
-	int* k[SYS_DIM];		  // Array to hold wavenumbers
-	fftw_complex* w_hat;      // Fourier space vorticity
-	fftw_complex* u_hat;      // Fourier space velocity
-	fftw_complex* rhs; 		  // Array to hold the RHS of the equation of motion
-	fftw_complex* nonlinterm; // Array to hold the nonlinear term
-	double* w;				  // Real space vorticity
-	double* u;				  // Real space velocity
-	double* a_k;			  // Fourier vorticity amplitudes
-	double* tmp_a_k;		  // Array to hold the amplitudes of the fourier vorticity before marching forward in time
-	double* phi_k;			  // Fourier vorticity phases
-	double* tot_div;		  // Array to hold the total diverence
-	double* tot_forc;		  // Array to hold the total forcing input into the sytem over the simulation
-	double* tot_energy;       // Array to hold the total energy over the simulation
-	double* tot_enstr;		  // Array to hold the total entrophy over the simulation
-	double* tot_palin;		  // Array to hold the total palinstrophy over the simulaiotns
-	double* enrg_diss; 		  // Array to hold the energy dissipation rate 
-	double* enst_diss;		  // Array to hold the enstrophy dissipation rate
-	double* time;			  // Array to hold the simulation times
-	double* enst_flux_sbst;   // Array to hold the enstrophy flux in/out of a subset of modes
-	double* enst_diss_sbst;   // Array to hold the enstrophy dissipation for a subset of modes
-	double* enrg_flux_sbst;   // Array to hold the energy flux in/out of a subset of modes
-	double* enrg_diss_sbst;   // Array to hold the energy dissipation for a subset of modes
-	double* enrg_spect;		  // Array to hold the energy spectrum of the system 
-	double* enst_spect;       // Array to hold the enstrophy spectrum of the system
-	double* enst_flux_spect;  // Array to hold the enstrophy flux of the system
-	double* enrg_flux_spect;  // Array to hold the energy flux spectrum
-	double* tg_soln;	  	  // Array for computing the Taylor Green vortex solution
-	fftw_complex* forcing;	  // Array to hold the forcing for the current timestep
-	double* forcing_scaling;  // Array to hold the initial scaling for the forced modes
-	int* forcing_indx;		  // Array to hold the indices of the forced modes
-	int* forcing_k[SYS_DIM];  // Array containg the wavenumbers for the forced modes
+	double* x[SYS_DIM];       		// Array to hold collocation pts
+	int* k[SYS_DIM];		  		// Array to hold wavenumbers
+	fftw_complex* w_hat;      		// Fourier space vorticity
+	fftw_complex* u_hat;      		// Fourier space velocity
+	fftw_complex* rhs; 		  		// Array to hold the RHS of the equation of motion
+	fftw_complex* nonlinterm; 		// Array to hold the nonlinear term
+	double* w;				  		// Real space vorticity
+	double* u;				  		// Real space velocity
+	double* a_k;			  		// Fourier vorticity amplitudes
+	double* tmp_a_k;		  		// Array to hold the amplitudes of the fourier vorticity before marching forward in time
+	double* phi_k;			  		// Fourier vorticity phases
+	double* tot_div;		  		// Array to hold the total diverence
+	double* tot_forc;		  		// Array to hold the total forcing input into the sytem over the simulation
+	double* tot_energy;       		// Array to hold the total energy over the simulation
+	double* tot_enstr;		  		// Array to hold the total entrophy over the simulation
+	double* tot_palin;		  		// Array to hold the total palinstrophy over the simulaiotns
+	double* enrg_diss; 		  		// Array to hold the energy dissipation rate 
+	double* enst_diss;		  		// Array to hold the enstrophy dissipation rate
+	double* time;			  		// Array to hold the simulation times
+	double* enst_flux_sbst;   		// Array to hold the enstrophy flux in/out of a subset of modes
+	double* enst_diss_sbst;   		// Array to hold the enstrophy dissipation for a subset of modes
+	double* enrg_flux_sbst;   		// Array to hold the energy flux in/out of a subset of modes
+	double* enrg_diss_sbst;   		// Array to hold the energy dissipation for a subset of modes
+	double* enrg_spect;		  		// Array to hold the energy spectrum of the system 
+	double* enst_spect;       		// Array to hold the enstrophy spectrum of the system
+	double* enst_flux_spect;  		// Array to hold the enstrophy flux of the system
+	double* enrg_flux_spect;  		// Array to hold the energy flux spectrum
+	fftw_complex* phase_order_k;	// Array to hold the scale dependent collective phase
+	double* tg_soln;	  	  		// Array for computing the Taylor Green vortex solution
+	fftw_complex* forcing;	  		// Array to hold the forcing for the current timestep
+	double* forcing_scaling;  		// Array to hold the initial scaling for the forced modes
+	int* forcing_indx;		  		// Array to hold the indices of the forced modes
+	int* forcing_k[SYS_DIM];  		// Array containg the wavenumbers for the forced modes
 } runtime_data_struct;
 
 // Runge-Kutta Integration struct

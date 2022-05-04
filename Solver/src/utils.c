@@ -45,7 +45,7 @@ int GetCMLArgs(int argc, char** argv) {
 	// Input file path
 	strncpy(file_info->input_file_name, "NONE", 512);
 	// Output file directory
-	strncpy(file_info->output_dir, "../Data/Tmp/", 512);  // Set default output directory to the Tmp folder
+	strncpy(file_info->output_dir, "./Data/Tmp/", 512);  // Set default output directory to the Tmp folder
 	strncpy(file_info->output_tag, "NO_TAG", 64);
 	file_info->file_only = 0; // used to indicate if output file should be file only i.e., not output folder
 	// System dimensions
@@ -194,6 +194,16 @@ int GetCMLArgs(int argc, char** argv) {
 				else if (!(strcmp(optarg,"DECAY_TURB_EXP"))) {
 					// Decay Turbulence -> Exponential Spectrum
 					strncpy(sys_vars->u0, "DECAY_TURB_EXP", 64);
+					break;
+				}
+				else if (!(strcmp(optarg,"EXP_ENS"))) {
+					// Exponential Enstrophy Spectrum
+					strncpy(sys_vars->u0, "EXP_ENS", 64);
+					break;
+				}
+				else if (!(strcmp(optarg,"RING"))) {
+					// Ring
+					strncpy(sys_vars->u0, "RING", 64);
 					break;
 				}
 				else if (!(strcmp(optarg,"GAUSS_DECAY_TURB"))) {

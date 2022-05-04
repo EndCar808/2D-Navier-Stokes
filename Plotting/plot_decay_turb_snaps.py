@@ -289,6 +289,9 @@ if __name__ == '__main__':
         ## Start timer
         end = TIME.perf_counter()
 
+        ## Remove the generated snaps after video is created
+        subprocess.run("rm {}".format(cmdargs.out_dir) + "*.png", shell = True)
+
     ## Print summary of timmings to screen
     if cmdargs.plotting:
         print("\n\nPlotting Time: " + tc.C + " {:5.8f}s\n\n".format(plot_time) + tc.Rst)

@@ -794,15 +794,19 @@ def plot_sector_phase_sync_snaps_full_sec(i, out_dir, w, enst_spec, enst_flux, e
        ## Create appropriate ticks and ticklabels for the sector angles
        dtheta = theta[1] - theta[0]
        if np.isclose(theta[0] - dtheta / 2, -np.pi):
-              angticks      = [-np.pi, -3*np.pi/4.0, -np.pi/2, -np.pi/4.0, 0.0, np.pi/4.0, np.pi/2.0, 3*np.pi/4.0, np.pi]
-              angtickLabels = [r"$-\pi$", r"$-\frac{3\pi}{4}$", r"$-\frac{\pi}{2}$", r"$-\frac{\pi}{4}$", r"$0$", r"$\frac{\pi}{4}$", r"$\frac{\pi}{2}$", r"$\frac{3\pi}{2}$", r"$\pi$"]  
-              theta_min     = -np.pi
-              theta_max     = np.pi
+              angticks            = [-np.pi, -3*np.pi/4.0, -np.pi/2, -np.pi/4.0, 0.0, np.pi/4.0, np.pi/2.0, 3*np.pi/4.0, np.pi]
+              angtickLabels       = [r"$-\pi$", r"$-\frac{3\pi}{4}$", r"$-\frac{\pi}{2}$", r"$-\frac{\pi}{4}$", r"$0$", r"$\frac{\pi}{4}$", r"$\frac{\pi}{2}$", r"$\frac{3\pi}{2}$", r"$\pi$"]
+              angticks_alpha      = [-np.pi, -np.pi/2, 0.0, np.pi/2.0, np.pi]
+              angtickLabels_alpha = [r"$\theta + 0$", r"$\theta + \frac{\pi}{2}$", r"$\theta + \pi$", r"$\theta + \frac{3\pi}{2}$", r"$\theta + 2\pi$"]
+              theta_min           = -np.pi
+              theta_max           = np.pi
        else:
               angticks      = [-np.pi/2, -3*np.pi/8, -np.pi/4.0, -np.pi/8, 0.0, np.pi/8, np.pi/4.0, 3*np.pi/8, np.pi/2.0]
               angtickLabels = [r"$-\frac{\pi}{2}$", r"$-\frac{3\pi}{8}$", r"$-\frac{\pi}{4}$", r"$-\frac{\pi}{8}$", r"$0$", r"$\frac{\pi}{8}$", r"$\frac{\pi}{4}$", r"$\frac{3\pi}{8}$", r"$\frac{\pi}{2}$"]
+              angtickLabels_alpha = [r"$\theta - \frac{\pi}{2}$", r"$\theta - \frac{\pi}{3}$", r"$\theta - \frac{\pi}{4}$", r"$\theta - \frac{\pi}{6}$", r"$\theta + \frac{\pi}{6}$", r"$\theta + \frac{\pi}{4}$", r"$\theta + \frac{\pi}{3}$", r"$\theta + \frac{\pi}{2}$"]
               theta_min     = -np.pi/2
               theta_max     = np.pi/2
+       ## This is checking if k1 sectors is the same as number of sectors
        if R_a_sec.shape[-1] != R_a_sec.shape[1]:
               alpha_angticks      = []
               alpha_angticklabels = []
@@ -922,8 +926,8 @@ def plot_sector_phase_sync_snaps_full_sec(i, out_dir, w, enst_spec, enst_flux, e
        #--------------------------------
        ax6 = fig.add_subplot(gs[2, 0])
        im6 = ax6.imshow(R_a_sec, extent = (theta_min, theta_max, alpha_min, alpha_max), cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1]), vmin = 0.0, vmax = 1.0)
-       ax6.set_xticks(angticks)
-       ax6.set_xticklabels(angtickLabels)
+       ax6.set_xticks(angticks_alpha)
+       ax6.set_xticklabels(angtickLabels_alpha)
        ax6.set_yticks(angticks)
        ax6.set_yticklabels(angtickLabels)
        ax6.set_ylabel(r"$\theta$")
@@ -939,8 +943,8 @@ def plot_sector_phase_sync_snaps_full_sec(i, out_dir, w, enst_spec, enst_flux, e
        #--------------------------------
        ax7 = fig.add_subplot(gs[2, 1])
        im7 = ax7.imshow(Phi_a_sec, extent = (theta_min, theta_max, alpha_min, alpha_max), cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1]), vmin = -np.pi, vmax = np.pi)
-       ax7.set_xticks(angticks)
-       ax7.set_xticklabels(angtickLabels)
+       ax7.set_xticks(angticks_alpha)
+       ax7.set_xticklabels(angtickLabels_alpha)
        ax7.set_yticks(angticks)
        ax7.set_yticklabels(angtickLabels)
        ax7.set_ylabel(r"$\theta$")
@@ -958,8 +962,8 @@ def plot_sector_phase_sync_snaps_full_sec(i, out_dir, w, enst_spec, enst_flux, e
        #--------------------------------
        ax8 = fig.add_subplot(gs[2, 2])
        im8 = ax8.imshow(enst_flux_a_sec, extent = (theta_min, theta_max, alpha_min, alpha_max), cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1]), norm = mpl.colors.SymLogNorm(linthresh = 0.1))
-       ax8.set_xticks(angticks)
-       ax8.set_xticklabels(angtickLabels)
+       ax8.set_xticks(angticks_alpha)
+       ax8.set_xticklabels(angtickLabels_alpha)
        ax8.set_yticks(angticks)
        ax8.set_yticklabels(angtickLabels)
        ax8.set_ylabel(r"$\theta$")
