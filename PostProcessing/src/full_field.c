@@ -375,6 +375,7 @@ void FluxSpectra(int snap) {
 	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
 	double pre_fac = 0.0;
 	double norm_fac = 0.5 / pow(Nx * Ny, 2.0);
+	double tmp_deriv, tmp_diss;
 
 	// ------------------------------------
 	// Initialize Spectrum Array
@@ -424,27 +425,35 @@ void FluxSpectra(int snap) {
 				if ((j == 0) || (Ny_Fourier - 1)) {
 					// Update the current bin sum 
 					#if defined(__ENST_FLUX)
-					proc_data->d_enst_dt_spec[spec_indx] += creal(run_data->w_hat[indx] * conj(proc_data->dw_hat_dt[indx]) + conj(run_data->w_hat[indx]) * proc_data->dw_hat_dt[indx]) * 4.0 * M_PI * M_PI * norm_fac;
-					proc_data->enst_diss_spec[spec_indx] += pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * 4.0 * M_PI * M_PI * norm_fac; 
-					proc_data->enst_flux_spec[spec_indx] += proc_data->d_enst_dt_spec[spec_indx] - proc_data->enst_diss_spec[spec_indx]; 
+					tmp_deriv = creal(run_data->w_hat[indx] * conj(proc_data->dw_hat_dt[indx]) + conj(run_data->w_hat[indx]) * proc_data->dw_hat_dt[indx]) * 4.0 * M_PI * M_PI * norm_fac;
+					tmp_diss  = pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * 4.0 * M_PI * M_PI * norm_fac;
+					proc_data->d_enst_dt_spec[spec_indx] += tmp_deriv;
+					proc_data->enst_diss_spec[spec_indx] += tmp_diss; 
+					proc_data->enst_flux_spec[spec_indx] += tmp_deriv - tmp_diss; 
 					#endif
 					#if defined(__ENRG_FLUX)
-					proc_data->d_enrg_dt_spec[spec_indx] += creal(run_data->w_hat[indx] * conj(proc_data->dw_hat_dt[indx]) + conj(run_data->w_hat[indx]) * proc_data->dw_hat_dt[indx]) * 4.0 * M_PI * M_PI * norm_fac / k_sqr;
-					proc_data->enrg_diss_spec[spec_indx] += pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * 4.0 * M_PI * M_PI * norm_fac / k_sqr; 
-					proc_data->enrg_flux_spec[spec_indx] += proc_data->d_enst_dt_spec[spec_indx] - proc_data->enst_diss_spec[spec_indx]; 
+					tmp_deriv = creal(run_data->w_hat[indx] * conj(proc_data->dw_hat_dt[indx]) + conj(run_data->w_hat[indx]) * proc_data->dw_hat_dt[indx]) * 4.0 * M_PI * M_PI * norm_fac / k_sqr;
+					tmp_diss  = pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * 4.0 * M_PI * M_PI * norm_fac / k_sqr;
+					proc_data->d_enrg_dt_spec[spec_indx] += tmp_deriv;
+					proc_data->enrg_diss_spec[spec_indx] += tmp_diss; 
+					proc_data->enrg_flux_spec[spec_indx] += tmp_deriv - tmp_diss; 
 					#endif
 				}
 				else {
 					// Update the running sum for the flux
 					#if defined(__ENST_FLUX)
-					proc_data->d_enst_dt_spec[spec_indx] += 2.0 * creal(run_data->w_hat[indx] * conj(proc_data->dw_hat_dt[indx]) + conj(run_data->w_hat[indx]) * proc_data->dw_hat_dt[indx]) * 4.0 * M_PI * M_PI * norm_fac;
-					proc_data->enst_diss_spec[spec_indx] += 2.0 * pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * 4.0 * M_PI * M_PI * norm_fac; 
-					proc_data->enst_flux_spec[spec_indx] += 2.0 * (proc_data->d_enst_dt_spec[spec_indx] - proc_data->enst_diss_spec[spec_indx]); 
+					tmp_deriv = 2.0 * creal(run_data->w_hat[indx] * conj(proc_data->dw_hat_dt[indx]) + conj(run_data->w_hat[indx]) * proc_data->dw_hat_dt[indx]) * 4.0 * M_PI * M_PI * norm_fac;
+					tmp_diss  = 2.0 * pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * 4.0 * M_PI * M_PI * norm_fac;
+					proc_data->d_enst_dt_spec[spec_indx] += tmp_deriv;
+					proc_data->enst_diss_spec[spec_indx] += tmp_diss; 
+					proc_data->enst_flux_spec[spec_indx] += tmp_deriv - tmp_diss; 
 					#endif
 					#if defined(__ENRG_FLUX)
-					proc_data->d_enrg_dt_spec[spec_indx] += 2.0 * creal(run_data->w_hat[indx] * conj(proc_data->dw_hat_dt[indx]) + conj(run_data->w_hat[indx]) * proc_data->dw_hat_dt[indx]) * 4.0 * M_PI * M_PI * norm_fac / k_sqr;
-					proc_data->enrg_diss_spec[spec_indx] += 2.0 * pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * 4.0 * M_PI * M_PI * norm_fac / k_sqr; 
-					proc_data->enrg_flux_spec[spec_indx] += 2.0 * (proc_data->d_enst_dt_spec[spec_indx] - proc_data->enst_diss_spec[spec_indx]); 
+					tmp_deriv = 2.0 * creal(run_data->w_hat[indx] * conj(proc_data->dw_hat_dt[indx]) + conj(run_data->w_hat[indx]) * proc_data->dw_hat_dt[indx]) * 4.0 * M_PI * M_PI * norm_fac / k_sqr;
+					tmp_diss  = 2.0 * pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * 4.0 * M_PI * M_PI * norm_fac / k_sqr;
+					proc_data->d_enrg_dt_spec[spec_indx] += tmp_deriv;
+					proc_data->enrg_diss_spec[spec_indx] += tmp_diss; 
+					proc_data->enrg_flux_spec[spec_indx] += tmp_deriv - tmp_diss; 
 					#endif
 				}
 

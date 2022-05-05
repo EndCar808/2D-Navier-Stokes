@@ -23,14 +23,14 @@ from subprocess import Popen, PIPE
 ## Colour Printing to Terminal ##
 #################################
 class tc:
-    H    = '\033[95m'
-    B    = '\033[94m'
-    C    = '\033[96m'
-    G    = '\033[92m'
-    Y    = '\033[93m'
-    R    = '\033[91m'
-    Rst  = '\033[0m'
-    Bold = '\033[1m'
+    H         = '\033[95m'
+    B         = '\033[94m'
+    C         = '\033[96m'
+    G         = '\033[92m'
+    Y         = '\033[93m'
+    R         = '\033[91m'
+    Rst       = '\033[0m'
+    Bold      = '\033[1m'
     Underline = '\033[4m'
 
 
@@ -385,6 +385,9 @@ def import_spectra_data(input_file, sim_data, method = "default"):
             ## Allocate flux spectra arrays
             self.enrg_flux_spectrum = np.zeros((sim_data.ndata, sim_data.spec_size))
             self.enst_flux_spectrum = np.zeros((sim_data.ndata, sim_data.spec_size))
+            ## Allocate pahse sync arrays
+            self.phase_order_R_k     = np.zeros((sim_data.ndata, sim_data.spec_size))
+            self.phase_order_Theta_k = np.zeros((sim_data.ndata, sim_data.spec_size))
 
 
     ## Create instance of data class
@@ -413,6 +416,10 @@ def import_spectra_data(input_file, sim_data, method = "default"):
                     data.enrg_flux_spectrum[nn, :] = f[group]["EnergyFluxSpectrum"][:]
                 if 'EnstrophyFluxSpectrum' in list(f[group].keys()):
                     data.enst_flux_spectrum[nn, :] = f[group]["EnstrophyFluxSpectrum"][:]
+                if 'PhaseOrder_R_k' in list(f[group].keys()):
+                    data.phase_order_R_k[nn, :] = f[group]["PhaseOrder_R_k"][:]
+                if 'PhaseOrder_Theta_k' in list(f[group].keys()):
+                    data.phase_order_Theta_k[nn, :] = f[group]["PhaseOrder_Theta_k"][:]
                 nn += 1
             else:
                 continue

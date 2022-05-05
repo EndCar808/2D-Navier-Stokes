@@ -25,13 +25,13 @@
 // ---------------------------------------------------------------------
 //  Global Variables
 // ---------------------------------------------------------------------
-// Define RK4 variables
+// Define RK4 variables - Butcher Tableau
 #if defined(__RK4)
 static const double RK4_C2 = 0.5, 	  RK4_A21 = 0.5, \
 				  	RK4_C3 = 0.5,	           					RK4_A32 = 0.5, \
 				  	RK4_C4 = 1.0,                      									   RK4_A43 = 1.0, \
 				              	 	  RK4_B1 = 1.0/6.0, 		RK4_B2  = 1.0/3.0, 		   RK4_B3  = 1.0/3.0, 		RK4_B4 = 1.0/6.0;
-// Define RK5 Dormand Prince variables
+// Define RK5 Dormand Prince variables - Butcher Tableau
 #elif defined(__RK5) || defined(__DPRK5)
 static const double RK5_C2 = 0.2, 	  RK5_A21 = 0.2, \
 				  	RK5_C3 = 0.3,     RK5_A31 = 3.0/40.0,       RK5_A32 = 0.5, \
@@ -63,6 +63,7 @@ void SpectralSolve(void) {
 	// Allocate memory
 	// -------------------------------
 	AllocateMemory(NBatch, RK_data);
+
 
 	// -------------------------------
 	// FFTW Plans Setup
@@ -879,7 +880,7 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 		double sqrt_k;
 		double inv_k_sqr;
 		double u1;
-		double spec_1d;
+		double spec_1d = 0.0;
 
 		#if defined(DEBUG)
 		double* rand_u = (double*)fftw_malloc(sizeof(double) * Nx * Ny_Fourier);
@@ -1525,7 +1526,7 @@ void ForceConjugacy(fftw_complex* w_hat, const long int* N) {
 	// Loop through local process and store data in appropriate location in conj_data
 	for (int i = 0; i < local_Nx; ++i) {
 		tmp = i * Ny_Fourier;
-		conj_data[local_Nx_start + i] = run_data->w_hat[tmp];
+		conj_data[local_Nx_start + i] = w_hat[tmp];
 	}
 
 	// Gather the data on all process
@@ -2354,26 +2355,33 @@ void FreeMemory(RK_data_struct* RK_data) {
 	#endif
 	#if defined(__PHASE_SYNC)
 	fftw_free(run_data->phase_order_k);
+	fftw_free(run_data->normed_phase_order_k);
 	#endif
 	#if defined(__ENST_FLUX)
 	fftw_free(run_data->enst_flux_sbst);
 	fftw_free(run_data->enst_diss_sbst);
+	fftw_free(run_data->d_enst_dt_sbst);
 	#endif
 	#if defined(__ENRG_FLUX)
 	fftw_free(run_data->enrg_flux_sbst);
 	fftw_free(run_data->enrg_diss_sbst);
+	fftw_free(run_data->d_enrg_dt_sbst);
 	#endif
 	#if defined(__ENRG_SPECT)
 	fftw_free(run_data->enrg_spect);
 	#endif
 	#if defined(__ENRG_FLUX_SPECT)
 	fftw_free(run_data->enrg_flux_spect);
+	fftw_free(run_data->enrg_diss_spect);
+	fftw_free(run_data->d_enrg_dt_spect);
 	#endif
 	#if defined(__ENST_SPECT)
 	fftw_free(run_data->enst_spect);
 	#endif
 	#if defined(__ENST_FLUX_SPECT)
 	fftw_free(run_data->enst_flux_spect);
+	fftw_free(run_data->enst_diss_spect);
+	fftw_free(run_data->d_enst_dt_spect);
 	#endif
 	#if defined(TESTING)
 	fftw_free(run_data->tg_soln);

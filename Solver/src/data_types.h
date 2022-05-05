@@ -200,39 +200,46 @@ typedef struct system_vars_struct {
 
 // Runtime data struct
 typedef struct runtime_data_struct {
-	double* x[SYS_DIM];       		// Array to hold collocation pts
-	int* k[SYS_DIM];		  		// Array to hold wavenumbers
-	fftw_complex* w_hat;      		// Fourier space vorticity
-	fftw_complex* u_hat;      		// Fourier space velocity
-	fftw_complex* rhs; 		  		// Array to hold the RHS of the equation of motion
-	fftw_complex* nonlinterm; 		// Array to hold the nonlinear term
-	double* w;				  		// Real space vorticity
-	double* u;				  		// Real space velocity
-	double* a_k;			  		// Fourier vorticity amplitudes
-	double* tmp_a_k;		  		// Array to hold the amplitudes of the fourier vorticity before marching forward in time
-	double* phi_k;			  		// Fourier vorticity phases
-	double* tot_div;		  		// Array to hold the total diverence
-	double* tot_forc;		  		// Array to hold the total forcing input into the sytem over the simulation
-	double* tot_energy;       		// Array to hold the total energy over the simulation
-	double* tot_enstr;		  		// Array to hold the total entrophy over the simulation
-	double* tot_palin;		  		// Array to hold the total palinstrophy over the simulaiotns
-	double* enrg_diss; 		  		// Array to hold the energy dissipation rate 
-	double* enst_diss;		  		// Array to hold the enstrophy dissipation rate
-	double* time;			  		// Array to hold the simulation times
-	double* enst_flux_sbst;   		// Array to hold the enstrophy flux in/out of a subset of modes
-	double* enst_diss_sbst;   		// Array to hold the enstrophy dissipation for a subset of modes
-	double* enrg_flux_sbst;   		// Array to hold the energy flux in/out of a subset of modes
-	double* enrg_diss_sbst;   		// Array to hold the energy dissipation for a subset of modes
-	double* enrg_spect;		  		// Array to hold the energy spectrum of the system 
-	double* enst_spect;       		// Array to hold the enstrophy spectrum of the system
-	double* enst_flux_spect;  		// Array to hold the enstrophy flux of the system
-	double* enrg_flux_spect;  		// Array to hold the energy flux spectrum
-	fftw_complex* phase_order_k;	// Array to hold the scale dependent collective phase
-	double* tg_soln;	  	  		// Array for computing the Taylor Green vortex solution
-	fftw_complex* forcing;	  		// Array to hold the forcing for the current timestep
-	double* forcing_scaling;  		// Array to hold the initial scaling for the forced modes
-	int* forcing_indx;		  		// Array to hold the indices of the forced modes
-	int* forcing_k[SYS_DIM];  		// Array containg the wavenumbers for the forced modes
+	double* x[SYS_DIM];       			// Array to hold collocation pts
+	int* k[SYS_DIM];		  			// Array to hold wavenumbers
+	fftw_complex* w_hat;      			// Fourier space vorticity
+	fftw_complex* u_hat;      			// Fourier space velocity
+	fftw_complex* rhs; 		  			// Array to hold the RHS of the equation of motion
+	fftw_complex* nonlinterm; 			// Array to hold the nonlinear term
+	double* w;				  			// Real space vorticity
+	double* u;				  			// Real space velocity
+	double* a_k;			  			// Fourier vorticity amplitudes
+	double* tmp_a_k;		  			// Array to hold the amplitudes of the fourier vorticity before marching forward in time
+	double* phi_k;			  			// Fourier vorticity phases
+	double* tot_div;		  			// Array to hold the total diverence
+	double* tot_forc;		  			// Array to hold the total forcing input into the sytem over the simulation
+	double* tot_energy;       			// Array to hold the total energy over the simulation
+	double* tot_enstr;		  			// Array to hold the total entrophy over the simulation
+	double* tot_palin;		  			// Array to hold the total palinstrophy over the simulaiotns
+	double* enrg_diss; 		  			// Array to hold the energy dissipation rate 
+	double* enst_diss;		  			// Array to hold the enstrophy dissipation rate
+	double* time;			  			// Array to hold the simulation times
+	double* d_enst_dt_sbst;   			// Array to hold the time derivative of the enstrophy in a subset of modes
+	double* enst_flux_sbst;   			// Array to hold the enstrophy flux in/out of a subset of modes
+	double* enst_diss_sbst;   			// Array to hold the enstrophy dissipation for a subset of modes
+	double* d_enrg_dt_sbst;   			// Array to hold the time derivative of the energy in a subset of modes
+	double* enrg_flux_sbst;   			// Array to hold the energy flux in/out of a subset of modes
+	double* enrg_diss_sbst;   			// Array to hold the energy dissipation for a subset of modes
+	double* enrg_spect;		  			// Array to hold the energy spectrum of the system 
+	double* enst_spect;       			// Array to hold the enstrophy spectrum of the system
+	double* d_enst_dt_spect;  			// Array to hold the spectrum of the time derivative of the enstorphy
+	double* enst_flux_spect;  			// Array to hold the spectrum of enstrophy flux of the system
+	double* enst_diss_spect;  			// Array to hold the spectrum enstrophy dissipation of the system
+	double* d_enrg_dt_spect;  			// Array to hold the spectrum of the time derivative  of energy
+	double* enrg_flux_spect;  			// Array to hold the energy flux spectrum
+	double* enrg_diss_spect;  			// Array to hold the energy dissiaption spectrum
+	fftw_complex* phase_order_k;		// Array to hold the scale dependent collective phase
+	fftw_complex* normed_phase_order_k;	// Array to hold the scale dependent collective phase
+	double* tg_soln;	  	  			// Array for computing the Taylor Green vortex solution
+	fftw_complex* forcing;	  			// Array to hold the forcing for the current timestep
+	double* forcing_scaling;  			// Array to hold the initial scaling for the forced modes
+	int* forcing_indx;		  			// Array to hold the indices of the forced modes
+	int* forcing_k[SYS_DIM];  			// Array containg the wavenumbers for the forced modes
 } runtime_data_struct;
 
 // Runge-Kutta Integration struct
@@ -258,10 +265,12 @@ typedef struct HDF_file_info_struct {
 	char input_file_name[512];		// Array holding input file name
 	char output_file_name[512];     // Output file name array
 	char spectra_file_name[512];    // Spectra file name array
+	char sync_file_name[512]; 	    // Phase Sync file name array
 	char output_dir[512];			// Output directory
 	char output_tag[64]; 			// Tag to be added to the output directory
 	hid_t output_file_handle;		// Main file handle for the output file 
 	hid_t spectra_file_handle;      // Spectra file handle
+	hid_t sync_file_handle;		    // Phase sync file handle
 	hid_t COMPLEX_DTYPE;			// Complex datatype handle
 	int file_only;					// Indicates if output should be file only with no output folder created
 	hid_t test_file_handle;         // File handle for testing

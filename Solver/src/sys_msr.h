@@ -30,8 +30,8 @@ void EnergySpectrum(void);
 void EnstrophySpectrum(void);
 void EnergyFluxSpectrum(RK_data_struct* RK_data);
 void EnstrophyFluxSpectrum(RK_data_struct* RK_data);
-void EnstrophyFlux(double* enst_flux, double* enst_diss, RK_data_struct* RK_data);
-void EnergyFlux(double* enrg_flux, double* enrg_diss, RK_data_struct* RK_data);
+void EnstrophyFlux(double* d_e_dt, double* enst_flux, double* enst_diss, RK_data_struct* RK_data);
+void EnergyFlux(double* d_e_dt, double* enrg_flux, double* enrg_diss, RK_data_struct* RK_data);
 void RecordSystemMeasures(double t, int print_indx,  RK_data_struct* RK_data);
 void ComputeSystemMeasurables(double t, int iter, RK_data_struct* RK_data);
 // ---------------------------------------------------------------------

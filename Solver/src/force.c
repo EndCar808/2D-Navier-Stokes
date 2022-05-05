@@ -267,13 +267,9 @@ void InitializeForcing(void) {
 void ComputeForcing(void) {
 
 	// Initialize variables
-	int tmp, indx;
 	double r1, r2;
 	double re_f, im_f;
-	ptrdiff_t local_Nx        = sys_vars->local_Nx;
-	const long int Ny         = sys_vars->N[1];
-	const long int Ny_Fourier = Ny / 2 + 1;
-
+	
 	// --------------------------------------------
 	// Compute Forcing
 	// --------------------------------------------

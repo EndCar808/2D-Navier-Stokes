@@ -42,8 +42,17 @@ void ComputeSystemMeasurables(double t, int iter, RK_data_struct* RK_data) {
 	fftw_complex u_z, v_z, div_u_z;
 	double norm_fac  = 0.5 / pow(Nx * Ny, 2.0);
     double const_fac = 4.0 * pow(M_PI, 2.0);
+    #if defined(__ENRG_FLUX_SPECT) || defined(__ENST_FLUX_SPECT)
     double lwr_sbst_lim_sqr = pow(LWR_SBST_LIM, 2.0);
     double upr_sbst_lim_sqr = pow(UPR_SBST_LIM, 2.0);
+    #endif
+    #if defined(__ENRG_FLUX) || defined(__ENST_FLUX) || defined(__ENRG_FLUX_SPECT) || defined(__ENST_FLUX_SPECT) 
+    double tmp_deriv, tmp_diss;
+    #endif
+    #if defined(__PHASE_SYNC)
+    double tmp_order;
+    #endif
+
 
     // Record the initial time
     #if defined(__TIME) && !defined(TRANSIENTS)
@@ -72,10 +81,12 @@ void ComputeSystemMeasurables(double t, int iter, RK_data_struct* RK_data) {
 		run_data->enrg_diss[iter]  = 0.0;
 		run_data->enst_diss[iter]  = 0.0;
 		#if defined(__ENRG_FLUX)
-		run_data->enrg_diss_sbst[iter] = 0.0;
+		run_data->d_enrg_dt_sbst[iter] = 0.0;
+		run_data->enrg_flux_sbst[iter] = 0.0;
 		run_data->enrg_diss_sbst[iter] = 0.0;
 		#endif
 		#if defined(__ENST_FLUX)
+		run_data->d_enst_dt_sbst[iter] = 0.0;
 		run_data->enst_flux_sbst[iter] = 0.0;
 		run_data->enst_diss_sbst[iter] = 0.0;
 		#endif
@@ -91,13 +102,18 @@ void ComputeSystemMeasurables(double t, int iter, RK_data_struct* RK_data) {
 		run_data->enst_spect[i] = 0.0;
 		#endif
 		#if defined(__ENST_FLUX_SPECT)
+		run_data->d_enrg_dt_spect[i] = 0.0;
 		run_data->enst_flux_spect[i] = 0.0;
+		run_data->enst_diss_spect[i] = 0.0;
 		#endif
 		#if defined(__ENRG_FLUX_SPECT)
+		run_data->d_enrg_dt_spect[i] = 0.0;
 		run_data->enrg_flux_spect[i] = 0.0;
+		run_data->enrg_diss_spect[i] = 0.0;
 		#endif
 		#if defined(__PHASE_SYNC)
-		run_data->phase_order_k[i] = 0.0 + 0.0 * I;
+		run_data->phase_order_k[i]        = 0.0 + 0.0 * I;
+		run_data->normed_phase_order_k[i] = 0.0 + 0.0 * I;
 		#endif
 	}
 	#endif
@@ -131,23 +147,24 @@ void ComputeSystemMeasurables(double t, int iter, RK_data_struct* RK_data) {
 			spec_indx = (int) round( sqrt( (double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]) ) );
 			#endif
 
+			// The |k|^2 prefactor
+			k_sqr = (double )(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
+
+			// Get the appropriate prefactor
+			#if defined(HYPER_VISC) && defined(EKMN_DRAG)  // Both Hyperviscosity and Ekman drag
+			pre_fac = sys_vars->NU * pow(k_sqr, VIS_POW) + sys_vars->EKMN_ALPHA * pow(k_sqr, EKMN_POW);
+			#elif !defined(HYPER_VISC) && defined(EKMN_DRAG) // No hyperviscosity but we have Ekman drag
+			pre_fac = sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA * pow(k_sqr, EKMN_POW);
+			#elif defined(HYPER_VISC) && !defined(EKMN_DRAG) // Hyperviscosity only
+			pre_fac = sys_vars->NU * pow(k_sqr, VIS_POW);
+			#else // No hyper viscosity or no ekman drag -> just normal viscosity
+			pre_fac = sys_vars->NU * k_sqr; 
+			#endif
+
 			///--------------------------------- System Measures
 			#if defined(__SYS_MEASURES)
 		    if (iter < sys_vars->num_print_steps) {
 				if ((run_data->k[0][i] != 0) || (run_data->k[1][j] != 0)) {
-					// The |k|^2 prefactor
-					k_sqr = (double )(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
-
-					// Get the appropriate prefactor
-					#if defined(HYPER_VISC) && defined(EKMN_DRAG)  // Both Hyperviscosity and Ekman drag
-					pre_fac = sys_vars->NU * pow(k_sqr, VIS_POW) + sys_vars->EKMN_ALPHA * pow(k_sqr, EKMN_POW);
-					#elif !defined(HYPER_VISC) && defined(EKMN_DRAG) // No hyperviscosity but we have Ekman drag
-					pre_fac = sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA * pow(k_sqr, EKMN_POW);
-					#elif defined(HYPER_VISC) && !defined(EKMN_DRAG) // Hyperviscosity only
-					pre_fac = sys_vars->NU * pow(k_sqr, VIS_POW);
-					#else // No hyper viscosity or no ekman drag -> just normal viscosity
-					pre_fac = sys_vars->NU * k_sqr; 
-					#endif
 
 					// Get the fourier velocities
 					u_z = I * ((double )run_data->k[1][j]) * run_data->w_hat[indx] / k_sqr;
@@ -165,13 +182,21 @@ void ComputeSystemMeasurables(double t, int iter, RK_data_struct* RK_data) {
 						run_data->enrg_diss[iter]  += pre_fac * cabs(u_z * conj(u_z) + v_z * conj(v_z));
 						run_data->enst_diss[iter]  += pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
 						if ((k_sqr >= lwr_sbst_lim_sqr) && (k_sqr < upr_sbst_lim_sqr)) { // define the subset to consider for the flux and dissipation
+							#if defined(__ENRG_FLUX) || defined(__ENST_FLUX)
+							// Get the derivative and dissipation terms
+							tmp_deriv = creal(run_data->w_hat[indx] * conj(RK_data->RK1[indx]) + conj(run_data->w_hat[indx]) * RK_data->RK1[indx]);
+							tmp_diss  = pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+							#endif
+
 							#if defined(__ENRG_FLUX)
-							run_data->enrg_flux_sbst[iter] += creal(run_data->w_hat[indx] * conj(RK_data->RK1[indx]) + conj(run_data->w_hat[indx]) * RK_data->RK1[indx]) * (1.0 / k_sqr);
-							run_data->enrg_diss_sbst[iter] += pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * (1.0 / k_sqr);
+							run_data->d_enrg_dt_sbst[iter] += tmp_deriv * (1.0 / k_sqr);
+							run_data->enrg_diss_sbst[iter] += tmp_diss * (1.0 / k_sqr);
+							run_data->enrg_flux_sbst[iter] += (tmp_deriv - tmp_diss) * (1.0 / k_sqr);
 							#endif
 							#if defined(__ENST_FLUX)
-							run_data->enst_flux_sbst[iter] += creal(run_data->w_hat[indx] * conj(RK_data->RK1[indx]) + conj(run_data->w_hat[indx]) * RK_data->RK1[indx]); 
-							run_data->enst_diss_sbst[iter] += pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+							run_data->d_enst_dt_sbst[iter] += tmp_deriv; 
+							run_data->enst_diss_sbst[iter] += tmp_diss;
+							run_data->enst_flux_sbst[iter] += tmp_deriv - tmp_diss; 
 							#endif
 						}
 					}
@@ -181,15 +206,23 @@ void ComputeSystemMeasurables(double t, int iter, RK_data_struct* RK_data) {
 						run_data->tot_div[iter]    += 2.0 * cabs(div_u_z * conj(div_u_z));
 						run_data->tot_palin[iter]  += 2.0 * k_sqr * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
 						run_data->enrg_diss[iter]  += 2.0 * pre_fac * cabs(u_z * conj(u_z) + v_z * conj(v_z));
-						run_data->enst_diss[iter]  += 2.0 * pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+						run_data->enst_diss[iter]  += 2.0 * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
 						if ((k_sqr >= lwr_sbst_lim_sqr) && (k_sqr < upr_sbst_lim_sqr)) { // define the subset to consider for the flux and dissipation
+							#if defined(__ENRG_FLUX) || defined(__ENST_FLUX)
+							// Get the derivative and dissipation terms
+							tmp_deriv = creal(run_data->w_hat[indx] * conj(RK_data->RK1[indx]) + conj(run_data->w_hat[indx]) * RK_data->RK1[indx]);
+							tmp_diss  = pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+							#endif
+
 							#if defined(__ENRG_FLUX)
-							run_data->enrg_flux_sbst[iter] += 2.0 * creal(run_data->w_hat[indx] * conj(RK_data->RK1[indx]) + conj(run_data->w_hat[indx]) * RK_data->RK1[indx]) * (1.0 / k_sqr);
-							run_data->enrg_diss_sbst[iter] += 2.0 * pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * (1.0 / k_sqr);
+							run_data->d_enrg_dt_sbst[iter] += tmp_deriv * (2.0 / k_sqr);
+							run_data->enrg_diss_sbst[iter] += tmp_diss * (2.0 / k_sqr);
+							run_data->enrg_flux_sbst[iter] += (tmp_deriv - tmp_diss) * (2.0 / k_sqr);
 							#endif
 							#if defined(__ENST_FLUX)
-							run_data->enst_flux_sbst[iter] += 2.0 * creal(run_data->w_hat[indx] * conj(RK_data->RK1[indx]) + conj(run_data->w_hat[indx]) * RK_data->RK1[indx]); 
-							run_data->enst_diss_sbst[iter] += 2.0 * pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+							run_data->d_enst_dt_sbst[iter] += 2.0 * tmp_deriv;
+							run_data->enst_diss_sbst[iter] += 2.0 * tmp_diss; 
+							run_data->enst_flux_sbst[iter] += 2.0 * (tmp_deriv - tmp_diss);
 							#endif
 						}
 					}
@@ -203,8 +236,11 @@ void ComputeSystemMeasurables(double t, int iter, RK_data_struct* RK_data) {
 			///--------------------------------- Spectra
 			#if defined(__ENRG_SPECT) || defined(__ENST_SPECT) || defined(__ENRG_FLUX_SPECT) || defined(__ENST_FLUX_SPECT)
 			if ((run_data->k[0][i] != 0) || (run_data->k[1][j] != 0)) {
-				// Compute |k|^2
-				k_sqr = ((double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]));
+				#if defined(__ENRG_FLUX_SPECT) || defined(__ENST_FLUX_SPECT)
+				// Get the derivative and dissipation terms
+				tmp_deriv = const_fac * norm_fac * creal(run_data->w_hat[indx] * conj(RK_data->RK1[indx]) + conj(run_data->w_hat[indx]) * RK_data->RK1[indx]);
+				tmp_diss  = const_fac * norm_fac * pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+				#endif
 
 				if ((j == 0) || (j == Ny_Fourier - 1)) {
 					// Update the current bin
@@ -215,10 +251,14 @@ void ComputeSystemMeasurables(double t, int iter, RK_data_struct* RK_data) {
 					run_data->enst_spect[spec_indx] += const_fac * norm_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
 					#endif
 					#if defined(__ENST_FLUX_SPECT)
-					run_data->enst_flux_spect[spec_indx] += const_fac * norm_fac * creal(run_data->w_hat[indx] * conj(RK_data->RK1[indx]) + conj(run_data->w_hat[indx]) * RK_data->RK1[indx]);
+					run_data->d_enst_dt_spect[spec_indx] += tmp_deriv;
+					run_data->enst_diss_spect[spec_indx] += tmp_diss;
+					run_data->enst_flux_spect[spec_indx] += tmp_deriv - tmp_diss;
 					#endif
 					#if defined(__ENRG_FLUX_SPECT)
-					run_data->enrg_flux_spect[spec_indx] += const_fac * norm_fac * creal(run_data->w_hat[indx] * conj(RK_data->RK1[indx]) + conj(run_data->w_hat[indx]) * RK_data->RK1[indx]) * (1.0 / k_sqr);
+					run_data->d_enrg_dt_spect[spec_indx] += tmp_deriv * (1.0 / k_sqr);
+					run_data->enrg_diss_spect[spec_indx] += tmp_diss * (1.0 / k_sqr);
+					run_data->enrg_flux_spect[spec_indx] += (tmp_deriv - tmp_diss) * (1.0 / k_sqr);
 					#endif
 				}
 				else {
@@ -230,10 +270,14 @@ void ComputeSystemMeasurables(double t, int iter, RK_data_struct* RK_data) {
 					run_data->enst_spect[spec_indx] += 2.0 * const_fac * norm_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
 					#endif
 					#if defined(__ENST_FLUX_SPECT)
-					run_data->enst_flux_spect[spec_indx] += 2.0 * const_fac * norm_fac * creal(run_data->w_hat[indx] * conj(RK_data->RK1[indx]) + conj(run_data->w_hat[indx]) * RK_data->RK1[indx]);
+					run_data->d_enst_dt_spect[spec_indx] += 2.0 * tmp_deriv;
+					run_data->enst_diss_spect[spec_indx] += 2.0 * tmp_diss;
+					run_data->enst_flux_spect[spec_indx] += 2.0 * (tmp_deriv - tmp_diss);
 					#endif
 					#if defined(__ENRG_FLUX_SPECT)
-					run_data->enrg_flux_spect[spec_indx] += 2.0 * const_fac * norm_fac * creal(run_data->w_hat[indx] * conj(RK_data->RK1[indx]) + conj(run_data->w_hat[indx]) * RK_data->RK1[indx]) * (1.0 / k_sqr);
+					run_data->d_enrg_dt_spect[spec_indx] += tmp_deriv * (2.0 / k_sqr);
+					run_data->enrg_diss_spect[spec_indx] += tmp_diss * (2.0 / k_sqr);
+					run_data->enrg_flux_spect[spec_indx] += (tmp_deriv - tmp_diss)* (2.0 / k_sqr);
 					#endif
 				}
 			}
@@ -245,7 +289,19 @@ void ComputeSystemMeasurables(double t, int iter, RK_data_struct* RK_data) {
 			///--------------------------------- Phase Sync
 			#if defined(__PHASE_SYNC)
 			// Compute the scale dependent collective phase
-			run_data->phase_order_k[spec_indx] += RK_data->RK1[indx] * cexp(-carg(run_data->w_hat[indx]) * I);
+			tmp_order = RK_data->RK1[indx] * cexp(-I * carg(run_data->w_hat[indx]));
+
+			// Average over the annulus
+			if (j == 0 || j == Ny_Fourier - 1) {
+				if (run_data->k[0][i] > 0) {
+					run_data->phase_order_k[spec_indx]        += tmp_order;
+					run_data->normed_phase_order_k[spec_indx] += tmp_order / cabs(RK_data->RK1[indx]);
+				}	
+			}
+			else {
+				run_data->phase_order_k[spec_indx]        += tmp_order;
+				run_data->normed_phase_order_k[spec_indx] += tmp_order / cabs(RK_data->RK1[indx]);
+			}
 			#endif
 		}
 	}
@@ -306,6 +362,13 @@ void InitializeSystemMeasurables(RK_data_struct* RK_data) {
 	run_data->phase_order_k = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->n_spect);
 	if (run_data->phase_order_k == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Scale Dependent Collective Phase");
+		exit(1);
+	}
+
+	// Normalized Scale Dependent Collective Phase
+	run_data->normed_phase_order_k = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->n_spect);
+	if (run_data->normed_phase_order_k == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Normed Scale Dependent Collective Phase");
 		exit(1);
 	}
 	#endif
@@ -387,10 +450,18 @@ void InitializeSystemMeasurables(RK_data_struct* RK_data) {
 		exit(1);
 	}	
 	#endif
+	
 	// --------------------------------
 	// Allocate Enstrophy Flux Memory
 	// --------------------------------
 	#if defined(__ENST_FLUX)
+	// Time derivative of the enstrophy
+	run_data->d_enst_dt_sbst = (double* )fftw_malloc(sizeof(double) * print_steps);
+	if (run_data->d_enst_dt_sbst == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Time Derivative of Enstrophy Subset");
+		exit(1);
+	}
+
 	// Enstrophy flux
 	run_data->enst_flux_sbst = (double* )fftw_malloc(sizeof(double) * print_steps);
 	if (run_data->enst_flux_sbst == NULL) {
@@ -406,18 +477,37 @@ void InitializeSystemMeasurables(RK_data_struct* RK_data) {
 	}	
 	#endif
 	#if defined(__ENST_FLUX_SPECT)
+	// Time derivative of Enstrophy Spectrum
+	run_data->d_enst_dt_spect = (double* )fftw_malloc(sizeof(double) * n_spect);
+	if (run_data->d_enst_dt_spect == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Time Derivative of Enstrophy Spectrum");
+		exit(1);
+	}
 	// Enstrophy Spectrum
 	run_data->enst_flux_spect = (double* )fftw_malloc(sizeof(double) * n_spect);
 	if (run_data->enst_flux_spect == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Enstrophy Flux Spectrum");
 		exit(1);
-	}	
+	}
+	// Enstrophy Dissipation Spectrum
+	run_data->enst_diss_spect = (double* )fftw_malloc(sizeof(double) * n_spect);
+	if (run_data->enst_diss_spect == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Enstrophy Dissipation Spectrum");
+		exit(1);
+	}
 	#endif
 
 	// --------------------------------
 	// Allocate Energy Spec Memory
 	// --------------------------------
 	#if defined(__ENRG_FLUX)
+	// Time derivative of energy 
+	run_data->d_enrg_dt_sbst = (double* )fftw_malloc(sizeof(double) * print_steps);
+	if (run_data->d_enrg_dt_sbst == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Time Derivative of Energy Subset");
+		exit(1);
+	}
+
 	// Energy Flux
 	run_data->enrg_flux_sbst = (double* )fftw_malloc(sizeof(double) * print_steps);
 	if (run_data->enrg_flux_sbst == NULL) {
@@ -433,10 +523,22 @@ void InitializeSystemMeasurables(RK_data_struct* RK_data) {
 	}
 	#endif
 	#if defined(__ENRG_FLUX_SPECT)
-	// Energy Spectrum
+	// Energy Flux Spectrum
 	run_data->enrg_flux_spect = (double* )fftw_malloc(sizeof(double) * n_spect);
 	if (run_data->enrg_flux_spect == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Energy Flux Spectrum");
+		exit(1);
+	}
+	// Time derivative of Energy Spectrum
+	run_data->d_enrg_dt_spect = (double* )fftw_malloc(sizeof(double) * n_spect);
+	if (run_data->d_enrg_dt_spect == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Time Derivative of Energy Spectrum");
+		exit(1);
+	}
+	// Energy Dissipation Spectrum
+	run_data->enrg_diss_spect = (double* )fftw_malloc(sizeof(double) * n_spect);
+	if (run_data->enrg_diss_spect == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Energy Dissipation Spectrum");
 		exit(1);
 	}	
 	#endif
@@ -627,9 +729,8 @@ double TotalForcing(void) {
 
 	// Initialize variables
 	double tot_forcing = 0.0;
-	const long int Nx         = sys_vars->N[0];
-	const long int Ny         = sys_vars->N[1];
-	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
+	const long int Nx = sys_vars->N[0];
+	const long int Ny = sys_vars->N[1];
 	double norm_fac = 0.5 / pow(Nx * Ny, 2.0);
 
 	// ------------------------------------------
@@ -921,13 +1022,14 @@ double EnstrophyDissipationRate(void) {
  * @param enst_diss The enstrophy dissipation
  * @param RK_data   The Runge-Kutta struct containing the arrays for computing the nonlinear term
  */
-void EnstrophyFlux(double* enst_flux, double* enst_diss, RK_data_struct* RK_data) {
+void EnstrophyFlux(double* d_e_dt, double* enst_flux, double* enst_diss, RK_data_struct* RK_data) {
 
 	// Initialize variables
 	int tmp;
 	int indx;
 	double k_sqr;
 	double pre_fac;
+	double tmp_d_e_dt;
 	double tmp_enst_flux;
 	double tmp_enst_diss;
 	ptrdiff_t local_Nx 		  = sys_vars->local_Nx;
@@ -935,6 +1037,7 @@ void EnstrophyFlux(double* enst_flux, double* enst_diss, RK_data_struct* RK_data
 	const long int Ny         = sys_vars->N[1];
 	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
 	double norm_fac = 0.5 / pow(Nx * Ny, 2.0);
+	double tmp_deriv, tmp_diss;
 
 	// -----------------------------------
 	// Compute the Derivative
@@ -958,6 +1061,7 @@ void EnstrophyFlux(double* enst_flux, double* enst_diss, RK_data_struct* RK_data
 	// Compute the Enstrophy Flux & Diss
 	// -------------------------------------
 	// Initialize sums
+	tmp_d_e_dt    = 0.0;
 	tmp_enst_flux = 0.0;
 	tmp_enst_diss = 0.0;
 
@@ -987,20 +1091,30 @@ void EnstrophyFlux(double* enst_flux, double* enst_diss, RK_data_struct* RK_data
 				pre_fac = sys_vars->NU * k_sqr; 
 				#endif
 
+				// Get the derivative and dissipation terms
+				tmp_deriv = creal(run_data->w_hat[indx] * conj(dwhat_dt[indx]) + conj(run_data->w_hat[indx]) * dwhat_dt[indx]);
+				tmp_diss  = pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+
 				// Update sums
 				if ((j == 0) || (Ny_Fourier - 1)) {
 					// Update the running sum for the flux of enstrophy
-					tmp_enst_flux += creal(run_data->w_hat[indx] * conj(dwhat_dt[indx]) + conj(run_data->w_hat[indx]) * dwhat_dt[indx]); 
+					tmp_d_e_dt += tmp_deriv; 
 
 					// Update the running sum for the enstrophy dissipation 
-					tmp_enst_diss += pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+					tmp_enst_diss += tmp_diss;
+
+					// Update the flux
+					tmp_enst_flux += tmp_deriv - tmp_diss;
 				}
 				else {
 					// Update the running sum for the flux of enstrophy
-					tmp_enst_flux += 2.0 * creal(run_data->w_hat[indx] * conj(dwhat_dt[indx]) + conj(run_data->w_hat[indx]) * dwhat_dt[indx]);
+					tmp_d_e_dt += 2.0 * tmp_deriv;
 
 					// Update the running sum for the enstrophy dissipation 
-					tmp_enst_diss += 2.0 * pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+					tmp_enst_diss += 2.0 * tmp_diss;
+
+					// Update the flux
+					tmp_enst_flux += 2.0 * (tmp_deriv - tmp_diss);
 				}
 			}
 		}
@@ -1009,6 +1123,9 @@ void EnstrophyFlux(double* enst_flux, double* enst_diss, RK_data_struct* RK_data
 	// -----------------------------------
 	// Compute the Enstrophy Flux & Diss 
 	// -----------------------------------
+	// Compue the enstrophy dissipation
+	(*d_e_dt) = tmp_d_e_dt * norm_fac;
+
 	// Compue the enstrophy dissipation
 	(*enst_diss) = 4.0 * M_PI * M_PI * tmp_enst_diss * norm_fac;
 
@@ -1027,13 +1144,14 @@ void EnstrophyFlux(double* enst_flux, double* enst_diss, RK_data_struct* RK_data
  * @param enrg_diss The energy dissipation of a subset of modes
  * @param RK_data   The struct containing the Runge-Kutta arrays to be used for computing the nonlinear term
  */
-void EnergyFlux(double* enrg_flux, double* enrg_diss, RK_data_struct* RK_data) {
+void EnergyFlux(double* d_e_dt, double* enrg_flux, double* enrg_diss, RK_data_struct* RK_data) {
 
 	// Initialize variables
 	int tmp;
 	int indx;
 	double k_sqr;
 	double pre_fac;
+	double tmp_d_e_dt;
 	double tmp_enrgy_flux;
 	double tmp_enrgy_diss;
 	ptrdiff_t local_Nx 		  = sys_vars->local_Nx;
@@ -1041,6 +1159,7 @@ void EnergyFlux(double* enrg_flux, double* enrg_diss, RK_data_struct* RK_data) {
 	const long int Ny         = sys_vars->N[1];
 	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
 	double norm_fac = 0.5 / pow(Nx * Ny, 2.0);
+	double tmp_deriv, tmp_diss;
 
 	// -----------------------------------
 	// Compute the Derivative
@@ -1064,6 +1183,7 @@ void EnergyFlux(double* enrg_flux, double* enrg_diss, RK_data_struct* RK_data) {
 	// Compute the Energy Flux & Diss
 	// -------------------------------------
 	// Initialize sums
+	tmp_d_e_dt     = 0.0;
 	tmp_enrgy_flux = 0.0;
 	tmp_enrgy_diss = 0.0;
 
@@ -1094,26 +1214,37 @@ void EnergyFlux(double* enrg_flux, double* enrg_diss, RK_data_struct* RK_data) {
 					pre_fac = sys_vars->NU * k_sqr; 
 					#endif
 
+					// Get the derivative and dissipation terms
+					tmp_deriv = creal(run_data->w_hat[indx] * conj(dwhat_dt[indx]) + conj(run_data->w_hat[indx]) * dwhat_dt[indx]) / k_sqr;
+					tmp_diss  = pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) / k_sqr;
+
 					// Update sums
 					if ((j == 0) || (Ny_Fourier - 1)) {
-						// Update the running sum for the flux of energy
-						tmp_enrgy_flux += creal(run_data->w_hat[indx] * conj(dwhat_dt[indx]) + conj(run_data->w_hat[indx]) * dwhat_dt[indx]) / k_sqr;
+						// Update the running sum for the time derivative of energy
+						tmp_d_e_dt += tmp_deriv;
 
 						// Update the running sum for the energy dissipation 
-						tmp_enrgy_diss += pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) / k_sqr;
+						tmp_enrgy_diss += tmp_diss;
+
+						// Update the flux
+						tmp_enrgy_flux += tmp_deriv - tmp_diss;
 					}
 					else {
-						// Update the running sum for the flux of energy
-						tmp_enrgy_flux += 2.0 * creal(run_data->w_hat[indx] * conj(dwhat_dt[indx]) + conj(run_data->w_hat[indx]) * dwhat_dt[indx]) / k_sqr;
+						// Update the running sum for the time derivative of energy
+						tmp_d_e_dt += 2.0 * tmp_deriv;
 
 						// Update the running sum for the energy dissipation 
-						tmp_enrgy_diss += 2.0 * pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) / k_sqr;
+						tmp_enrgy_diss += 2.0 * tmp_diss;
+
+						// Update the flux
+						tmp_enrgy_flux += 2.0 * (tmp_deriv - tmp_diss);
 					}
 				}
 			}
 			else {
-				tmp_enrgy_flux += 0.0;
+				tmp_d_e_dt     += 0.0;
 				tmp_enrgy_diss += 0.0;
+				tmp_enrgy_flux += 0.0;
 			}
 		}
 	}
@@ -1121,6 +1252,9 @@ void EnergyFlux(double* enrg_flux, double* enrg_diss, RK_data_struct* RK_data) {
 	// -----------------------------------
 	// Compute the Energy Flux & Diss 
 	// -----------------------------------
+	// Compue the time derivative of energy
+	(*d_e_dt) = tmp_d_e_dt * norm_fac;
+
 	// Compue the energy dissipation
 	(*enrg_diss) = 4.0 * M_PI * M_PI * tmp_enrgy_diss * norm_fac;
 
@@ -1151,6 +1285,7 @@ void EnergyFluxSpectrum(RK_data_struct* RK_data) {
 	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
 	double pre_fac = 0.0;
 	double norm_fac = 0.5 / pow(Nx * Ny, 2.0);
+	double tmp_deriv, tmp_diss;
 
 	// ------------------------------------
 	// Initialize Spectrum Array
@@ -1208,14 +1343,22 @@ void EnergyFluxSpectrum(RK_data_struct* RK_data) {
 				// Get the spectrum index
 				spec_indx = (int) ceil(sqrt(k_sqr));
 
+				// Get the derivative and dissipation terms
+				tmp_deriv = 4.0 * M_PI * M_PI * norm_fac * creal(run_data->w_hat[indx] * conj(dwhat_dt[indx]) + conj(run_data->w_hat[indx]) * dwhat_dt[indx]) / k_sqr;
+				tmp_diss  = pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) / k_sqr;
+
 				// Update spectrum bin
 				if ((j == 0) || (Ny_Fourier - 1)) {
 					// Update the running sum for the flux of energy
-					run_data->enrg_flux_spect[spec_indx] += 4.0 * M_PI * M_PI * norm_fac * creal(run_data->w_hat[indx] * conj(dwhat_dt[indx]) + conj(run_data->w_hat[indx]) * dwhat_dt[indx]) / k_sqr;
+					run_data->d_enrg_dt_spect[spec_indx] += tmp_deriv;
+					run_data->enrg_diss_spect[spec_indx] += tmp_diss;
+					run_data->enrg_flux_spect[spec_indx] += tmp_deriv - tmp_diss;
 				}
 				else {
 					// Update the running sum for the flux of energy
-					run_data->enrg_flux_spect[spec_indx] += 2.0 * 4.0 * M_PI * M_PI * norm_fac * creal(run_data->w_hat[indx] * conj(dwhat_dt[indx]) + conj(run_data->w_hat[indx]) * dwhat_dt[indx]) / k_sqr;
+					run_data->d_enrg_dt_spect[spec_indx] += 2.0 * tmp_deriv;
+					run_data->enrg_diss_spect[spec_indx] += 2.0 * tmp_diss;
+					run_data->enrg_flux_spect[spec_indx] += 2.0 * (tmp_deriv - tmp_diss);
 				}
 			}
 		}
@@ -1244,6 +1387,7 @@ void EnstrophyFluxSpectrum(RK_data_struct* RK_data) {
 	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
 	double pre_fac = 0.0;
 	double norm_fac = 0.5 / pow(Nx * Ny, 2.0);
+	double tmp_deriv, tmp_diss;
 
 	// ------------------------------------
 	// Initialize Spectrum Array
@@ -1301,14 +1445,22 @@ void EnstrophyFluxSpectrum(RK_data_struct* RK_data) {
 				// Get the spectrum index
 				spec_indx = (int) ceil(sqrt(k_sqr));
 
+				// Get the derivative and flux terms
+				tmp_deriv = 4.0 * M_PI * M_PI * norm_fac * creal(run_data->w_hat[indx] * conj(dwhat_dt[indx]) + conj(run_data->w_hat[indx]) * dwhat_dt[indx]);
+				tmp_diss  = pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+
 				// Update spectrum bin
 				if ((j == 0) || (Ny_Fourier - 1)) {
 					// Update the current bin sum 
-					run_data->enst_flux_spect[spec_indx] += 4.0 * M_PI * M_PI * norm_fac * creal(run_data->w_hat[indx] * conj(dwhat_dt[indx]) + conj(run_data->w_hat[indx]) * dwhat_dt[indx]);
+					run_data->d_enst_dt_spect[spec_indx] += tmp_deriv;
+					run_data->enst_diss_spect[spec_indx] += tmp_diss;
+					run_data->enst_flux_spect[spec_indx] += tmp_deriv - tmp_diss;
 				}
 				else {
 					// Update the running sum for the flux of energy
-					run_data->enst_flux_spect[spec_indx] += 2.0 * 4.0 * M_PI * M_PI * norm_fac * creal(run_data->w_hat[indx] * conj(dwhat_dt[indx]) + conj(run_data->w_hat[indx]) * dwhat_dt[indx]);
+					run_data->d_enst_dt_spect[spec_indx] += 2.0 * tmp_deriv;
+					run_data->enst_diss_spect[spec_indx] += 2.0 * tmp_diss;
+					run_data->enst_flux_spect[spec_indx] += 2.0 * (tmp_deriv - tmp_diss);
 				}
 			}
 		}
@@ -1353,10 +1505,10 @@ void RecordSystemMeasures(double t, int print_indx, RK_data_struct* RK_data) {
 		#endif
 		#if defined(__ENST_FLUX)
 		// Enstrophy and energy flux in/out and dissipation of a subset of modes
-		EnstrophyFlux(&(run_data->enst_flux_sbst[print_indx]), &(run_data->enst_diss_sbst[print_indx]), RK_data);
+		EnstrophyFlux(&(run_data->d_enst_dt_sbst[print_indx]), &(run_data->enst_flux_sbst[print_indx]), &(run_data->enst_diss_sbst[print_indx]), RK_data);
 		#endif
 		#if defined(__ENRG_FLUX)
-		EnergyFlux(&(run_data->enrg_flux_sbst[print_indx]), &(run_data->enrg_diss_sbst[print_indx]), RK_data);
+		EnergyFlux(&(run_data->d_enrg_dt_sbst[print_indx]), &(run_data->enrg_flux_sbst[print_indx]), &(run_data->enrg_diss_sbst[print_indx]), RK_data);
 		#endif
 	}
 	else {
