@@ -295,12 +295,22 @@ void ComputeSystemMeasurables(double t, int iter, RK_data_struct* RK_data) {
 			if (j == 0 || j == Ny_Fourier - 1) {
 				if (run_data->k[0][i] > 0) {
 					run_data->phase_order_k[spec_indx]        += tmp_order;
-					run_data->normed_phase_order_k[spec_indx] += tmp_order / cabs(RK_data->RK1[indx]);
+					if (cabs(tmp_order) != 0.0) {
+						run_data->normed_phase_order_k[spec_indx] += tmp_order / cabs(tmp_order);
+					}
+					else {
+						run_data->normed_phase_order_k[spec_indx] += 0.0 + 0.0 * I;;	
+					}
 				}	
 			}
 			else {
 				run_data->phase_order_k[spec_indx]        += tmp_order;
-				run_data->normed_phase_order_k[spec_indx] += tmp_order / cabs(RK_data->RK1[indx]);
+				if (cabs(tmp_order) != 0.0) {
+					run_data->normed_phase_order_k[spec_indx] += tmp_order / cabs(tmp_order);
+				}
+				else {
+					run_data->normed_phase_order_k[spec_indx] += 0.0 + 0.0 * I;;	
+				}
 			}
 			#endif
 		}

@@ -385,9 +385,6 @@ def import_spectra_data(input_file, sim_data, method = "default"):
             ## Allocate flux spectra arrays
             self.enrg_flux_spectrum = np.zeros((sim_data.ndata, sim_data.spec_size))
             self.enst_flux_spectrum = np.zeros((sim_data.ndata, sim_data.spec_size))
-            ## Allocate pahse sync arrays
-            self.phase_order_R_k     = np.zeros((sim_data.ndata, sim_data.spec_size))
-            self.phase_order_Theta_k = np.zeros((sim_data.ndata, sim_data.spec_size))
 
 
     ## Create instance of data class
@@ -416,16 +413,73 @@ def import_spectra_data(input_file, sim_data, method = "default"):
                     data.enrg_flux_spectrum[nn, :] = f[group]["EnergyFluxSpectrum"][:]
                 if 'EnstrophyFluxSpectrum' in list(f[group].keys()):
                     data.enst_flux_spectrum[nn, :] = f[group]["EnstrophyFluxSpectrum"][:]
-                if 'PhaseOrder_R_k' in list(f[group].keys()):
-                    data.phase_order_R_k[nn, :] = f[group]["PhaseOrder_R_k"][:]
-                if 'PhaseOrder_Theta_k' in list(f[group].keys()):
-                    data.phase_order_Theta_k[nn, :] = f[group]["PhaseOrder_Theta_k"][:]
                 nn += 1
             else:
                 continue
 
     return data
 
+def import_sync_data(input_file, sim_data, method = "default"):
+
+    """
+    Reads in phase sync data from sync HDF5 file.
+
+    input_dir : string
+                - If method == "defualt" is True then this will be the path to
+               the input folder. if not then this will be the input folder
+    method    : string
+                - Determines whether the data is to be read in from a file or
+                from an input folder
+    sim_data  : class
+                - object containing the simulation parameters
+    """
+
+    ## Define a data class for the solver data
+    class SyncData:
+
+        """
+        Class for the run data.
+        """
+
+        def __init__(self):
+            ## Allocate sync arrays
+            self.R_k            = np.zeros((sim_data.ndata, sim_data.spec_size))
+            self.theta_k        = np.zeros((sim_data.ndata, sim_data.spec_size))
+            self.normed_R_k     = np.zeros((sim_data.ndata, sim_data.spec_size))
+            self.normed_theta_k = np.zeros((sim_data.ndata, sim_data.spec_size))
+                        
+
+    ## Create instance of data class
+    data = SyncData()
+
+    ## Depending on the output mmode of the solver the input files will be named differently
+    if method == "default":
+        in_file = input_file + "PhaseSync_HDF_Data.h5"
+    else:
+        in_file = input_file
+
+    ## Open file and read in the data
+    with h5py.File(in_file, 'r') as f:
+
+        ## Initialze counter
+        nn = 0
+
+        # Read in the spectra
+        for group in f.keys():
+            if "Iter" in group:
+                if 'PhaseOrder_R_k' in list(f[group].keys()):
+                    data.R_k[nn, :] = f[group]["PhaseOrder_R_k"][:]
+                if 'PhaseOrder_Theta_k' in list(f[group].keys()):
+                    data.theta_k[nn, :] = f[group]["PhaseOrder_Theta_k"][:]
+                if 'NormedPhaseOrder_R_k' in list(f[group].keys()):
+                    data.normed_R_k[nn, :] = f[group]["NormedPhaseOrder_R_k"][:]
+                if 'NormedPhaseOrder_Theta_k' in list(f[group].keys()):
+                    data.normed_theta_k[nn, :] = f[group]["NormedPhaseOrder_Theta_k"][:]
+                nn += 1
+            else:
+                continue
+
+    return data
 
 def import_post_processing_data(input_file, sim_data, method = "default"):
 

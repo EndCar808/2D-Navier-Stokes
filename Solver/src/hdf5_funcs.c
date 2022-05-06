@@ -927,12 +927,18 @@ void WriteDataToFile(double t, double dt, long int iters) {
 		// Create temp mem
 		double amp_k[sys_vars->n_spect];
 		double phase_k[sys_vars->n_spect];
+		double normed_amp_k[sys_vars->n_spect];
+		double normed_phase_k[sys_vars->n_spect];
 		for (int i = 0; i < sys_vars->n_spect; ++i) {
-			amp_k[i]   = cabs(run_data->phase_order_k[i]);
-			phase_k[i] = carg(run_data->phase_order_k[i]);
+			amp_k[i]          = cabs(run_data->phase_order_k[i]);
+			phase_k[i]        = carg(run_data->phase_order_k[i]);
+			normed_amp_k[i]   = cabs(run_data->normed_phase_order_k[i]);
+			normed_phase_k[i] = carg(run_data->normed_phase_order_k[i]);
 		}
 		WriteDataSerial(t, iters, sync_group_id, sys_vars->n_spect, "PhaseOrder_Theta_k", phase_k);
 		WriteDataSerial(t, iters, sync_group_id, sys_vars->n_spect, "PhaseOrder_R_k", amp_k);
+		WriteDataSerial(t, iters, sync_group_id, sys_vars->n_spect, "NormedPhaseOrder_Theta_k", normed_phase_k);
+		WriteDataSerial(t, iters, sync_group_id, sys_vars->n_spect, "NormedPhaseOrder_R_k", normed_amp_k);
 		#endif
 	}
 	else {

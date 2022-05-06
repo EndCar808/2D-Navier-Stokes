@@ -64,7 +64,6 @@ void SpectralSolve(void) {
 	// -------------------------------
 	AllocateMemory(NBatch, RK_data);
 
-
 	// -------------------------------
 	// FFTW Plans Setup
 	// -------------------------------
@@ -113,6 +112,7 @@ void SpectralSolve(void) {
 	// Create and open the output file - also write initial conditions to file
 	CreateOutputFilesWriteICs(N, dt);
 
+	printf("Here\n");
 	// -------------------------------------------------
 	// Print IC to Screen 
 	// -------------------------------------------------
@@ -169,7 +169,7 @@ void SpectralSolve(void) {
 			#endif
 
 			// Record System Measurables
-			ComputeSystemMeasurables(t, save_data_indx, RK_data);
+			// ComputeSystemMeasurables(t, save_data_indx, RK_data);
 
 			// If and when transient steps are complete write to file
 			if (iters > trans_steps) {
