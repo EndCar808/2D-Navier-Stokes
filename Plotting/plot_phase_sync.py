@@ -114,7 +114,6 @@ if __name__ == '__main__':
 	## Read in sync data
 	sync_data = import_sync_data(cmdargs.in_dir, sys_vars)
 
-	print(sync_data.normed_theta_k[0, :])
 
 	trim_size = np.trim_zeros(sync_data.theta_k[0, 1:]).shape[0]
 	tmp_time_order_k        = np.ones((trim_size, )) * np.complex(0.0, 0.0)
@@ -123,8 +122,6 @@ if __name__ == '__main__':
 	tmp_normed_time_order_k = np.ones((normed_trim_size, )) * np.complex(0.0, 0.0)
 	normed_time_order_k     = np.ones((sys_vars.ndata, normed_trim_size)) * np.complex(0.0, 0.0)
 
-	print(trim_size)
-	print(normed_trim_size)
 	for t in range(1, sys_vars.ndata):
 		theta_k_trim     	= sync_data.theta_k[t, :trim_size]
 		tmp_time_order_k 	+= np.exp(theta_k_trim * 1j)
@@ -187,7 +184,7 @@ if __name__ == '__main__':
 	ax1.set_yticklabels([r"$0$", r"$\frac{\pi}{2}$", r"$\pi$", r"$\frac{3\pi}{2}$", r"$2 \pi$"])
 	ax1.set_title(r"$t = {:0.5f}$".format(run_data.time[0]))
 	ax2 = fig.add_subplot(gs[0, 1])
-	im2 = ax2.imshow(np.fft.irfft2(run_data.w_hat[4000, :, :]), extent = (run_data.y[0], run_data.y[-1], run_data.x[-1], run_data.x[0]), cmap = "RdBu") # , vmin = w_min, vmax = w_max 
+	im2 = ax2.imshow(np.fft.irfft2(run_data.w_hat[int(sys_vars.ndata/2 -1), :, :]), extent = (run_data.y[0], run_data.y[-1], run_data.x[-1], run_data.x[0]), cmap = "RdBu") # , vmin = w_min, vmax = w_max 
 	ax2.set_xlabel(r"$y$")
 	ax2.set_ylabel(r"$x$")
 	ax2.set_xlim(0.0, run_data.y[-1])
@@ -196,7 +193,7 @@ if __name__ == '__main__':
 	ax2.set_xticklabels([r"$0$", r"$\frac{\pi}{2}$", r"$\pi$", r"$\frac{3\pi}{2}$", r"$2 \pi$"])
 	ax2.set_yticks([0.0, np.pi/2.0, np.pi, 1.5*np.pi, run_data.x[-1]])
 	ax2.set_yticklabels([r"$0$", r"$\frac{\pi}{2}$", r"$\pi$", r"$\frac{3\pi}{2}$", r"$2 \pi$"])
-	ax2.set_title(r"$t = {:0.5f}$".format(run_data.time[4000]))
+	ax2.set_title(r"$t = {:0.5f}$".format(run_data.time[int(sys_vars.ndata/2 -1)]))
 	ax3 = fig.add_subplot(gs[0, 2])	
 	im3 = ax3.imshow(np.fft.irfft2(run_data.w_hat[-1, :, :]), extent = (run_data.y[0], run_data.y[-1], run_data.x[-1], run_data.x[0]), cmap = "RdBu") # , vmin = w_min, vmax = w_max 
 	ax3.set_xlabel(r"$y$")
@@ -223,7 +220,7 @@ if __name__ == '__main__':
 	ax1.set_xscale('log')
 	ax1.grid(which = "major", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
 	ax2 = fig.add_subplot(gs[0, 1])
-	ax2.plot(spec_data.enrg_spectrum[4000, :kindx]) #  / np.sum(enrg_spec[:kindx])
+	ax2.plot(spec_data.enrg_spectrum[int(sys_vars.ndata/2 -1), :kindx]) #  / np.sum(enrg_spec[:kindx])
 	ax2.set_xlabel(r"$|\mathbf{k}|$")
 	ax2.set_ylabel(r"$\mathcal{K}(| \mathbf{k} |)$") #  / \sum \mathcal{K}(|k|)
 	ax2.set_title(r"Energy Spectrum")
@@ -247,7 +244,7 @@ if __name__ == '__main__':
 	ax4.set_xscale('log')
 	ax4.grid(which = "major", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
 	ax5 = fig.add_subplot(gs[1, 1])
-	ax5.plot(spec_data.enst_spectrum[4000, :kindx]) #  / np.sum(enrg_spec[:kindx])
+	ax5.plot(spec_data.enst_spectrum[int(sys_vars.ndata/2 -1), :kindx]) #  / np.sum(enrg_spec[:kindx])
 	ax5.set_xlabel(r"$|\mathbf{k}|$")
 	ax5.set_ylabel(r"$\mathcal{E}(| \mathbf{k} |)$") #  / \sum \mathcal{K}(|k|)
 	ax5.set_title(r"Enstorpy Spectrum")

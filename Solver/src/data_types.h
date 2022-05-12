@@ -51,29 +51,25 @@
 #define __RK4
 // #define __RK5
 // #define __DPRK5
-// Choose to turn of adaptive stepping or not 
-// #define __ADAPTIVE_STEP
-// #define __CFL_STEP
 // Choose which filter to use
 #define __DEALIAS_23
 // #define __DEALIAS_HOU_LI
 // Choose whether to print updates to screen
 #define __PRINT_SCREEN
+// Adaptive stepping Indicators 
+#define ADAPTIVE_STEP 1         // Indicator for the adaptive stepping
+#define CFL_STEP 1 				// Indicator to use a CFL like condition with the adaptive stepping
 // Solver Types
-#if defined(__HYPER)
-#define HYPER_VISC				// Turned on hyperviscosity if called for at compilation time
-#define VIS_POW 2.0             // The power of the hyperviscosity -> 1.0 means no hyperviscosity
-#endif
-#if defined(__EKMN_DRAG)
-#define EKMN_DRAG     			// Turn on Ekman drag if called for at compilation time
+#define HYPER_VISC 1			// Turned on hyperviscosity if called for at compilation time
+#define VISC_POW 2.0            // The power of the hyperviscosity -> 1.0 means no hyperviscosity
+#define EKMN_DRAG 1   			// Turn on Ekman drag if called for at compilation time
 #define EKMN_POW -2.0 			// The power of the Eckman drag term -> 0.0 means no drag
-#endif
+// For allow transient dynamics
+#define TRANSIENT_ITERS 1       // Indicator for transient iterations
+#define TRANSIENT_FRAC 0.2      // Fraction of total iteration = transient iterations
+// Allow for Phase Only mode
 #if defined(__PHASE_ONLY)		// Turn on phase only mode if called for at compilation
 #define PHASE_ONLY
-#endif
-// For allow transient dynamics
-#if defined(__TRANSIENTS)
-#define TRANSIENTS
 #endif
 // Testing the solver will be decided at compilation
 #if defined(__TESTING)
@@ -142,8 +138,8 @@
 #define GDT_C0 0.06             // The intial energy of the Gaussian decaying turbulence initial condition
 #define RING_MIN_K 3.0			// The minimum absolute wavevector value to set the ring initial condition
 #define RING_MAX_K 10.0			// The maximum absolute wavevector value to set the ring initial condition
-#define EXP_ENS_MIN_K 6.0 		// The minimum absolute wavevector value for the Exponential Enstrophy initial condition
-#define EXP_ENS_POW 6.0 		// The power for wavevectors for the Exponential enstrophy distribution
+#define EXTRM_ENS_MIN_K 1.5 	// The minimum absolute wavevector value for the Exponential Enstrophy initial condition
+#define EXTRM_ENS_POW 1.5 		// The power for wavevectors for the Exponential enstrophy distribution
 // Forcing parameters
 #define STOC_FORC_K_MIN	0.5		// The minimum value of the modulus forced wavevectors for the stochasitc (Gaussian) forcing
 #define STOC_FORC_K_MAX 2.5     // The maximum value of the modulus forced wavevectors for the stochastic (Gaussian) forcing
@@ -188,14 +184,22 @@ typedef struct system_vars_struct {
 	double w_max_init;					// Max vorticity of the initial condition
 	int n_spect;                        // Size of the spectra arrays
 	int print_every;                    // Records how many iterations are performed before printing to file
-	double EKMN_ALPHA; 					// The value of the Ekman drag coefficient
-	double CFL_CONST;					// The CFL constant for the adaptive step
-	double NU;							// The viscosity
 	int SAVE_EVERY; 					// For specifying how often to print
 	double force_scale_var;				// The scaling variable for the forced modes
 	int force_k; 						// The forcing wavenumber 
 	int local_forcing_proc;				// Identifier used to indicate which process contains modes that need to be forced
 	int num_forced_modes; 				// The number of modes to be forced on the local process
+	int TRANS_ITERS_FLAG;				// Flag for indicating whether transient iterations are to be performed
+	double TRANS_ITERS_FRAC;			// The fraction of total iterations that will be ignored
+	int ADAPT_STEP_FLAG;			 	// Flag for indicating if adaptive stepping is to be used
+	double CFL_CONST;					// The CFL constant for the adaptive step
+	int CFL_COND_FLAG;					// Flag for indicating if the CFL like condition is to be used for the adaptive stepping
+	double NU;							// The viscosity
+	int HYPER_VISC_FLAG;				// Flag to indicate if hyperviscosity is to be used
+	double HYPER_VISC_POW;				// The power of the hyper viscosity to use
+	double EKMN_ALPHA; 					// The value of the Ekman drag coefficient
+	int EKMN_DRAG_FLAG;					// Flag for indicating if ekman drag is to be used
+	double EKMN_DRAG_POW;				// The power of the hyper drag to be used
 } system_vars_struct;
 
 // Runtime data struct
@@ -266,8 +270,10 @@ typedef struct HDF_file_info_struct {
 	char output_file_name[512];     // Output file name array
 	char spectra_file_name[512];    // Spectra file name array
 	char sync_file_name[512]; 	    // Phase Sync file name array
+	char input_dir[512];			// Inputs directory
 	char output_dir[512];			// Output directory
 	char output_tag[64]; 			// Tag to be added to the output directory
+	hid_t input_file_handle;		// File handle for the input file
 	hid_t output_file_handle;		// Main file handle for the output file 
 	hid_t spectra_file_handle;      // Spectra file handle
 	hid_t sync_file_handle;		    // Phase sync file handle

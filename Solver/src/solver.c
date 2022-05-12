@@ -112,7 +112,6 @@ void SpectralSolve(void) {
 	// Create and open the output file - also write initial conditions to file
 	CreateOutputFilesWriteICs(N, dt);
 
-	printf("Here\n");
 	// -------------------------------------------------
 	// Print IC to Screen 
 	// -------------------------------------------------
@@ -123,13 +122,15 @@ void SpectralSolve(void) {
 	//////////////////////////////
 	// Begin Integration
 	//////////////////////////////
-	t 				   += dt;
-	int iters          = 1;
-	#if defined(TRANSIENTS)
-	int save_data_indx = 0;
-	#else
-	int save_data_indx = 1;
-	#endif
+	t         += dt;
+	int iters = 1;
+	int save_data_indx;
+	if (sys_vars->TRANS_ITERS_FLAG == TRANSIENT_ITERS) {
+		save_data_indx = 0;
+	}
+	else {
+		save_data_indx = 1;
+	}
 	while (t <= T) {
 
 		// -------------------------------	
@@ -169,7 +170,8 @@ void SpectralSolve(void) {
 			#endif
 
 			// Record System Measurables
-			// ComputeSystemMeasurables(t, save_data_indx, RK_data);
+			ComputeSystemMeasurables(t, save_data_indx, RK_data);
+			// RecordSystemMeasures(t, save_data_indx, RK_data);
 
 			// If and when transient steps are complete write to file
 			if (iters > trans_steps) {
@@ -184,12 +186,12 @@ void SpectralSolve(void) {
 		// Print Update To Screen
 		// -------------------------------
 		#if defined(__PRINT_SCREEN)
-		#if defined(TRANSIENTS)
-		// Print update that transient iters have been complete
-		if ((iters == trans_steps) && !(sys_vars->rank)) {
-			printf("\n\n...Transient Iterations Complete!\n\n");
+		if (sys_vars->TRANS_ITERS_FLAG == TRANSIENT_ITERS) {
+			// Print update that transient iters have been complete
+			if ((iters == trans_steps) && !(sys_vars->rank)) {
+				printf("\n\n...Transient Iterations Complete!\n\n");
+			}
 		}
-		#endif
 		if (iters % sys_vars->SAVE_EVERY == 0) {
 			// Print update of the system to the terminal 
 			if (iters <= sys_vars->trans_iters) {
@@ -208,12 +210,17 @@ void SpectralSolve(void) {
 		// -------------------------------
 		// Update timestep & iteration counter
 		iters++;
-		#if defined(__ADAPTIVE_STEP) 
-		GetTimestep(&dt);
-		t += dt; 
-		#elif !defined(__DPRK5) && !defined(__ADAPTIVE_STEP)
-		t = iters * dt;
-		#endif
+		if (sys_vars->ADAPT_STEP_FLAG == ADAPTIVE_STEP) {
+			GetTimestep(&dt);
+			t += dt; 
+		}
+		else {
+			#if defined(__DPRK5)
+			t += dt;
+			#else
+			t = iters * dt;
+			#endif
+		}
 
 		// Check System: Determine if system has blown up or integration limits reached
 		SystemCheck(dt, iters);
@@ -372,20 +379,22 @@ void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdif
 			// Compute the pre factors for the RK4CN update step
 			k_sqr = (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 			
-			#if defined(HYPER_VISC) && defined(EKMN_DRAG) 
-			// Both Hyperviscosity and Ekman drag
-			D_fac = dt * (sys_vars->NU * pow(k_sqr, VIS_POW) + sys_vars->EKMN_ALPHA * pow(k_sqr, EKMN_POW)); 
-			#elif !defined(HYPER_VISC) && defined(EKMN_DRAG) 
-			// No hyperviscosity but we have Ekman drag
-			D_fac = dt * (sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA * pow(k_sqr, EKMN_POW)); 
-			#elif defined(HYPER_VISC) && !defined(EKMN_DRAG) 
-			// Hyperviscosity only
-			D_fac = dt * (sys_vars->NU * pow(k_sqr, VIS_POW)); 
+			if((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
+				// Both Hyperviscosity and Ekman drag
+				D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW) + sys_vars->EKMN_ALPHA * pow(k_sqr, sys_vars->EKMN_DRAG_POW)); 
+			}
+			else if((sys_vars->HYPER_VISC_FLAG != HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
+				// No hyperviscosity but we have Ekman drag
+				D_fac = dt * (sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA * pow(k_sqr, sys_vars->EKMN_DRAG_POW)); 
+			}
+			else if((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG != EKMN_DRAG)) {
+				// Hyperviscosity only
+				D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW)); 
 			#else 
-			// No hyper viscosity or no ekman drag -> just normal viscosity
-			D_fac = dt * (sys_vars->NU * k_sqr); 
-			#endif
-
+				// No hyper viscosity or no ekman drag -> just normal viscosity
+				D_fac = dt * (sys_vars->NU * k_sqr); 
+			}
+			
 			// Complete the update step
 			run_data->w_hat[indx] = run_data->w_hat[indx] * ((2.0 - D_fac) / (2.0 + D_fac)) + (2.0 * dt / (2.0 + D_fac)) * (RK5_B1 * RK_data->RK1[indx] + RK5_B3 * RK_data->RK3[indx] + RK5_B4 * RK_data->RK4[indx] + RK5_B5 * RK_data->RK5[indx] + RK5_B6 * RK_data->RK6[indx]);
 			#endif
@@ -580,20 +589,23 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Nx, RK_da
 			// Compute the pre factors for the RK4CN update step
 			k_sqr = (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 			
-			#if defined(HYPER_VISC) && defined(EKMN_DRAG) 
-			// Both Hyperviscosity and Ekman drag
-			D_fac = dt * (sys_vars->NU * pow(k_sqr, VIS_POW) + sys_vars->EKMN_ALPHA * pow(k_sqr, EKMN_POW)); 
-			#elif !defined(HYPER_VISC) && defined(EKMN_DRAG) 
-			// No hyperviscosity but we have Ekman drag
-			D_fac = dt * (sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA * pow(k_sqr, EKMN_POW)); 
-			#elif defined(HYPER_VISC) && !defined(EKMN_DRAG) 
-			// Hyperviscosity only
-			D_fac = dt * (sys_vars->NU * pow(k_sqr, VIS_POW)); 
-			#else 
-			// No hyper viscosity or no ekman drag -> just normal viscosity
-			D_fac = dt * (sys_vars->NU * k_sqr); 
-			#endif
-
+			if((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
+				// Both Hyperviscosity and Ekman drag
+				D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW) + sys_vars->EKMN_ALPHA * pow(k_sqr, sys_vars->EKMN_DRAG_POW)); 
+			}
+			else if((sys_vars->HYPER_VISC_FLAG != HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
+				// No hyperviscosity but we have Ekman drag
+				D_fac = dt * (sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA * pow(k_sqr, sys_vars->EKMN_DRAG_POW));
+			}
+			else if((sys_vars->HYPER_VISC_FLAG = HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG != EKMN_DRAG)) {
+				// Hyperviscosity only
+				D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW));
+			}
+			else {
+				// No hyper viscosity or no ekman drag -> just normal viscosity
+				D_fac = dt * (sys_vars->NU * k_sqr);
+			}
+			
 			// Update Fourier vorticity
 			run_data->w_hat[indx] = run_data->w_hat[indx] * ((2.0 - D_fac) / (2.0 + D_fac)) + (2.0 * dt / (2.0 + D_fac)) * (RK4_B1 * RK_data->RK1[indx] + RK4_B2 * RK_data->RK2[indx] + RK4_B3 * RK_data->RK3[indx] + RK4_B4 * RK_data->RK4[indx]);
 			#endif
@@ -1232,7 +1244,7 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 		// Free memory
 		fftw_free(psi_hat);
 	}
-	else if (!(strcmp(sys_vars->u0, "EXP_ENS"))) {
+	else if (!(strcmp(sys_vars->u0, "EXTRM_ENS"))) {
 	
 		// ---------------------------------------
 		// Define the Normalization Factor
@@ -1246,27 +1258,27 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 
 				if ((j == 0) || (j == Ny_Fourier - 1)) {
 					// Compute the sum of appropiate modes to use as a normalization factor
-					if ((k_sqr > 0) && (sqrt(k_sqr) > EXP_ENS_MIN_K)) {
-						norm += pow(sqrt(k_sqr), -EXP_ENS_POW);
+					if ((k_sqr > 0) && (sqrt(k_sqr) > EXTRM_ENS_MIN_K)) {
+						norm += pow(sqrt(k_sqr), -EXTRM_ENS_POW);
 					}
-					else if (sqrt(k_sqr) <= EXP_ENS_MIN_K){
-						norm += pow(EXP_ENS_MIN_K, -EXP_ENS_POW) * exp((sqrt(k_sqr) - EXP_ENS_MIN_K)/3.5);
+					else if (sqrt(k_sqr) <= EXTRM_ENS_MIN_K){
+						norm += pow(EXTRM_ENS_MIN_K, -EXTRM_ENS_POW) * exp((sqrt(k_sqr) - EXTRM_ENS_MIN_K)/3.5);
 					}
 				}
 				else {
 					// Compute the sum of appropiate modes to use as a normalization factor
-					if ((k_sqr > 0) && (sqrt(k_sqr) > EXP_ENS_MIN_K)) {
-						norm += 2.0 * pow(sqrt(k_sqr), -EXP_ENS_POW);
+					if ((k_sqr > 0) && (sqrt(k_sqr) > EXTRM_ENS_MIN_K)) {
+						norm += 2.0 * pow(sqrt(k_sqr), -EXTRM_ENS_POW);
 					}
-					else if (sqrt(k_sqr) <= EXP_ENS_MIN_K){
-						norm += 2.0 * pow(EXP_ENS_MIN_K, -EXP_ENS_POW) * exp((sqrt(k_sqr) - EXP_ENS_MIN_K)/3.5);
+					else if (sqrt(k_sqr) <= EXTRM_ENS_MIN_K){
+						norm += 2.0 * pow(EXTRM_ENS_MIN_K, -EXTRM_ENS_POW) * exp((sqrt(k_sqr) - EXTRM_ENS_MIN_K)/3.5);
 					}	
 				}
 			}
 		}
 		// Synchronize normalization factor amongst the processes
 		MPI_Allreduce(MPI_IN_PLACE, &norm, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-		norm = sqrt(EXP_ENS_MIN_K / norm);
+		norm = sqrt(EXTRM_ENS_MIN_K / norm);
 
 		// ---------------------------------------
 		// Initialize Fourier Space Vorticity
@@ -1281,15 +1293,15 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 				k_sqr = (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 
 				// Initialize the Fourier modes
-				if ((k_sqr > 0) && (sqrt(k_sqr) > EXP_ENS_MIN_K)) {
+				if ((k_sqr > 0) && (sqrt(k_sqr) > EXTRM_ENS_MIN_K)) {
 					// Get random uniform number of the phases
 					u1 = (double) rand() / (double) RAND_MAX;
-					w_hat[indx] = pow(sqrt(k_sqr), -EXP_ENS_POW / 2.0) * norm * cexp(I * 2.0 * M_PI * u1);
+					w_hat[indx] = pow(sqrt(k_sqr), -EXTRM_ENS_POW / 2.0) * norm * cexp(I * 2.0 * M_PI * u1);
 				}
-				else if (sqrt(k_sqr) <= EXP_ENS_MIN_K){
+				else if (sqrt(k_sqr) <= EXTRM_ENS_MIN_K){
 					// Get random uniform number of the phases
 					u1 = (double) rand() / (double) RAND_MAX;
-					w_hat[indx] = pow(EXP_ENS_MIN_K, -EXP_ENS_POW / 2.0) * exp((sqrt(k_sqr) - EXP_ENS_MIN_K)/3.5) * norm * cexp(I * 2.0 * M_PI * u1);
+					w_hat[indx] = pow(EXTRM_ENS_MIN_K, -EXTRM_ENS_POW / 2.0) * exp((sqrt(k_sqr) - EXTRM_ENS_MIN_K)/3.5) * norm * cexp(I * 2.0 * M_PI * u1);
 				}
 				else {
 					w_hat[indx] = 0.0 + 0.0 * I;
@@ -1343,6 +1355,63 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 				}
 			}
 		}
+	}
+	else if (!(strcmp(sys_vars->u0, "MAX_PALIN"))) {
+	
+		// ---------------------------------------
+		// Allocate Temporary Memory
+		// ---------------------------------------
+		// Allocate memory for the Real Space stream function
+		double* tmp_psi      = (double* )fftw_malloc(sizeof(double) * 2 * sys_vars->alloc_local);
+		double* tmp_psi_full = (double* )fftw_malloc(sizeof(double) * Nx * (Ny));
+
+
+		// ---------------------------------------
+		// Read in Initial Condition From File
+		// ---------------------------------------
+		if (!sys_vars->rank) {
+			// Get input file path
+			char tmp_path[512];
+			strcpy(tmp_path, file_info->input_dir);
+			strcat(tmp_path, "MaxPalinstrophy/maxdpdt_P10000_N512_IG0_psi_f.h5"); 
+			strcpy(file_info->input_file_name, tmp_path); 
+
+			// Open input file containing initial condition
+			file_info->input_file_handle = H5Fopen(file_info->input_file_name, H5F_ACC_RDONLY, H5P_DEFAULT);
+    		if (file_info->input_file_handle < 0) {
+				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to open input file ["CYAN"%s"RESET"] for the initial condition ["CYAN"%s"RESET"]\n-->> Exiting...\n", file_info->input_file_name, sys_vars->u0);
+				exit(1);
+			}
+
+			// Read in stream function initial condition
+			if ((H5LTread_dataset_double(file_info->input_file_handle, "/psi", tmp_psi_full)) < 0) {
+				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to read dataset ["CYAN"%s"RESET"] for the initial condition ["CYAN"%s"RESET"]\n-->> Exiting...\n", "/psi", sys_vars->u0);
+				exit(1);	
+			}
+		}
+
+		// ---------------------------------------
+		// Distribute Initial Condition
+		// ---------------------------------------
+		MPI_Scatter(tmp_psi_full, sys_vars->local_Nx * Ny, MPI_DOUBLE, tmp_psi, sys_vars->local_Nx * (Ny + 2), MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+		// ---------------------------------------
+		// Initialize Real Space Vorticity
+		// ---------------------------------------
+		for (int i = 0; i < local_Nx; ++i) {	
+			tmp = i * (Ny + 2);
+			for (int j = 0; j < Ny; ++j) {
+				indx = tmp + j;
+
+				// Compute the real space vorticity from stream function
+				run_data->w[indx] = - (double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]) * tmp_psi[indx];
+			}
+		}
+
+		// ---------------------------------------
+		// Transform to Fourier Space Vorticity
+		// ---------------------------------------
+		fftw_mpi_execute_dft_r2c((sys_vars->fftw_2d_dft_r2c), run_data->w, w_hat);
 	}
 	else if (!(strcmp(sys_vars->u0, "GAUSS_BLOB"))) {
 	
@@ -1555,9 +1624,9 @@ void InitializeIntegrationVariables(double* t0, double* t, double* dt, double* T
 	// -------------------------------
 	// Get the Timestep
 	// -------------------------------
-	#if defined(__ADAPTIVE_STEP)
-	GetTimestep(&(sys_vars->dt));
-	#endif
+	if (sys_vars->ADAPT_STEP_FLAG == ADAPTIVE_STEP) {
+		GetTimestep(&(sys_vars->dt));
+	}
 
 	// -------------------------------
 	// Get Time variables
@@ -1575,27 +1644,28 @@ void InitializeIntegrationVariables(double* t0, double* t, double* dt, double* T
 	// -------------------------------
 	// Number of time steps and saving steps
 	sys_vars->num_t_steps = ((*T) - (*t0)) / (*dt);
-	#if defined(TRANSIENTS)
-	// Get the transient iterations
-	(* trans_steps)       = (long int)(TRANS_FRAC * sys_vars->num_t_steps);
-	sys_vars->trans_iters = (* trans_steps);
+	if (sys_vars->TRANS_ITERS_FLAG == TRANSIENT_ITERS) {
+		// Get the transient iterations
+		(* trans_steps)       = (long int)(sys_vars->TRANS_ITERS_FRAC * sys_vars->num_t_steps);
+		sys_vars->trans_iters = (* trans_steps);
 
-	// Get the number of steps to perform before printing to file -> allowing for a transient fraction of these to be ignored
-	sys_vars->num_print_steps = (sys_vars->num_t_steps >= sys_vars->SAVE_EVERY ) ? (sys_vars->num_t_steps - sys_vars->trans_iters) / sys_vars->SAVE_EVERY : sys_vars->num_t_steps - sys_vars->trans_iters;	 
-	if (!(sys_vars->rank)){
-		printf("Total Iters: %ld\t Saving Iters: %ld\t Transient Steps: %ld\n", sys_vars->num_t_steps, sys_vars->num_print_steps, sys_vars->trans_iters);
+		// Get the number of steps to perform before printing to file -> allowing for a transient fraction of these to be ignored
+		sys_vars->num_print_steps = (sys_vars->num_t_steps >= sys_vars->SAVE_EVERY ) ? (sys_vars->num_t_steps - sys_vars->trans_iters) / sys_vars->SAVE_EVERY : sys_vars->num_t_steps - sys_vars->trans_iters;	 
+		if (!(sys_vars->rank)){
+			printf("Total Iters: %ld\t Saving Iters: %ld\t Transient Steps: %ld\n", sys_vars->num_t_steps, sys_vars->num_print_steps, sys_vars->trans_iters);
+		}
 	}
-	#else
-	// Get the transient iterations
-	(* trans_steps)       = 0;
-	sys_vars->trans_iters = (* trans_steps);
+	else {
+		// Get the transient iterations
+		(* trans_steps)       = 0;
+		sys_vars->trans_iters = (* trans_steps);
 
-	// Get the number of steps to perform before printing to file
-	sys_vars->num_print_steps = (sys_vars->num_t_steps >= sys_vars->SAVE_EVERY ) ? sys_vars->num_t_steps / sys_vars->SAVE_EVERY + 1 : sys_vars->num_t_steps + 1; // plus one to include initial condition
-	if (!(sys_vars->rank)){
-		printf("Total Iters: %ld\t Saving Iters: %ld\n", sys_vars->num_t_steps, sys_vars->num_print_steps);
+		// Get the number of steps to perform before printing to file
+		sys_vars->num_print_steps = (sys_vars->num_t_steps >= sys_vars->SAVE_EVERY ) ? sys_vars->num_t_steps / sys_vars->SAVE_EVERY + 1 : sys_vars->num_t_steps + 1; // plus one to include initial condition
+		if (!(sys_vars->rank)){
+			printf("Total Iters: %ld\t Saving Iters: %ld\n", sys_vars->num_t_steps, sys_vars->num_print_steps);
+		}
 	}
-	#endif
 
 	// Variable to control how ofter to print to screen -> set it to half the saving to file steps
 	sys_vars->print_every = (sys_vars->num_t_steps >= 10 ) ? (int)sys_vars->SAVE_EVERY : 1;
@@ -1787,13 +1857,13 @@ void PrintUpdateToTerminal(int iters, double t, double dt, double T, int save_da
 
 		// Print Update to screen
 		if( !(sys_vars->rank) ) {	
-			printf("Iter: %d\tt: %1.6lf/%1.3lf\tdt: %g\t Max Vort: %1.4lf\tKE: %1.5g\tENS: %1.5g\tPAL: %1.5g\tL2: %1.5g\tLinf: %1.5g\n", iters, t, dt, T, max_vort, run_data->tot_energy[save_data_indx], run_data->tot_enstr[save_data_indx], run_data->tot_palin[save_data_indx], norms[0], norms[1]);
+			printf("Iter: %d\tt: %1.6lf/%1.3lf\tdt: %1.6g \tMax Vort: %1.5g \tKE: %1.5g\tENS: %1.5g\tPAL: %1.5g\tL2: %1.5g\tLinf: %1.5g\n", iters, t, T, dt, max_vort, run_data->tot_energy[save_data_indx], run_data->tot_enstr[save_data_indx], run_data->tot_palin[save_data_indx], norms[0], norms[1]);
 		}
 	}
 	else {
 		// Print Update to screen
 		if( !(sys_vars->rank) ) {	
-			printf("Iter: %d\tt: %1.6lf/%1.3lf\tdt: %g\t Max Vort: %1.4lf\tTKE: %1.8lf\tENS: %1.8lf\tPAL: %1.5g\tE_Diss: %1.5g\tEns_Diss: %1.5g\n", iters, t, T, dt, max_vort, run_data->tot_energy[save_data_indx], run_data->tot_enstr[save_data_indx], run_data->tot_palin[save_data_indx], run_data->enrg_diss[save_data_indx], run_data->enst_diss[save_data_indx]);
+			printf("Iter: %d\tt: %1.6lf/%1.3lf\tdt: %1.6g \tMax Vort: %1.5g \tTKE: %1.8lf\tENS: %1.8lf\tPAL: %1.5g\tE_Diss: %1.5g\tEns_Diss: %1.5g\n", iters, t, T, dt, max_vort, run_data->tot_energy[save_data_indx], run_data->tot_enstr[save_data_indx], run_data->tot_palin[save_data_indx], run_data->enrg_diss[save_data_indx], run_data->enst_diss[save_data_indx]);
 		}
 	}
 	#else
@@ -1802,7 +1872,7 @@ void PrintUpdateToTerminal(int iters, double t, double dt, double T, int save_da
 
 	// Print to screen
 	if( !(sys_vars->rank) ) {	
-		printf("Iter: %d/%ld\tt: %1.6lf/%1.3lf\tdt: %g\tMax Vort: %1.4lf\tKE: %1.5g\tENS: %1.5g\tPAL: %1.5g\n", iters, sys_vars->num_t_steps, t, T, dt, max_vort, run_data->tot_energy[save_data_indx], run_data->tot_enstr[save_data_indx], run_data->tot_palin[save_data_indx]);
+		printf("Iter: %d/%ld\tt: %1.6lf/%1.3lf\tdt: %1.6g \tMax Vort: %1.5g \tKE: %1.5g\tENS: %1.5g\tPAL: %1.5g\n", iters, sys_vars->num_t_steps, t, T, dt, max_vort, run_data->tot_energy[save_data_indx], run_data->tot_enstr[save_data_indx], run_data->tot_palin[save_data_indx]);
 	}
 	#endif	
 }
@@ -1815,104 +1885,105 @@ void GetTimestep(double* dt) {
 	// -------------------------------
 	// Compute New Timestep
 	// -------------------------------
-	#if defined(__CFL_STEP)
-	// Initialize variables
-	int tmp;
-	int indx;
-	fftw_complex I_over_k_sqr;
-	const long int Nx = sys_vars->N[0];
-	const long int Ny = sys_vars->N[1];
-	
-	// -------------------------------
-	// Compute the Velocity
-	// -------------------------------
-	// Compute the velocity in Fourier space
-	for (int i = 0; i < sys_vars->local_Nx; ++i) {
-		tmp = i * sys_vars->N[1] / 2 + 1;
-		for (int j = 0; j < sys_vars->N[1] / 2 + 1; ++j) {
-			indx = tmp + j;
+	if(sys_vars->CFL_COND_FLAG == CFL_STEP) {
+		// Initialize variables
+		int tmp;
+		int indx;
+		fftw_complex I_over_k_sqr;
+		const long int Nx = sys_vars->N[0];
+		const long int Ny = sys_vars->N[1];
+		
+		// -------------------------------
+		// Compute the Velocity
+		// -------------------------------
+		// Compute the velocity in Fourier space
+		for (int i = 0; i < sys_vars->local_Nx; ++i) {
+			tmp = i * sys_vars->N[1] / 2 + 1;
+			for (int j = 0; j < sys_vars->N[1] / 2 + 1; ++j) {
+				indx = tmp + j;
 
-			if ((run_data->k[0][i] != 0) || (run_data->k[1][j]  != 0)) {
-				// Compute the prefactor				
-				I_over_k_sqr = I / (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
+				if ((run_data->k[0][i] != 0) || (run_data->k[1][j]  != 0)) {
+					// Compute the prefactor				
+					I_over_k_sqr = I / (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 
-				// compute the velocity in Fourier space
-				run_data->u_hat[SYS_DIM * indx + 0] = ((double) run_data->k[1][j]) * I_over_k_sqr * run_data->w_hat[indx];
-				run_data->u_hat[SYS_DIM * indx + 1] = -1.0 * ((double) run_data->k[0][i]) * I_over_k_sqr * run_data->w_hat[indx];
+					// compute the velocity in Fourier space
+					run_data->u_hat[SYS_DIM * indx + 0] = ((double) run_data->k[1][j]) * I_over_k_sqr * run_data->w_hat[indx];
+					run_data->u_hat[SYS_DIM * indx + 1] = -1.0 * ((double) run_data->k[0][i]) * I_over_k_sqr * run_data->w_hat[indx];
+				}
+				else {
+					// Get the zero mode
+					run_data->u_hat[SYS_DIM * indx + 0] = 0.0 + 0.0 * I;
+					run_data->u_hat[SYS_DIM * indx + 1] = 0.0 + 0.0 * I;
+				}
 			}
-			else {
-				// Get the zero mode
-				run_data->u_hat[SYS_DIM * indx + 0] = 0.0 + 0.0 * I;
-				run_data->u_hat[SYS_DIM * indx + 1] = 0.0 + 0.0 * I;
+		}
+
+		// Transform back to Fourier space
+		fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_batch_c2r), run_data->u_hat, run_data->u);
+		for (int i = 0; i < sys_vars->local_Nx; ++i) {
+			tmp = i * (Ny + 2);
+			for (int j = 0; j < Ny; ++j) {
+				indx = tmp + j;
+
+				// Normalize
+				run_data->u[SYS_DIM * indx + 0] *= 1.0 / (double )(Nx * Ny);
+				run_data->u[SYS_DIM * indx + 1] *= 1.0 / (double )(Nx * Ny);
 			}
 		}
-	}
 
-	// Transform back to Fourier space
-	fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_batch_c2r), run_data->u_hat, run_data->u);
-	for (int i = 0; i < sys_vars->local_Nx; ++i) {
-		tmp = i * (Ny + 2);
-		for (int j = 0; j < Ny; ++j) {
-			indx = tmp + j;
+		// -------------------------------
+		// Find the Times Scales 
+		// -------------------------------
+		// Find the convective scales
+		double scales_convect = 0.0;
+		for (int i = 0; i < sys_vars->local_Nx; ++i) {
+			tmp = i * (sys_vars->N[1] + 2);
+			for (int j = 0; j < sys_vars->N[1]; ++j) {
+				indx = tmp + j;
 
-			// Normalize
-			run_data->u[SYS_DIM * indx + 0] *= 1.0 / (double )(Nx * Ny);
-			run_data->u[SYS_DIM * indx + 1] *= 1.0 / (double )(Nx * Ny);
+				scales_convect = fmax(M_PI * (fabs(run_data->u[SYS_DIM * indx + 0]) / sys_vars->dx + fabs(run_data->u[SYS_DIM * indx + 1]) / sys_vars->dy), scales_convect);
+			}
 		}
-	}
+		// Gather the maximum of the convective scales
+		MPI_Allreduce(MPI_IN_PLACE, &scales_convect, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
 
-	// -------------------------------
-	// Find the Times Scales 
-	// -------------------------------
-	// Find the convective scales
-	double scales_convect = 0.0;
-	for (int i = 0; i < sys_vars->local_Nx; ++i) {
-		tmp = i * (sys_vars->N[1] + 2);
-		for (int j = 0; j < sys_vars->N[1]; ++j) {
-			indx = tmp + j;
+		// Find the diffusive scales
+		double scales_diff = pow(M_PI, 2.0) * (sys_vars->NU / pow(sys_vars->dx, 2.0) + sys_vars->NU / pow(sys_vars->dy, 2.0));
 
-			scales_convect = fmax(M_PI * (fabs(run_data->u[SYS_DIM * indx + 0]) / sys_vars->dx + fabs(run_data->u[SYS_DIM * indx + 1]) / sys_vars->dy), scales_convect);
-		}
-	}
-	// Gather the maximum of the convective scales
-	MPI_Allreduce(MPI_IN_PLACE, &scales_convect, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-
-	// Find the diffusive scales
-	double scales_diff = pow(M_PI, 2.0) * (sys_vars->NU / pow(sys_vars->dx, 2.0) + sys_vars->NU / pow(sys_vars->dy, 2.0));
-
-	// -------------------------------
-	// Update Timestep
-	// -------------------------------
-	(* dt) = sys_vars->CFL_CONST / (scales_convect + scales_diff);
-	#else
-	double dt_new;
-	double w_max;
-
-
-	// -------------------------------
-	// Get Current Max Vorticity 
-	// -------------------------------
-	w_max = GetMaxData("VORT");
-
-	// Find proposed timestep = h_0 * (max{w(0)} / max{w(t)}) -> this ensures that the maximum vorticity by the timestep is constant
-	dt_new = (sys_vars->dt) * (sys_vars->w_max_init / w_max);	
-
-	// Gather new timesteps from all processes -> pick the smallest one
-	MPI_Allreduce(MPI_IN_PLACE, &dt_new, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
-	
-	// -------------------------------
-	// Update Timestep
-	// -------------------------------
-	// Check if new timestep meets approved criteria
-	if (dt_new > 2.0 * (*dt)) {  
-		// Timestep can be increased by no more than twice current timestep
-		(*dt) = 2.0 * (*dt); 
+		// -------------------------------
+		// Update Timestep
+		// -------------------------------
+		(* dt) = sys_vars->CFL_CONST / (scales_convect + scales_diff);
 	}
 	else {
-		// Update with new timestep - new timestep is checked for criteria in SystemsCheck() function 
-		(*dt) = dt_new;
+		double dt_new;
+		double w_max;
+
+
+		// -------------------------------
+		// Get Current Max Vorticity 
+		// -------------------------------
+		w_max = GetMaxData("VORT");
+
+		// Find proposed timestep = h_0 * (max{w(0)} / max{w(t)}) -> this ensures that the maximum vorticity by the timestep is constant
+		dt_new = (sys_vars->dt) * (sys_vars->w_max_init / w_max);	
+
+		// Gather new timesteps from all processes -> pick the smallest one
+		MPI_Allreduce(MPI_IN_PLACE, &dt_new, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
+		
+		// -------------------------------
+		// Update Timestep
+		// -------------------------------
+		// Check if new timestep meets approved criteria
+		if (dt_new > 2.0 * (*dt)) {  
+			// Timestep can be increased by no more than twice current timestep
+			(*dt) = 2.0 * (*dt); 
+		}
+		else {
+			// Update with new timestep - new timestep is checked for criteria in SystemsCheck() function 
+			(*dt) = dt_new;
+		}
 	}
-	#endif
 
 	// -------------------------------
 	// Record Min/Max Timestep

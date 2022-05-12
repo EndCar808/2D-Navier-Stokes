@@ -47,16 +47,21 @@ else:
 
 ## System parameters
 nu             = 3.125e-06
+hypervisc      = False 
+hypervisc_pow  = 2.0
 ekmn_alpha     = 0.0
-hypervisc      = 2.0 
-ekmn_hypo_diff = 0
+ekmn_hypo_diff = False
+ekmn_hypo_pow  = -2.0
+
 
 ## Time parameters
-t0        = 0.0
-T         = 100.0
-dt        = 25e-4
-cfl       = 0.8
-step_type = False
+t0          = 0.0
+T           = 100.0
+dt          = 25e-4
+cfl_cond    = True
+cfl         = 0.8
+trans_iters = False
+step_type   = False
 
 ## Solver parameters
 ic          = ["DECAY_TURB_BB", "DECAY_TURB_NB", "DECAY_TURB_EXP"]
@@ -76,6 +81,7 @@ post_output_dir = output_dir + "SIM_DATA" + sys_tag
 
 ## Job parameters
 executable                  = "Solver/bin/solver"
+post_options                = "-p {} -a {} -a {} -k {} -v {} -t {}".format(1, 24, 1, 0.75, nu, solver_tag)
 plot_script                 = "Plotting/plot_jet_sync.py"
 plot_options                = "--triads=0 --par --plot --vid -f PostProcessing_HDF_Data_SECTORS[24]_KFRAC[0.50]_TAG[" + solver_tag + "].h5 --full=sec -t Test-Sync"
 solver                      = True
@@ -98,13 +104,15 @@ config = ConfigParser()
 ##---------------------------
 ## System variables
 config['SYSTEM'] = {
-    'Nx'                : Nx,
-    'Ny'                : Ny,
-    'Nk'                : Nk,
-    'viscosity'         : nu,
-    'drag_coefficient'  : ekmn_alpha,
-    'hyperviscosity'    : hypervisc,
-    'hypo_diffusion'    : ekmn_hypo_diff
+    'Nx'                 : Nx,
+    'Ny'                 : Ny,
+    'Nk'                 : Nk,
+    'viscosity'          : nu,
+    'drag_coefficient'   : ekmn_alpha,
+    'hyperviscosity'     : hypervisc,
+    'hyperviscosity_pow' : hypervisc_pow
+    'hypo_diffusion'     : ekmn_hypo_diff
+    'hypo_diffusion_pow' : ekmn_hypo_pow
 }
 
 ## Solver variables
@@ -121,7 +129,9 @@ config['TIME'] = {
     'start_time'         : t0,
     'end_time'           : T,
     'timestep'           : dt,
+    'cfl_cond'           : cfl_cond
     'cfl'                : cfl,
+    'trans_iters'        : trans_iters
     'adaptive_step_type' : step_type
 }
 
@@ -139,6 +149,7 @@ config['DIRECTORIES'] = {
 ## Job variables
 config['JOB'] = {
     'executable'                  : executable,
+    'post_options'                : post_options
     'plot_script'                 : plot_script,
     'plot_options'                : plot_options,
     'call_solver'                 : solver,

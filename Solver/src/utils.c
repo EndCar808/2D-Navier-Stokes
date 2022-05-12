@@ -35,15 +35,21 @@ int GetCMLArgs(int argc, char** argv) {
 
 	// Initialize Variables
 	int c;
-	int dim_flag = 0;
-	int force_flag = 0;
+	int dim_flag        = 0;
+	int force_flag      = 0;
+	int cfl_flag        = 0;
+	int visc_flag       = 0;
+	int drag_flag       = 0;
 	int output_dir_flag = 0;
+	int trans_iter_flag = 0;
+	int time_step_flag  = 0;
 
 	// -------------------------------
 	// Initialize Default Values
 	// -------------------------------
 	// Input file path
 	strncpy(file_info->input_file_name, "NONE", 512);
+	strncpy(file_info->input_dir, "./Data/InitialConditions/", 512);  // Set default to Initial Conditions folder
 	// Output file directory
 	strncpy(file_info->output_dir, "./Data/Tmp/", 512);  // Set default output directory to the Tmp folder
 	strncpy(file_info->output_tag, "NO_TAG", 64);
@@ -52,24 +58,35 @@ int GetCMLArgs(int argc, char** argv) {
 	sys_vars->N[0] = 64;
 	sys_vars->N[1] = 64;
 	// Integration time 
-	sys_vars->t0 	   	= 0.0;
-	sys_vars->dt 	   	= 1e-4;
-	sys_vars->T  	   	= 1.0;
-	sys_vars->CFL_CONST = sqrt(3);
+	sys_vars->t0              = 0.0;
+	sys_vars->dt              = 1e-4;
+	sys_vars->T               = 1.0;
+	sys_vars->CFL_CONST       = 0.9;
+	sys_vars->ADAPT_STEP_FLAG = 0;
+	sys_vars->CFL_COND_FLAG   = 1;
 	// Initial conditions
 	strncpy(sys_vars->u0, "TG_VORT", 64);
 	// Forcing
 	strncpy(sys_vars->forcing, "NONE", 64);	
 	sys_vars->force_k = 0;
-	// System viscosity
-	sys_vars->NU = 1.0;
+	// Transient iterations
+	sys_vars->TRANS_ITERS_FLAG = 0;
+	sys_vars->TRANS_ITERS_FRAC = TRANSIENT_FRAC;
+	// System viscosity / hyperviscosity
+	sys_vars->NU              = 0.0001;
+	sys_vars->HYPER_VISC_FLAG = 0;
+	sys_vars->HYPER_VISC_POW  = VISC_POW;
+	// System ekman dray / hypodiffusivity
+	sys_vars->EKMN_ALPHA     = 0.0;
+	sys_vars->EKMN_DRAG_FLAG = 0;
+	sys_vars->EKMN_DRAG_POW  = EKMN_POW;
 	// Write to file every 
 	sys_vars->SAVE_EVERY = 100;
 
 	// -------------------------------
 	// Parse CML Arguments
 	// -------------------------------
-	while ((c = getopt(argc, argv, "o:h:n:d:s:e:t:v:i:c:p:f:z:")) != -1) {
+	while ((c = getopt(argc, argv, "o:h:n:d:s:e:t:v:i:c:p:f:z:T:")) != -1) {
 		switch(c) {
 			case 'o':
 				if (output_dir_flag == 0) {
@@ -123,37 +140,123 @@ int GetCMLArgs(int argc, char** argv) {
 				}
 				break;
 			case 'h':
-				// Read in initial timestep
-				sys_vars->dt = atof(optarg);
-				if (sys_vars->dt <= 0) {
-					fprintf(stderr, "\n["RED"ERROR"RESET"] Parsing of Command Line Arguements Failed: The provided timestep: [%lf] must be strictly positive\n-->> Exiting!\n\n", sys_vars->dt);		
-					exit(1);
+				if (time_step_flag == 0) {
+					// Read in initial timestep
+					sys_vars->dt = atof(optarg);
+					printf("DT: %1.5g\trank: %d\n", sys_vars->dt, sys_vars->rank);
+
+					if (sys_vars->dt <= 0) {
+						fprintf(stderr, "\n["RED"ERROR"RESET"] Parsing of Command Line Arguements Failed: The provided timestep: [%lf] must be strictly positive\n-->> Exiting!\n\n", sys_vars->dt);		
+						exit(1);
+					}
+					time_step_flag = 1;
 				}
-				break;
+				else if (time_step_flag == 1) {
+					// Read in adaptive step indicator
+					sys_vars->ADAPT_STEP_FLAG = atoi(optarg);
+					if ((sys_vars->ADAPT_STEP_FLAG == 0) || (sys_vars->ADAPT_STEP_FLAG == 1)) {
+					}
+					else {
+						fprintf(stderr, "\n["RED"ERROR"RESET"] Parsing of Command Line Arguements Failed: Incorrect Adaptive stepping flag: [%d] Must be either 0 or 1 -- Set to 0 (no adaptive stepping) by default\n-->> Exiting!\n\n", sys_vars->ADAPT_STEP_FLAG);		
+						exit(1);
+					}
+					break;
+				}
+				else {
+					break;
+				}				
 			case 'c':
-				// Read in value of the CFL -> this can be used to control the timestep
-				sys_vars->CFL_CONST = atof(optarg);
-				if (sys_vars->CFL_CONST <= 0) {
-					fprintf(stderr, "\n["RED"ERROR"RESET"] Parsing of Command Line Arguements Failed: The provided CFL Constant: [%lf] must be strictly positive\n-->> Exiting!\n\n", sys_vars->CFL_CONST);		
-					exit(1);
+				if (cfl_flag == 0) {
+					// Read in value of the CFL -> this can be used to control the timestep
+					sys_vars->CFL_COND_FLAG = atoi(optarg);
+					if ((sys_vars->CFL_COND_FLAG == 0) || (sys_vars->CFL_COND_FLAG == 1)) {
+					}
+					else {
+						fprintf(stderr, "\n["RED"ERROR"RESET"] Parsing of Command Line Arguements Failed: Incorrect CFL condition flag: [%d] Must be either 0 or 1 -- Set to 1 (use CFL condition) by default\n-->> Exiting!\n\n", sys_vars->CFL_COND_FLAG);		
+						exit(1);
+					}
+					cfl_flag == 1;
+					break;	
 				}
-				break;
+				else if (cfl_flag == 1) {
+					sys_vars->CFL_CONST = atof(optarg);
+					if (sys_vars->CFL_CONST <= 0) {
+						fprintf(stderr, "\n["RED"ERROR"RESET"] Parsing of Command Line Arguements Failed: The provided CFL Constant: [%lf] must be strictly positive\n-->> Exiting!\n\n", sys_vars->CFL_CONST);		
+						exit(1);
+					}
+					break;
+				}				
 			case 'v':
-				// Read in the viscosity
-				sys_vars->NU = atof(optarg);
-				if (sys_vars->NU <= 0) {
-					fprintf(stderr, "\n["RED"ERROR"RESET"] Parsing of Command Line Arguements Failed: The provided viscosity: [%lf] must be strictly positive\n-->> Exiting!\n\n", sys_vars->NU);		
-					exit(1);
+				if (visc_flag == 0) {
+					// Read in the viscosity
+					sys_vars->NU = atof(optarg);
+					printf("NU: %1.5g\trank: %d\n", sys_vars->NU, sys_vars->rank);
+					if (sys_vars->NU <= 0) {
+						fprintf(stderr, "\n["RED"ERROR"RESET"] Parsing of Command Line Arguements Failed: The provided viscosity: [%lf] must be strictly positive\n-->> Exiting!\n\n", sys_vars->NU);		
+						exit(1);
+					}
+					visc_flag = 1;
+					break;
 				}
-				break;
+				else if (visc_flag == 1) {
+					// Read in hyperviscosity flag
+					sys_vars->HYPER_VISC_FLAG = atoi(optarg);
+					if ((sys_vars->HYPER_VISC_FLAG == 0) || (sys_vars->HYPER_VISC_FLAG == 1)) {
+					}
+					else {
+						fprintf(stderr, "\n["RED"ERROR"RESET"] Parsing of Command Line Arguements Failed: Incorrect Hyperviscosity flag: [%d] Must be either 0 or 1 -- Set to 0 (no Hyperviscosity) by default\n-->> Exiting!\n\n", sys_vars->HYPER_VISC_FLAG);		
+						exit(1);
+					}
+					visc_flag = 2;
+					break;	
+				}
+				else if (visc_flag == 2) {
+					// Read in the hyperviscosity power
+					sys_vars->HYPER_VISC_POW = atof(optarg);
+					if (sys_vars->HYPER_VISC_POW <= 0.0) {
+						fprintf(stderr, "\n["RED"ERROR"RESET"] Parsing of Command Line Arguements Failed: The provided hyperviscosity power: [%lf] must be strictly positive\n-->> Exiting!\n\n", sys_vars->HYPER_VISC_POW);		
+						exit(1);
+					}
+					break;
+				}
+				else{
+					break;
+				}
 			case 'd':
-				// Read in the Ekman drag coefficient
-				sys_vars->EKMN_ALPHA = atof(optarg);
-				if (sys_vars->EKMN_ALPHA < 0) {
-					fprintf(stderr, "\n["RED"ERROR"RESET"] Parsing of Command Line Arguements Failed: The provided Ekmann friction: [%lf] cannot be negative\n-->> Exiting!\n\n", sys_vars->EKMN_ALPHA);		
-					exit(1);
+				if (drag_flag == 0) {
+					// Read in the drag
+					sys_vars->EKMN_ALPHA = atof(optarg);
+					if (sys_vars->EKMN_ALPHA < 0) {
+						fprintf(stderr, "\n["RED"ERROR"RESET"] Parsing of Command Line Arguements Failed: The provided Ekman Drag: [%lf] must be positive\n-->> Exiting!\n\n", sys_vars->EKMN_ALPHA);		
+						exit(1);
+					}
+					drag_flag = 1;
+					break;
 				}
-				break;
+				else if (drag_flag == 1) {
+					// Read in Ekman drag flag
+					sys_vars->EKMN_DRAG_FLAG = atoi(optarg);
+					if ((sys_vars->EKMN_DRAG_FLAG == 0) || (sys_vars->EKMN_DRAG_FLAG == 1)) {
+					}
+					else {
+						fprintf(stderr, "\n["RED"ERROR"RESET"] Parsing of Command Line Arguements Failed: Incorrect Ekman Drag flag: [%d] Must be either 0 or 1 -- Set to 0 (no drag) by default\n-->> Exiting!\n\n", sys_vars->EKMN_DRAG_FLAG);		
+						exit(1);
+					}
+					drag_flag = 2;
+					break;	
+				}
+				else if (drag_flag == 2) {
+					// Read in the hypodiffusivity power
+					sys_vars->EKMN_DRAG_POW = atof(optarg);
+					if (sys_vars->EKMN_DRAG_POW >= 0.0) {
+						fprintf(stderr, "\n["RED"ERROR"RESET"] Parsing of Command Line Arguements Failed: The provided Hypodiffusibity power: [%lf] must be strictly negative\n-->> Exiting!\n\n", sys_vars->EKMN_DRAG_POW);		
+						exit(1);
+					}
+					break;
+				}
+				else{
+					break;
+				}
 			case 'i':
 				// Read in the initial conditions
 				if (!(strcmp(optarg,"TG_VEL"))) {
@@ -196,19 +299,24 @@ int GetCMLArgs(int argc, char** argv) {
 					strncpy(sys_vars->u0, "DECAY_TURB_EXP", 64);
 					break;
 				}
-				else if (!(strcmp(optarg,"EXP_ENS"))) {
-					// Exponential Enstrophy Spectrum
-					strncpy(sys_vars->u0, "EXP_ENS", 64);
-					break;
-				}
-				else if (!(strcmp(optarg,"RING"))) {
-					// Ring
-					strncpy(sys_vars->u0, "RING", 64);
-					break;
-				}
 				else if (!(strcmp(optarg,"GAUSS_DECAY_TURB"))) {
 					// Decay Turbulence -> M. Brachet et al. 1988 
 					strncpy(sys_vars->u0, "GAUSS_DECAY_TURB", 64);
+					break;
+				}
+				else if (!(strcmp(optarg,"EXTRM_ENS"))) {
+					// Extreme Enstrophy Spectrum Initial condition
+					strncpy(sys_vars->u0, "EXTRM_ENS", 64);
+					break;
+				}
+				else if (!(strcmp(optarg,"MAX_PALIN"))) {
+					// Maximal Palinstorphy growth initial condition -> Ayala & Protas 2014
+					strncpy(sys_vars->u0, "MAX_PALIN", 64);
+					break;
+				}
+				else if (!(strcmp(optarg,"RING"))) {
+					// Ring initial condition
+					strncpy(sys_vars->u0, "RING", 64);
 					break;
 				}
 				else if (!(strcmp(optarg,"RANDOM"))) {
@@ -231,6 +339,30 @@ int GetCMLArgs(int argc, char** argv) {
 				// Read in output directory tag
 				strncpy(file_info->output_tag, optarg, 64);	
 				break;
+			case 'T':
+				if (trans_iter_flag == 0) {
+					// Read in transient iterations flag
+					sys_vars->TRANS_ITERS_FLAG = atoi(optarg);
+					if ((sys_vars->TRANS_ITERS_FLAG == 0) || (sys_vars->TRANS_ITERS_FLAG == 1)) {
+					}
+					else {
+						fprintf(stderr, "\n["RED"ERROR"RESET"] Parsing of Command Line Arguements Failed: Incorrect transient iterations flag: [%d] Must be either 0 or 1 -- Set to 0 (no transient iterations) by default\n-->> Exiting!\n\n", sys_vars->TRANS_ITERS_FLAG);		
+						exit(1);
+					}
+					trans_iter_flag = 1;
+					break;	
+				}
+				else if (trans_iter_flag == 1) {
+					// Read in transient iterations fraction of total iterations
+					sys_vars->TRANS_ITERS_FRAC = atof(optarg);
+					if ((sys_vars->TRANS_ITERS_FRAC >= 1.0) || (sys_vars->TRANS_ITERS_FRAC <= 0.0)) {
+						fprintf(stderr, "\n["RED"ERROR"RESET"] Parsing of Command Line Arguements Failed: Incorrect transient iterations fraction: [%lf] Must be between 0 and 1 -- Set to 0.2 by default\n-->> Exiting!\n\n", sys_vars->TRANS_ITERS_FRAC);		
+						exit(1);
+					}
+				}
+				else {
+					break;
+				}				
 			case 'p':
 				// Read in how often to print to file
 				sys_vars->SAVE_EVERY = atoi(optarg);
@@ -263,7 +395,6 @@ int GetCMLArgs(int argc, char** argv) {
 				else if ((force_flag == 2)) {
 					// Get the force scaling variable
 					sys_vars->force_scale_var = atof(optarg);
-					force_flag = 2;
 				}
 				else {
 					// Set default forcing to None
@@ -290,6 +421,7 @@ int GetCMLArgs(int argc, char** argv) {
 				fprintf(stderr, "Use"YELLOW" -i"RESET" to specify the initial condition\n");
 				fprintf(stderr, "Use"YELLOW" -t"RESET" to specify the tag name to be used in the output file directory\n");
 				fprintf(stderr, "Use"YELLOW" -f"RESET" to specify the forcing type\n");
+				fprintf(stderr, "Use"YELLOW" -T"RESET" to specify if transient iterations are to be performed\n");
 				fprintf(stderr, "Use"YELLOW" -p"RESET" to specify how often to print to file\n");
 				fprintf(stderr, "Use"YELLOW" -z"RESET" to specify an input file to read parameters from\n");
 				fprintf(stderr, "\nExample usage:\n"CYAN"\tmpirun -n 4 ./bin/main -o \"../Data/Tmp\" -n 64 -n 64 -s 0.0 -e 1.0 -h 0.0001 -v 1.0 -i \"TG_VORT\" -t \"TEMP_RUN\" \n"RESET);
@@ -402,20 +534,22 @@ void PrintSimulationDetails(int argc, char** argv, double sim_time) {
 	fprintf(sim_file, "Time Range: [%1.1lf - %1.1lf]\n", sys_vars->t0, sys_vars->T);
 	fprintf(sim_file, "Finishing Timestep: %1.10lf\n", sys_vars->dt);
 	fprintf(sim_file, "CFL No.: %1.5lf\n", sys_vars->CFL_CONST);
-	#if defined(__ADAPTIVE_STEP)
-	fprintf(sim_file, "Adaptive Stepping: YES\n");
-	#if defined(__CFL_STEP)
-	fprintf(sim_file, "CFL Stepping Mode: YES\n");
-	#else
-	fprintf(sim_file, "CFL Stepping Mode: NO\n");	
-	#endif	
-	fprintf(sim_file, "Total Timesteps: %ld\n", sys_vars->num_t_steps);
-	fprintf(sim_file, "Total Timesteps Executed: %ld\n", sys_vars->tot_iters);
-	fprintf(sim_file, "Timestep Range [min - max]: [%1.10lf - %1.10lf]\n", sys_vars->min_dt, sys_vars->max_dt);
-	#else
-	fprintf(sim_file, "Adaptive Stepping: NO\n");
-	fprintf(sim_file, "Total Timesteps: %ld\n", sys_vars->num_t_steps);
-	#endif
+	if (sys_vars->ADAPT_STEP_FLAG == ADAPTIVE_STEP) {
+		fprintf(sim_file, "Adaptive Stepping: YES\n");
+			if (sys_vars->CFL_COND_FLAG == CFL_STEP) {
+				fprintf(sim_file, "CFL Stepping Mode: YES\n");
+			}
+			else {
+				fprintf(sim_file, "CFL Stepping Mode: NO\n");	
+			}	
+		fprintf(sim_file, "Total Timesteps: %ld\n", sys_vars->num_t_steps);
+		fprintf(sim_file, "Total Timesteps Executed: %ld\n", sys_vars->tot_iters);
+		fprintf(sim_file, "Timestep Range [min - max]: [%1.10lf - %1.10lf]\n", sys_vars->min_dt, sys_vars->max_dt);
+	}
+	else {
+		fprintf(sim_file, "Adaptive Stepping: NO\n");
+		fprintf(sim_file, "Total Timesteps: %ld\n", sys_vars->num_t_steps);
+	}
 	
 	// Printing
 	fprintf(sim_file, "Data Saved Every: %d\n", sys_vars->print_every);
@@ -623,7 +757,7 @@ void PrintScalarFourier(fftw_complex* data, const long int* N, char* arr_name) {
 	if ( !(sys_vars->rank) ) {
 		for (int i = 0; i < Nx; ++i) {
 			for (int j = 0; j < Ny_Fourier; ++j) {
-				printf("%s[%ld]: %1.16lf %1.16lf I ", arr_name, i * (Ny_Fourier) + j, creal(w_hat0[i * Ny_Fourier + j]), cimag(w_hat0[i * Ny_Fourier + j]));
+				printf("%s[%ld]: %1.16lf %1.16lf I\n", arr_name, i * (Ny_Fourier) + j, creal(w_hat0[i * Ny_Fourier + j]), cimag(w_hat0[i * Ny_Fourier + j]));
 			}
 			printf("\n");
 		}

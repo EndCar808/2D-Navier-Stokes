@@ -18,6 +18,7 @@
 //  User Libraries and Headers
 // ---------------------------------------------------------------------
 #include "data_types.h"
+#include "sys_msr.h"
 #include "solver.h"
 // ---------------------------------------------------------------------
 //  Function Definitions
@@ -55,11 +56,13 @@ void ComputeSystemMeasurables(double t, int iter, RK_data_struct* RK_data) {
 
 
     // Record the initial time
-    #if defined(__TIME) && !defined(TRANSIENTS)
-    if (!(sys_vars->rank)) {
-    	run_data->time[iter] = t;
-    }
-    #endif
+    #if defined(__TIME)
+	if (sys_vars->TRANS_ITERS_FLAG != TRANSIENT_ITERS) {
+	    if (!(sys_vars->rank)) {
+	    	run_data->time[iter] = t;
+	    }
+	}
+	#endif
 
     // If adaptive stepping check if within memory limits
     if ((iter >= sys_vars->num_print_steps) && (iter % 100 == 0)) {
@@ -151,15 +154,22 @@ void ComputeSystemMeasurables(double t, int iter, RK_data_struct* RK_data) {
 			k_sqr = (double )(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 
 			// Get the appropriate prefactor
-			#if defined(HYPER_VISC) && defined(EKMN_DRAG)  // Both Hyperviscosity and Ekman drag
-			pre_fac = sys_vars->NU * pow(k_sqr, VIS_POW) + sys_vars->EKMN_ALPHA * pow(k_sqr, EKMN_POW);
-			#elif !defined(HYPER_VISC) && defined(EKMN_DRAG) // No hyperviscosity but we have Ekman drag
-			pre_fac = sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA * pow(k_sqr, EKMN_POW);
-			#elif defined(HYPER_VISC) && !defined(EKMN_DRAG) // Hyperviscosity only
-			pre_fac = sys_vars->NU * pow(k_sqr, VIS_POW);
-			#else // No hyper viscosity or no ekman drag -> just normal viscosity
-			pre_fac = sys_vars->NU * k_sqr; 
-			#endif
+			if((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {  
+				// Both Hyperviscosity and Ekman drag
+				pre_fac = sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW) + sys_vars->EKMN_ALPHA * pow(k_sqr, sys_vars->EKMN_DRAG_POW);
+			}
+			else if((sys_vars->HYPER_VISC_FLAG != HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
+				// No hyperviscosity but we have Ekman drag
+				pre_fac = sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA * pow(k_sqr, sys_vars->EKMN_DRAG_POW);
+			}
+			else if ((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG != EKMN_DRAG)) {
+			 	// Hyperviscosity only
+				pre_fac = sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW);
+			}
+			else { 
+				// No hyper viscosity or no ekman drag -> just normal viscosity
+				pre_fac = sys_vars->NU * k_sqr; 
+			}
 
 			///--------------------------------- System Measures
 			#if defined(__SYS_MEASURES)
@@ -347,11 +357,12 @@ void ComputeSystemMeasurables(double t, int iter, RK_data_struct* RK_data) {
 void InitializeSystemMeasurables(RK_data_struct* RK_data) {
 
 	// Set the size of the arrays to twice the number of printing steps to account for extra steps due to adaptive stepping
-	#if defined(__ADAPTIVE_STEP)
-	sys_vars->num_print_steps = 2 * sys_vars->num_print_steps;
-	#else
-	sys_vars->num_print_steps = sys_vars->num_print_steps;
-	#endif
+	if (sys_vars->ADAPT_STEP_FLAG == ADAPTIVE_STEP) {
+		sys_vars->num_print_steps = 2 * sys_vars->num_print_steps;
+	}
+	else {
+		sys_vars->num_print_steps = sys_vars->num_print_steps;
+	}
 	int print_steps = sys_vars->num_print_steps;
 
 	// Get the size of the spectrum arrays
@@ -567,9 +578,10 @@ void InitializeSystemMeasurables(RK_data_struct* RK_data) {
 	// ----------------------------
 	// Get Measurables of the ICs
 	// ----------------------------
-	#if !defined(TRANSIENTS)
-	ComputeSystemMeasurables(0.0, 0, RK_data);
-	#endif
+	if (sys_vars->TRANS_ITERS_FLAG != TRANSIENT_ITERS) {
+		ComputeSystemMeasurables(0.0, 0, RK_data);
+		// RecordSystemMeasures(0.0, 0, RK_data);
+	}
 }
 /**
  * Function used to compute the energy spectrum of the current iteration. The energy spectrum is defined as all(sum) of the energy contained in concentric annuli in
@@ -930,19 +942,22 @@ double EnergyDissipationRate(void) {
 				tmp_u_y = (I / k_sqr) * (-run_data->k[0][i] * run_data->w_hat[indx]);
 
 				// Get the appropriate prefactor
-				#if defined(HYPER_VISC) && defined(EKMN_DRAG) 
-				// Both Hyperviscosity and Ekman drag
-				pre_fac = sys_vars->NU * pow(k_sqr, VIS_POW) + sys_vars->EKMN_ALPHA * pow(k_sqr, EKMN_POW);
-				#elif !defined(HYPER_VISC) && defined(EKMN_DRAG) 
-				// No hyperviscosity but we have Ekman drag
-				pre_fac = sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA * pow(k_sqr, EKMN_POW);
-				#elif defined(HYPER_VISC) && !defined(EKMN_DRAG) 
-				// Hyperviscosity only
-				pre_fac = sys_vars->NU * pow(k_sqr, VIS_POW);
-				#else 
-				// No hyper viscosity or no ekman drag -> just normal viscosity
-				pre_fac = sys_vars->NU * k_sqr; 
-				#endif
+				if((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) { 
+					// Both Hyperviscosity and Ekman drag
+					pre_fac = sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW) + sys_vars->EKMN_ALPHA * pow(k_sqr, sys_vars->EKMN_DRAG_POW);
+				}
+				else if((sys_vars->HYPER_VISC_FLAG != HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
+					// No hyperviscosity but we have Ekman drag
+					pre_fac = sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA * pow(k_sqr, sys_vars->EKMN_DRAG_POW);
+				}
+				else if ((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG != EKMN_DRAG)) {
+					// Hyperviscosity only
+					pre_fac = sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW);
+				}
+				else {
+					// No hyper viscosity or no ekman drag -> just normal viscosity
+					pre_fac = sys_vars->NU * k_sqr; 
+				}
 
 				// Update the running sum for the palinstrophy -> first and last modes have no conjugate so only count once
 				if((j == 0) || (j == Ny_Fourier - 1)) {
@@ -993,19 +1008,22 @@ double EnstrophyDissipationRate(void) {
 				k_sqr = 1.0 * (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 
 				// Get the appropriate prefactor
-				#if defined(HYPER_VISC) && defined(EKMN_DRAG) 
-				// Both Hyperviscosity and Ekman drag
-				pre_fac = sys_vars->NU * pow(k_sqr, VIS_POW) + sys_vars->EKMN_ALPHA * pow(k_sqr, EKMN_POW);
-				#elif !defined(HYPER_VISC) && defined(EKMN_DRAG) 
-				// No hyperviscosity but we have Ekman drag
-				pre_fac = sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA * pow(k_sqr, EKMN_POW);
-				#elif defined(HYPER_VISC) && !defined(EKMN_DRAG) 
-				// Hyperviscosity only
-				pre_fac = sys_vars->NU * pow(k_sqr, VIS_POW);
-				#else 
-				// No hyper viscosity or no ekman drag -> just normal viscosity
-				pre_fac = sys_vars->NU * k_sqr; 
-				#endif
+				if((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) { 
+					// Both Hyperviscosity and Ekman drag
+					pre_fac = sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW) + sys_vars->EKMN_ALPHA * pow(k_sqr, sys_vars->EKMN_DRAG_POW);
+				}
+				else if((sys_vars->HYPER_VISC_FLAG != HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
+					// No hyperviscosity but we have Ekman drag
+					pre_fac = sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA * pow(k_sqr, sys_vars->EKMN_DRAG_POW);
+				}
+				else if ((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG != EKMN_DRAG)) { 
+					// Hyperviscosity only
+					pre_fac = sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW);
+				}
+				else { 
+					// No hyper viscosity or no ekman drag -> just normal viscosity
+					pre_fac = sys_vars->NU * k_sqr; 
+				}
 
 				// Update the running sum for the enst_dissstrophy -> first and last modes have no conjugate so only count once
 				if((j == 0) || (j == Ny_Fourier - 1)) {
@@ -1087,19 +1105,22 @@ void EnstrophyFlux(double* d_e_dt, double* enst_flux, double* enst_diss, RK_data
 				k_sqr = (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 
 				// Get the appropriate prefactor
-				#if defined(HYPER_VISC) && defined(EKMN_DRAG) 
-				// Both Hyperviscosity and Ekman drag
-				pre_fac = sys_vars->NU * pow(k_sqr, VIS_POW) + sys_vars->EKMN_ALPHA * pow(k_sqr, EKMN_POW);
-				#elif !defined(HYPER_VISC) && defined(EKMN_DRAG) 
-				// No hyperviscosity but we have Ekman drag
-				pre_fac = sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA * pow(k_sqr, EKMN_POW);
-				#elif defined(HYPER_VISC) && !defined(EKMN_DRAG) 
-				// Hyperviscosity only
-				pre_fac = sys_vars->NU * pow(k_sqr, VIS_POW);
-				#else 
-				// No hyper viscosity or no ekman drag -> just normal viscosity
-				pre_fac = sys_vars->NU * k_sqr; 
-				#endif
+				if((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) { 
+					// Both Hyperviscosity and Ekman drag
+					pre_fac = sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW) + sys_vars->EKMN_ALPHA * pow(k_sqr, sys_vars->EKMN_DRAG_POW);
+				}
+				else if((sys_vars->HYPER_VISC_FLAG != HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
+					// No hyperviscosity but we have Ekman drag
+					pre_fac = sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA * pow(k_sqr, sys_vars->EKMN_DRAG_POW);
+				}
+				else if ((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG != EKMN_DRAG)) { 
+					// Hyperviscosity only
+					pre_fac = sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW);
+				}
+				else { 
+					// No hyper viscosity or no ekman drag -> just normal viscosity
+					pre_fac = sys_vars->NU * k_sqr; 
+				}
 
 				// Get the derivative and dissipation terms
 				tmp_deriv = creal(run_data->w_hat[indx] * conj(dwhat_dt[indx]) + conj(run_data->w_hat[indx]) * dwhat_dt[indx]);
@@ -1210,19 +1231,22 @@ void EnergyFlux(double* d_e_dt, double* enrg_flux, double* enrg_diss, RK_data_st
 					k_sqr = (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 
 					// Get the appropriate prefactor
-					#if defined(HYPER_VISC) && defined(EKMN_DRAG) 
-					// Both Hyperviscosity and Ekman drag
-					pre_fac = sys_vars->NU * pow(k_sqr, VIS_POW) + sys_vars->EKMN_ALPHA * pow(k_sqr, EKMN_POW);
-					#elif !defined(HYPER_VISC) && defined(EKMN_DRAG) 
-					// No hyperviscosity but we have Ekman drag
-					pre_fac = sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA * pow(k_sqr, EKMN_POW);
-					#elif defined(HYPER_VISC) && !defined(EKMN_DRAG) 
-					// Hyperviscosity only
-					pre_fac = sys_vars->NU * pow(k_sqr, VIS_POW);
-					#else 
-					// No hyper viscosity or no ekman drag -> just normal viscosity
-					pre_fac = sys_vars->NU * k_sqr; 
-					#endif
+					if((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) { 
+						// Both Hyperviscosity and Ekman drag
+						pre_fac = sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW) + sys_vars->EKMN_ALPHA * pow(k_sqr, sys_vars->EKMN_DRAG_POW);
+					}
+					else if((sys_vars->HYPER_VISC_FLAG != HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
+						// No hyperviscosity but we have Ekman drag
+						pre_fac = sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA * pow(k_sqr, sys_vars->EKMN_DRAG_POW);
+					}
+					else if ((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG != EKMN_DRAG)) { 
+						// Hyperviscosity only
+						pre_fac = sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW);
+					}
+					else { 
+						// No hyper viscosity or no ekman drag -> just normal viscosity
+						pre_fac = sys_vars->NU * k_sqr; 
+					}
 
 					// Get the derivative and dissipation terms
 					tmp_deriv = creal(run_data->w_hat[indx] * conj(dwhat_dt[indx]) + conj(run_data->w_hat[indx]) * dwhat_dt[indx]) / k_sqr;
@@ -1336,19 +1360,22 @@ void EnergyFluxSpectrum(RK_data_struct* RK_data) {
 				k_sqr = (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 
 				// Get the appropriate prefactor
-				#if defined(HYPER_VISC) && defined(EKMN_DRAG) 
-				// Both Hyperviscosity and Ekman drag
-				pre_fac = sys_vars->NU * pow(k_sqr, VIS_POW) + sys_vars->EKMN_ALPHA * pow(k_sqr, EKMN_POW);
-				#elif !defined(HYPER_VISC) && defined(EKMN_DRAG) 
-				// No hyperviscosity but we have Ekman drag
-				pre_fac = sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA * pow(k_sqr, EKMN_POW);
-				#elif defined(HYPER_VISC) && !defined(EKMN_DRAG) 
-				// Hyperviscosity only
-				pre_fac = sys_vars->NU * pow(k_sqr, VIS_POW);
-				#else 
-				// No hyper viscosity or no ekman drag -> just normal viscosity
-				pre_fac = sys_vars->NU * k_sqr; 
-				#endif
+				if((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) { 
+					// Both Hyperviscosity and Ekman drag
+					pre_fac = sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW) + sys_vars->EKMN_ALPHA * pow(k_sqr, sys_vars->EKMN_DRAG_POW);
+				}
+				else if((sys_vars->HYPER_VISC_FLAG != HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
+					// No hyperviscosity but we have Ekman drag
+					pre_fac = sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA * pow(k_sqr, sys_vars->EKMN_DRAG_POW);
+				}
+				else if ((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG != EKMN_DRAG)) { 
+					// Hyperviscosity only
+					pre_fac = sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW);
+				}
+				else { 
+					// No hyper viscosity or no ekman drag -> just normal viscosity
+					pre_fac = sys_vars->NU * k_sqr; 
+				}
 
 				// Get the spectrum index
 				spec_indx = (int) ceil(sqrt(k_sqr));
@@ -1438,19 +1465,22 @@ void EnstrophyFluxSpectrum(RK_data_struct* RK_data) {
 				k_sqr = (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 
 				// Get the appropriate prefactor
-				#if defined(HYPER_VISC) && defined(EKMN_DRAG) 
-				// Both Hyperviscosity and Ekman drag
-				pre_fac = sys_vars->NU * pow(k_sqr, VIS_POW) + sys_vars->EKMN_ALPHA * pow(k_sqr, EKMN_POW);
-				#elif !defined(HYPER_VISC) && defined(EKMN_DRAG) 
-				// No hyperviscosity but we have Ekman drag
-				pre_fac = sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA * pow(k_sqr, EKMN_POW);
-				#elif defined(HYPER_VISC) && !defined(EKMN_DRAG) 
-				// Hyperviscosity only
-				pre_fac = sys_vars->NU * pow(k_sqr, VIS_POW);
-				#else 
-				// No hyper viscosity or no ekman drag -> just normal viscosity
-				pre_fac = sys_vars->NU * k_sqr; 
-				#endif
+				if((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) { 
+					// Both Hyperviscosity and Ekman drag
+					pre_fac = sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW) + sys_vars->EKMN_ALPHA * pow(k_sqr, sys_vars->EKMN_DRAG_POW);
+				}
+				else if((sys_vars->HYPER_VISC_FLAG != HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
+					// No hyperviscosity but we have Ekman drag
+					pre_fac = sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA * pow(k_sqr, sys_vars->EKMN_DRAG_POW);
+				}
+				else if ((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG != EKMN_DRAG)) { 
+					// Hyperviscosity only
+					pre_fac = sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW);
+				}
+				else { 
+					// No hyper viscosity or no ekman drag -> just normal viscosity
+					pre_fac = sys_vars->NU * k_sqr; 
+				}
 
 				// Get the spectrum index
 				spec_indx = (int) ceil(sqrt(k_sqr));
@@ -1482,7 +1512,7 @@ void EnstrophyFluxSpectrum(RK_data_struct* RK_data) {
 	fftw_free(dwhat_dt);
 }
 /**
- * Function to record the system measures for the current timestep 
+ * DEPRICATED: Function to record the system measures for the current timestep 
  * @param t          The current time in the simulation
  * @param print_indx The current index of the measurables arrays
  * @param RK_data 	 The Runge-Kutta struct containing the arrays to compute the nonlinear term for the fluxes

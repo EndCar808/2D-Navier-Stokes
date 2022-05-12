@@ -111,274 +111,274 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 	////////////////////////////////
 	/// Write Initial Condtions
 	////////////////////////////////
-	#if !defined(TRANSIENTS)
-	// --------------------------------------
-	// Create Group for Initial Conditions
-	// --------------------------------------
-	// Initialize Group Name
-	sprintf(group_name, "/Iter_%05d", 0);
-	
-	// Create group for the current iteration data
-	main_group_id = CreateGroup(file_info->output_file_handle, file_info->output_file_name, group_name, 0.0, dt, 0);
-	#if defined(__ENST_SPECT) || defined(__ENRG_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__ENRG_FLUX_SPECT)
-	if (!sys_vars->rank) {
-		spectra_group_id = CreateGroup(file_info->spectra_file_handle, file_info->spectra_file_name, group_name, 0.0, dt, 0);
-	}
-	#endif
-	#if defined(__PHASE_SYNC)
-	if (!sys_vars->rank) {
-		sync_group_id = CreateGroup(file_info->sync_file_handle, file_info->sync_file_name, group_name, 0.0, dt, 0);
-	}
-	#endif
-
-
-	// --------------------------------------
-	// Write Initial Conditions
-	// --------------------------------------
-	// Create dimension arrays
-	static const int d_set_rank2D = 2;
-	hsize_t dset_dims2D[d_set_rank2D];        // array to hold dims of the dataset to be created
-	hsize_t slab_dims2D[d_set_rank2D];	      // Array to hold the dimensions of the hyperslab
-	hsize_t mem_space_dims2D[d_set_rank2D];   // Array to hold the dimensions of the memoray space - for real data this will be different to slab_dims due to 0 padding
-	#if defined(__MODES) || defined(__REALSPACE)
-	static const int d_set_rank3D = 3;
-	hsize_t dset_dims3D[d_set_rank3D];        // array to hold dims of the dataset to be created
-	hsize_t slab_dims3D[d_set_rank3D];	      // Array to hold the dimensions of the hyperslab
-	hsize_t mem_space_dims3D[d_set_rank3D];   // Array to hold the dimensions of the memoray space - for real data this will be different to slab_dims due to 0 padding
-	#endif
-
-
-	///-------------------------------------- Real Space Voriticity
-	#if defined(__VORT_REAL)
-	// Transform vorticity back to real space and normalize
-	fftw_mpi_execute_dft_c2r(sys_vars->fftw_2d_dft_c2r, run_data->w_hat, run_data->w);
-	for (int i = 0; i < sys_vars->local_Nx; ++i) {
-		tmp = i * (Ny + 2);
-		for (int j = 0; j < Ny; ++j) {
-			indx = tmp + j;
-
-			// Normalize
-			run_data->w[indx] *= 1.0 / (double) (Nx * Ny);
+	if (sys_vars->TRANS_ITERS_FLAG != TRANSIENT_ITERS) {
+		// --------------------------------------
+		// Create Group for Initial Conditions
+		// --------------------------------------
+		// Initialize Group Name
+		sprintf(group_name, "/Iter_%05d", 0);
+		
+		// Create group for the current iteration data
+		main_group_id = CreateGroup(file_info->output_file_handle, file_info->output_file_name, group_name, 0.0, dt, 0);
+		#if defined(__ENST_SPECT) || defined(__ENRG_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__ENRG_FLUX_SPECT)
+		if (!sys_vars->rank) {
+			spectra_group_id = CreateGroup(file_info->spectra_file_handle, file_info->spectra_file_name, group_name, 0.0, dt, 0);
 		}
-	}
-
-	// Specify dataset dimensions
-	dset_dims2D[0] 	  = Nx;
-	dset_dims2D[1] 	  = Ny;
-	slab_dims2D[0]      = sys_vars->local_Nx;
-	slab_dims2D[1]      = Ny;
-	mem_space_dims2D[0] = sys_vars->local_Nx;
-	mem_space_dims2D[1] = Ny + 2;
-
-	// Write the real space vorticity
-	WriteDataReal(0.0, 0, main_group_id, "w", H5T_NATIVE_DOUBLE, d_set_rank2D, dset_dims2D, slab_dims2D, mem_space_dims2D, sys_vars->local_Nx_start, run_data->w);
-	#endif
-
-	///-------------------------------------- Fourier Space Voriticity
-	#if defined(__VORT_FOUR)
-	// Create dimension arrays
-	dset_dims2D[0] 	  = Nx;
-	dset_dims2D[1] 	  = Ny_Fourier;
-	slab_dims2D[0] 	  = sys_vars->local_Nx;
-	slab_dims2D[1] 	  = Ny_Fourier;
-	mem_space_dims2D[0] = sys_vars->local_Nx;
-	mem_space_dims2D[1] = Ny_Fourier;
-
-	// Write the real space vorticity
-	WriteDataFourier(0.0, 0, main_group_id, "w_hat", file_info->COMPLEX_DTYPE, d_set_rank2D, dset_dims2D, slab_dims2D, mem_space_dims2D, sys_vars->local_Nx_start, run_data->w_hat);
-	#endif
-
-	#if defined(__MODES) || defined(__REALSPACE)
-	fftw_complex k_sqr;
-
-	// Get the Fourier velocities
-	for (int i = 0; i < sys_vars->local_Nx; ++i) {
-		tmp = i * Ny_Fourier;
-		for (int j = 0; j < Ny_Fourier; ++j) {
-			indx = tmp + j;
-
-			if ((run_data->k[0][i] != 0) || (run_data->k[1][j] != 0)) {
-				// Compute the prefactor
-				k_sqr = I / (double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
-
-				// Fill the Fourier velocities
-				run_data->u_hat[SYS_DIM * indx + 0] = k_sqr * run_data->k[1][j] * run_data->w_hat[indx];
-				run_data->u_hat[SYS_DIM * indx + 1] = -k_sqr * run_data->k[0][i] * run_data->w_hat[indx];
-			}
-			else {
-				run_data->u_hat[SYS_DIM * indx + 0] = 0.0 + 0.0 * I;
-				run_data->u_hat[SYS_DIM * indx + 1] = 0.0 + 0.0 * I;
-			}
+		#endif
+		#if defined(__PHASE_SYNC)
+		if (!sys_vars->rank) {
+			sync_group_id = CreateGroup(file_info->sync_file_handle, file_info->sync_file_name, group_name, 0.0, dt, 0);
 		}
-	}
-	#endif
-	
-	///-------------------------------------- Fourier Space Velocity	
-	#if defined(__MODES)
-	// Create dimension arrays
-	dset_dims3D[0] 	    = Nx;
-	dset_dims3D[1] 	    = Ny_Fourier;
-	dset_dims3D[2]      = SYS_DIM;
-	slab_dims3D[0] 	    = sys_vars->local_Nx;
-	slab_dims3D[1] 	    = Ny_Fourier;
-	slab_dims3D[2]      = SYS_DIM;
-	mem_space_dims3D[0] = sys_vars->local_Nx;
-	mem_space_dims3D[1] = Ny_Fourier;
-	mem_space_dims3D[2] = SYS_DIM;
+		#endif
 
-	// Write the real space vorticity
-	WriteDataFourier(0.0, 0, main_group_id, "u_hat", file_info->COMPLEX_DTYPE, d_set_rank3D, dset_dims3D, slab_dims3D, mem_space_dims3D, sys_vars->local_Nx_start, run_data->u_hat);
-	#endif
 
-	///-------------------------------------- Real Space Velocity
-	#if defined(__REALSPACE)
-	// Transform velocities back to real space and normalize
-	fftw_mpi_execute_dft_c2r(sys_vars->fftw_2d_dft_batch_c2r, run_data->u_hat, run_data->u);
-	for (int i = 0; i < sys_vars->local_Nx; ++i) {
-		tmp = i * (Ny + 2);
-		for (int j = 0; j < Ny; ++j) {
-			indx = tmp + j;
-
-			// Normalize
-			run_data->u[SYS_DIM * indx + 0] *= 1.0 / (double) (Nx * Ny);
-			run_data->u[SYS_DIM * indx + 1] *= 1.0 / (double) (Nx * Ny);
-		}
-	}
-
-	// Specify dataset dimensions
-	dset_dims3D[0] 	  = Nx;
-	dset_dims3D[1] 	  = Ny;
-	dset_dims3D[2]    = SYS_DIM;
-	slab_dims3D[0]    = sys_vars->local_Nx;
-	slab_dims3D[1]    = Ny;
-	slab_dims3D[2]    = SYS_DIM;
-	mem_space_dims3D[0] = sys_vars->local_Nx;
-	mem_space_dims3D[1] = (Ny + 2);
-	mem_space_dims3D[2] = SYS_DIM;
-
-	// Write the real space vorticity
-	WriteDataReal(0.0, 0, main_group_id, "u", H5T_NATIVE_DOUBLE, d_set_rank3D, dset_dims3D, slab_dims3D, mem_space_dims3D, sys_vars->local_Nx_start, run_data->u);
-	#endif
-
-	///-------------------------------------- Fourier Phases & Amplitudes of the Vorticity
-	#if defined(PHASE_ONLY)
-	// Record the Fourier amplitudes and phases
-	for (int i = 0; i < sys_vars->local_Nx; ++i) {
-		tmp = i * Ny_Fourier;
-		for (int j = 0; j < Ny_Fourier; ++j) {
-			indx = tmp + j;
-
-			//record the amplitudes
-			run_data->a_k = cabs(run_data->w_hat[indx]);
-			// record the phases 
-			run_data->phi_k = carg(run_data->w_hat[indx]);
-		}
-	}
-	
-	// Create dimension arrays for the Fourier amplitudes and phases
-	dset_dims2D[0] 	  = Nx;
-	dset_dims2D[1] 	  = Ny_Fourier;
-	slab_dims2D[0] 	  = sys_vars->local_Nx;
-	slab_dims2D[1] 	  = Ny_Fourier;
-	mem_space_dims2D[0] = sys_vars->local_Nx;
-	mem_space_dims2D[1] = Ny_Fourier;
-
-	// Write the Fourier amplitudes
-	WriteDataFourier(0.0, 0, main_group_id, "a_k", H5T_NATIVE_DOUBLE, d_set_rank2D, dset_dims2D, slab_dims2D, mem_space_dims2D, sys_vars->local_Nx_start, run_data->a_k);
-
-	// Write the Fourier phases
-	WriteDataFourier(0.0, 0, main_group_id, "phi_k", H5T_NATIVE_DOUBLE, d_set_rank2D, dset_dims2D, slab_dims2D, mem_space_dims2D, sys_vars->local_Nx_start, run_data->phi_k);
-	#endif
-
-	///-------------------------------------- Taylor Green Initial Condition
-	#if defined(TESTING)
-	if (!(strcmp(sys_vars->u0, "TG_VEL")) || !(strcmp(sys_vars->u0, "TG_VORT"))) {
+		// --------------------------------------
+		// Write Initial Conditions
+		// --------------------------------------
 		// Create dimension arrays
-		dset_dims2D[0] 	    = Nx;
-		dset_dims2D[1] 	    = Ny;
+		static const int d_set_rank2D = 2;
+		hsize_t dset_dims2D[d_set_rank2D];        // array to hold dims of the dataset to be created
+		hsize_t slab_dims2D[d_set_rank2D];	      // Array to hold the dimensions of the hyperslab
+		hsize_t mem_space_dims2D[d_set_rank2D];   // Array to hold the dimensions of the memoray space - for real data this will be different to slab_dims due to 0 padding
+		#if defined(__MODES) || defined(__REALSPACE)
+		static const int d_set_rank3D = 3;
+		hsize_t dset_dims3D[d_set_rank3D];        // array to hold dims of the dataset to be created
+		hsize_t slab_dims3D[d_set_rank3D];	      // Array to hold the dimensions of the hyperslab
+		hsize_t mem_space_dims3D[d_set_rank3D];   // Array to hold the dimensions of the memoray space - for real data this will be different to slab_dims due to 0 padding
+		#endif
+
+
+		///-------------------------------------- Real Space Voriticity
+		#if defined(__VORT_REAL)
+		// Transform vorticity back to real space and normalize
+		fftw_mpi_execute_dft_c2r(sys_vars->fftw_2d_dft_c2r, run_data->w_hat, run_data->w);
+		for (int i = 0; i < sys_vars->local_Nx; ++i) {
+			tmp = i * (Ny + 2);
+			for (int j = 0; j < Ny; ++j) {
+				indx = tmp + j;
+
+				// Normalize
+				run_data->w[indx] *= 1.0 / (double) (Nx * Ny);
+			}
+		}
+
+		// Specify dataset dimensions
+		dset_dims2D[0] 	  = Nx;
+		dset_dims2D[1] 	  = Ny;
 		slab_dims2D[0]      = sys_vars->local_Nx;
 		slab_dims2D[1]      = Ny;
 		mem_space_dims2D[0] = sys_vars->local_Nx;
 		mem_space_dims2D[1] = Ny + 2;
 
 		// Write the real space vorticity
-		WriteDataReal(0.0, 0, main_group_id, "TGSoln", H5T_NATIVE_DOUBLE, d_set_rank2D, dset_dims2D, slab_dims2D, mem_space_dims2D, sys_vars->local_Nx_start, run_data->tg_soln);	
-	}
-	#endif
+		WriteDataReal(0.0, 0, main_group_id, "w", H5T_NATIVE_DOUBLE, d_set_rank2D, dset_dims2D, slab_dims2D, mem_space_dims2D, sys_vars->local_Nx_start, run_data->w);
+		#endif
 
-	///-------------------------------------- Spectra & Phase Sync
-	#if defined(__ENST_SPECT) || defined(__ENRG_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__ENRG_FLUX_SPECT) || defined(__PHASE_SYNC)
-	// Gather Spectra data and write to file
-	if (!sys_vars->rank) {
-		// Gather spectra data on master process & write to file
-		#if defined(__ENST_SPECT)
-		MPI_Reduce(MPI_IN_PLACE, run_data->enst_spect, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		WriteDataSerial(0.0, 0, spectra_group_id, sys_vars->n_spect, "EnstrophySpectrum", run_data->enst_spect);
-		#endif 
-		#if defined(__ENRG_SPECT)
-		MPI_Reduce(MPI_IN_PLACE, run_data->enrg_spect, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		WriteDataSerial(0.0, 0, spectra_group_id, sys_vars->n_spect, "EnergySpectrum", run_data->enrg_spect);
-		#endif
-		#if defined(__ENST_FLUX_SPECT)
-		MPI_Reduce(MPI_IN_PLACE, run_data->d_enst_dt_spect, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		MPI_Reduce(MPI_IN_PLACE, run_data->enst_diss_spect, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		MPI_Reduce(MPI_IN_PLACE, run_data->enst_flux_spect, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		WriteDataSerial(0.0, 0, spectra_group_id, sys_vars->n_spect, "TimeDerivativeEnstrophySpectrum", run_data->d_enst_dt_spect);
-		WriteDataSerial(0.0, 0, spectra_group_id, sys_vars->n_spect, "EnstrophyDissipationSpectrum", run_data->enst_diss_spect);
-		WriteDataSerial(0.0, 0, spectra_group_id, sys_vars->n_spect, "EnstrophyFluxSpectrum", run_data->enst_flux_spect);
-		#endif
-		#if defined(__ENRG_FLUX_SPECT)
-		MPI_Reduce(MPI_IN_PLACE, run_data->d_enrg_dt_spect, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		MPI_Reduce(MPI_IN_PLACE, run_data->enrg_diss_spect, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		MPI_Reduce(MPI_IN_PLACE, run_data->enrg_flux_spect, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		WriteDataSerial(0.0, 0, spectra_group_id, sys_vars->n_spect, "TimeDerivativeEnergySpectrum", run_data->d_enrg_dt_spect);
-		WriteDataSerial(0.0, 0, spectra_group_id, sys_vars->n_spect, "EnergyDissipationSpectrum", run_data->enrg_diss_spect);
-		WriteDataSerial(0.0, 0, spectra_group_id, sys_vars->n_spect, "EnergyFluxSpectrum", run_data->enrg_flux_spect);
-		#endif
-		#if defined(__PHASE_SYNC)
-		MPI_Reduce(MPI_IN_PLACE, run_data->phase_order_k, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		///-------------------------------------- Fourier Space Voriticity
+		#if defined(__VORT_FOUR)
+		// Create dimension arrays
+		dset_dims2D[0] 	  = Nx;
+		dset_dims2D[1] 	  = Ny_Fourier;
+		slab_dims2D[0] 	  = sys_vars->local_Nx;
+		slab_dims2D[1] 	  = Ny_Fourier;
+		mem_space_dims2D[0] = sys_vars->local_Nx;
+		mem_space_dims2D[1] = Ny_Fourier;
 
-		// Create temp mem
-		double amp_k[sys_vars->n_spect];
-		double phase_k[sys_vars->n_spect];
-		double normed_amp_k[sys_vars->n_spect];
-		double normed_phase_k[sys_vars->n_spect];
-		for (int i = 0; i < sys_vars->n_spect; ++i) {
-			amp_k[i]          = cabs(run_data->phase_order_k[i]);
-			phase_k[i]        = carg(run_data->phase_order_k[i]);
-			normed_amp_k[i]   = cabs(run_data->normed_phase_order_k[i]);
-			normed_phase_k[i] = carg(run_data->normed_phase_order_k[i]);
+		// Write the real space vorticity
+		WriteDataFourier(0.0, 0, main_group_id, "w_hat", file_info->COMPLEX_DTYPE, d_set_rank2D, dset_dims2D, slab_dims2D, mem_space_dims2D, sys_vars->local_Nx_start, run_data->w_hat);
+		#endif
+
+		#if defined(__MODES) || defined(__REALSPACE)
+		fftw_complex k_sqr;
+
+		// Get the Fourier velocities
+		for (int i = 0; i < sys_vars->local_Nx; ++i) {
+			tmp = i * Ny_Fourier;
+			for (int j = 0; j < Ny_Fourier; ++j) {
+				indx = tmp + j;
+
+				if ((run_data->k[0][i] != 0) || (run_data->k[1][j] != 0)) {
+					// Compute the prefactor
+					k_sqr = I / (double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
+
+					// Fill the Fourier velocities
+					run_data->u_hat[SYS_DIM * indx + 0] = k_sqr * run_data->k[1][j] * run_data->w_hat[indx];
+					run_data->u_hat[SYS_DIM * indx + 1] = -k_sqr * run_data->k[0][i] * run_data->w_hat[indx];
+				}
+				else {
+					run_data->u_hat[SYS_DIM * indx + 0] = 0.0 + 0.0 * I;
+					run_data->u_hat[SYS_DIM * indx + 1] = 0.0 + 0.0 * I;
+				}
+			}
 		}
-		WriteDataSerial(0.0, 0, sync_group_id, sys_vars->n_spect, "PhaseOrder_Theta_k", phase_k);
-		WriteDataSerial(0.0, 0, sync_group_id, sys_vars->n_spect, "PhaseOrder_R_k", amp_k);
-		WriteDataSerial(0.0, 0, sync_group_id, sys_vars->n_spect, "NormedPhaseOrder_Theta_k", normed_phase_k);
-		WriteDataSerial(0.0, 0, sync_group_id, sys_vars->n_spect, "NormedPhaseOrder_R_k", normed_amp_k);
+		#endif
+		
+		///-------------------------------------- Fourier Space Velocity	
+		#if defined(__MODES)
+		// Create dimension arrays
+		dset_dims3D[0] 	    = Nx;
+		dset_dims3D[1] 	    = Ny_Fourier;
+		dset_dims3D[2]      = SYS_DIM;
+		slab_dims3D[0] 	    = sys_vars->local_Nx;
+		slab_dims3D[1] 	    = Ny_Fourier;
+		slab_dims3D[2]      = SYS_DIM;
+		mem_space_dims3D[0] = sys_vars->local_Nx;
+		mem_space_dims3D[1] = Ny_Fourier;
+		mem_space_dims3D[2] = SYS_DIM;
+
+		// Write the real space vorticity
+		WriteDataFourier(0.0, 0, main_group_id, "u_hat", file_info->COMPLEX_DTYPE, d_set_rank3D, dset_dims3D, slab_dims3D, mem_space_dims3D, sys_vars->local_Nx_start, run_data->u_hat);
+		#endif
+
+		///-------------------------------------- Real Space Velocity
+		#if defined(__REALSPACE)
+		// Transform velocities back to real space and normalize
+		fftw_mpi_execute_dft_c2r(sys_vars->fftw_2d_dft_batch_c2r, run_data->u_hat, run_data->u);
+		for (int i = 0; i < sys_vars->local_Nx; ++i) {
+			tmp = i * (Ny + 2);
+			for (int j = 0; j < Ny; ++j) {
+				indx = tmp + j;
+
+				// Normalize
+				run_data->u[SYS_DIM * indx + 0] *= 1.0 / (double) (Nx * Ny);
+				run_data->u[SYS_DIM * indx + 1] *= 1.0 / (double) (Nx * Ny);
+			}
+		}
+
+		// Specify dataset dimensions
+		dset_dims3D[0] 	  = Nx;
+		dset_dims3D[1] 	  = Ny;
+		dset_dims3D[2]    = SYS_DIM;
+		slab_dims3D[0]    = sys_vars->local_Nx;
+		slab_dims3D[1]    = Ny;
+		slab_dims3D[2]    = SYS_DIM;
+		mem_space_dims3D[0] = sys_vars->local_Nx;
+		mem_space_dims3D[1] = (Ny + 2);
+		mem_space_dims3D[2] = SYS_DIM;
+
+		// Write the real space vorticity
+		WriteDataReal(0.0, 0, main_group_id, "u", H5T_NATIVE_DOUBLE, d_set_rank3D, dset_dims3D, slab_dims3D, mem_space_dims3D, sys_vars->local_Nx_start, run_data->u);
+		#endif
+
+		///-------------------------------------- Fourier Phases & Amplitudes of the Vorticity
+		#if defined(PHASE_ONLY)
+		// Record the Fourier amplitudes and phases
+		for (int i = 0; i < sys_vars->local_Nx; ++i) {
+			tmp = i * Ny_Fourier;
+			for (int j = 0; j < Ny_Fourier; ++j) {
+				indx = tmp + j;
+
+				//record the amplitudes
+				run_data->a_k = cabs(run_data->w_hat[indx]);
+				// record the phases 
+				run_data->phi_k = carg(run_data->w_hat[indx]);
+			}
+		}
+		
+		// Create dimension arrays for the Fourier amplitudes and phases
+		dset_dims2D[0] 	  = Nx;
+		dset_dims2D[1] 	  = Ny_Fourier;
+		slab_dims2D[0] 	  = sys_vars->local_Nx;
+		slab_dims2D[1] 	  = Ny_Fourier;
+		mem_space_dims2D[0] = sys_vars->local_Nx;
+		mem_space_dims2D[1] = Ny_Fourier;
+
+		// Write the Fourier amplitudes
+		WriteDataFourier(0.0, 0, main_group_id, "a_k", H5T_NATIVE_DOUBLE, d_set_rank2D, dset_dims2D, slab_dims2D, mem_space_dims2D, sys_vars->local_Nx_start, run_data->a_k);
+
+		// Write the Fourier phases
+		WriteDataFourier(0.0, 0, main_group_id, "phi_k", H5T_NATIVE_DOUBLE, d_set_rank2D, dset_dims2D, slab_dims2D, mem_space_dims2D, sys_vars->local_Nx_start, run_data->phi_k);
+		#endif
+
+		///-------------------------------------- Taylor Green Initial Condition
+		#if defined(TESTING)
+		if (!(strcmp(sys_vars->u0, "TG_VEL")) || !(strcmp(sys_vars->u0, "TG_VORT"))) {
+			// Create dimension arrays
+			dset_dims2D[0] 	    = Nx;
+			dset_dims2D[1] 	    = Ny;
+			slab_dims2D[0]      = sys_vars->local_Nx;
+			slab_dims2D[1]      = Ny;
+			mem_space_dims2D[0] = sys_vars->local_Nx;
+			mem_space_dims2D[1] = Ny + 2;
+
+			// Write the real space vorticity
+			WriteDataReal(0.0, 0, main_group_id, "TGSoln", H5T_NATIVE_DOUBLE, d_set_rank2D, dset_dims2D, slab_dims2D, mem_space_dims2D, sys_vars->local_Nx_start, run_data->tg_soln);	
+		}
+		#endif
+
+		///-------------------------------------- Spectra & Phase Sync
+		#if defined(__ENST_SPECT) || defined(__ENRG_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__ENRG_FLUX_SPECT) || defined(__PHASE_SYNC)
+		// Gather Spectra data and write to file
+		if (!sys_vars->rank) {
+			// Gather spectra data on master process & write to file
+			#if defined(__ENST_SPECT)
+			MPI_Reduce(MPI_IN_PLACE, run_data->enst_spect, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+			WriteDataSerial(0.0, 0, spectra_group_id, sys_vars->n_spect, "EnstrophySpectrum", run_data->enst_spect);
+			#endif 
+			#if defined(__ENRG_SPECT)
+			MPI_Reduce(MPI_IN_PLACE, run_data->enrg_spect, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+			WriteDataSerial(0.0, 0, spectra_group_id, sys_vars->n_spect, "EnergySpectrum", run_data->enrg_spect);
+			#endif
+			#if defined(__ENST_FLUX_SPECT)
+			MPI_Reduce(MPI_IN_PLACE, run_data->d_enst_dt_spect, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+			MPI_Reduce(MPI_IN_PLACE, run_data->enst_diss_spect, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+			MPI_Reduce(MPI_IN_PLACE, run_data->enst_flux_spect, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+			WriteDataSerial(0.0, 0, spectra_group_id, sys_vars->n_spect, "TimeDerivativeEnstrophySpectrum", run_data->d_enst_dt_spect);
+			WriteDataSerial(0.0, 0, spectra_group_id, sys_vars->n_spect, "EnstrophyDissipationSpectrum", run_data->enst_diss_spect);
+			WriteDataSerial(0.0, 0, spectra_group_id, sys_vars->n_spect, "EnstrophyFluxSpectrum", run_data->enst_flux_spect);
+			#endif
+			#if defined(__ENRG_FLUX_SPECT)
+			MPI_Reduce(MPI_IN_PLACE, run_data->d_enrg_dt_spect, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+			MPI_Reduce(MPI_IN_PLACE, run_data->enrg_diss_spect, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+			MPI_Reduce(MPI_IN_PLACE, run_data->enrg_flux_spect, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+			WriteDataSerial(0.0, 0, spectra_group_id, sys_vars->n_spect, "TimeDerivativeEnergySpectrum", run_data->d_enrg_dt_spect);
+			WriteDataSerial(0.0, 0, spectra_group_id, sys_vars->n_spect, "EnergyDissipationSpectrum", run_data->enrg_diss_spect);
+			WriteDataSerial(0.0, 0, spectra_group_id, sys_vars->n_spect, "EnergyFluxSpectrum", run_data->enrg_flux_spect);
+			#endif
+			#if defined(__PHASE_SYNC)
+			MPI_Reduce(MPI_IN_PLACE, run_data->phase_order_k, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+
+			// Create temp mem
+			double amp_k[sys_vars->n_spect];
+			double phase_k[sys_vars->n_spect];
+			double normed_amp_k[sys_vars->n_spect];
+			double normed_phase_k[sys_vars->n_spect];
+			for (int i = 0; i < sys_vars->n_spect; ++i) {
+				amp_k[i]          = cabs(run_data->phase_order_k[i]);
+				phase_k[i]        = carg(run_data->phase_order_k[i]);
+				normed_amp_k[i]   = cabs(run_data->normed_phase_order_k[i]);
+				normed_phase_k[i] = carg(run_data->normed_phase_order_k[i]);
+			}
+			WriteDataSerial(0.0, 0, sync_group_id, sys_vars->n_spect, "PhaseOrder_Theta_k", phase_k);
+			WriteDataSerial(0.0, 0, sync_group_id, sys_vars->n_spect, "PhaseOrder_R_k", amp_k);
+			WriteDataSerial(0.0, 0, sync_group_id, sys_vars->n_spect, "NormedPhaseOrder_Theta_k", normed_phase_k);
+			WriteDataSerial(0.0, 0, sync_group_id, sys_vars->n_spect, "NormedPhaseOrder_R_k", normed_amp_k);
+			#endif
+		}
+		else {
+			// Reduce all other process to master rank
+			#if defined(__ENST_SPECT)
+			MPI_Reduce(run_data->enst_spect, NULL,  sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+			#endif
+			#if defined(__ENRG_SPECT)
+			MPI_Reduce(run_data->enrg_spect, NULL,  sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+			#endif
+			#if defined(__ENST_FLUX_SPECT)
+			MPI_Reduce(run_data->d_enst_dt_spect, NULL,  sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+			MPI_Reduce(run_data->enst_diss_spect, NULL,  sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+			MPI_Reduce(run_data->enst_flux_spect, NULL,  sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+			#endif
+			#if defined(__ENRG_FLUX_SPECT)
+			MPI_Reduce(run_data->d_enrg_dt_spect, NULL,  sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+			MPI_Reduce(run_data->enrg_diss_spect, NULL,  sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+			MPI_Reduce(run_data->enrg_flux_spect, NULL,  sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+			#endif
+			#if defined(__PHASE_SYNC)
+			MPI_Reduce(run_data->phase_order_k, NULL,  sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+			#endif
+		}
 		#endif
 	}
-	else {
-		// Reduce all other process to master rank
-		#if defined(__ENST_SPECT)
-		MPI_Reduce(run_data->enst_spect, NULL,  sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		#endif
-		#if defined(__ENRG_SPECT)
-		MPI_Reduce(run_data->enrg_spect, NULL,  sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		#endif
-		#if defined(__ENST_FLUX_SPECT)
-		MPI_Reduce(run_data->d_enst_dt_spect, NULL,  sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		MPI_Reduce(run_data->enst_diss_spect, NULL,  sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		MPI_Reduce(run_data->enst_flux_spect, NULL,  sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		#endif
-		#if defined(__ENRG_FLUX_SPECT)
-		MPI_Reduce(run_data->d_enrg_dt_spect, NULL,  sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		MPI_Reduce(run_data->enrg_diss_spect, NULL,  sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		MPI_Reduce(run_data->enrg_flux_spect, NULL,  sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		#endif
-		#if defined(__PHASE_SYNC)
-		MPI_Reduce(run_data->phase_order_k, NULL,  sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		#endif
-	}
-	#endif
-	#endif
 
 	
 	

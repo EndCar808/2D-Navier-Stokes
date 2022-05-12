@@ -77,14 +77,18 @@ if __name__ == '__main__':
     ## System parameters
     nu             = 0.001
     ekmn_alpha     = 1.
-    hypervisc      = 0 
-    ekmn_hypo_diff = 0
+    hypervisc      = False
+    hypervisc_pow  = 2.0 
+    ekmn_hypo_diff = False
+    ekmn_hypo_pow  = -2.0
     ## Time parameters
-    t0        = 0.0
-    T         = 1.0
-    dt        = 1e-3
-    step_type = True
-    cfl       = np.sqrt(3)
+    t0          = 0.0
+    T           = 1.0
+    dt          = 1e-3
+    step_type   = True
+    cfl_cond    = True
+    trans_iters = True
+    cfl         = 0.9
     ## Solver parameters
     ic          = "DECAY_TURB"
     forcing     = "NONE"
@@ -146,6 +150,14 @@ if __name__ == '__main__':
                     nu.append(float(n))
             if 'drag_coefficient' in parser[section]:
                 ekmn_alpha = float(parser[section]['drag_coefficient'])
+            if 'hyperviscosity' in parser[section]:
+                hypervisc = int(parser[section]['hyperviscosity'] == 'True')
+            if 'hypo_diffusion' in parser[section]:
+                ekmn_hypo_diff = int(parser[section]['hypo_diffusion'] == 'True')
+            if 'hyperviscosity_pow' in parser[section]:
+                hypervisc_pow = float(parser[section]['hyperviscosity_pow'])
+            if 'hypo_diffusion_pow' in parser[section]:
+                ekmn_hypo_pow = float(parser[section]['hypo_diffusion_pow'])
         if section in ['SOLVER']:
             if 'initial_condition' in parser[section]:
                 for n in parser[section]['initial_condition'].lstrip('[').rstrip(']').split(', '):
@@ -170,7 +182,12 @@ if __name__ == '__main__':
                     cfl.append(float(parser[section]['cfl']))
             if 'start_time' in parser[section]:
                 t0 = float(parser[section]['start_time'])
-            step_type = bool(utils.strtobool(parser[section]['adaptive_step_type']))
+            if 'cfl_cond' in parser[section]:
+                cfl_cond = int(parser[section]['cfl_cond'] == 'True')
+            if 'trans_iters' in parser[section]:
+                trans_iters = int(parser[section]['trans_iters'] == 'True')
+            if 'adaptive_step_type' in parser[section]:
+                step_type = int(parser[section]['adaptive_step_type'] == 'True')
         if section in ['DIRECTORIES']:
             if 'solver_input_dir' in parser[section]:
                 input_dir = str(parser[section]['solver_input_dir'])
@@ -231,7 +248,20 @@ if __name__ == '__main__':
             solver_error  = []
 
         ## Generate command list 
-        cmd_list = [["mpirun -n {} {} -o {} -n {} -n {} -s {:3.1f} -e {:3.1f} -c {:1.6f} -h {:1.6f} -v {:1.10f} -d {:1.6f} -i {} -t {} -f {} -f {} -f {} -p {}".format(solver_procs, executable, output_dir, nx, ny, t0, t, c, h, v, ekmn_alpha, u0, s_tag, forcing, force_k, force_scale, save_every)] for nx, ny in zip(Nx, Ny) for t in T for h in dt for u0 in ic for v in nu for c in cfl for s_tag in solver_tag]
+        cmd_list = [["mpirun -n {} {} -o {} -n {} -n {} -s {:3.1f} -e {:3.1f} -T {} -c {} -c {:1.6f} -h {:1.6f} -h {} -v {:1.10f} -v {} -v {:1.1f} -d {:1.6f} -d {} -d {:1.1f} -i {} -t {} -f {} -f {} -f {} -p {}".format(
+                                                                                                                                                                                    solver_procs, 
+                                                                                                                                                                                    executable, 
+                                                                                                                                                                                    output_dir, 
+                                                                                                                                                                                    nx, ny, 
+                                                                                                                                                                                    t0, t, trans_iters, 
+                                                                                                                                                                                    cfl_cond, c, 
+                                                                                                                                                                                    h, step_type, 
+                                                                                                                                                                                    v, hypervisc, hypervisc_pow, 
+                                                                                                                                                                                    ekmn_alpha, ekmn_hypo_diff, ekmn_hypo_pow,
+                                                                                                                                                                                    u0, 
+                                                                                                                                                                                    s_tag, 
+                                                                                                                                                                                    forcing, force_k, force_scale, 
+                                                                                                                                                                                    save_every)] for nx, ny in zip(Nx, Ny) for t in T for h in dt for u0 in ic for v in nu for c in cfl for s_tag in solver_tag]
 
         if cmdargs.cmd_only:
             print(tc.C + "\nSolver Commands:\n" + tc.Rst)
@@ -272,16 +302,16 @@ if __name__ == '__main__':
                 now = datetime.now()
                 d_t = now.strftime("%d%b%Y_%H:%M:%S")
 
-            # Write output to file
-            with open(par_runs_output_dir + "par_run_solver_output_{}_{}.txt".format(cmdargs.init_file.lstrip('InitFiles/').rstrip(".ini"), d_t), "w") as file:
-                for item in solver_output:
-                    file.write("%s\n" % item)
+                # Write output to file
+                with open(par_runs_output_dir + "par_run_solver_output_{}_{}.txt".format(cmdargs.init_file.lstrip('InitFiles/').rstrip(".ini"), d_t), "w") as file:
+                    for item in solver_output:
+                        file.write("%s\n" % item)
 
-            # Write error to file
-            with open(par_runs_output_dir + "par_run_solver_error_{}_{}.txt".format(cmdargs.init_file.lstrip('InitFiles/').rstrip(".ini"), d_t), "w") as file:
-                for i, item in enumerate(solver_error):
-                    file.write("%s\n" % cmd_list[i])
-                    file.write("%s\n" % item)
+                # Write error to file
+                with open(par_runs_output_dir + "par_run_solver_error_{}_{}.txt".format(cmdargs.init_file.lstrip('InitFiles/').rstrip(".ini"), d_t), "w") as file:
+                    for i, item in enumerate(solver_error):
+                        file.write("%s\n" % cmd_list[i])
+                        file.write("%s\n" % item)
 
     ##################################
     ##      RUN POST PROCESSING     ##
@@ -299,7 +329,10 @@ if __name__ == '__main__':
         
 
         ## Generate command list 
-        cmd_list = [["PostProcessing/bin/main -i {} -o {} {}".format(post_input_dir + "N[{},{}]_T[{}-{}]_NU[{:1.6f}]_CFL[{:1.2f}]_u0[{}]_TAG[{}]/".format(nx, ny, int(t0), int(t), v, c, u0, s_tag), post_output_dir + "N[{},{}]_T[{}-{}]_NU[{:1.6f}]_CFL[{:1.2f}]_u0[{}]_TAG[{}]/".format(nx, ny, int(t0), int(t), v, c, u0, s_tag), post_options)] for nx, ny in zip(Nx, Ny) for t in T for v in nu for c in cfl for u0 in ic for s_tag in solver_tag]
+        cmd_list = [["PostProcessing/bin/main -i {} -o {} {}".format(
+                                                        post_input_dir + "N[{},{}]_T[{}-{}]_NU[{:1.6f}]_CFL[{:1.2f}]_u0[{}]_TAG[{}]/".format(nx, ny, int(t0), int(t), v, c, u0, s_tag), 
+                                                        post_output_dir + "N[{},{}]_T[{}-{}]_NU[{:1.6f}]_CFL[{:1.2f}]_u0[{}]_TAG[{}]/".format(nx, ny, int(t0), int(t), v, c, u0, s_tag), 
+                                                        post_options)] for nx, ny in zip(Nx, Ny) for t in T for v in nu for c in cfl for u0 in ic for s_tag in solver_tag]
 
         if cmdargs.cmd_only:
             print(tc.C + "\nPost Processing Commands:\n" + tc.Rst)
@@ -365,9 +398,12 @@ if __name__ == '__main__':
         if collect_data:
             plot_output = []
             plot_error  = []
-
+        print(nu)
         ## Generate command list 
-        cmd_list = [["python3 {} -i {} {}".format(plot_script, post_input_dir + "N[{},{}]_T[{}-{}]_NU[{:1.6f}]_CFL[{:1.2f}]_u0[{}]_TAG[{}]/".format(nx, ny, int(t0), int(t), v, c, u0, s_tag), plot_options)] for nx, ny in zip(Nx, Ny) for t in T for v in nu for c in cfl for u0 in ic for s_tag in solver_tag]
+        cmd_list = [["python3 {} -i {} {}".format(
+                                            plot_script, 
+                                            post_input_dir + "N[{},{}]_T[{}-{}]_NU[{:1.6f}]_CFL[{:1.2f}]_u0[{}]_TAG[{}]/".format(nx, ny, int(t0), int(t), v, c, u0, s_tag), 
+                                            plot_options)] for nx, ny in zip(Nx, Ny) for t in T for v in nu for c in cfl for u0 in ic for s_tag in solver_tag]
 
         if cmdargs.cmd_only:
             print(tc.C + "\nPlotting Commands:\n" + tc.Rst)
