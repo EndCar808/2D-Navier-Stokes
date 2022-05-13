@@ -143,8 +143,6 @@ int GetCMLArgs(int argc, char** argv) {
 				if (time_step_flag == 0) {
 					// Read in initial timestep
 					sys_vars->dt = atof(optarg);
-					printf("DT: %1.5g\trank: %d\n", sys_vars->dt, sys_vars->rank);
-
 					if (sys_vars->dt <= 0) {
 						fprintf(stderr, "\n["RED"ERROR"RESET"] Parsing of Command Line Arguements Failed: The provided timestep: [%lf] must be strictly positive\n-->> Exiting!\n\n", sys_vars->dt);		
 						exit(1);
@@ -190,7 +188,6 @@ int GetCMLArgs(int argc, char** argv) {
 				if (visc_flag == 0) {
 					// Read in the viscosity
 					sys_vars->NU = atof(optarg);
-					printf("NU: %1.5g\trank: %d\n", sys_vars->NU, sys_vars->rank);
 					if (sys_vars->NU <= 0) {
 						fprintf(stderr, "\n["RED"ERROR"RESET"] Parsing of Command Line Arguements Failed: The provided viscosity: [%lf] must be strictly positive\n-->> Exiting!\n\n", sys_vars->NU);		
 						exit(1);

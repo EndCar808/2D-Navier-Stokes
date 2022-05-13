@@ -222,8 +222,8 @@ void PhaseSyncSector(int s) {
 						proc_data->num_triads_across_sec[0][a][l]++;
 
 						// Update the flux contribution for type 0
-						proc_data->enst_flux[0][a]               += flux_wght * cos(triad_phase);
-						proc_data->enst_flux_across_sec[0][a][l] += flux_wght * cos(triad_phase);
+						proc_data->enst_flux[0][a]               += -flux_wght * cos(triad_phase);
+						proc_data->enst_flux_across_sec[0][a][l] += -flux_wght * cos(triad_phase);
 
 						// ------ Update the PDFs of the combined triads
 						gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf[0][a], gen_triad_phase);
@@ -250,8 +250,8 @@ void PhaseSyncSector(int s) {
 							proc_data->num_triads_across_sec[3][a][l]++;		
 
 							// Update the flux contribution for tpye 1
-							proc_data->enst_flux[3][a]               += flux_wght * cos(triad_phase);
-							proc_data->enst_flux_across_sec[3][a][l] += flux_wght * cos(triad_phase);
+							proc_data->enst_flux[3][a]               += -flux_wght * cos(triad_phase);
+							proc_data->enst_flux_across_sec[3][a][l] += -flux_wght * cos(triad_phase);
 
 							// Update the PDFs
 							gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf[3][a], gen_triad_phase);
@@ -280,8 +280,8 @@ void PhaseSyncSector(int s) {
 							proc_data->num_triads_across_sec[4][a][l]++;		
 
 							// Update the flux contribution for tpye 2
-							proc_data->enst_flux[4][a]               += flux_wght * cos(triad_phase);
-							proc_data->enst_flux_across_sec[4][a][l] += flux_wght * cos(triad_phase);
+							proc_data->enst_flux[4][a]               += -flux_wght * cos(triad_phase);
+							proc_data->enst_flux_across_sec[4][a][l] += -flux_wght * cos(triad_phase);
 
 							// Update the PDFs
 							gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf[4][a], gen_triad_phase);
@@ -396,16 +396,6 @@ void PhaseSyncSector(int s) {
 			}
 		}
 	}
-
-	// for (int a = 0; a < sys_vars->num_sect; ++a) {
-	// 	for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
-	// 		for (int type = 0; type < NUM_TRIAD_TYPES + 1; ++type) {
-	// 			printf("a: %d l: %d\ttype: %d Num: %d\t triad_phase_order: %lf %lf I\t R: %lf, Phi %lf \t Flux: %1.16lf\n", a, l, type, proc_data->num_triads_across_sec[type][a][l], creal(proc_data->triad_phase_order_across_sec[type][a][l]), cimag(proc_data->triad_phase_order_across_sec[type][a][l]), proc_data->triad_R_across_sec[type][a][l], proc_data->triad_Phi_across_sec[type][a][l], proc_data->enst_flux_across_sec[type][a][l]);
-	// 		}
-	// 		printf("\n");
-	// 	}
-	// 	printf("\n-------------------------------------\n\n");
-	// }
 
 	//------------- Reset order parameters for next iteration
 	for (int a = 0; a < sys_vars->num_sect; ++a) {
