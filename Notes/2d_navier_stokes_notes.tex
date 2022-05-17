@@ -24,8 +24,14 @@
 	\newtheorem{lemma}[theorem]{Lemma}
 \usepackage{mathrsfs}
 \usepackage{color}
+\usepackage{float}
 \usepackage{tikz}
-	\usetikzlibrary{tikzmark}
+\usetikzlibrary{arrows,%
+                plotmarks,patterns}
+\usepackage{pgfplots}
+\pgfplotsset{compat=newest}
+\usepgfplotslibrary{fillbetween}
+
 \usepackage{enumerate}
 \usepackage{array}
 \usepackage{wrapfig}
@@ -37,6 +43,7 @@
 \usepackage{cancel}
 \usepackage{listings}
 \usepackage[utf8]{inputenc}
+
 % \usepackage[table]{xcolor}
 
 \usepackage[unicode,psdextra, colorlinks=true, linkcolor=black, citecolor=black, urlcolor=blue, breaklinks]{hyperref}[2012/08/13]
@@ -85,6 +92,7 @@
 \newcommand{\diverg}[1]{\nabla \cdot {#1}}			% divergence operator
 \newcommand{\bfu}{\mathbf{u}}											% vector u in bold font
 \newcommand{\omegahat}[1]{\hat{\omega}_{ \mathbf{#1} } }								% gradient operator
+\newcommand{\alphakkk}[3]{\alpha_{\bfkn{#1}, \bfkn{#2}}^{\bfkn{#3}}}
 \newcommand{\bfx}{\mathbf{x}}								% gradient operator
 \newcommand{\bfk}{\mathbf{k}}								% gradient operator
 \newcommand{\bfkn}[1]{\mathbf{k}_{#1}}								% gradient operator
@@ -408,8 +416,82 @@ In summary we have:
 
 
 
+\subsection{Partition of Wavevector Space}
 
+\begin{figure}[H]
+ \centering
+   \begin{tikzpicture}
+   % Grid
+   % \draw [line width=0.5pt, line cap=round, dash pattern=on 0pt off 2\pgflinewidth] (-3,-3) grid (3,3);
+    
+    Axis
+    \draw[thick,->,gray] (-3,0)--(3,0) node[below=1.75pt, fill=white] {$k_y$}; % y axis
+    \draw[thick,->,gray] (0,-3)--(0,3) node[left=1.75pt, fill=white] {$k_x$}; % x axis
+    
+    % Outer Cirlce
+    \draw[gray,dashed=onthick] (0,0) circle (2.5cm);
+
+    % -k3 Sector
+    \draw[line width=0.25mm,blue,dashed=on 2pt off 3pt, pattern=north west lines, pattern color=blue] (0, 0) -- (-1.775,-1.775) arc[start angle=45 + 180, delta angle=30, radius=2.5cm] -- (0, 0);
+    \draw[line width=0.25mm,blue,dashed=on 2pt off 3pt, fill=white] (0, 0) -- (-1.25,-1.25) arc  [start angle=45 + 180, delta angle=30, radius=1.75] -- (0, 0) ;
+     \draw[line width=0.25mm,blue,dashed=on 2pt off 3pt] (0, 0) -- (-1.775,-1.775) arc[start angle=45 + 180, delta angle=30, radius=2.5cm] -- (0, 0);
+    \draw[line width=0.25mm,blue,dashed=on 2pt off 3pt] (0, 0) -- (-1.25,-1.25) arc  [start angle=45 + 180, delta angle=30, radius=1.75] -- (0, 0) ;
+  
+    % k3 Sector
+    \draw[line width=0.25mm,blue,dashed=on 2pt off 3pt, pattern=north west lines, pattern color=blue] (0,0) -- (1.775,1.775) arc[start angle=45, delta angle=30, radius=2.5cm] -- (0,0);
+    \draw[line width=0.25mm,blue,dashed=on 2pt off 3pt, fill=white] (0, 0) -- (1.25,1.25) arc  [start angle=45, delta angle=30, x radius=1.75cm, y radius =1.75cm] ;
+    \draw[line width=0.25mm,blue,dashed=on 2pt off 3pt] (0,0) -- (1.775,1.775) arc[start angle=45, delta angle=30, radius=2.5cm] -- (0,0);
+    \draw[line width=0.25mm,blue,dashed=on 2pt off 3pt] (0, 0) -- (1.25,1.25) arc  [start angle=45, delta angle=30, x radius=1.75cm, y radius =1.75cm] ;
+
+
+   \end{tikzpicture}
+\end{figure}
+
+
+Let $\alpha_{\bfkn{1}, \bfkn{2}}^{\bfkn{3}} = \left(k_{1 x} k_{2 y}-k_{2 x} k_{1 y}\right)\left(\frac{1}{\left|\mathbf{k}_{1}\right|^{2}}-\frac{1}{\left|\mathbf{k}_{2}\right|^{2}}\right) a_{\mathbf{k}_{1}} a_{\mathbf{k}_{2}} a_{\mathbf{k}_{3}}$, then we define the following enstrophy flux collective phase for $\mathcal{C}_\theta$
+
+\begin{align}
+R_{\mathcal{C}_\theta}\e^{\ii\Phi_{\mathcal{C}_{\theta}}} &= \sum_{\substack{\bfkn{3} \in \mathcal{C}_{\theta} \\ \bfkn{1},  \bfkn{2} \in \mathcal{C}_{\theta}^{'} \\ \bfkn{1} + \bfkn{2} = \bfkn{3}}} \alphakkk{{1}}{2}{3}\e^{\ii \triad{\bfkn{1}}{\bfkn{2}}{\bfkn{3}}} + \sum_{\substack{\bfkn{1}, \bfkn{2} \in \mathcal{C}_{\theta} \\ \bfkn{3} \in \mathcal{C}_{\theta}^{'} \\ \bfkn{1} + \bfkn{2} = \bfkn{3}}} \alphakkk{{1}}{2}{3}\e^{\ii \triad{\bfkn{1}}{\bfkn{2}}{\bfkn{3}}} 
+\label{eq:kuramoto_order_param}
+\end{align}
+where we restrict the summation in the wavevectors to be the right half plane i.e., $k_y > 0$, therefore we only consider the flux into/out of $\mathcal{C}_{\theta}^{+}$. Furthermore the set $\mathcal{C}_{\theta}^{'} \equiv {\mathcal{C}_{\theta}^{+}}^{'}$ can be written as
+
+\begin{align}
+	{\mathcal{C}_{\theta}^{+}}^{'} = \bigcup_{\tilde{\theta} \neq \theta} \mathcal{C}_{\tilde{\theta}} \bigcup \mathcal{C}_{\theta}^{L}
+\end{align}
+where $\mathcal{C}_{\theta}^{L}$ is the lower part of the sector $S_{\theta}$.
+
+Therefore the first term in (\ref{eq:kuramoto_order_param}) becomes
+
+\begin{align}
+	\sum_{\substack{\bfkn{3} \in \mathcal{C}_{\theta} \\ \bfkn{1},  \bfkn{2} \in \mathcal{C}_{\theta}^{'} \\ \bfkn{1} + \bfkn{2} = \bfkn{3}}} \alphakkk{{1}}{2}{3}\e^{\ii \triad{\bfkn{1}}{\bfkn{2}}{\bfkn{3}}} &= \sum_{\substack{\bfkn{3} \in \mathcal{C}_{\theta}^{+} \\ \bfkn{1},  \bfkn{2} \in \bigcup_{\tilde{\theta} \neq \theta} \mathcal{C}_{\tilde{\theta}} \bigcup \mathcal{C}_{\theta}^{L} \\ \bfkn{1} + \bfkn{2} = \bfkn{3}}} \alphakkk{{1}}{2}{3}\e^{\ii \triad{\bfkn{1}}{\bfkn{2}}{\bfkn{3}}} \notag \\
+	&= \sum_{\tilde{\theta} \neq \theta} \sum_{\substack{\bfkn{3} \in \mathcal{C}_{\theta}^{+} \\ \bfkn{1} \in \mathcal{C}_{\tilde{\theta}} \\ \bfkn{2} \notin \mathcal{C}_{\theta}^{+} \\ \bfkn{1} + \bfkn{2} = \bfkn{3}}} \alphakkk{{1}}{2}{3}\e^{\ii \triad{\bfkn{1}}{\bfkn{2}}{\bfkn{3}}} + \sum_{\substack{\bfkn{3} \in \mathcal{C}_{\theta}^{+} \\ \bfkn{1} \in \mathcal{C}_{\theta}^{L} \\ \bfkn{2} \notin \mathcal{C}_{\theta}^{+} \\ \bfkn{1} + \bfkn{2} = \bfkn{3}}} \alphakkk{{1}}{2}{3}\e^{\ii \triad{\bfkn{1}}{\bfkn{2}}{\bfkn{3}}}
+\end{align}
+
+and the second term in (\ref{eq:kuramoto_order_param}) becomes
+
+\begin{align}
+	\sum_{\substack{\bfkn{1}, \bfkn{2} \in \mathcal{C}_{\theta} \\ \bfkn{3} \in \mathcal{C}_{\theta}^{'} \\ \bfkn{1} + \bfkn{2} = \bfkn{3}}} \alphakkk{{1}}{2}{3}\e^{\ii \triad{\bfkn{1}}{\bfkn{2}}{\bfkn{3}}} &= \sum_{\substack{\bfkn{1}, \bfkn{2} \in \mathcal{C}_{\theta}^{+} \\ \bfkn{3} \in \bigcup_{\tilde{\theta} \neq \theta} \mathcal{C}_{\tilde{\theta}} \bigcup \mathcal{C}_{\theta}^{L} \\ \bfkn{1} + \bfkn{2} = \bfkn{3}}} \alphakkk{{1}}{2}{3}\e^{\ii \triad{\bfkn{1}}{\bfkn{2}}{\bfkn{3}}} \notag \\
+	&= \sum_{\tilde{\theta} \neq \theta} \sum_{\substack{\bfkn{1}, \bfkn{2} \in \mathcal{C}_{\theta}^{+} \\ \bfkn{3} \in \mathcal{C}_{\tilde{\theta}} \\ \bfkn{1} + \bfkn{2} = \bfkn{3}}} \alphakkk{{1}}{2}{3}\e^{\ii \triad{\bfkn{1}}{\bfkn{2}}{\bfkn{3}}} + \sum_{\substack{\bfkn{1}, \bfkn{2} \in \mathcal{C}_{\theta}^{+} \\ \bfkn{3} \in \mathcal{C}_{\theta}^{L} \\ \bfkn{1} + \bfkn{2} = \bfkn{3}}} \alphakkk{{1}}{2}{3}\e^{\ii \triad{\bfkn{1}}{\bfkn{2}}{\bfkn{3}}}
+\end{align}
+
+Therefore to obtian the flux into/out of $\mathcal{C}_{\theta}^{+}$ we have
+
+\begin{align}
+	\Pi_{\mathcal{C}_{\theta}^{+}} = \sum_{\tilde{\theta} \neq \theta} \left( \sum_{\substack{\bfkn{3} \in \mathcal{C}_{\theta}^{+} \\ \bfkn{1} \in \mathcal{C}_{\tilde{\theta}} \\ \bfkn{2} \notin \mathcal{C}_{\theta}^{+} \\ \bfkn{1} + \bfkn{2} = \bfkn{3}}} \alphakkk{{1}}{2}{3}\e^{\ii \triad{\bfkn{1}}{\bfkn{2}}{\bfkn{3}}} + \sum_{\substack{\bfkn{1}, \bfkn{2} \in \mathcal{C}_{\theta}^{+} \\ \bfkn{3} \in \mathcal{\tilde{\theta}} \\ \bfkn{1} + \bfkn{2} = \bfkn{3}}} \alphakkk{{1}}{2}{3}\e^{\ii \triad{\bfkn{1}}{\bfkn{2}}{\bfkn{3}}} \right) +  \sum_{\substack{\bfkn{3} \in \mathcal{C}_{\theta}^{+} \\ \bfkn{1} \in \mathcal{C}_{\theta}^{L} \\ \bfkn{2} \notin \mathcal{C}_{\theta}^{+} \\ \bfkn{1} + \bfkn{2} = \bfkn{3}}} \alphakkk{{1}}{2}{3}\e^{\ii \triad{\bfkn{1}}{\bfkn{2}}{\bfkn{3}}} + \sum_{\substack{\bfkn{1}, \bfkn{2} \in \mathcal{C}_{\theta}^{+} \\ \bfkn{3} \in \mathcal{C}_{\theta}^{L} \\ \bfkn{1} + \bfkn{2} = \bfkn{3}}} \alphakkk{{1}}{2}{3}\e^{\ii \triad{\bfkn{1}}{\bfkn{2}}{\bfkn{3}}}
+\end{align}
+
+
+which can be loosely interpretted as sum of the contributions to the flux in 1D (along the sector $S_\theta$) and contributions to the flux in 2D which is a function of the angles $\theta$ (denoting the sector that $\bfkn{3}$ lies in) and $\tilde{\theta}$ (the sector that $\bfkn{1}$ lies in)
 	
+\begin{align}
+	\Pi_{\mathcal{C}_{\theta}^{+}} = \sum_{\tilde{\theta} \neq \theta} \Pi_{\text{2D}}(\theta, \tilde{\theta}) + \Pi_{\text{1D}}
+\end{align}
+and this term can be validated against the flux computed using the nonlinear term of the equations of motion where you consider only the flux contained in the modes in $\mathcal{C}_{\theta}^{+}$
+
+\begin{align}
+	\Pi_{\mathcal{C}_{\theta}^{+}} \simeq \der{}{t} \sum_{\bfk \in \mathcal{C}_{\theta}^{+}} |\omega_{\bfk}|^2
+\end{align}
 
 \section{Energy Flux}
 

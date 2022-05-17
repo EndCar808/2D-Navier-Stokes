@@ -191,6 +191,8 @@ typedef struct postprocess_data_struct {
     double* enst_diss_spec;										             // Array to hold the enstrophy dissipation spectrum
     double* enst_flux_C;										             // Array to hold the enstrophy flux out of the set C defined by radius sys_vars->kmax_frac * sys_vars->kmax
     double* enst_diss_C;										             // Array to hold the enstrophy dissipation in the set C defined by radius sys_vars->kmax_frac * sys_vars->kmax
+    double* enst_flux_C_theta;									             // Array to hold the enstrophy flux in/out of the set C_\theta defined by radius sys_vars->kmax_frac * sys_vars->kmax
+    double* enst_diss_C_theta;												 // Array to hold the enstrophy diss in/out of the set C_\theta defined by radius sys_vars->kmax_frac * sys_vars->kmax
     double* d_enrg_dt_spec;										             // Array to hold the time derivative of the energy spectrum
     double* enrg_flux_spec;										             // Array to hold the energy flux spectrum
     double* enrg_diss_spec;										             // Array to hold the energy dissipation spectrum
