@@ -158,11 +158,10 @@ int GetCMLArgs(int argc, char** argv) {
 						fprintf(stderr, "\n["RED"ERROR"RESET"] Parsing of Command Line Arguements Failed: Incorrect Adaptive stepping flag: [%d] Must be either 0 or 1 -- Set to 0 (no adaptive stepping) by default\n-->> Exiting!\n\n", sys_vars->ADAPT_STEP_FLAG);		
 						exit(1);
 					}
+					// time_step_flag = 2;
 					break;
 				}
-				else {
-					break;
-				}				
+				break;			
 			case 'c':
 				if (cfl_flag == 0) {
 					// Read in value of the CFL -> this can be used to control the timestep
@@ -182,8 +181,10 @@ int GetCMLArgs(int argc, char** argv) {
 						fprintf(stderr, "\n["RED"ERROR"RESET"] Parsing of Command Line Arguements Failed: The provided CFL Constant: [%lf] must be strictly positive\n-->> Exiting!\n\n", sys_vars->CFL_CONST);		
 						exit(1);
 					}
+					// cfl_flag = 2;
 					break;
-				}				
+				}
+				break;				
 			case 'v':
 				if (visc_flag == 0) {
 					// Read in the viscosity
@@ -214,11 +215,10 @@ int GetCMLArgs(int argc, char** argv) {
 						fprintf(stderr, "\n["RED"ERROR"RESET"] Parsing of Command Line Arguements Failed: The provided hyperviscosity power: [%lf] must be strictly positive\n-->> Exiting!\n\n", sys_vars->HYPER_VISC_POW);		
 						exit(1);
 					}
+					// visc_flag = 3;
 					break;
 				}
-				else{
-					break;
-				}
+				break;
 			case 'd':
 				if (drag_flag == 0) {
 					// Read in the drag
@@ -249,11 +249,10 @@ int GetCMLArgs(int argc, char** argv) {
 						fprintf(stderr, "\n["RED"ERROR"RESET"] Parsing of Command Line Arguements Failed: The provided Hypodiffusibity power: [%lf] must be strictly negative\n-->> Exiting!\n\n", sys_vars->EKMN_DRAG_POW);		
 						exit(1);
 					}
+					// drag_flag = 3;
 					break;
 				}
-				else{
-					break;
-				}
+				break;
 			case 'i':
 				// Read in the initial conditions
 				if (!(strcmp(optarg,"TG_VEL"))) {
@@ -356,10 +355,10 @@ int GetCMLArgs(int argc, char** argv) {
 						fprintf(stderr, "\n["RED"ERROR"RESET"] Parsing of Command Line Arguements Failed: Incorrect transient iterations fraction: [%lf] Must be between 0 and 1 -- Set to 0.2 by default\n-->> Exiting!\n\n", sys_vars->TRANS_ITERS_FRAC);		
 						exit(1);
 					}
-				}
-				else {
+					// trans_iter_flag = 2;
 					break;
-				}				
+				}
+				break;				
 			case 'p':
 				// Read in how often to print to file
 				sys_vars->SAVE_EVERY = atoi(optarg);
@@ -378,6 +377,12 @@ int GetCMLArgs(int argc, char** argv) {
 					force_flag = 1;
 					break;
 				}
+				else if (!(strcmp(optarg,"NONE"))  && (force_flag == 0)) {
+					// No forcing
+					strncpy(sys_vars->forcing, "NONE", 64);
+					force_flag = 1;
+					break;
+				}
 				else if (!(strcmp(optarg,"STOC"))  && (force_flag == 0)) {
 					// Stochastic forcing
 					strncpy(sys_vars->forcing, "STOC", 64);
@@ -392,11 +397,6 @@ int GetCMLArgs(int argc, char** argv) {
 				else if ((force_flag == 2)) {
 					// Get the force scaling variable
 					sys_vars->force_scale_var = atof(optarg);
-				}
-				else {
-					// Set default forcing to None
-					strncpy(sys_vars->forcing, "NONE", 64);
-					break;
 				}
 				break;
 			case 'z':
