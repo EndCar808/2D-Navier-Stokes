@@ -337,6 +337,7 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 			#endif
 			#if defined(__PHASE_SYNC)
 			MPI_Reduce(MPI_IN_PLACE, run_data->phase_order_k, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+			MPI_Reduce(MPI_IN_PLACE, run_data->normed_phase_order_k, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 
 			// Create temp mem
 			double amp_k[sys_vars->n_spect];
@@ -375,6 +376,7 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 			#endif
 			#if defined(__PHASE_SYNC)
 			MPI_Reduce(run_data->phase_order_k, NULL,  sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+			MPI_Reduce(run_data->normed_phase_order_k, NULL,  sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 			#endif
 		}
 		#endif
@@ -386,7 +388,9 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 	// Close Identifiers - also close file
 	// ------------------------------------
 	status = H5Pclose(plist_id);
-	status = H5Gclose(main_group_id);
+	if (sys_vars->TRANS_ITERS_FLAG != TRANSIENT_ITERS) {
+		status = H5Gclose(main_group_id);
+	}
 	status = H5Fclose(file_info->output_file_handle);
 	if (status < 0) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close output file ["CYAN"%s"RESET"] at: Iter = ["CYAN"%d"RESET"] t = ["CYAN"%lf"RESET"]\n-->> Exiting...\n", file_info->output_file_name, 0, 0.0);
@@ -923,6 +927,7 @@ void WriteDataToFile(double t, double dt, long int iters) {
 		#endif
 		#if defined(__PHASE_SYNC)
 		MPI_Reduce(MPI_IN_PLACE, run_data->phase_order_k, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(MPI_IN_PLACE, run_data->normed_phase_order_k, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 
 		// Create temp mem
 		double amp_k[sys_vars->n_spect];
@@ -961,6 +966,7 @@ void WriteDataToFile(double t, double dt, long int iters) {
 		#endif
 		#if defined(__PHASE_SYNC)
 		MPI_Reduce(run_data->phase_order_k, NULL, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(run_data->normed_phase_order_k, NULL, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		#endif
 	}
 	#endif 

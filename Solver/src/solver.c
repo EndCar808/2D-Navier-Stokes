@@ -2190,7 +2190,7 @@ void AllocateMemory(const long int* NBatch, RK_data_struct* RK_data) {
 	#endif
 	#if defined(TESTING)
 	// Allocate array for the taylor green solution
-	run_data->tg_soln = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->alloc_local);
+	run_data->tg_soln = (double* )fftw_malloc(sizeof(double) * sys_vars->alloc_local);
 	if (run_data->tg_soln == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Taylor Green vortex solution");
 		exit(1);

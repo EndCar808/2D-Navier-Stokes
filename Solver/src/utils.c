@@ -173,7 +173,7 @@ int GetCMLArgs(int argc, char** argv) {
 						fprintf(stderr, "\n["RED"ERROR"RESET"] Parsing of Command Line Arguements Failed: Incorrect CFL condition flag: [%d] Must be either 0 or 1 -- Set to 1 (use CFL condition) by default\n-->> Exiting!\n\n", sys_vars->CFL_COND_FLAG);		
 						exit(1);
 					}
-					cfl_flag == 1;
+					cfl_flag = 1;
 					break;	
 				}
 				else if (cfl_flag == 1) {

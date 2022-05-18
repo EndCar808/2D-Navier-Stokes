@@ -1006,6 +1006,23 @@ void FinalWriteAndClose(void) {
 	// -------------------------------
 	// Write Datasets
 	// -------------------------------
+	///----------------------------------- Write the Enstrophy Flux in/out of & Dissipation in C_theta
+	#if defined(__SEC_PHASE_SYNC)
+	// Write the enstrophy flux in/out of the set C_theta	
+	dset_dims_2d[0] = sys_vars->num_snaps;
+	dset_dims_2d[1] = sys_vars->num_sect;
+	status = H5LTmake_dataset(file_info->output_file_handle, "EnstrophyFluxC_theta", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, proc_data->enst_flux_C_theta);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!!!\n-->> Exiting...\n", "Enstrophy Flux in/out C_theta");
+        exit(1);
+    }
+    // Write the enstrophy dissipation in the set C
+    status = H5LTmake_dataset(file_info->output_file_handle, "EnstrophyDissC_theta", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, proc_data->enst_diss_C_theta);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!!!\n-->> Exiting...\n", "Enstrophy Dissipation in/out C_theta");
+        exit(1);
+    }
+	#endif
 	///----------------------------------- Write the Enstrophy Flux out of & Dissipation in C
 	#if defined(__ENST_FLUX)
 	// Write the enstrophy flux out of the set C
