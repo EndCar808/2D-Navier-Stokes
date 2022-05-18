@@ -382,12 +382,12 @@ void FluxSpectra(int snap) {
 	// ------------------------------------
 	for (int i = 0; i < sys_vars->n_spec; ++i) {
 		#if defined(__ENST_FLUX)
-		proc_data->d_enst_spec[i] = 0.0;
+		proc_data->d_enst_dt_spec[i] = 0.0;
 		proc_data->enst_diss_spec[i] = 0.0;
 		proc_data->enst_flux_spec[i] = 0.0;
 		#endif
-		#if defined(__ENST_FLUX)
-		proc_data->d_enrg_spec[i] = 0.0;
+		#if defined(__ENRG_FLUX)
+		proc_data->d_enrg_dt_spec[i] = 0.0;
 		proc_data->enrg_diss_spec[i] = 0.0;
 		proc_data->enrg_flux_spec[i] = 0.0;
 		#endif

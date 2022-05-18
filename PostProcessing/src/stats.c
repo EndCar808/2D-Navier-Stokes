@@ -33,8 +33,6 @@ void RealSpaceStats(int s) {
 	int tmp;
 	int indx;
 	int gsl_status;
-	double w_max, w_min;
-	double u_max, u_min;
 	const long int Nx = sys_vars->N[0];
 	const long int Ny = sys_vars->N[1];
 	#if defined(__VEL_INC_STATS) || defined(__STR_FUNC_STATS) || defined(__GRAD_STATS)
@@ -53,12 +51,12 @@ void RealSpaceStats(int s) {
 	// --------------------------------
 	#if defined(__REAL_STATS)
 	// Get min and max data for histogram limits
-	w_max = 0.0;
-	w_min = 1e8;
+	double w_max = 0.0;
+	double w_min = 1e8;
 	gsl_stats_minmax(&w_min, &w_max, run_data->w, 1, Nx * Ny);
 
-	u_max = 0.0; 
-	u_min = 1e8;
+	double u_max = 0.0; 
+	double u_min = 1e8;
 	gsl_stats_minmax(&u_min, &u_max, run_data->u, 1, Nx * Ny * SYS_DIM);
 	if (fabs(u_min) > u_max) {
 		u_max = fabs(u_min);
