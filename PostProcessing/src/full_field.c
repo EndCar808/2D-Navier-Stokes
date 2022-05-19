@@ -453,8 +453,15 @@ void FluxSpectra(int snap) {
 							if (proc_data->phase_angle[indx] >= proc_data->theta[a] - proc_data->dtheta/2.0 && proc_data->phase_angle[indx] < proc_data->theta[a] + proc_data->dtheta/2.0) {
 								tmp_deriv = creal(run_data->w_hat[indx] * conj(proc_data->dw_hat_dt[indx]) + conj(run_data->w_hat[indx]) * proc_data->dw_hat_dt[indx]) * 4.0 * M_PI * M_PI * norm_fac;
 								tmp_diss  = pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * 4.0 * M_PI * M_PI * norm_fac;
-								proc_data->enst_diss_C_theta[snap * sys_vars->num_sect + a] += tmp_diss;
-								proc_data->enst_flux_C_theta[snap * sys_vars->num_sect + a] += tmp_deriv - tmp_diss;
+
+								// Record the flux and dissipation
+								proc_data->enst_diss_C_theta[a] += tmp_diss;
+								proc_data->enst_flux_C_theta[a] += tmp_deriv - tmp_diss;
+
+								// Record the phase sync
+								if (run_data->k[0][i] > 0 && cabs(tmp_deriv) != 0.0) {
+									proc_data->phase_order_C_theta[a] += tmp_deriv / cabs(tmp_deriv);
+								}
 							}
 						}
 					}
@@ -482,8 +489,15 @@ void FluxSpectra(int snap) {
 							if (proc_data->phase_angle[indx] >= proc_data->theta[a] - proc_data->dtheta/2.0 && proc_data->phase_angle[indx] < proc_data->theta[a] + proc_data->dtheta/2.0) {
 								tmp_deriv = 2.0 * creal(run_data->w_hat[indx] * conj(proc_data->dw_hat_dt[indx]) + conj(run_data->w_hat[indx]) * proc_data->dw_hat_dt[indx]) * 4.0 * M_PI * M_PI * norm_fac;
 								tmp_diss  = 2.0 * pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * 4.0 * M_PI * M_PI * norm_fac;
-								proc_data->enst_diss_C_theta[snap * sys_vars->num_sect + a] += tmp_diss;
-								proc_data->enst_flux_C_theta[snap * sys_vars->num_sect + a] += tmp_deriv - tmp_diss;
+								
+								// Record the flux and dissipation
+								proc_data->enst_diss_C_theta[a] += tmp_diss;
+								proc_data->enst_flux_C_theta[a] += tmp_deriv - tmp_diss;
+
+								// Record the phase sync
+								if (cabs(tmp_deriv) != 0.0) {
+									proc_data->phase_order_C_theta[a] += tmp_deriv / cabs(tmp_deriv);
+								}
 							}
 						}
 					}
@@ -642,17 +656,24 @@ void AllocateFullFieldMemory(const long int* N) {
 	// --------------------------------
 	#if defined(__SEC_PHASE_SYNC)
 	// The enstrophy flux out of the set C
-	proc_data->enst_flux_C_theta = (double* )fftw_malloc(sizeof(double) * sys_vars->num_sect * sys_vars->num_snaps);
+	proc_data->enst_flux_C_theta = (double* )fftw_malloc(sizeof(double) * sys_vars->num_snaps);
 	if (proc_data->enst_flux_C_theta == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Enstrophy Flux In/Out of C_theta");
 		exit(1);
 	}
 	// The enstrophy flux out of the set C
-	proc_data->enst_diss_C_theta = (double* )fftw_malloc(sizeof(double) * sys_vars->num_sect * sys_vars->num_snaps);
+	proc_data->enst_diss_C_theta = (double* )fftw_malloc(sizeof(double) * sys_vars->num_snaps);
 	if (proc_data->enst_diss_C_theta == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Enstrophy Dissipation In/Out C_theta");
 		exit(1);
 	}
+	// Allocate phase order for C_theta
+	proc_data->phase_order_C_theta = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->num_snaps);
+	if (proc_data->phase_order_C_theta == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Collective Phase Order for C_theta");
+		exit(1);
+	}
+	
 	#endif
 
 	// --------------------------------	
@@ -795,6 +816,7 @@ void FreeFullFieldObjects(void) {
 	#if defined(__SEC_PHASE_SYNC)
 	fftw_free(proc_data->enst_flux_C_theta);
 	fftw_free(proc_data->enst_diss_C_theta);
+	fftw_free(proc_data->phase_order_C_theta);
 	#endif
 	#if defined(__ENST_FLUX)
 	fftw_free(proc_data->enst_flux_C);

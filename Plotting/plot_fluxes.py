@@ -337,3 +337,9 @@ if __name__ == '__main__':
 
     plt.savefig(cmdargs.out_dir + "EnstrophyFluxCompare.png")
     plt.close()
+
+
+
+    # -----------------------------------------
+    # # --------  Compare Data
+    # -----------------------------------------

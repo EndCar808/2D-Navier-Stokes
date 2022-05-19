@@ -535,6 +535,11 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                     self.enrg_flux_C = f["EnergyFluxC"][:]
                 if 'EnergyDissC' in list(f.keys()):
                     self.enrg_diss_C = f["EnergyDissC"][:]
+                ## Get the energy flux out of the set C_theta
+                if 'EnstrophyFluxC_theta' in list(f.keys()):
+                    self.enst_flux_C_theta = f["EnstrophyFluxC_theta"][:]
+                if 'EnstrophyDissC_theta' in list(f.keys()):
+                    self.enst_diss_C_theta = f["EnstrophyDissC_theta"][:]
                 ## Get the increment histogram data
                 if 'LongitudinalVelIncrements_BinRanges' in list(f.keys()):
                     self.long_vel_incr_ranges = f["LongitudinalVelIncrements_BinRanges"][:, :]

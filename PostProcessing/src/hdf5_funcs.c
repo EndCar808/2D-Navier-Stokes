@@ -696,6 +696,30 @@ void WriteDataToFile(double t, long int snap) {
         exit(1);
     }
 
+    //---------------------- Write the 1d contributions phase order data
+    for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
+    	for (int a = 0; a < sys_vars->num_sect; ++a) {
+    		tmp[i * sys_vars->num_sect + a] = proc_data->triad_R_1d[i][a];
+    	}
+    }
+    dset_dims_2d[0] = NUM_TRIAD_TYPES + 1;
+    dset_dims_2d[1] = sys_vars->num_sect;
+	status = H5LTmake_dataset(group_id, "TriadPhaseSync_1D", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, tmp);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file  at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Triad Sync Parameter 1D", t, snap);
+        exit(1);
+    }
+    for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
+    	for (int a = 0; a < sys_vars->num_sect; ++a) {
+    		tmp[i * sys_vars->num_sect + a] = proc_data->triad_Phi_1d[i][a];
+    	}
+    }
+    status = H5LTmake_dataset(group_id, "TriadAverageAngle_1D", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, tmp);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file  at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Triad Average Angle 1D", t, snap);
+        exit(1);
+    }
+
     //-------------------------- Phase Sync Across sector
     double* tmp1 = (double*) fftw_malloc(sizeof(double) * (NUM_TRIAD_TYPES + 1) * sys_vars->num_sect * sys_vars->num_k1_sectors);
     for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
@@ -726,6 +750,38 @@ void WriteDataToFile(double t, long int snap) {
         exit(1);
     }
 
+    /// ----------------------- Enstrophy Flux and Dissipation in/out of C_theta
+    dset_dims_1d[0] = sys_vars->num_sect;
+    status = H5LTmake_dataset(group_id, "EnstrophyFlux_C_theta", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, proc_data->enst_flux_C_theta);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Enstrophy Flux C_theta", t, snap);
+        exit(1);
+    }
+    status = H5LTmake_dataset(group_id, "EnstrophyDiss_C_theta", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, proc_data->enst_diss_C_theta);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Enstrophy Dissipation C_theta", t, snap);
+        exit(1);
+    }    
+
+
+    /// ----------------------- Collectvie phase order parameter C_theta
+    dset_dims_1d[0] = sys_vars->num_sect;
+    status = H5LTmake_dataset(group_id, "CollectivePhaseOrder_C_theta", Dims1D, dset_dims_1d, file_info->COMPLEX_DTYPE, proc_data->phase_order_C_theta);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Collective Phase Order C_theta", t, snap);
+        exit(1);
+    }
+    status = H5LTmake_dataset(group_id, "CollectivePhaseOrder_C_theta_Triads", Dims1D, dset_dims_1d, file_info->COMPLEX_DTYPE, proc_data->phase_order_C_theta_triads);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Collective Phase Order C_theta Triads", t, snap);
+        exit(1);
+    }
+    status = H5LTmake_dataset(group_id, "CollectivePhaseOrder_C_theta_Triads_1D", Dims1D, dset_dims_1d, file_info->COMPLEX_DTYPE, proc_data->phase_order_C_theta_triads_1d);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Collective Phase Order C_theta Triads 1D", t, snap);
+        exit(1);
+    }
+
     ///------------------------ Enstrophy Flux
     for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
     	for (int a = 0; a < sys_vars->num_sect; ++a) {
@@ -735,6 +791,17 @@ void WriteDataToFile(double t, long int snap) {
     status = H5LTmake_dataset(group_id, "EnstrophyFluxPerSector", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, tmp);
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Enstrophy Flux Per Sector", t, snap);
+        exit(1);
+    }
+    // 1D contribution
+    for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
+    	for (int a = 0; a < sys_vars->num_sect; ++a) {
+    		tmp[i * sys_vars->num_sect + a] = 2.0 * pow(M_PI, 2.0) * proc_data->enst_flux_1d[i][a];
+    	}
+    }
+    status = H5LTmake_dataset(group_id, "EnstrophyFluxPerSector_1D", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, tmp);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Enstrophy Flux Per Sector 1D", t, snap);
         exit(1);
     }
     // Across Sector
@@ -1006,23 +1073,6 @@ void FinalWriteAndClose(void) {
 	// -------------------------------
 	// Write Datasets
 	// -------------------------------
-	///----------------------------------- Write the Enstrophy Flux in/out of & Dissipation in C_theta
-	#if defined(__SEC_PHASE_SYNC)
-	// Write the enstrophy flux in/out of the set C_theta	
-	dset_dims_2d[0] = sys_vars->num_snaps;
-	dset_dims_2d[1] = sys_vars->num_sect;
-	status = H5LTmake_dataset(file_info->output_file_handle, "EnstrophyFluxC_theta", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, proc_data->enst_flux_C_theta);
-	if (status < 0) {
-        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!!!\n-->> Exiting...\n", "Enstrophy Flux in/out C_theta");
-        exit(1);
-    }
-    // Write the enstrophy dissipation in the set C
-    status = H5LTmake_dataset(file_info->output_file_handle, "EnstrophyDissC_theta", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, proc_data->enst_diss_C_theta);
-	if (status < 0) {
-        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!!!\n-->> Exiting...\n", "Enstrophy Dissipation in/out C_theta");
-        exit(1);
-    }
-	#endif
 	///----------------------------------- Write the Enstrophy Flux out of & Dissipation in C
 	#if defined(__ENST_FLUX)
 	// Write the enstrophy flux out of the set C
@@ -1407,6 +1457,19 @@ void FinalWriteAndClose(void) {
 	status = H5LTmake_dataset(file_info->output_file_handle, "NumTriadsPerSector", Dims2D, dset_dims_2d, H5T_NATIVE_INT, tmp);
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!!!\n-->> Exiting...\n", "Number of Triads Per Sector");
+        exit(1);
+    }
+    // 1d contribution
+    for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
+    	for (int a = 0; a < sys_vars->num_sect; ++a) {
+    		tmp[i * sys_vars->num_sect + a] = proc_data->num_triads_1d[i][a];
+    	}
+    }
+    dset_dims_2d[0] = NUM_TRIAD_TYPES + 1;
+    dset_dims_2d[1] = sys_vars->num_sect;
+	status = H5LTmake_dataset(file_info->output_file_handle, "NumTriadsPerSector_1D", Dims2D, dset_dims_2d, H5T_NATIVE_INT, tmp);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!!!\n-->> Exiting...\n", "Number of Triads Per Sector 1D");
         exit(1);
     }
     // Across Sector
