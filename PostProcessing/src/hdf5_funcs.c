@@ -763,7 +763,6 @@ void WriteDataToFile(double t, long int snap) {
         exit(1);
     }    
 
-
     /// ----------------------- Collectvie phase order parameter C_theta
     dset_dims_1d[0] = sys_vars->num_sect;
     status = H5LTmake_dataset(group_id, "CollectivePhaseOrder_C_theta", Dims1D, dset_dims_1d, file_info->COMPLEX_DTYPE, proc_data->phase_order_C_theta);
