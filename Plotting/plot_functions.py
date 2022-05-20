@@ -912,7 +912,7 @@ def plot_sector_phase_sync_snaps_full_sec(i, out_dir, w, enst_spec, enst_flux, e
        # Plot Enstrophy Spectrum  
        #--------------------------------
        ax5  = fig.add_subplot(gs[1, 2])
-       im5  = ax5.imshow(enst_spec, extent = (-Ny / 3 + 1, Ny / 3, -Nx / 3 + 1, Nx / 3), cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1]), norm = mpl.colors.LogNorm()) # cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1]), norm = mpl.colors.LogNorm() 
+       im5  = ax5.imshow(enst_spec, extent = (-Ny / 3 + 1, Ny / 3, -Nx / 3 + 1, Nx / 3), cmap = cm.magma, norm = mpl.colors.LogNorm()) # cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1]), norm = mpl.colors.LogNorm() 
        ax5.set_xlabel(r"$k_y$")
        ax5.set_ylabel(r"$k_x$")
        ax5.set_title("Enstrophy Spectrum")
@@ -942,7 +942,7 @@ def plot_sector_phase_sync_snaps_full_sec(i, out_dir, w, enst_spec, enst_flux, e
        # Plot Avg Phase Across Sectors  
        #--------------------------------
        ax7 = fig.add_subplot(gs[2, 1])
-       im7 = ax7.imshow(Phi_a_sec, extent = (theta_min, theta_max, alpha_min, alpha_max), cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1]), vmin = -np.pi, vmax = np.pi)
+       im7 = ax7.imshow(Phi_a_sec, extent = (theta_min, theta_max, alpha_min, alpha_max), cmap = "bwr", vmin = -np.pi, vmax = np.pi)
        ax7.set_xticks(angticks_alpha)
        ax7.set_xticklabels(angtickLabels_alpha)
        ax7.set_yticks(angticks)
@@ -961,7 +961,7 @@ def plot_sector_phase_sync_snaps_full_sec(i, out_dir, w, enst_spec, enst_flux, e
        # Plot Enstrophy Flux Across Sectors  
        #--------------------------------
        ax8 = fig.add_subplot(gs[2, 2])
-       im8 = ax8.imshow(enst_flux_a_sec, extent = (theta_min, theta_max, alpha_min, alpha_max), cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1]), norm = mpl.colors.SymLogNorm(linthresh = 0.1))
+       im8 = ax8.imshow(enst_flux_a_sec, extent = (theta_min, theta_max, alpha_min, alpha_max), cmap = "bwr", norm = mpl.colors.SymLogNorm(linthresh = 0.1))
        ax8.set_xticks(angticks_alpha)
        ax8.set_xticklabels(angtickLabels_alpha)
        ax8.set_yticks(angticks)

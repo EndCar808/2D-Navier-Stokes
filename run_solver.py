@@ -52,6 +52,10 @@ def parse_cml(argv):
             cargs.init_file = str(arg)
             print("Input configuration file: " + tc.C + cargs.init_file + tc.Rst)
 
+            if not os.path.isfile(cargs.init_file):
+                print("[" + tc.R + "ERROR" + tc.Rst + "] ---> File Does not exist, double check input file path.")
+                sys.exit()
+
         if opt in ['--cmdonly']:
             ## Read in indicator to print out commands to terminal only
             cargs.cmd_only = True
@@ -108,10 +112,11 @@ if __name__ == '__main__':
     plotting                    = True
     solver                      = True
     postprocessing              = True
+    collect_data                = False
     solver_procs                = 4
     num_solver_job_threads      = 1
     num_postprocess_job_threads = 1
-
+    num_plotting_job_threads    = 1
 
     #########################
     ##  PARSE CONFIG FILE  ##

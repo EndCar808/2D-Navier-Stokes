@@ -333,7 +333,7 @@ if __name__ == '__main__':
                         print("Video Location: " + tc.C + videoName + tc.Rst + "\n")
 
                         ## Remove the generated snaps after video is created
-                        subprocess.run("rm {}".format(cmdargs.out_dir_triads) + "*.png", shell = True)
+                        run("rm {}".format(cmdargs.out_dir_triads) + "*.png", shell = True)
             else:   
                 if cmdargs.triad_type != "all":
                     ## Loop through simulation and plot data
@@ -380,7 +380,7 @@ if __name__ == '__main__':
                         print("Video Location: " + tc.C + videoName + tc.Rst + "\n")
 
                         ## Remove the generated snaps after video is created
-                        subprocess.run("rm {}".format(cmdargs.out_dir_triads) + "*.png", shell = True)
+                        run("rm {}".format(cmdargs.out_dir_triads) + "*.png", shell = True)
 
         ## End timer
         end       = TIME.perf_counter()
@@ -417,7 +417,7 @@ if __name__ == '__main__':
             print("Video Location: " + tc.C + videoName + tc.Rst + "\n")
 
             ## Remove the generated snaps after video is created
-            subprocess.run("rm {}".format(cmdargs.out_dir_phases) + "*.png", shell = True)
+            run("rm {}".format(cmdargs.out_dir_phases) + "*.png", shell = True)
 
         if cmdargs.triads and cmdargs.triad_type != "all":
 
@@ -435,7 +435,7 @@ if __name__ == '__main__':
             process.wait()
 
             ## Remove the generated snaps after video is created
-            subprocess.run("rm {}".format(cmdargs.out_dir_triads) + "*.png", shell = True)
+            run("rm {}".format(cmdargs.out_dir_triads) + "*.png", shell = True)
 
         ## Start timer
         end = TIME.perf_counter()
