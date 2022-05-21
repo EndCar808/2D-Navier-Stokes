@@ -781,6 +781,7 @@ void WriteDataToFile(double t, long int snap) {
         exit(1);
     }
 
+
     ///------------------------ Enstrophy Flux
     for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
     	for (int a = 0; a < sys_vars->num_sect; ++a) {
@@ -814,6 +815,15 @@ void WriteDataToFile(double t, long int snap) {
     status = H5LTmake_dataset(group_id, "EnstrophyFluxPerSectorAcrossSector", Dims3D, dset_dims_3d, H5T_NATIVE_DOUBLE, tmp1);
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file  at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Enstrophy Flux Per Sector Across Sector", t, snap);
+        exit(1);
+    }
+
+    ///------------------------ Enstorphy Dissipation Field
+    dset_dims_2d[0] = sys_vars->N[0];
+    dset_dims_2d[1] = sys_vars->N[1] / 2 + 1;
+    status = H5LTmake_dataset(group_id, "EnstrophyDissipationField", Dims2D, dset_dims_2d, file_info->COMPLEX_DTYPE, proc_data->enst_diss_field);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Enstrophy Dissipation Field", t, snap);
         exit(1);
     }
 

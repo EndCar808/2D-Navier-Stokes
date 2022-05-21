@@ -68,7 +68,8 @@ int GetCMLArgs(int argc, char** argv) {
 	strncpy(sys_vars->u0, "TG_VORT", 64);
 	// Forcing
 	strncpy(sys_vars->forcing, "NONE", 64);	
-	sys_vars->force_k = 0;
+	sys_vars->force_k         = 0;
+	sys_vars->force_scale_var = 1.0;
 	// Transient iterations
 	sys_vars->TRANS_ITERS_FLAG = 0;
 	sys_vars->TRANS_ITERS_FRAC = TRANSIENT_FRAC;

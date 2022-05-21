@@ -147,7 +147,7 @@ void PhaseSyncSector(int s) {
 						proc_data->enst_flux_across_sec[0][a][l] += flux_wght * cos(triad_phase);
 
 						// Update collective phase order parameter for C_theta
-						if (k1_y > 0 && k2_y > 0 && k3_y > 0) {
+						if (k3_y > 0) {
 							if (cabs(flux_wght * cexp(I * triad_phase) != 0.0)) {
 								proc_data->phase_order_C_theta_triads[0][a]    += flux_wght * cexp(I * triad_phase) / cabs(flux_wght * cexp(I * triad_phase));
 								proc_data->phase_order_C_theta_triads_1d[0][a] += flux_wght * cexp(I * triad_phase) / cabs(flux_wght * cexp(I * triad_phase));
@@ -186,7 +186,7 @@ void PhaseSyncSector(int s) {
 							proc_data->enst_flux_across_sec[1][a][l] += flux_wght * cos(triad_phase);
 
 							// Update collective phase order parameter for C_theta
-							if (k1_y > 0 && k2_y > 0 && k3_y > 0) {
+							if (k3_y > 0) {
 								if (cabs(flux_wght * cexp(I * triad_phase) != 0.0)) {
 									proc_data->phase_order_C_theta_triads[1][a]    += flux_wght * cexp(I * triad_phase) / cabs(flux_wght * cexp(I * triad_phase));
 									proc_data->phase_order_C_theta_triads_1d[1][a] += flux_wght * cexp(I * triad_phase) / cabs(flux_wght * cexp(I * triad_phase));
@@ -228,7 +228,7 @@ void PhaseSyncSector(int s) {
 							proc_data->enst_flux_across_sec[2][a][l] += flux_wght * cos(triad_phase);
 
 							// Update collective phase order parameter for C_theta
-							if (k1_y > 0 && k2_y > 0 && k3_y > 0) {
+							if (k3_y > 0) {
 								if (cabs(flux_wght * cexp(I * triad_phase) != 0.0)) {
 									proc_data->phase_order_C_theta_triads[2][a]    += flux_wght * cexp(I * triad_phase) / cabs(flux_wght * cexp(I * triad_phase));
 									proc_data->phase_order_C_theta_triads_1d[2][a] += flux_wght * cexp(I * triad_phase) / cabs(flux_wght * cexp(I * triad_phase));
@@ -274,7 +274,7 @@ void PhaseSyncSector(int s) {
 						proc_data->enst_flux_across_sec[0][a][l] += flux_wght * cos(triad_phase);
 
 						// Update collective phase order parameter for C_theta
-						if (k1_y > 0 && k2_y > 0 && k3_y > 0) {
+						if (k3_y > 0) {
 							if (cabs(flux_wght * cexp(I * triad_phase) != 0.0)) {
 								proc_data->phase_order_C_theta_triads[0][a]    += flux_wght * cexp(I * triad_phase) / cabs(flux_wght * cexp(I * triad_phase));
 							}
@@ -298,7 +298,7 @@ void PhaseSyncSector(int s) {
 						}
 
 						// Update collective phase order parameter for C_theta
-						if (k1_y > 0 && k2_y > 0 && k3_y > 0) {
+						if (k3_y > 0) {
 							if (cabs(flux_wght * cexp(I * triad_phase) != 0.0)) {
 								proc_data->phase_order_C_theta_triads[1][a] += flux_wght * cexp(I * triad_phase) / cabs(flux_wght * cexp(I * triad_phase));
 							}
@@ -347,7 +347,7 @@ void PhaseSyncSector(int s) {
 							proc_data->enst_flux_across_sec[2][a][l] += flux_wght * cos(triad_phase);
 
 							// Update collective phase order parameter for C_theta
-							if (k1_y > 0 && k2_y > 0 && k3_y > 0) {
+							if (k3_y > 0) {
 								if (cabs(flux_wght * cexp(I * triad_phase) != 0.0)) {
 									proc_data->phase_order_C_theta_triads[2][a] += flux_wght * cexp(I * triad_phase) / cabs(flux_wght * cexp(I * triad_phase));
 								}
@@ -395,7 +395,7 @@ void PhaseSyncSector(int s) {
 						proc_data->enst_flux_across_sec[0][a][l] += -flux_wght * cos(triad_phase);
 
 						// Update collective phase order parameter for C_theta
-						if (k1_y > 0 && k2_y > 0 && k3_y > 0) {
+						if (k1_y > 0 && k2_y > 0) {
 							if (cabs(-flux_wght * cexp(I * triad_phase) != 0.0)) {
 								proc_data->phase_order_C_theta_triads[0][a]    += -flux_wght * cexp(I * triad_phase) / cabs(-flux_wght * cexp(I * triad_phase));
 								proc_data->phase_order_C_theta_triads_1d[1][a] += -flux_wght * cexp(I * triad_phase) / cabs(-flux_wght * cexp(I * triad_phase));
@@ -434,7 +434,7 @@ void PhaseSyncSector(int s) {
 							proc_data->enst_flux_across_sec[3][a][l] += -flux_wght * cos(triad_phase);
 
 							// Update collective phase order parameter for C_theta
-							if (k1_y > 0 && k2_y > 0 && k3_y > 0) {
+							if (k1_y > 0 && k2_y > 0) {
 								if (cabs(-flux_wght * cexp(I * triad_phase) != 0.0)) {
 									proc_data->phase_order_C_theta_triads[3][a]    += -flux_wght * cexp(I * triad_phase) / cabs(-flux_wght * cexp(I * triad_phase));
 									proc_data->phase_order_C_theta_triads_1d[3][a] += -flux_wght * cexp(I * triad_phase) / cabs(-flux_wght * cexp(I * triad_phase));
@@ -477,7 +477,7 @@ void PhaseSyncSector(int s) {
 							proc_data->enst_flux_across_sec[4][a][l] += -flux_wght * cos(triad_phase);
 
 							// Update collective phase order parameter for C_theta
-							if (k1_y > 0 && k2_y > 0 && k3_y > 0) {
+							if (k1_y > 0 && k2_y > 0) {
 								if (cabs(-flux_wght * cexp(I * triad_phase) != 0.0)) {
 									proc_data->phase_order_C_theta_triads[4][a]    += -flux_wght * cexp(I * triad_phase) / cabs(-flux_wght * cexp(I * triad_phase));
 									proc_data->phase_order_C_theta_triads_1d[4][a] += -flux_wght * cexp(I * triad_phase) / cabs(-flux_wght * cexp(I * triad_phase));
@@ -502,7 +502,7 @@ void PhaseSyncSector(int s) {
 							}
 						}
 					}
-					else if ( ((k3_angle >= S_k1_lwr && k3_angle < S_k1_upr) || (k3_angle_neg >= S_k1_lwr && k3_angle_neg < S_k1_upr)) && !(k3_sqr > sys_vars->kmax_C_sqr && ((k3_angle >= S_k3_lwr && k3_angle < S_k3_upr) || (k3_angle_neg >= S_k3_lwr && k3_angle_neg < S_k3_upr))) 
+					else if ( ((k3_angle >= S_k1_lwr && k3_angle < S_k1_upr) || (k3_angle_neg >= S_k1_lwr && k3_angle_neg < S_k1_upr)) && !((k3_angle >= S_k3_lwr && k3_angle < S_k3_upr) || (k3_angle_neg >= S_k3_lwr && k3_angle_neg < S_k3_upr)) 
 						&& (k1_sqr > sys_vars->kmax_C_sqr && ((k1_angle >= S_k3_lwr && k1_angle < S_k3_upr) || (k1_angle_neg >= S_k3_lwr && k1_angle_neg < S_k3_upr))) 
 						&& (k2_sqr > sys_vars->kmax_C_sqr && ((k2_angle >= S_k3_lwr && k2_angle < S_k3_upr) || (k2_angle_neg >= S_k3_lwr && k2_angle_neg < S_k3_upr))) ) {
 						
@@ -523,7 +523,7 @@ void PhaseSyncSector(int s) {
 						proc_data->enst_flux_across_sec[0][a][l] += -flux_wght * cos(triad_phase);
 
 						// Update collective phase order parameter for C_theta
-						if (k1_y > 0 && k2_y > 0 && k3_y > 0) {
+						if (k1_y > 0 && k2_y > 0) {
 							if (cabs(flux_wght * cexp(I * triad_phase) != 0.0)) {
 								proc_data->phase_order_C_theta_triads[0][a] += flux_wght * cexp(I * triad_phase) / cabs(flux_wght * cexp(I * triad_phase));
 							}
@@ -558,7 +558,7 @@ void PhaseSyncSector(int s) {
 							proc_data->enst_flux_across_sec[3][a][l] += -flux_wght * cos(triad_phase);
 
 							// Update collective phase order parameter for C_theta
-							if (k1_y > 0 && k2_y > 0 && k3_y > 0) {
+							if (k1_y > 0 && k2_y > 0) {
 								if (cabs(-flux_wght * cexp(I * triad_phase) != 0.0)) {
 									proc_data->phase_order_C_theta_triads[3][a] += -flux_wght * cexp(I * triad_phase) / cabs(-flux_wght * cexp(I * triad_phase));
 								}
@@ -595,7 +595,7 @@ void PhaseSyncSector(int s) {
 							proc_data->enst_flux_across_sec[4][a][l] += -flux_wght * cos(triad_phase);
 
 							// Update collective phase order parameter for C_theta
-							if (k1_y > 0 && k2_y > 0 && k3_y > 0) {
+							if (k1_y > 0 && k2_y > 0) {
 								if (cabs(-flux_wght * cexp(I * triad_phase) != 0.0)) {
 									proc_data->phase_order_C_theta_triads[4][a] += -flux_wght * cexp(I * triad_phase) / cabs(-flux_wght * cexp(I * triad_phase));
 								}

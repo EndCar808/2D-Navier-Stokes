@@ -413,19 +413,22 @@ void FluxSpectra(int snap) {
 				k_sqr = (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 
 				// Get the appropriate prefactor
-				#if defined(HYPER_VISC) && defined(EKMN_DRAG) 
-				// Both Hyperviscosity and Ekman drag
-				pre_fac = sys_vars->NU * pow(k_sqr, VIS_POW) + sys_vars->EKMN_ALPHA * pow(k_sqr, EKMN_POW);
-				#elif !defined(HYPER_VISC) && defined(EKMN_DRAG) 
-				// No hyperviscosity but we have Ekman drag
-				pre_fac = sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA * pow(k_sqr, EKMN_POW);
-				#elif defined(HYPER_VISC) && !defined(EKMN_DRAG) 
-				// Hyperviscosity only
-				pre_fac = sys_vars->NU * pow(k_sqr, VIS_POW);
-				#else 
-				// No hyper viscosity or no ekman drag -> just normal viscosity
-				pre_fac = sys_vars->NU * k_sqr; 
-				#endif
+				if ((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
+					// Both Hyperviscosity and Ekman drag
+					pre_fac = sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW) + sys_vars->EKMN_ALPHA * pow(k_sqr, sys_vars->EKMN_DRAG_POW);
+				}
+				else if ((sys_vars->HYPER_VISC_FLAG != HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
+					// No hyperviscosity but we have Ekman drag
+					pre_fac = sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA * pow(k_sqr, sys_vars->EKMN_DRAG_POW);
+				}
+				else if ((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG != EKMN_DRAG)) {
+					// Hyperviscosity only
+					pre_fac = sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW);
+				}
+				else {
+					// No hyper viscosity or no ekman drag -> just normal viscosity
+					pre_fac = sys_vars->NU * k_sqr; 
+				}
 
 				// Get the spectrum index
 				spec_indx = (int) ceil(sqrt(k_sqr));
@@ -448,6 +451,10 @@ void FluxSpectra(int snap) {
 					proc_data->enrg_flux_spec[spec_indx] += tmp_deriv - tmp_diss; 
 					#endif
 					#if defined(__SEC_PHASE_SYNC)
+					// Compute the enstrophy dissipation field
+					proc_data->enst_diss_field[indx] = pre_fac * run_data->w_hat[indx];
+
+					// Compute the enstrophy flux, dissipation and collective phase for C_theta
 					if (k_sqr > sys_vars->kmax_C_sqr && k_sqr < sys_vars->kmax_sqr) {
 						for (int a = 0; a < sys_vars->num_sect; ++a) {
 							if (proc_data->phase_angle[indx] >= proc_data->theta[a] - proc_data->dtheta/2.0 && proc_data->phase_angle[indx] < proc_data->theta[a] + proc_data->dtheta/2.0) {
@@ -484,6 +491,10 @@ void FluxSpectra(int snap) {
 					proc_data->enrg_flux_spec[spec_indx] += tmp_deriv - tmp_diss; 
 					#endif
 					#if defined(__SEC_PHASE_SYNC)
+					// Compute the enstrophy dissipation field
+					proc_data->enst_diss_field[indx] = pre_fac * run_data->w_hat[indx];
+
+					// Compute the enstrophy flux, dissipation and collective phase for C_theta
 					if (k_sqr > sys_vars->kmax_C_sqr && k_sqr < sys_vars->kmax_sqr) {
 						for (int a = 0; a < sys_vars->num_sect; ++a) {
 							if (proc_data->phase_angle[indx] >= proc_data->theta[a] - proc_data->dtheta/2.0 && proc_data->phase_angle[indx] < proc_data->theta[a] + proc_data->dtheta/2.0) {
@@ -673,7 +684,12 @@ void AllocateFullFieldMemory(const long int* N) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Collective Phase Order for C_theta");
 		exit(1);
 	}
-	
+	// Allocate enstorphy dissipation field
+	proc_data->enst_diss_field = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * Nx * Ny_Fourier);
+	if (proc_data->enst_diss_field == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Enstrophy Dissipation Field Fourier Space");
+		exit(1);
+	}	
 	#endif
 
 	// --------------------------------	
@@ -817,6 +833,7 @@ void FreeFullFieldObjects(void) {
 	fftw_free(proc_data->enst_flux_C_theta);
 	fftw_free(proc_data->enst_diss_C_theta);
 	fftw_free(proc_data->phase_order_C_theta);
+	fftw_free(proc_data->enst_diss_field);
 	#endif
 	#if defined(__ENST_FLUX)
 	fftw_free(proc_data->enst_flux_C);

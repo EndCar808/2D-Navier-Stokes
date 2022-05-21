@@ -48,16 +48,10 @@
 // Turning these on in this file means that they WILL be on at compilation time
 
 // System Modes
-#define __HYPER_VISC
-// #define EKMN_DRAG
-#ifdef __HYPER_VISC
-#define HYPER_VISC
-#define VIS_POW 2.0
-#endif
-#ifdef __EKMN_DRAG
-#define EKMN_DRAG
-#define EKMN_POW -2.0
-#endif
+#define HYPER_VISC 1			// Turned on hyperviscosity if called for at compilation time
+#define VISC_POW 2.0            // The power of the hyperviscosity -> 1.0 means no hyperviscosity
+#define EKMN_DRAG 1   			// Turn on Ekman drag if called for at compilation time
+#define EKMN_POW -2.0 			// The power of the Eckman drag term -> 0.0 means no drag
 
 // Post processing Modes
 // #define __REAL_STATS
@@ -150,10 +144,15 @@ typedef struct system_vars_struct {
 	double w_max_init;					// Max vorticity of the initial condition
 	int n_spec;                         // Size of the spectra arrays
 	int force_k; 						// The forcing wavenumber 
+	double force_scale_var;				// The scaling variable for the forced modes
 	int print_every;                    // Records how many iterations are performed before printing to file
-	double EKMN_ALPHA; 					// The value of the Ekman drag coefficient
 	double CFL_CONST;					// The CFL constant for the adaptive step
+	double EKMN_ALPHA; 					// The value of the Ekman drag coefficient
+	int EKMN_DRAG_FLAG; 				// Indicator for Ekman drag
+	double EKMN_DRAG_POW;				// Power of the hypo drag term
 	double NU;							// The viscosity
+	int HYPER_VISC_FLAG;				// Indicator for hyperviscosity 
+	double HYPER_VISC_POW;				// The pow of the hyper viscosity
 	int SAVE_EVERY; 					// For specifying how often to print
 	int REAL_VORT_FLAG;					// Flag to indicate if the Real space vorticity exists in solver data
 	int REAL_VEL_FLAG;					// Flag to indicate if the Real space velocity exists in solver data
@@ -198,6 +197,7 @@ typedef struct postprocess_data_struct {
     double* enrg_diss_spec;										             // Array to hold the energy dissipation spectrum
     double* enrg_flux_C;										             // Array to hold the energy flux out of the set C defined by radius sys_vars->kmax_frac * sys_vars->kmax
     double* enrg_diss_C;										             // Array to hold the energy dissipation in the set C defined by radius sys_vars->kmax_frac * sys_vars->kmax
+    fftw_complex* enst_diss_field;											 // Array to holde the enstrophy dissipation field in Fourier space.
     fftw_complex* phase_order_C_theta;										 // Array to hold the phase order parameter for each C_theta
     fftw_complex* phase_order_C_theta_triads[NUM_TRIAD_TYPES + 1];			 // Array to hold the phase order parameter for each C_theta triads
     fftw_complex* phase_order_C_theta_triads_1d[NUM_TRIAD_TYPES + 1];		 // Array to hold the phase order parameter for each C_theta triads for 1d contributions

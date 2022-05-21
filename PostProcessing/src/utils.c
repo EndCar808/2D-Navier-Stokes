@@ -39,6 +39,9 @@ int GetCMLArgs(int argc, char** argv) {
 	int output_dir_flag = 0;
 	int input_dir_flag  = 0;
 	int sector_flag     = 0;
+	int visc_flag 	    = 0;
+	int drag_flag       = 0;
+	int force_flag      = 0;
 
 	// -------------------------------
 	// Initialize Default Values
@@ -59,10 +62,23 @@ int GetCMLArgs(int argc, char** argv) {
 	sys_vars->NU = 1e-4;
 	// Default number of k1 sectors
 	sys_vars->num_k1_sectors = NUM_K1_SECTORS;
+	// Forcing
+	strncpy(sys_vars->forcing, "NONE", 64);	
+	sys_vars->force_k         = 0;
+	sys_vars->force_scale_var = 1.0;
+	// Viscosity
+	sys_vars->NU              = 0.1;
+	sys_vars->HYPER_VISC_FLAG = 0;
+	sys_vars->HYPER_VISC_POW  = VISC_POW;
+	// Hypo drag
+	sys_vars->EKMN_ALPHA      = 0.1;
+	sys_vars->EKMN_DRAG_FLAG = 0;
+	sys_vars->EKMN_DRAG_POW  = EKMN_POW;
+	
 	// -------------------------------
 	// Parse CML Arguments
 	// -------------------------------
-	while ((c = getopt(argc, argv, "a:o:h:n:s:e:t:v:i:c:p:f:z:k:t:")) != -1) {
+	while ((c = getopt(argc, argv, "a:o:h:n:s:e:t:v:i:c:p:f:z:k:t:d:")) != -1) {
 		switch(c) {
 			case 'o':
 				if (output_dir_flag == 0) {
@@ -125,11 +141,107 @@ int GetCMLArgs(int argc, char** argv) {
 				}
 				break;
 			case 'v':
-				// Get the fraction of kmax wavevectors to consider in the phase sync
-				sys_vars->NU = atof(optarg); 
-				if (sys_vars->NU < 0) {
-					fprintf(stderr, "\n["RED"ERROR"RESET"]: Error in reading in command line agument ["CYAN"%s"RESET"], the kinematic viscosity must positive, viscosity provided ["CYAN"%lf"RESET"]\n--->> Now Exiting!\n", "sys_vars->NU", sys_vars->NU);
-					exit(1);
+				if (visc_flag == 0) {
+					// Read in the viscosity
+					sys_vars->NU = atof(optarg); 
+					if (sys_vars->NU < 0) {
+						fprintf(stderr, "\n["RED"ERROR"RESET"]: Error in reading in command line agument ["CYAN"%s"RESET"], the kinematic viscosity must positive, viscosity provided ["CYAN"%lf"RESET"]\n--->> Now Exiting!\n", "sys_vars->NU", sys_vars->NU);
+						exit(1);
+					}
+					visc_flag = 1;
+					break;
+				}
+				else if (visc_flag == 1) {
+					// Read in hyperviscosity flag
+					sys_vars->HYPER_VISC_FLAG = atoi(optarg);
+					if ((sys_vars->HYPER_VISC_FLAG == 0) || (sys_vars->HYPER_VISC_FLAG == 1)) {
+					}
+					else {
+						fprintf(stderr, "\n["RED"ERROR"RESET"] Parsing of Command Line Arguements Failed: Incorrect Hyperviscosity flag: [%d] Must be either 0 or 1 -- Set to 0 (no Hyperviscosity) by default\n-->> Exiting!\n\n", sys_vars->HYPER_VISC_FLAG);		
+						exit(1);
+					}
+					visc_flag = 2;
+					break;	
+				}
+				else if (visc_flag == 2) {
+					// Read in the hyperviscosity power
+					sys_vars->HYPER_VISC_POW = atof(optarg);
+					if (sys_vars->HYPER_VISC_POW <= 0.0) {
+						fprintf(stderr, "\n["RED"ERROR"RESET"] Parsing of Command Line Arguements Failed: The provided hyperviscosity power: [%lf] must be strictly positive\n-->> Exiting!\n\n", sys_vars->HYPER_VISC_POW);		
+						exit(1);
+					}
+					// visc_flag = 3;
+					break;
+				}
+				break;
+			case 'd':
+				if (drag_flag == 0) {
+					// Read in the drag
+					sys_vars->EKMN_ALPHA = atof(optarg);
+					if (sys_vars->EKMN_ALPHA < 0) {
+						fprintf(stderr, "\n["RED"ERROR"RESET"] Parsing of Command Line Arguements Failed: The provided Ekman Drag: [%lf] must be positive\n-->> Exiting!\n\n", sys_vars->EKMN_ALPHA);		
+						exit(1);
+					}
+					drag_flag = 1;
+					break;
+				}
+				else if (drag_flag == 1) {
+					// Read in Ekman drag flag
+					sys_vars->EKMN_DRAG_FLAG = atoi(optarg);
+					if ((sys_vars->EKMN_DRAG_FLAG == 0) || (sys_vars->EKMN_DRAG_FLAG == 1)) {
+					}
+					else {
+						fprintf(stderr, "\n["RED"ERROR"RESET"] Parsing of Command Line Arguements Failed: Incorrect Ekman Drag flag: [%d] Must be either 0 or 1 -- Set to 0 (no drag) by default\n-->> Exiting!\n\n", sys_vars->EKMN_DRAG_FLAG);		
+						exit(1);
+					}
+					drag_flag = 2;
+					break;	
+				}
+				else if (drag_flag == 2) {
+					// Read in the hypodiffusivity power
+					sys_vars->EKMN_DRAG_POW = atof(optarg);
+					if (sys_vars->EKMN_DRAG_POW >= 0.0) {
+						fprintf(stderr, "\n["RED"ERROR"RESET"] Parsing of Command Line Arguements Failed: The provided Hypodiffusibity power: [%lf] must be strictly negative\n-->> Exiting!\n\n", sys_vars->EKMN_DRAG_POW);		
+						exit(1);
+					}
+					// drag_flag = 3;
+					break;
+				}
+				break;
+			case 'f':
+				// Read in the forcing type
+				if (!(strcmp(optarg,"ZERO")) && (force_flag == 0)) {
+					// Killing certain modes
+					strncpy(sys_vars->forcing, "ZERO", 64);
+					force_flag = 1;
+					break;
+				}
+				else if (!(strcmp(optarg,"KOLM"))  && (force_flag == 0)) {
+					// Kolmogorov forcing
+					strncpy(sys_vars->forcing, "KOLM", 64);
+					force_flag = 1;
+					break;
+				}
+				else if (!(strcmp(optarg,"NONE"))  && (force_flag == 0)) {
+					// No forcing
+					strncpy(sys_vars->forcing, "NONE", 64);
+					force_flag = 1;
+					break;
+				}
+				else if (!(strcmp(optarg,"STOC"))  && (force_flag == 0)) {
+					// Stochastic forcing
+					strncpy(sys_vars->forcing, "STOC", 64);
+					force_flag = 1;
+					break;
+				}
+				else if ((force_flag == 1)) {
+					// Get the forcing wavenumber
+					sys_vars->force_k = atoi(optarg);
+					force_flag = 2;
+				}
+				else if ((force_flag == 2)) {
+					// Get the force scaling variable
+					sys_vars->force_scale_var = atof(optarg);
 				}
 				break;
 			case 't':

@@ -334,9 +334,12 @@ if __name__ == '__main__':
         
 
         ## Generate command list 
-        cmd_list = [["PostProcessing/bin/main -i {} -o {} {}".format(
+        cmd_list = [["PostProcessing/bin/main -i {} -o {} -v {:1.10f} -v {} -v {:1.1f} -d {:1.6f} -d {} -d {:1.1f} -f {} -f {} -f {} {}".format(
                                                         post_input_dir + "N[{},{}]_T[{}-{}]_NU[{:1.6f}]_CFL[{:1.2f}]_u0[{}]_TAG[{}]/".format(nx, ny, int(t0), int(t), v, c, u0, s_tag), 
-                                                        post_output_dir + "N[{},{}]_T[{}-{}]_NU[{:1.6f}]_CFL[{:1.2f}]_u0[{}]_TAG[{}]/".format(nx, ny, int(t0), int(t), v, c, u0, s_tag), 
+                                                        post_output_dir + "N[{},{}]_T[{}-{}]_NU[{:1.6f}]_CFL[{:1.2f}]_u0[{}]_TAG[{}]/".format(nx, ny, int(t0), int(t), v, c, u0, s_tag),
+                                                        v, hypervisc, hypervisc_pow, 
+                                                        ekmn_alpha, ekmn_hypo_diff, ekmn_hypo_pow,
+                                                        forcing, force_k, force_scale,
                                                         post_options)] for nx, ny in zip(Nx, Ny) for t in T for v in nu for c in cfl for u0 in ic for s_tag in solver_tag]
 
         if cmdargs.cmd_only:

@@ -418,34 +418,209 @@ In summary we have:
 
 \subsection{Partition of Wavevector Space}
 
+
+
+
+% Pattern Info
+ 
+\tikzset{
+pattern size/.store in=\mcSize, 
+pattern size = 5pt,
+pattern thickness/.store in=\mcThickness, 
+pattern thickness = 0.3pt,
+pattern radius/.store in=\mcRadius, 
+pattern radius = 1pt}\makeatletter
+\pgfutil@ifundefined{pgf@pattern@name@_fw1zwfwjv}{
+\pgfdeclarepatternformonly[\mcThickness,\mcSize]{_fw1zwfwjv}
+{\pgfqpoint{-\mcThickness}{-\mcThickness}}
+{\pgfpoint{\mcSize}{\mcSize}}
+{\pgfpoint{\mcSize}{\mcSize}}
+{\pgfsetcolor{\tikz@pattern@color}
+\pgfsetlinewidth{\mcThickness}
+\pgfpathmoveto{\pgfpointorigin}
+\pgfpathlineto{\pgfpoint{\mcSize}{0}}
+\pgfpathmoveto{\pgfpointorigin}
+\pgfpathlineto{\pgfpoint{0}{\mcSize}}
+\pgfusepath{stroke}}}
+\makeatother
+
+% Pattern Info
+ 
+\tikzset{
+pattern size/.store in=\mcSize, 
+pattern size = 5pt,
+pattern thickness/.store in=\mcThickness, 
+pattern thickness = 0.3pt,
+pattern radius/.store in=\mcRadius, 
+pattern radius = 1pt}
+\makeatletter
+\pgfutil@ifundefined{pgf@pattern@name@_tz67xz5tz}{
+\pgfdeclarepatternformonly[\mcThickness,\mcSize]{_tz67xz5tz}
+{\pgfqpoint{0pt}{0pt}}
+{\pgfpoint{\mcSize+\mcThickness}{\mcSize+\mcThickness}}
+{\pgfpoint{\mcSize}{\mcSize}}
+{
+\pgfsetcolor{\tikz@pattern@color}
+\pgfsetlinewidth{\mcThickness}
+\pgfpathmoveto{\pgfqpoint{0pt}{0pt}}
+\pgfpathlineto{\pgfpoint{\mcSize+\mcThickness}{\mcSize+\mcThickness}}
+\pgfusepath{stroke}
+}}
+\makeatother
+
+% Pattern Info
+ 
+\tikzset{
+pattern size/.store in=\mcSize, 
+pattern size = 5pt,
+pattern thickness/.store in=\mcThickness, 
+pattern thickness = 0.3pt,
+pattern radius/.store in=\mcRadius, 
+pattern radius = 1pt}
+\makeatletter
+\pgfutil@ifundefined{pgf@pattern@name@_qn2nivsdh}{
+\pgfdeclarepatternformonly[\mcThickness,\mcSize]{_qn2nivsdh}
+{\pgfqpoint{0pt}{0pt}}
+{\pgfpoint{\mcSize+\mcThickness}{\mcSize+\mcThickness}}
+{\pgfpoint{\mcSize}{\mcSize}}
+{
+\pgfsetcolor{\tikz@pattern@color}
+\pgfsetlinewidth{\mcThickness}
+\pgfpathmoveto{\pgfqpoint{0pt}{0pt}}
+\pgfpathlineto{\pgfpoint{\mcSize+\mcThickness}{\mcSize+\mcThickness}}
+\pgfusepath{stroke}
+}}
+\makeatother
+
+% Pattern Info
+ 
+\tikzset{
+pattern size/.store in=\mcSize, 
+pattern size = 5pt,
+pattern thickness/.store in=\mcThickness, 
+pattern thickness = 0.3pt,
+pattern radius/.store in=\mcRadius, 
+pattern radius = 1pt}
+\makeatletter
+\pgfutil@ifundefined{pgf@pattern@name@_p4gy9fbbs}{
+\pgfdeclarepatternformonly[\mcThickness,\mcSize]{_p4gy9fbbs}
+{\pgfqpoint{0pt}{0pt}}
+{\pgfpoint{\mcSize+\mcThickness}{\mcSize+\mcThickness}}
+{\pgfpoint{\mcSize}{\mcSize}}
+{
+\pgfsetcolor{\tikz@pattern@color}
+\pgfsetlinewidth{\mcThickness}
+\pgfpathmoveto{\pgfqpoint{0pt}{0pt}}
+\pgfpathlineto{\pgfpoint{\mcSize+\mcThickness}{\mcSize+\mcThickness}}
+\pgfusepath{stroke}
+}}
+\makeatother
+
+% Pattern Info
+ 
+\tikzset{
+pattern size/.store in=\mcSize, 
+pattern size = 5pt,
+pattern thickness/.store in=\mcThickness, 
+pattern thickness = 0.3pt,
+pattern radius/.store in=\mcRadius, 
+pattern radius = 1pt}
+\makeatletter
+\pgfutil@ifundefined{pgf@pattern@name@_q76bt41o0}{
+\pgfdeclarepatternformonly[\mcThickness,\mcSize]{_q76bt41o0}
+{\pgfqpoint{0pt}{0pt}}
+{\pgfpoint{\mcSize+\mcThickness}{\mcSize+\mcThickness}}
+{\pgfpoint{\mcSize}{\mcSize}}
+{
+\pgfsetcolor{\tikz@pattern@color}
+\pgfsetlinewidth{\mcThickness}
+\pgfpathmoveto{\pgfqpoint{0pt}{0pt}}
+\pgfpathlineto{\pgfpoint{\mcSize+\mcThickness}{\mcSize+\mcThickness}}
+\pgfusepath{stroke}
+}}
+\makeatother
+\tikzset{every picture/.style={line width=0.75pt}} %set default line width to 0.75pt        
+
 \begin{figure}[H]
  \centering
-   \begin{tikzpicture}
-   % Grid
-   % \draw [line width=0.5pt, line cap=round, dash pattern=on 0pt off 2\pgflinewidth] (-3,-3) grid (3,3);
-    
-    Axis
-    \draw[thick,->,gray] (-3,0)--(3,0) node[below=1.75pt, fill=white] {$k_y$}; % y axis
-    \draw[thick,->,gray] (0,-3)--(0,3) node[left=1.75pt, fill=white] {$k_x$}; % x axis
-    
-    % Outer Cirlce
-    \draw[gray,dashed=onthick] (0,0) circle (2.5cm);
+   \begin{tikzpicture}[x=0.75pt,y=0.75pt,yscale=-1,xscale=1]
+			%uncomment if require: \path (0,445); %set diagram left start at 0, and has height of 445
 
-    % -k3 Sector
-    \draw[line width=0.25mm,blue,dashed=on 2pt off 3pt, pattern=north west lines, pattern color=blue] (0, 0) -- (-1.775,-1.775) arc[start angle=45 + 180, delta angle=30, radius=2.5cm] -- (0, 0);
-    \draw[line width=0.25mm,blue,dashed=on 2pt off 3pt, fill=white] (0, 0) -- (-1.25,-1.25) arc  [start angle=45 + 180, delta angle=30, radius=1.75] -- (0, 0) ;
-     \draw[line width=0.25mm,blue,dashed=on 2pt off 3pt] (0, 0) -- (-1.775,-1.775) arc[start angle=45 + 180, delta angle=30, radius=2.5cm] -- (0, 0);
-    \draw[line width=0.25mm,blue,dashed=on 2pt off 3pt] (0, 0) -- (-1.25,-1.25) arc  [start angle=45 + 180, delta angle=30, radius=1.75] -- (0, 0) ;
-  
-    % k3 Sector
-    \draw[line width=0.25mm,blue,dashed=on 2pt off 3pt, pattern=north west lines, pattern color=blue] (0,0) -- (1.775,1.775) arc[start angle=45, delta angle=30, radius=2.5cm] -- (0,0);
-    \draw[line width=0.25mm,blue,dashed=on 2pt off 3pt, fill=white] (0, 0) -- (1.25,1.25) arc  [start angle=45, delta angle=30, x radius=1.75cm, y radius =1.75cm] ;
-    \draw[line width=0.25mm,blue,dashed=on 2pt off 3pt] (0,0) -- (1.775,1.775) arc[start angle=45, delta angle=30, radius=2.5cm] -- (0,0);
-    \draw[line width=0.25mm,blue,dashed=on 2pt off 3pt] (0, 0) -- (1.25,1.25) arc  [start angle=45, delta angle=30, x radius=1.75cm, y radius =1.75cm] ;
+			%Shape: Circle [id:dp8047077122910686] 
+			\draw  [color={rgb, 255:red, 184; green, 233; blue, 134 }  ,draw opacity=1 ][pattern=_fw1zwfwjv,pattern size=6pt,pattern thickness=0.75pt,pattern radius=0pt, pattern color={rgb, 255:red, 184; green, 233; blue, 134}][line width=1.5]  (180.75,197) .. controls (180.75,150.58) and (218.38,112.95) .. (264.8,112.95) .. controls (311.22,112.95) and (348.85,150.58) .. (348.85,197) .. controls (348.85,243.42) and (311.22,281.05) .. (264.8,281.05) .. controls (218.38,281.05) and (180.75,243.42) .. (180.75,197) -- cycle ;
+			%Shape: Axis 2D [id:dp0010428756563580777] 
+			\draw [color={rgb, 255:red, 155; green, 155; blue, 155 }  ,draw opacity=1 ] (441,196) -- (656,196)(546.8,97) -- (546.8,291) (649,191) -- (656,196) -- (649,201) (541.8,104) -- (546.8,97) -- (551.8,104)  ;
+			%Shape: Circle [id:dp01781541677683296] 
+			\draw  [color={rgb, 255:red, 155; green, 155; blue, 155 }  ,draw opacity=1 ][dash pattern={on 4.5pt off 4.5pt}] (462.75,196) .. controls (462.75,149.58) and (500.38,111.95) .. (546.8,111.95) .. controls (593.22,111.95) and (630.85,149.58) .. (630.85,196) .. controls (630.85,242.42) and (593.22,280.05) .. (546.8,280.05) .. controls (500.38,280.05) and (462.75,242.42) .. (462.75,196) -- cycle ;
+			%Shape: Pie [id:dp2605199446590514] 
+			\draw  [color={rgb, 255:red, 74; green, 144; blue, 226 }  ,draw opacity=1 ][dash pattern={on 5.63pt off 4.5pt}][line width=1.5]  (496.21,263.13) .. controls (484.7,254.44) and (475.49,242.85) .. (469.67,229.44) -- (546.8,196) -- cycle ;
+			%Shape: Pie [id:dp13165810013367563] 
+			\draw  [color={rgb, 255:red, 74; green, 144; blue, 226 }  ,draw opacity=1 ][dash pattern={on 5.63pt off 4.5pt}][line width=1.5]  (597.88,129.24) .. controls (608.46,137.35) and (617.05,147.92) .. (622.81,160.09) -- (546.8,196) -- cycle ;
+			%Shape: Block Arc [id:dp0537731675897255] 
+			\draw  [color={rgb, 255:red, 74; green, 144; blue, 226 }  ,draw opacity=1 ][pattern=_tz67xz5tz,pattern size=6pt,pattern thickness=0.75pt,pattern radius=0pt, pattern color={rgb, 255:red, 74; green, 144; blue, 226}][line width=1.5]  (597.85,129.42) .. controls (608.43,137.62) and (616.99,148.31) .. (622.67,160.6) -- (606.17,168.3) .. controls (601.73,158.67) and (595.04,150.3) .. (586.78,143.87) -- cycle ;
+			%Shape: Block Arc [id:dp6844600508043197] 
+			\draw  [color={rgb, 255:red, 74; green, 144; blue, 226 }  ,draw opacity=1 ][pattern=_qn2nivsdh,pattern size=6pt,pattern thickness=0.75pt,pattern radius=0pt, pattern color={rgb, 255:red, 74; green, 144; blue, 226}][line width=1.5]  (496.21,263.13) .. controls (484.75,254.48) and (475.56,242.96) .. (469.74,229.64) -- (486.58,222.28) .. controls (491.13,232.69) and (498.31,241.69) .. (507.27,248.45) -- cycle ;
+			%Curve Lines [id:da7878239924028905] 
+			\draw [color={rgb, 255:red, 0; green, 0; blue, 0 }  ,draw opacity=1 ]   (424.6,249.3) .. controls (464.2,228.51) and (447.35,272.11) .. (485.82,243.88) ;
+			\draw [shift={(487,243)}, rotate = 143.13] [color={rgb, 255:red, 0; green, 0; blue, 0 }  ,draw opacity=1 ][line width=0.75]    (10.93,-3.29) .. controls (6.95,-1.4) and (3.31,-0.3) .. (0,0) .. controls (3.31,0.3) and (6.95,1.4) .. (10.93,3.29)   ;
+			%Curve Lines [id:da6221125644337466] 
+			\draw    (677.6,135.3) .. controls (669.06,129.75) and (662.88,126.93) .. (658.07,125.99) .. controls (640.73,122.6) and (641.12,143.65) .. (611.83,148.71) ;
+			\draw [shift={(610,149)}, rotate = 351.81] [color={rgb, 255:red, 0; green, 0; blue, 0 }  ][line width=0.75]    (10.93,-3.29) .. controls (6.95,-1.4) and (3.31,-0.3) .. (0,0) .. controls (3.31,0.3) and (6.95,1.4) .. (10.93,3.29)   ;
+			%Curve Lines [id:da6960340400668596] 
+			\draw    (488.6,178.3) .. controls (511.37,228.79) and (521.4,163.63) .. (516.16,217.34) ;
+			\draw [shift={(516,219)}, rotate = 275.64] [color={rgb, 255:red, 0; green, 0; blue, 0 }  ][line width=0.75]    (10.93,-3.29) .. controls (6.95,-1.4) and (3.31,-0.3) .. (0,0) .. controls (3.31,0.3) and (6.95,1.4) .. (10.93,3.29)   ;
+			%Curve Lines [id:da865163833025945] 
+			\draw    (585.6,221.3) .. controls (597.48,186.65) and (540.75,217.67) .. (579.4,171.72) ;
+			\draw [shift={(580.6,170.3)}, rotate = 130.5] [color={rgb, 255:red, 0; green, 0; blue, 0 }  ][line width=0.75]    (10.93,-3.29) .. controls (6.95,-1.4) and (3.31,-0.3) .. (0,0) .. controls (3.31,0.3) and (6.95,1.4) .. (10.93,3.29)   ;
+			%Shape: Axis 2D [id:dp1759775737443261] 
+			\draw [color={rgb, 255:red, 155; green, 155; blue, 155 }  ,draw opacity=1 ] (159,197) -- (374,197)(264.8,98) -- (264.8,292) (367,192) -- (374,197) -- (367,202) (259.8,105) -- (264.8,98) -- (269.8,105)  ;
+			%Shape: Block Arc [id:dp26518686054278096] 
+			\draw  [color={rgb, 255:red, 255; green, 255; blue, 255 }  ,draw opacity=1 ][fill={rgb, 255:red, 255; green, 255; blue, 255 }  ,fill opacity=1 ][line width=1.5]  (315.2,129.92) .. controls (325.86,138.02) and (334.52,148.63) .. (340.33,160.86) -- (323.9,168.72) .. controls (319.36,159.14) and (312.59,150.83) .. (304.26,144.48) -- cycle ;
+			%Shape: Block Arc [id:dp9572201801422198] 
+			\draw  [color={rgb, 255:red, 255; green, 255; blue, 255 }  ,draw opacity=1 ][fill={rgb, 255:red, 255; green, 255; blue, 255 }  ,fill opacity=1 ][line width=1.5]  (214.24,264.15) .. controls (202.77,255.5) and (193.59,243.98) .. (187.76,230.66) -- (204.6,223.3) .. controls (209.16,233.71) and (216.33,242.71) .. (225.29,249.47) -- cycle ;
+			%Shape: Block Arc [id:dp9816655274702781] 
+			\draw  [color={rgb, 255:red, 74; green, 144; blue, 226 }  ,draw opacity=1 ][pattern=_p4gy9fbbs,pattern size=6pt,pattern thickness=0.75pt,pattern radius=0pt, pattern color={rgb, 255:red, 74; green, 144; blue, 226}][line width=1.5]  (214.24,264.15) .. controls (202.77,255.5) and (193.59,243.98) .. (187.76,230.66) -- (204.6,223.3) .. controls (209.16,233.71) and (216.33,242.71) .. (225.29,249.47) -- cycle ;
+			%Shape: Block Arc [id:dp1787138542850888] 
+			\draw  [color={rgb, 255:red, 74; green, 144; blue, 226 }  ,draw opacity=1 ][pattern=_q76bt41o0,pattern size=6pt,pattern thickness=0.75pt,pattern radius=0pt, pattern color={rgb, 255:red, 74; green, 144; blue, 226}][line width=1.5]  (315.2,129.92) .. controls (325.86,138.02) and (334.52,148.63) .. (340.33,160.86) -- (323.9,168.72) .. controls (319.36,159.14) and (312.59,150.83) .. (304.26,144.48) -- cycle ;
+			%Curve Lines [id:da2625008465286751] 
+			\draw    (165.6,123.3) .. controls (138.73,147.18) and (265.32,189.87) .. (204.92,239.26) ;
+			\draw [shift={(204,240)}, rotate = 321.55] [color={rgb, 255:red, 0; green, 0; blue, 0 }  ][line width=0.75]    (10.93,-3.29) .. controls (6.95,-1.4) and (3.31,-0.3) .. (0,0) .. controls (3.31,0.3) and (6.95,1.4) .. (10.93,3.29)   ;
+			%Curve Lines [id:da4624334379758528] 
+			\draw    (196.6,104.3) .. controls (236.4,74.45) and (254.42,199.04) .. (321.98,150.74) ;
+			\draw [shift={(323,150)}, rotate = 143.67] [color={rgb, 255:red, 0; green, 0; blue, 0 }  ][line width=0.75]    (10.93,-3.29) .. controls (6.95,-1.4) and (3.31,-0.3) .. (0,0) .. controls (3.31,0.3) and (6.95,1.4) .. (10.93,3.29)   ;
+			%Curve Lines [id:da9434944999097219] 
+			\draw    (310.6,292.3) .. controls (350.4,262.45) and (255.56,289.03) .. (293.42,223) ;
+			\draw [shift={(294,222)}, rotate = 120.35] [color={rgb, 255:red, 0; green, 0; blue, 0 }  ][line width=0.75]    (10.93,-3.29) .. controls (6.95,-1.4) and (3.31,-0.3) .. (0,0) .. controls (3.31,0.3) and (6.95,1.4) .. (10.93,3.29)   ;
+
+			% Text Node
+			\draw (556,84) node [anchor=north west][inner sep=0.75pt]  [color={rgb, 255:red, 155; green, 155; blue, 155 }  ,opacity=1 ] [align=left] {$\displaystyle k_{x}$};
+			% Text Node
+			\draw (656,200) node [anchor=north west][inner sep=0.75pt]  [color={rgb, 255:red, 155; green, 155; blue, 155 }  ,opacity=1 ] [align=left] {$\displaystyle k_{y}$};
+			% Text Node
+			\draw (396,240) node [anchor=north west][inner sep=0.75pt]   [align=left] {$\displaystyle \mathcal{U}_{\theta }^{-}$};
+			% Text Node
+			\draw (674,134) node [anchor=north west][inner sep=0.75pt]   [align=left] {$\displaystyle \mathcal{U}_{\theta }^{+}$};
+			% Text Node
+			\draw (474,154) node [anchor=north west][inner sep=0.75pt]   [align=left] {$\displaystyle \mathcal{L}_{\theta }^{-}$};
+			% Text Node
+			\draw (575,222) node [anchor=north west][inner sep=0.75pt]   [align=left] {$\displaystyle \mathcal{L}_{\theta }^{+}$};
+			% Text Node
+			\draw (277,89) node [anchor=north west][inner sep=0.75pt]  [color={rgb, 255:red, 155; green, 155; blue, 155 }  ,opacity=1 ] [align=left] {$\displaystyle k_{x}$};
+			% Text Node
+			\draw (378,204) node [anchor=north west][inner sep=0.75pt]  [color={rgb, 255:red, 155; green, 155; blue, 155 }  ,opacity=1 ] [align=left] {$\displaystyle k_{y}$};
+			% Text Node
+			\draw (166,98) node [anchor=north west][inner sep=0.75pt]   [align=left] {$\displaystyle \mathcal{U}_{\theta }$};
+			% Text Node
+			\draw (294,292) node [anchor=north west][inner sep=0.75pt]   [align=left] {$\displaystyle \mathcal{U}_{\theta }^{'}$};
 
 
-   \end{tikzpicture}
+			\end{tikzpicture}
 \end{figure}
+
+
+
+
+
 
 
 Let $\alpha_{\bfkn{1}, \bfkn{2}}^{\bfkn{3}} = \left(k_{1 x} k_{2 y}-k_{2 x} k_{1 y}\right)\left(\frac{1}{\left|\mathbf{k}_{1}\right|^{2}}-\frac{1}{\left|\mathbf{k}_{2}\right|^{2}}\right) a_{\mathbf{k}_{1}} a_{\mathbf{k}_{2}} a_{\mathbf{k}_{3}}$, then we define the following enstrophy flux collective phase for $\mathcal{C}_\theta$
