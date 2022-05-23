@@ -25,6 +25,7 @@
 #include "hdf5_funcs.h"
 #include "phase_sync.h"
 #include "full_field.h"
+#include "../Solver/src/force.h"
 // ---------------------------------------------------------------------
 //  Function Definitions
 // ---------------------------------------------------------------------

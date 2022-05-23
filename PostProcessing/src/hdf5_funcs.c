@@ -21,6 +21,7 @@
 #include "data_types.h"
 #include "hdf5_funcs.h"
 #include "utils.h"
+#include "../Solver/src/force.h"
 
 
 // ---------------------------------------------------------------------

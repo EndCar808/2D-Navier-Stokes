@@ -8,7 +8,6 @@
 //  Standard Libraries and Headers
 // ---------------------------------------------------------------------
 #ifndef __DATA_TYPES
-
 #ifndef __HDF5_HDR
 #include <hdf5.h>
 #include <hdf5_hl.h>
@@ -52,7 +51,7 @@
 #define VISC_POW 2.0            // The power of the hyperviscosity -> 1.0 means no hyperviscosity
 #define EKMN_DRAG 1   			// Turn on Ekman drag if called for at compilation time
 #define EKMN_POW -2.0 			// The power of the Eckman drag term -> 0.0 means no drag
-
+#define FORCING 1 				// Indicates if forcing was used in simulation
 // Post processing Modes
 // #define __REAL_STATS
 // #define __VEL_INC_STATS
@@ -143,8 +142,10 @@ typedef struct system_vars_struct {
 	double dy;							// Collocation point spacing in the y direction
 	double w_max_init;					// Max vorticity of the initial condition
 	int n_spec;                         // Size of the spectra arrays
+	int FORCING_FLAG; 					// Indicates if forcing was used
 	int force_k; 						// The forcing wavenumber 
 	double force_scale_var;				// The scaling variable for the forced modes
+	int num_forced_modes; 				// The number of modes to be forced on the local process
 	int print_every;                    // Records how many iterations are performed before printing to file
 	double CFL_CONST;					// The CFL constant for the adaptive step
 	double EKMN_ALPHA; 					// The value of the Ekman drag coefficient
@@ -172,6 +173,10 @@ typedef struct runtime_data_struct {
 	double* u;				 // Real space velocity
 	double* time;			 // Array to hold the simulation times
 	fftw_complex* psi_hat;   // Fourier stream function
+	fftw_complex* forcing;	 // Array to hold the forcing for the current timestep
+	double* forcing_scaling; // Array to hold the initial scaling for the forced modes
+	int* forcing_indx;		 // Array to hold the indices of the forced modes
+	int* forcing_k[SYS_DIM]; // Array containg the wavenumbers for the forced modes
 } runtime_data_struct;
 
 // Post processing data struct

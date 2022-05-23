@@ -64,6 +64,7 @@ int GetCMLArgs(int argc, char** argv) {
 	sys_vars->num_k1_sectors = NUM_K1_SECTORS;
 	// Forcing
 	strncpy(sys_vars->forcing, "NONE", 64);	
+	sys_vars->FORCING_FLAG    = 0;
 	sys_vars->force_k         = 0;
 	sys_vars->force_scale_var = 1.0;
 	// Viscosity
@@ -213,24 +214,28 @@ int GetCMLArgs(int argc, char** argv) {
 				if (!(strcmp(optarg,"ZERO")) && (force_flag == 0)) {
 					// Killing certain modes
 					strncpy(sys_vars->forcing, "ZERO", 64);
+					sys_vars->FORCING_FLAG = 1;
 					force_flag = 1;
 					break;
 				}
 				else if (!(strcmp(optarg,"KOLM"))  && (force_flag == 0)) {
 					// Kolmogorov forcing
 					strncpy(sys_vars->forcing, "KOLM", 64);
+					sys_vars->FORCING_FLAG = 1;
 					force_flag = 1;
 					break;
 				}
 				else if (!(strcmp(optarg,"NONE"))  && (force_flag == 0)) {
 					// No forcing
 					strncpy(sys_vars->forcing, "NONE", 64);
+					sys_vars->FORCING_FLAG = 0;
 					force_flag = 1;
 					break;
 				}
 				else if (!(strcmp(optarg,"STOC"))  && (force_flag == 0)) {
 					// Stochastic forcing
 					strncpy(sys_vars->forcing, "STOC", 64);
+					sys_vars->FORCING_FLAG = 1;
 					force_flag = 1;
 					break;
 				}

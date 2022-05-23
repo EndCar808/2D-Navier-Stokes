@@ -112,6 +112,7 @@ void InitializeForcing(void) {
 
 				// Count the forced modes
 				if ((k_abs > STOC_FORC_K_MIN && k_abs < STOC_FORC_K_MAX) && (run_data->k[1][j] != 0 || run_data->k[0][i] > 0)) {
+					sys_vars->local_forcing_proc = 1;
 					sum_k_pow += pow(k_abs, 2.0 * scaling_exp);
 					num_forced_modes++;
 				}
