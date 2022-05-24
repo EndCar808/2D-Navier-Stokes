@@ -65,10 +65,11 @@
 
 
 // Postprocessing data sets
-// #define __VORT
-// #define __MODES
-// #define __REALSPACE
-// #define __NONLIN
+#define __VORT_FOUR
+#define __VORT_REAL
+#define __MODES
+#define __REALSPACE
+#define __NONLIN
 #define __TIME
 #define __COLLOC_PTS
 #define __WAVELIST

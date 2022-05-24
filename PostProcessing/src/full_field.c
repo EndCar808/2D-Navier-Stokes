@@ -373,8 +373,9 @@ void FluxSpectra(int snap) {
 	const long int Nx         = sys_vars->N[0];
 	const long int Ny         = sys_vars->N[1];
 	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
-	double pre_fac = 0.0;
-	double norm_fac = 0.5 / pow(Nx * Ny, 2.0);
+	double pre_fac   = 0.0;
+	double norm_fac  = 0.5 / pow(Nx * Ny, 2.0);
+	double const_fac = 4.0 * pow(M_PI, 2.0);
 	double tmp_deriv, tmp_diss;
 
 	// ------------------------------------
@@ -431,21 +432,21 @@ void FluxSpectra(int snap) {
 				}
 
 				// Get the spectrum index
-				spec_indx = (int) ceil(sqrt(k_sqr));
+				spec_indx = (int) round(sqrt(k_sqr));
 
 				// Update spectrum bin
 				if ((j == 0) || (Ny_Fourier - 1)) {
 					// Update the current bin sum 
 					#if defined(__ENST_FLUX)
-					tmp_deriv = creal(run_data->w_hat[indx] * conj(proc_data->dw_hat_dt[indx]) + conj(run_data->w_hat[indx]) * proc_data->dw_hat_dt[indx]) * 4.0 * M_PI * M_PI * norm_fac;
-					tmp_diss  = pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * 4.0 * M_PI * M_PI * norm_fac;
+					tmp_deriv = creal(run_data->w_hat[indx] * conj(proc_data->dw_hat_dt[indx]) + conj(run_data->w_hat[indx]) * proc_data->dw_hat_dt[indx]) * const_fac * norm_fac;
+					tmp_diss  = pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * const_fac * norm_fac;
 					proc_data->d_enst_dt_spec[spec_indx] += tmp_deriv;
 					proc_data->enst_diss_spec[spec_indx] += tmp_diss; 
 					proc_data->enst_flux_spec[spec_indx] += tmp_deriv - tmp_diss; 
 					#endif
 					#if defined(__ENRG_FLUX)
-					tmp_deriv = creal(run_data->w_hat[indx] * conj(proc_data->dw_hat_dt[indx]) + conj(run_data->w_hat[indx]) * proc_data->dw_hat_dt[indx]) * 4.0 * M_PI * M_PI * norm_fac / k_sqr;
-					tmp_diss  = pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * 4.0 * M_PI * M_PI * norm_fac / k_sqr;
+					tmp_deriv = creal(run_data->w_hat[indx] * conj(proc_data->dw_hat_dt[indx]) + conj(run_data->w_hat[indx]) * proc_data->dw_hat_dt[indx]) * const_fac * norm_fac / k_sqr;
+					tmp_diss  = pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * const_fac * norm_fac / k_sqr;
 					proc_data->d_enrg_dt_spec[spec_indx] += tmp_deriv;
 					proc_data->enrg_diss_spec[spec_indx] += tmp_diss; 
 					proc_data->enrg_flux_spec[spec_indx] += tmp_deriv - tmp_diss; 
@@ -458,8 +459,8 @@ void FluxSpectra(int snap) {
 					if (k_sqr > sys_vars->kmax_C_sqr && k_sqr < sys_vars->kmax_sqr) {
 						for (int a = 0; a < sys_vars->num_sect; ++a) {
 							if (proc_data->phase_angle[indx] >= proc_data->theta[a] - proc_data->dtheta/2.0 && proc_data->phase_angle[indx] < proc_data->theta[a] + proc_data->dtheta/2.0) {
-								tmp_deriv = creal(run_data->w_hat[indx] * conj(proc_data->dw_hat_dt[indx]) + conj(run_data->w_hat[indx]) * proc_data->dw_hat_dt[indx]) * 4.0 * M_PI * M_PI * norm_fac;
-								tmp_diss  = pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * 4.0 * M_PI * M_PI * norm_fac;
+								tmp_deriv = creal(run_data->w_hat[indx] * conj(proc_data->dw_hat_dt[indx]) + conj(run_data->w_hat[indx]) * proc_data->dw_hat_dt[indx]) * const_fac * norm_fac;
+								tmp_diss  = pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * const_fac * norm_fac;
 
 								// Record the flux and dissipation
 								proc_data->enst_diss_C_theta[a] += tmp_diss;
@@ -477,15 +478,15 @@ void FluxSpectra(int snap) {
 				else {
 					// Update the running sum for the flux
 					#if defined(__ENST_FLUX)
-					tmp_deriv = 2.0 * creal(run_data->w_hat[indx] * conj(proc_data->dw_hat_dt[indx]) + conj(run_data->w_hat[indx]) * proc_data->dw_hat_dt[indx]) * 4.0 * M_PI * M_PI * norm_fac;
-					tmp_diss  = 2.0 * pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * 4.0 * M_PI * M_PI * norm_fac;
+					tmp_deriv = 2.0 * creal(run_data->w_hat[indx] * conj(proc_data->dw_hat_dt[indx]) + conj(run_data->w_hat[indx]) * proc_data->dw_hat_dt[indx]) * const_fac * norm_fac;
+					tmp_diss  = 2.0 * pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * const_fac * norm_fac;
 					proc_data->d_enst_dt_spec[spec_indx] += tmp_deriv;
 					proc_data->enst_diss_spec[spec_indx] += tmp_diss; 
 					proc_data->enst_flux_spec[spec_indx] += tmp_deriv - tmp_diss; 
 					#endif
 					#if defined(__ENRG_FLUX)
-					tmp_deriv = 2.0 * creal(run_data->w_hat[indx] * conj(proc_data->dw_hat_dt[indx]) + conj(run_data->w_hat[indx]) * proc_data->dw_hat_dt[indx]) * 4.0 * M_PI * M_PI * norm_fac / k_sqr;
-					tmp_diss  = 2.0 * pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * 4.0 * M_PI * M_PI * norm_fac / k_sqr;
+					tmp_deriv = 2.0 * creal(run_data->w_hat[indx] * conj(proc_data->dw_hat_dt[indx]) + conj(run_data->w_hat[indx]) * proc_data->dw_hat_dt[indx]) * const_fac * norm_fac / k_sqr;
+					tmp_diss  = 2.0 * pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * const_fac * norm_fac / k_sqr;
 					proc_data->d_enrg_dt_spec[spec_indx] += tmp_deriv;
 					proc_data->enrg_diss_spec[spec_indx] += tmp_diss; 
 					proc_data->enrg_flux_spec[spec_indx] += tmp_deriv - tmp_diss; 
@@ -498,8 +499,8 @@ void FluxSpectra(int snap) {
 					if (k_sqr > sys_vars->kmax_C_sqr && k_sqr < sys_vars->kmax_sqr) {
 						for (int a = 0; a < sys_vars->num_sect; ++a) {
 							if (proc_data->phase_angle[indx] >= proc_data->theta[a] - proc_data->dtheta/2.0 && proc_data->phase_angle[indx] < proc_data->theta[a] + proc_data->dtheta/2.0) {
-								tmp_deriv = creal(run_data->w_hat[indx] * conj(proc_data->dw_hat_dt[indx]) + conj(run_data->w_hat[indx]) * proc_data->dw_hat_dt[indx]) * 4.0 * M_PI * M_PI * norm_fac;
-								tmp_diss  = pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * 4.0 * M_PI * M_PI * norm_fac;
+								tmp_deriv = creal(run_data->w_hat[indx] * conj(proc_data->dw_hat_dt[indx]) + conj(run_data->w_hat[indx]) * proc_data->dw_hat_dt[indx]) * const_fac * norm_fac;
+								tmp_diss  = pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * const_fac * norm_fac;
 								
 								// Record the flux and dissipation
 								proc_data->enst_diss_C_theta[a] += tmp_diss;

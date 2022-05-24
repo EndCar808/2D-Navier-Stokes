@@ -86,14 +86,14 @@
 // Turning these on in this file means that they WILL be on at compilation time
 
 // Choose whether to save the Real Space or Fourier Space vorticity
-// #define __VORT_REAL
+#define __VORT_REAL
 #define __VORT_FOUR
 // Choose whether to save the Nonlinear term or RHS of equation of motion
 // #define __RHS
-// #define __NONLIN
+#define __NONLIN
 // Choose whether to save the Real or Fourier space velocitites
-// #define __MODES
-// #define __REALSPACE
+#define __MODES
+#define __REALSPACE
 // Choose whether to compute system measures
 #define __SYS_MEASURES
 // Choose whether to compute the fluxes

@@ -253,6 +253,7 @@ def import_data(input_file, sim_data, method = "default"):
             self.tg_soln   = np.zeros((sim_data.ndata, sim_data.Nx, sim_data.Ny))
             self.u_hat     = np.ones((sim_data.ndata, sim_data.Nx, sim_data.Nk, 2)) * np.complex(0.0, 0.0)
             self.w_hat     = np.ones((sim_data.ndata, sim_data.Nx, sim_data.Nk)) * np.complex(0.0, 0.0)
+            self.nonlin    = np.ones((sim_data.ndata, sim_data.Nx, sim_data.Nk)) * np.complex(0.0, 0.0)
             self.time      = np.zeros((sim_data.ndata, ))
             ## Allocate system measure arrays
             self.tot_enrg  = np.zeros((int(sim_data.ndata * 2), ))
@@ -301,6 +302,8 @@ def import_data(input_file, sim_data, method = "default"):
                     data.no_w = True
                 if 'w_hat' in list(f[group].keys()):
                     data.w_hat[nn, :, :] = f[group]["w_hat"][:, :]
+                if 'NonlinearTerm' in list(f[group].keys()):
+                    data.nonlin[nn, :, :] = f[group]["NonlinearTerm"][:, :]
                 if 'w_hat' not in list(f[group].keys()):
                     data.no_w_hat = True
                 if 'u' in list(f[group].keys()):
@@ -317,6 +320,12 @@ def import_data(input_file, sim_data, method = "default"):
                 nn += 1
             else:
                 continue
+
+        if data.no_w:
+            print("\nPreparing real space vorticity...", end = " ")
+            for i in range(sim_data.ndata):
+                data.w[i, :, :] = np.fft.irfft2(data.w_hat[i, :, :])
+            print("Finished!")
 
         ## Read in the space arrays
         if 'kx' in list(f.keys()):
@@ -383,8 +392,12 @@ def import_spectra_data(input_file, sim_data, method = "default"):
             self.enrg_spectrum = np.zeros((sim_data.ndata, sim_data.spec_size))
             self.enst_spectrum = np.zeros((sim_data.ndata, sim_data.spec_size))
             ## Allocate flux spectra arrays
+            self.d_enrg_dt_spectrum = np.zeros((sim_data.ndata, sim_data.spec_size))
             self.enrg_flux_spectrum = np.zeros((sim_data.ndata, sim_data.spec_size))
+            self.enrg_diss_spectrum = np.zeros((sim_data.ndata, sim_data.spec_size))
+            self.d_enst_dt_spectrum = np.zeros((sim_data.ndata, sim_data.spec_size))
             self.enst_flux_spectrum = np.zeros((sim_data.ndata, sim_data.spec_size))
+            self.enst_diss_spectrum = np.zeros((sim_data.ndata, sim_data.spec_size))
 
 
     ## Create instance of data class
@@ -411,8 +424,16 @@ def import_spectra_data(input_file, sim_data, method = "default"):
                     data.enst_spectrum[nn, :] = f[group]["EnstrophySpectrum"][:]
                 if 'EnergyFluxSpectrum' in list(f[group].keys()):
                     data.enrg_flux_spectrum[nn, :] = f[group]["EnergyFluxSpectrum"][:]
+                if 'EnergyDissipationSpectrum' in list(f[group].keys()):
+                    data.enrg_diss_spectrum[nn, :] = f[group]["EnergyDissipationSpectrum"][:]
+                if 'TimeDerivativeEnergySpectrum' in list(f[group].keys()):
+                    data.d_enrg_dt_spectrum[nn, :] = f[group]["TimeDerivativeEnergySpectrum"][:]
                 if 'EnstrophyFluxSpectrum' in list(f[group].keys()):
                     data.enst_flux_spectrum[nn, :] = f[group]["EnstrophyFluxSpectrum"][:]
+                if 'EnstrophyDissipationSpectrum' in list(f[group].keys()):
+                    data.enst_diss_spectrum[nn, :] = f[group]["EnstrophyDissipationSpectrum"][:]
+                if 'TimeDerivativeEnstrophySpectrum' in list(f[group].keys()):
+                    data.d_enst_dt_spectrum[nn, :] = f[group]["TimeDerivativeEnstrophySpectrum"][:]
                 nn += 1
             else:
                 continue
@@ -585,6 +606,12 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                 ## Get the number of k1 sectors 
                 if 'TriadPhaseSyncAcrossSector' in list(f['Snap_00000'].keys()):
                     self.num_k1_sects = f['Snap_00000']['TriadPhaseSyncAcrossSector'][:, :, :].shape[-1]
+
+            ## Data indicators
+            self.no_w     = False
+            self.no_w_hat = False
+            self.no_u     = False
+            self.no_u_hat = False
             
             ## Set the number of Triad Types
             NUM_TRIAD_TYPES = 7
@@ -603,8 +630,14 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
             ## Allocate spectra arrays
             self.enst_spectrum_1d = np.zeros((sim_data.ndata, sim_data.spec_size))
             self.enrg_spectrum_1d = np.zeros((sim_data.ndata, sim_data.spec_size))
+            # Enstrophy Dissipation Field
+            self.enst_diss_field = np.zeros((sim_data.ndata, sim_data.Nx, sim_data.Ny))
             ## Allocate solver data arrays
-            self.w_hat = np.ones((sim_data.ndata, sim_data.Nx, sim_data.Nk)) * np.complex(0.0, 0.0)
+            self.w      = np.zeros((sim_data.ndata, sim_data.Nx, sim_data.Ny))
+            self.w_hat  = np.ones((sim_data.ndata, sim_data.Nx, sim_data.Nk)) * np.complex(0.0, 0.0)
+            self.u_hat  = np.ones((sim_data.ndata, sim_data.Nx, sim_data.Nk, 2)) * np.complex(0.0, 0.0)
+            self.u      = np.zeros((sim_data.ndata, sim_data.Nx, sim_data.Ny, 2))
+            self.nonlin = np.ones((sim_data.ndata, sim_data.Nx, sim_data.Nk)) * np.complex(0.0, 0.0)            
             ## Enstrophy Flux Spectrum
             self.enst_flux_spec = np.zeros((sim_data.ndata, sim_data.spec_size))
             self.enst_diss_spec = np.zeros((sim_data.ndata, sim_data.spec_size))
@@ -701,6 +734,18 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                     data.phase_order_C_theta_triads_1d[nn, :] = f[group]["PhaseOrder_C_theta_triads_1D"][:]
                 if 'w_hat' in list(f[group].keys()):
                     data.w_hat[nn, :, :] = f[group]["w_hat"][:, :]
+                if 'NonlinearTerm' in list(f[group].keys()):
+                    data.nonlin[nn, :, :] = f[group]["NonlinearTerm"][:, :]
+                if 'u_hat' in list(f[group].keys()):
+                    data.u_hat[nn, :, :, :] = f[group]["u_hat"][:, :, :]
+                if 'w' in list(f[group].keys()):
+                    data.w[nn, :, :] = f[group]["w"][:, :]
+                if 'u' in list(f[group].keys()):
+                    data.u[nn, :, :, :] = f[group]["u"][:, :, :]
+                if 'w' not in list(f[group].keys()):
+                    data.no_w = True
+                if 'EnstrophyDissipationField'  in list(f[group].keys()):
+                    data.enst_diss_field[nn, :, :] = np.fft.irfft2(f[group]["EnstrophyDissipationField"][:, :])
                 if 'EnstrophyTimeDerivativeSpectrum' in list(f[group].keys()):
                     data.d_enst_dt_spec[nn, :] = f[group]["EnstrophyTimeDerivativeSpectrum"][:]
                 if 'EnstrophyFluxSpectrum' in list(f[group].keys()):
@@ -734,6 +779,12 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                 nn += 1
             else:
                 continue
+
+        if data.no_w:
+            print("\nPreparing real space vorticity...", end = " ")
+            for i in range(sim_data.ndata):
+                data.w[i, :, :] = np.fft.irfft2(data.w_hat[i, :, :])
+            print("Finished!")
 
     return data
 

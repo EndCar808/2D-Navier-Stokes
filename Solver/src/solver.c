@@ -423,6 +423,11 @@ void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdif
 	#if defined(__NONLIN)
 	// Record the nonlinear for the updated Fourier vorticity
 	NonlinearRHSBatch(run_data->w_hat, run_data->nonlinterm, RK_data->nonlin, RK_data->nabla_psi, RK_data->nabla_w);
+	if (sys_vars->local_forcing_proc) {
+		for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
+			run_data->nonlinterm[run_data->forcing_indx[i]] -= run_data->forcing[i];
+		}
+	}
 	#endif
 	#if defined(__DPRK5)
 	if (iters > 1) {
@@ -617,6 +622,11 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Nx, RK_da
 	#if defined(__NONLIN)
 	// Record the nonlinear term with the updated Fourier vorticity
 	NonlinearRHSBatch(run_data->w_hat, run_data->nonlinterm, RK_data->nonlin, RK_data->nabla_psi, RK_data->nabla_w);
+	if (sys_vars->local_forcing_proc) {
+		for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
+			run_data->nonlinterm[run_data->forcing_indx[i]] -= run_data->forcing[i];
+		}
+	}
 	#endif
 }
 #endif

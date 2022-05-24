@@ -25,7 +25,6 @@
 #include "hdf5_funcs.h"
 #include "phase_sync.h"
 #include "full_field.h"
-#include "../Solver/src/force.h"
 // ---------------------------------------------------------------------
 //  Function Definitions
 // ---------------------------------------------------------------------
@@ -356,7 +355,7 @@ void AllocateMemory(const long int* N) {
 	}
 
 	// Allocate current Fourier vorticity
-	run_data->u = (double* )fftw_malloc(sizeof(double) * Nx * Ny * SYS_DIM);
+	run_data->u = (double* )fftw_malloc(sizeof(double) * Nx * (Ny + 2) * SYS_DIM);
 	if (run_data->u == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Velocity");
 		exit(1);
@@ -408,7 +407,7 @@ void InitializeFFTWPlans(const long int* N) {
 	const long int Ny = N[1];
 	const int N_batch[SYS_DIM] = {Nx, Ny};
 
-	#if defined(__REAL_STATS) || defined(__VEL_INC_STATS) || defined(__STR_FUNC_STATS) || defined(__GRAD_STATS)
+	#if defined(__REAL_STATS) || defined(__VEL_INC_STATS) || defined(__STR_FUNC_STATS) || defined(__GRAD_STATS) || defined(__VORT_REAL)
 	// Initialize Fourier Transforms
 	sys_vars->fftw_2d_dft_c2r = fftw_plan_dft_c2r_2d(Nx, Ny, run_data->w_hat, run_data->w, FFTW_ESTIMATE);
 	if (sys_vars->fftw_2d_dft_c2r == NULL) {
@@ -424,7 +423,7 @@ void InitializeFFTWPlans(const long int* N) {
 	}
 	#endif
 
-	#if defined(__ENST_FLUX) || defined(__ENRG_FLUX) || defined(__SEC_PHASE_SYNC) || defined(__REAL_STATS) || defined(__GRAD_STATS)
+	#if defined(__ENST_FLUX) || defined(__ENRG_FLUX) || defined(__SEC_PHASE_SYNC) || defined(__REAL_STATS) || defined(__GRAD_STATS) || defined(__REALSPACE)
 	// Initialize Batch Fourier Transforms
 	sys_vars->fftw_2d_dft_batch_c2r = fftw_plan_many_dft_c2r(SYS_DIM, N_batch, SYS_DIM, run_data->u_hat, NULL, SYS_DIM, 1, run_data->u, NULL, SYS_DIM, 1, FFTW_MEASURE);
 	if (sys_vars->fftw_2d_dft_batch_c2r == NULL) {
@@ -480,13 +479,13 @@ void FreeMemoryAndCleanUp(void) {
 	//  Free FFTW Plans
 	// --------------------------------
 	// Destroy FFTW plans
-	#if defined(__REAL_STATS) || defined(__VEL_INC_STATS) || defined(__STR_FUNC_STATS) || defined(__GRAD_STATS)
+	#if defined(__REAL_STATS) || defined(__VEL_INC_STATS) || defined(__STR_FUNC_STATS) || defined(__GRAD_STATS) || defined(__VORT_REAL)
 	fftw_destroy_plan(sys_vars->fftw_2d_dft_c2r);
 	#endif
 	#if defined(__ENST_FLUX) || defined(__ENRG_FLUX) || defined(__SEC_PHASE_SYNC)
 	fftw_destroy_plan(sys_vars->fftw_2d_dft_r2c);
 	#endif
-	#if defined(__ENST_FLUX) || defined(__ENRG_FLUX) || defined(__SEC_PHASE_SYNC) || defined(__REAL_STATS) || defined(__GRAD_STATS)
+	#if defined(__ENST_FLUX) || defined(__ENRG_FLUX) || defined(__SEC_PHASE_SYNC) || defined(__REAL_STATS) || defined(__GRAD_STATS) || defined(__REALSPACE)
 	fftw_destroy_plan(sys_vars->fftw_2d_dft_batch_c2r);
 	#endif
 	#if defined(__GRAD_STATS)

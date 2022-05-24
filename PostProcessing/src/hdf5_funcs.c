@@ -21,7 +21,6 @@
 #include "data_types.h"
 #include "hdf5_funcs.h"
 #include "utils.h"
-#include "../Solver/src/force.h"
 
 
 // ---------------------------------------------------------------------
@@ -450,6 +449,10 @@ void WriteDataToFile(double t, long int snap) {
 	char group_name[128];
 	herr_t status;
 	hid_t group_id;
+	int indx, temp;
+	const long int Nx 		  = sys_vars->N[0];
+	const long int Ny 		  = sys_vars->N[1];
+	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
 	static const hsize_t Dims1D = 1;
 	hsize_t dset_dims_1d[Dims1D];       
 	static const hsize_t Dims2D = 2;
@@ -494,7 +497,7 @@ void WriteDataToFile(double t, long int snap) {
 	// -------------------------------
 	// Write Vorticity
 	// -------------------------------
-	#if defined(__VORT)
+	#if defined(__VORT_FOUR)
 	// The full field phases
 	dset_dims_2d[0] = sys_vars->N[0];
 	dset_dims_2d[1] = sys_vars->N[1] / 2 + 1;
@@ -505,7 +508,98 @@ void WriteDataToFile(double t, long int snap) {
 	}
 	#endif
 
+	// -------------------------------
+	// Write Real Space Vorticity
+	// -------------------------------
+	#if defined(__VORT_REAL)
+	// Get the real space vorticity from the Fourier space
+	fftw_execute_dft_c2r(sys_vars->fftw_2d_dft_c2r, run_data->w_hat, run_data->w);
+	for (int i = 0; i < Nx; ++i) {	
+		temp = i * Ny;
+		for (int j = 0; j < Ny; ++j) {
+			indx = temp + j;
 
+			// Normalize the vorticity
+			run_data->w[indx] /= (Nx * Ny);
+		}
+	}
+
+	// Write the real space vorticity
+	dset_dims_2d[0] = sys_vars->N[0];
+	dset_dims_2d[1] = sys_vars->N[1];
+	status = H5LTmake_dataset(group_id, "w", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, run_data->w);	
+	if (status < 0) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "w", t, snap);
+		exit(1);
+	}
+	#endif
+
+	#if defined(__MODES) || defined(__REALSPACE)
+	// Get the Fourier space velocities
+	fftw_complex k_sqr_inv;
+	for (int i = 0; i < Nx; ++i) {
+		temp = i * Ny_Fourier;
+		for (int j = 0; j < Ny_Fourier; ++j) {
+			indx = temp + j;
+
+			if ((run_data->k[0][i] != 0) || (run_data->k[1][j] != 0)) {
+				// Get I / |k|^2
+				k_sqr_inv = I / (double )(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
+
+				// Fill the fourier space velocities
+				run_data->u_hat[SYS_DIM * indx + 0] = k_sqr_inv * run_data->k[1][j] * run_data->w_hat[indx];
+				run_data->u_hat[SYS_DIM * indx + 1] = -k_sqr_inv * run_data->k[0][i] * run_data->w_hat[indx];
+			}
+			else {
+				run_data->u_hat[SYS_DIM * indx + 0] = 0.0 + 0.0 * I;
+				run_data->u_hat[SYS_DIM * indx + 1] = 0.0 + 0.0 * I;
+			}
+		}
+	}
+	#endif
+
+	// -------------------------------
+	// Write Fourier Space Velocity
+	// -------------------------------
+	#if defined(__MODES)
+	// Write the Fourier modes
+	dset_dims_3d[0] = sys_vars->N[0];
+	dset_dims_3d[1] = sys_vars->N[1] / 2 + 1;
+	dset_dims_3d[2] = SYS_DIM;
+	status = H5LTmake_dataset(group_id, "u_hat", Dims3D, dset_dims_3d, file_info->COMPLEX_DTYPE, run_data->u_hat);	
+	if (status < 0) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "u_hat", t, snap);
+		exit(1);
+	}
+	#endif
+
+	// -------------------------------
+	// Write Real Space Velocity
+	// -------------------------------
+	#if defined(__REALSPACE)
+	// Get the real space vorticity from the Fourier space
+	fftw_execute_dft_c2r(sys_vars->fftw_2d_dft_batch_c2r, run_data->u_hat, run_data->u);
+		for (int i = 0; i < Nx; ++i) {	
+		temp = i * Ny;
+		for (int j = 0; j < Ny; ++j) {
+			indx = temp + j;
+
+			// Normalize the vorticity
+			run_data->u[SYS_DIM * indx + 0] /= (Nx * Ny);
+			run_data->u[SYS_DIM * indx + 1] /= (Nx * Ny);
+		}
+	}
+
+	// Write the Fourier modes
+	dset_dims_3d[0] = sys_vars->N[0];
+	dset_dims_3d[1] = sys_vars->N[1];
+	dset_dims_3d[2] = SYS_DIM;
+	status = H5LTmake_dataset(group_id, "u", Dims3D, dset_dims_3d, H5T_NATIVE_DOUBLE, run_data->u);	
+	if (status < 0) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "u", t, snap);
+		exit(1);
+	}
+	#endif
 
 	// -------------------------------
 	// Write Full Field Data
@@ -644,7 +738,7 @@ void WriteDataToFile(double t, long int snap) {
     #if (defined(__ENST_FLUX) || defined(__ENRG_FLUX) || defined(__SEC_PHASE_SYNC)) && defined(__NONLIN)
     // Write the nonlinear term in Fourier space
     dset_dims_2d[0] = sys_vars->N[0];
-    dset_dims_2d[1] = sys_vars->N[1];
+    dset_dims_2d[1] = sys_vars->N[1] / 2 + 1;
 	status = H5LTmake_dataset(group_id, "NonlinearTerm", Dims2D, dset_dims_2d, file_info->COMPLEX_DTYPE, proc_data->dw_hat_dt);
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file  at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Nonlinear Term", t, snap);

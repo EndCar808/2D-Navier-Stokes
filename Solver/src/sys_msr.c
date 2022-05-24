@@ -248,8 +248,8 @@ void ComputeSystemMeasurables(double t, int iter, RK_data_struct* RK_data) {
 			if ((run_data->k[0][i] != 0) || (run_data->k[1][j] != 0)) {
 				#if defined(__ENRG_FLUX_SPECT) || defined(__ENST_FLUX_SPECT)
 				// Get the derivative and dissipation terms
-				tmp_deriv = const_fac * norm_fac * creal(run_data->w_hat[indx] * conj(RK_data->RK1[indx]) + conj(run_data->w_hat[indx]) * RK_data->RK1[indx]);
-				tmp_diss  = const_fac * norm_fac * pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+				tmp_deriv = creal(run_data->w_hat[indx] * conj(RK_data->RK1[indx]) + conj(run_data->w_hat[indx]) * RK_data->RK1[indx]) * const_fac * norm_fac;
+				tmp_diss  = pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * const_fac * norm_fac;
 				#endif
 
 				if ((j == 0) || (j == Ny_Fourier - 1)) {
@@ -285,9 +285,9 @@ void ComputeSystemMeasurables(double t, int iter, RK_data_struct* RK_data) {
 					run_data->enst_flux_spect[spec_indx] += 2.0 * (tmp_deriv - tmp_diss);
 					#endif
 					#if defined(__ENRG_FLUX_SPECT)
-					run_data->d_enrg_dt_spect[spec_indx] += tmp_deriv * (2.0 / k_sqr);
-					run_data->enrg_diss_spect[spec_indx] += tmp_diss * (2.0 / k_sqr);
-					run_data->enrg_flux_spect[spec_indx] += (tmp_deriv - tmp_diss)* (2.0 / k_sqr);
+					run_data->d_enrg_dt_spect[spec_indx] += 2.0 * tmp_deriv / k_sqr;
+					run_data->enrg_diss_spect[spec_indx] += 2.0 * tmp_diss / k_sqr;
+					run_data->enrg_flux_spect[spec_indx] += (2.0 * tmp_deriv / k_sqr) - (2.0 * tmp_diss / k_sqr);
 					#endif
 				}
 			}
