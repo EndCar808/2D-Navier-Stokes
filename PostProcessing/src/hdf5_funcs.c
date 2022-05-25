@@ -287,11 +287,20 @@ void ReadInData(int snap_indx) {
 		sys_vars->REAL_VORT_FLAG = 1; 
 	}
 	else {
-		// Real space vorticity exists
+		// Real space vorticity does not exists
 		sys_vars->REAL_VORT_FLAG = 0; 
 
 		// Get the real space vorticity from the Fourier space
-		fftw_execute_dft_c2r(sys_vars->fftw_2d_dft_c2r, run_data->w_hat, run_data->w);
+		for (int i = 0; i < Nx; ++i) {	
+			tmp = i * Ny_Fourier;
+			for (int j = 0; j < Ny_Fourier; ++j) {
+				indx = tmp + j;
+
+				// Save the fourier vorticity before transform as it will be overwrittend
+				run_data->tmp_w_hat[indx] = run_data->w_hat[indx];
+			}
+		}
+		fftw_execute_dft_c2r(sys_vars->fftw_2d_dft_c2r, run_data->tmp_w_hat, run_data->w);
 		for (int i = 0; i < Nx; ++i) {	
 			tmp = i * Ny;
 			for (int j = 0; j < Ny; ++j) {
@@ -324,10 +333,20 @@ void ReadInData(int snap_indx) {
 
 		#if defined(__GRAD_STATS)
 		// Transform from Real space To Fourier Space
-		fftw_execute_dft_r2c(sys_vars->fftw_2d_dft_batch_r2c, run_data->u, run_data->u_hat);
+		for (int i = 0; i < Nx; ++i) {	
+			tmp = i * Ny;
+			for (int j = 0; j < Ny; ++j) {
+				indx = tmp + j;
+
+				// Normalize the velocity
+				run_data->tmp_u[SYS_DIM * indx + 0] = run_data->u[SYS_DIM * indx + 0];
+				run_data->tmp_u[SYS_DIM * indx + 1] = run_data->u[SYS_DIM * indx + 1];
+			}
+		}
+		fftw_execute_dft_r2c(sys_vars->fftw_2d_dft_batch_r2c, run_data->tmp_u, run_data->u_hat);
 		#endif
 
-		// Real space vorticity exists
+		// Real space velocity exists
 		sys_vars->REAL_VEL_FLAG = 1; 
 	}
 	else {
@@ -354,11 +373,15 @@ void ReadInData(int snap_indx) {
 					run_data->u_hat[SYS_DIM * indx + 0] = 0.0 + 0.0 * I;
 					run_data->u_hat[SYS_DIM * indx + 1] = 0.0 + 0.0 * I;
 				}
+
+				// Save the Fourier velocities in temp array before transform
+				run_data->tmp_u_hat[SYS_DIM * indx + 0] = run_data->u_hat[SYS_DIM * indx + 0];
+				run_data->tmp_u_hat[SYS_DIM * indx + 1] = run_data->u_hat[SYS_DIM * indx + 1];	
 			}
 		}
 
 		// Transform back to Real space and Normalize
-		fftw_execute_dft_c2r(sys_vars->fftw_2d_dft_batch_c2r, run_data->u_hat, run_data->u);
+		fftw_execute_dft_c2r(sys_vars->fftw_2d_dft_batch_c2r, run_data->tmp_u_hat, run_data->u);
 		for (int i = 0; i < Nx; ++i) {	
 			tmp = i * Ny;
 			for (int j = 0; j < Ny; ++j) {
@@ -427,7 +450,7 @@ void OpenOutputFile(void) {
 	if (file_info->output_file_handle < 0) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"]  --- Could not create HDF5 output file at: "CYAN"%s"RESET" \n-->>Exiting....\n", file_info->output_file_name);
 		exit(1);
-	}	
+	}
 
 	// --------------------------------
 	//  Close HDF5 Identifiers
@@ -508,32 +531,6 @@ void WriteDataToFile(double t, long int snap) {
 	}
 	#endif
 
-	// -------------------------------
-	// Write Real Space Vorticity
-	// -------------------------------
-	#if defined(__VORT_REAL)
-	// Get the real space vorticity from the Fourier space
-	fftw_execute_dft_c2r(sys_vars->fftw_2d_dft_c2r, run_data->w_hat, run_data->w);
-	for (int i = 0; i < Nx; ++i) {	
-		temp = i * Ny;
-		for (int j = 0; j < Ny; ++j) {
-			indx = temp + j;
-
-			// Normalize the vorticity
-			run_data->w[indx] /= (Nx * Ny);
-		}
-	}
-
-	// Write the real space vorticity
-	dset_dims_2d[0] = sys_vars->N[0];
-	dset_dims_2d[1] = sys_vars->N[1];
-	status = H5LTmake_dataset(group_id, "w", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, run_data->w);	
-	if (status < 0) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "w", t, snap);
-		exit(1);
-	}
-	#endif
-
 	#if defined(__MODES) || defined(__REALSPACE)
 	// Get the Fourier space velocities
 	fftw_complex k_sqr_inv;
@@ -559,6 +556,41 @@ void WriteDataToFile(double t, long int snap) {
 	#endif
 
 	// -------------------------------
+	// Write Real Space Vorticity
+	// -------------------------------
+	#if defined(__VORT_REAL)
+	// Get the real space vorticity from the Fourier space
+	for (int i = 0; i < Nx; ++i) {	
+		temp = i * Ny_Fourier;
+		for (int j = 0; j < Ny_Fourier; ++j) {
+			indx = temp + j;
+
+			// Save the fourier vorticity before transform as it will be overwritten
+			run_data->tmp_w_hat[indx] = run_data->w_hat[indx];
+		}
+	}
+	fftw_execute_dft_c2r(sys_vars->fftw_2d_dft_c2r, run_data->tmp_w_hat, run_data->w);
+	for (int i = 0; i < Nx; ++i) {	
+		temp = i * Ny;
+		for (int j = 0; j < Ny; ++j) {
+			indx = temp + j;
+
+			// Normalize the vorticity
+			run_data->w[indx] /= (Nx * Ny);
+		}
+	}
+
+	// Write the real space vorticity
+	dset_dims_2d[0] = sys_vars->N[0];
+	dset_dims_2d[1] = sys_vars->N[1];
+	status = H5LTmake_dataset(group_id, "w", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, run_data->w);	
+	if (status < 0) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "w", t, snap);
+		exit(1);
+	}
+	#endif
+
+	// -------------------------------
 	// Write Fourier Space Velocity
 	// -------------------------------
 	#if defined(__MODES)
@@ -578,13 +610,23 @@ void WriteDataToFile(double t, long int snap) {
 	// -------------------------------
 	#if defined(__REALSPACE)
 	// Get the real space vorticity from the Fourier space
-	fftw_execute_dft_c2r(sys_vars->fftw_2d_dft_batch_c2r, run_data->u_hat, run_data->u);
-		for (int i = 0; i < Nx; ++i) {	
+	for (int i = 0; i < Nx; ++i) {
+		temp = i * Ny_Fourier;
+		for (int j = 0; j < Ny_Fourier; ++j) {
+			indx = temp + j;
+
+			// Save the Fourier velocities in temp array before transform
+			run_data->tmp_u_hat[SYS_DIM * indx + 0] = run_data->u_hat[SYS_DIM * indx + 0];
+			run_data->tmp_u_hat[SYS_DIM * indx + 1] = run_data->u_hat[SYS_DIM * indx + 1];	
+		}
+	}
+	fftw_execute_dft_c2r(sys_vars->fftw_2d_dft_batch_c2r, run_data->tmp_u_hat, run_data->u);
+	for (int i = 0; i < Nx; ++i) {	
 		temp = i * Ny;
 		for (int j = 0; j < Ny; ++j) {
 			indx = temp + j;
 
-			// Normalize the vorticity
+			// Normalize the velocity
 			run_data->u[SYS_DIM * indx + 0] /= (Nx * Ny);
 			run_data->u[SYS_DIM * indx + 1] /= (Nx * Ny);
 		}
@@ -600,7 +642,7 @@ void WriteDataToFile(double t, long int snap) {
 		exit(1);
 	}
 	#endif
-
+	
 	// -------------------------------
 	// Write Full Field Data
 	// -------------------------------
@@ -1177,6 +1219,30 @@ void FinalWriteAndClose(void) {
 	// -------------------------------
 	// Write Datasets
 	// -------------------------------
+	///----------------------------------- Write Wavevector list
+	#if defined(__WAVELIST)
+	dset_dims_1d[0] = sys_vars->N[0];
+	if ( (H5LTmake_dataset(file_info->output_file_handle, "kx", Dims1D, dset_dims_1d, H5T_NATIVE_INT, run_data->k[0])) < 0) {
+		printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "kx");
+	}
+	dset_dims_1d[0] = sys_vars->N[1] / 2 + 1;
+	if ( (H5LTmake_dataset(file_info->output_file_handle, "ky", Dims1D, dset_dims_1d, H5T_NATIVE_INT, run_data->k[1])) < 0) {
+		printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "ky");
+	}
+	#endif
+
+	///----------------------------------- Write Collocation Points
+	#if defined(__COLLOC_PTS)
+	dset_dims_1d[0] = sys_vars->N[0];
+	if ( (H5LTmake_dataset(file_info->output_file_handle, "x", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, run_data->x[0])) < 0) {
+		printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "x");
+	}
+	dset_dims_1d[0] = sys_vars->N[1];
+	if ( (H5LTmake_dataset(file_info->output_file_handle, "y", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, run_data->x[1]))< 0) {
+		printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "y");
+	}
+	#endif	
+
 	///----------------------------------- Write the Enstrophy Flux out of & Dissipation in C
 	#if defined(__ENST_FLUX)
 	// Write the enstrophy flux out of the set C

@@ -45,6 +45,21 @@ void RealSpaceStats(int s) {
 	double norm_fac = 1.0 / (Nx * Ny);
 	#endif
 
+	// --------------------------------
+	// Get The Real Space Velocities
+	// --------------------------------
+	// #if defined(__REAL_STATS) || defined(__VEL_INC_STATS) || defined(__STR_FUNC_STATS)
+	// // Do the stats on the tmp_u array -> ignores the last two empty columns
+	// for (int i = 0; i < Nx; ++i) {
+	// 	tmp = i * (Ny + 2);
+	// 	for (int j = 0; j < Ny; ++j) {
+	// 		indx = tmp + j;
+
+	// 		run_data->tmp_u[SYS_DIM * (i * Ny + j) + 0] = run_data->u[SYS_DIM * indx + 0];
+	// 		run_data->tmp_u[SYS_DIM * (i * Ny + j) + 1] = run_data->u[SYS_DIM * indx + 1];
+	// 	}
+	// }
+	// #endif
 
 	// --------------------------------
 	// Get In-Time Histogram Limits
@@ -95,7 +110,7 @@ void RealSpaceStats(int s) {
 		}
 	}
 
-	// Perform inverse transform and normalize to get the gradients in real space
+	// Perform inverse transform and normalize to get the gradients in real space - no need to presave grad_w_hat & grad_u_hat, wont be used again
 	fftw_execute_dft_c2r(sys_vars->fftw_2d_dft_batch_c2r, proc_data->grad_w_hat, proc_data->grad_w);
 	fftw_execute_dft_c2r(sys_vars->fftw_2d_dft_batch_c2r, proc_data->grad_u_hat, proc_data->grad_u);
 	for (int i = 0; i < Nx; ++i) {

@@ -49,7 +49,7 @@ int GetCMLArgs(int argc, char** argv) {
 	// -------------------------------
 	// Input file path
 	strncpy(file_info->input_file_name, "NONE", 512);
-	strncpy(file_info->input_dir, "./Data/InitialConditions/", 512);  // Set default to Initial Conditions folder
+	strncpy(file_info->input_dir, "./Data/Solver/InitialConditions/", 512);  // Set default to Initial Conditions folder
 	// Output file directory
 	strncpy(file_info->output_dir, "./Data/Tmp/", 512);  // Set default output directory to the Tmp folder
 	strncpy(file_info->output_tag, "NO_TAG", 64);

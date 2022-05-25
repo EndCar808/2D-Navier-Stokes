@@ -169,7 +169,10 @@ typedef struct runtime_data_struct {
 	double* x[SYS_DIM];      // Array to hold collocation pts
 	int* k[SYS_DIM];		 // Array to hold wavenumbers
 	fftw_complex* w_hat;     // Fourier space vorticity
+	fftw_complex* tmp_w_hat; // Temporary Fourier space vorticity
 	fftw_complex* u_hat;     // Fourier space velocity
+	fftw_complex* tmp_u_hat; // Fourier space velocity
+	double* tmp_u; 			 // Temporary array to read & write in velocities
 	double* w;				 // Real space vorticity
 	double* u;				 // Real space velocity
 	double* time;			 // Array to hold the simulation times
@@ -270,11 +273,13 @@ typedef struct stats_data_struct {
 typedef struct HDF_file_info_struct {
 	char input_file_name[512];		// Array holding input file name
 	char output_file_name[512];     // Output file name array
+	char wave_vec_data_name[512];   // File path for the phase sync wavector data
 	char output_dir[512];			// Output directory
 	char input_dir[512];			// Input directory
 	char output_tag[64]; 			// Tag to be added to the output directory
 	hid_t output_file_handle;		// File handle for the output file 
 	hid_t input_file_handle;		// File handle for the input file 
+	hid_t wave_vec_file_handle;		// Wavevector file handle
 	hid_t COMPLEX_DTYPE;			// Complex datatype handle
 	int output_file_only;			// Indicates if output should be file only with no output folder created
 	int input_file_only;			// Indicates if input is file only or input folder

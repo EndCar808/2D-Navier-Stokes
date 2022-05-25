@@ -388,7 +388,11 @@ if __name__ == '__main__':
     # -----------------------------------------------
     # # --------  Compare Post & Solver Data
     # -----------------------------------------------
-    print(post_data.u[0, :, :, 0] - u_x(run_data.w_hat[0, :, :], run_data.k2Inv, run_data.ky))
+    print(run_data.u[1, :, :, 0])
+    # for i in range(20):
+    #     print(post_data.u[i, :, :, 0])
+    print(run_data.u[1, :, :, 0] - u_x(post_data.w_hat[1, :, :], run_data.k2Inv, run_data.ky))
+    print(run_data.u[1, :, :, 0] - post_data.u[1, :, :, 0])
     fig = plt.figure(figsize = (16, 8))
     gs  = GridSpec(2, 3)
     ax3 = fig.add_subplot(gs[0, 0])
@@ -494,6 +498,114 @@ if __name__ == '__main__':
     cb6.set_label(r"$u_y$")
 
     plt.savefig(cmdargs.out_dir + "VelocityCompare.png")
+    plt.close()
+
+
+    fig = plt.figure(figsize = (16, 8))
+    gs  = GridSpec(2, 3)
+    ax3 = fig.add_subplot(gs[0, 0])
+    im3 = ax3.imshow(np.real(run_data.u_hat[0, :, :, 0] - post_data.u_hat[0, :, :, 0]), extent = (run_data.y[0], run_data.y[-1], run_data.x[-1], run_data.x[0]), cmap = "RdBu") #, vmin = w_min, vmax = w_max 
+    ax3.set_xlabel(r"$y$")
+    ax3.set_ylabel(r"$x$")
+    ax3.set_xlim(0.0, run_data.y[-1])
+    ax3.set_ylim(0.0, run_data.x[-1])
+    ax3.set_xticks([0.0, np.pi/2.0, np.pi, 1.5*np.pi, run_data.y[-1]])
+    ax3.set_xticklabels([r"$0$", r"$\frac{\pi}{2}$", r"$\pi$", r"$\frac{3\pi}{2}$", r"$2 \pi$"])
+    ax3.set_yticks([0.0, np.pi/2.0, np.pi, 1.5*np.pi, run_data.x[-1]])
+    ax3.set_yticklabels([r"$0$", r"$\frac{\pi}{2}$", r"$\pi$", r"$\frac{3\pi}{2}$", r"$2 \pi$"])
+    ax3.set_title(r"$t = {:0.5f}$".format(run_data.time[0]))
+    ## Plot colourbar
+    div3  = make_axes_locatable(ax3)
+    cbax3 = div3.append_axes("right", size = "10%", pad = 0.05)
+    cb3   = plt.colorbar(im3, cax = cbax3)
+    cb3.set_label(r"$\Re uhat_x$")
+
+    ax4 = fig.add_subplot(gs[1, 0])
+    im4 = ax4.imshow(np.imag(run_data.u_hat[0, :, :, 1] - post_data.u_hat[0, :, :, 1]), extent = (run_data.y[0], run_data.y[-1], run_data.x[-1], run_data.x[0]), cmap = "RdBu") #, vmin = w_min, vmax = w_max 
+    ax4.set_xlabel(r"$y$")
+    ax4.set_ylabel(r"$x$")
+    ax4.set_xlim(0.0, run_data.y[-1])
+    ax4.set_ylim(0.0, run_data.x[-1])
+    ax4.set_xticks([0.0, np.pi/2.0, np.pi, 1.5*np.pi, run_data.y[-1]])
+    ax4.set_xticklabels([r"$0$", r"$\frac{\pi}{2}$", r"$\pi$", r"$\frac{3\pi}{2}$", r"$2 \pi$"])
+    ax4.set_yticks([0.0, np.pi/2.0, np.pi, 1.5*np.pi, run_data.x[-1]])
+    ax4.set_yticklabels([r"$0$", r"$\frac{\pi}{2}$", r"$\pi$", r"$\frac{3\pi}{2}$", r"$2 \pi$"])
+    ax4.set_title(r"$t = {:0.5f}$".format(run_data.time[0]))
+    ## Plot colourbar
+    div4  = make_axes_locatable(ax4)
+    cbax4 = div4.append_axes("right", size = "10%", pad = 0.05)
+    cb4   = plt.colorbar(im4, cax = cbax4)
+    cb4.set_label(r"$\Im uhat_y$")
+
+    ax2 = fig.add_subplot(gs[0, 1])
+    im2 = ax2.imshow(np.real(run_data.u_hat[int(sys_vars.ndata/2), :, :, 0] - post_data.u_hat[int(sys_vars.ndata/2), :, :, 0]), extent = (run_data.y[0], run_data.y[-1], run_data.x[-1], run_data.x[0]), cmap = "RdBu") #, vmin = w_min, vmax = w_max 
+    ax2.set_xlabel(r"$y$")
+    ax2.set_ylabel(r"$x$")
+    ax2.set_xlim(0.0, run_data.y[-1])
+    ax2.set_ylim(0.0, run_data.x[-1])
+    ax2.set_xticks([0.0, np.pi/2.0, np.pi, 1.5*np.pi, run_data.y[-1]])
+    ax2.set_xticklabels([r"$0$", r"$\frac{\pi}{2}$", r"$\pi$", r"$\frac{3\pi}{2}$", r"$2 \pi$"])
+    ax2.set_yticks([0.0, np.pi/2.0, np.pi, 1.5*np.pi, run_data.x[-1]])
+    ax2.set_yticklabels([r"$0$", r"$\frac{\pi}{2}$", r"$\pi$", r"$\frac{3\pi}{2}$", r"$2 \pi$"])
+    ax2.set_title(r"$t = {:0.5f}$".format(run_data.time[0]))
+    ## Plot colourbar
+    div2  = make_axes_locatable(ax2)
+    cbax2 = div2.append_axes("right", size = "10%", pad = 0.05)
+    cb2   = plt.colorbar(im2, cax = cbax2)
+    cb2.set_label(r"$\Re u_x$")
+
+    ax1 = fig.add_subplot(gs[1, 1])
+    im1 = ax1.imshow(np.imag(run_data.u_hat[int(sys_vars.ndata/2), :, :, 1] - post_data.u_hat[int(sys_vars.ndata/2), :, :, 1]), extent = (run_data.y[0], run_data.y[-1], run_data.x[-1], run_data.x[0]), cmap = "RdBu") #, vmin = w_min, vmax = w_max 
+    ax1.set_xlabel(r"$y$")
+    ax1.set_ylabel(r"$x$")
+    ax1.set_xlim(0.0, run_data.y[-1])
+    ax1.set_ylim(0.0, run_data.x[-1])
+    ax1.set_xticks([0.0, np.pi/2.0, np.pi, 1.5*np.pi, run_data.y[-1]])
+    ax1.set_xticklabels([r"$0$", r"$\frac{\pi}{2}$", r"$\pi$", r"$\frac{3\pi}{2}$", r"$2 \pi$"])
+    ax1.set_yticks([0.0, np.pi/2.0, np.pi, 1.5*np.pi, run_data.x[-1]])
+    ax1.set_yticklabels([r"$0$", r"$\frac{\pi}{2}$", r"$\pi$", r"$\frac{3\pi}{2}$", r"$2 \pi$"])
+    ax1.set_title(r"$t = {:0.5f}$".format(run_data.time[int(sys_vars.ndata/2)]))
+    ## Plot colourbar
+    div1  = make_axes_locatable(ax1)
+    cbax1 = div1.append_axes("right", size = "10%", pad = 0.05)
+    cb1   = plt.colorbar(im1, cax = cbax1)
+    cb1.set_label(r"$\Im u_y$")
+
+    ax5 = fig.add_subplot(gs[0, 2])
+    im5 = ax5.imshow(np.real(run_data.u_hat[-1, :, :, 0] - post_data.u_hat[-1, :, :, 0]), extent = (run_data.y[0], run_data.y[-1], run_data.x[-1], run_data.x[0]), cmap = "RdBu") #, vmin = w_min, vmax = w_max 
+    ax5.set_xlabel(r"$y$")
+    ax5.set_ylabel(r"$x$")
+    ax5.set_xlim(0.0, run_data.y[-1])
+    ax5.set_ylim(0.0, run_data.x[-1])
+    ax5.set_xticks([0.0, np.pi/2.0, np.pi, 1.5*np.pi, run_data.y[-1]])
+    ax5.set_xticklabels([r"$0$", r"$\frac{\pi}{2}$", r"$\pi$", r"$\frac{3\pi}{2}$", r"$2 \pi$"])
+    ax5.set_yticks([0.0, np.pi/2.0, np.pi, 1.5*np.pi, run_data.x[-1]])
+    ax5.set_yticklabels([r"$0$", r"$\frac{\pi}{2}$", r"$\pi$", r"$\frac{3\pi}{2}$", r"$2 \pi$"])
+    ax5.set_title(r"$t = {:0.5f}$".format(run_data.time[-1]))
+    ## Plot colourbar
+    div5  = make_axes_locatable(ax5)
+    cbax5 = div5.append_axes("right", size = "10%", pad = 0.05)
+    cb5   = plt.colorbar(im5, cax = cbax5)
+    cb5.set_label(r"$\Re u_x$")
+
+    ax6 = fig.add_subplot(gs[1, 2])
+    im6 = ax6.imshow(np.imag(run_data.u_hat[-1, :, :, 1] - post_data.u_hat[-1, :, :, 1]), extent = (run_data.y[0], run_data.y[-1], run_data.x[-1], run_data.x[0]), cmap = "RdBu") #, vmin = w_min, vmax = w_max 
+    ax6.set_xlabel(r"$y$")
+    ax6.set_ylabel(r"$x$")
+    ax6.set_xlim(0.0, run_data.y[-1])
+    ax6.set_ylim(0.0, run_data.x[-1])
+    ax6.set_xticks([0.0, np.pi/2.0, np.pi, 1.5*np.pi, run_data.y[-1]])
+    ax6.set_xticklabels([r"$0$", r"$\frac{\pi}{2}$", r"$\pi$", r"$\frac{3\pi}{2}$", r"$2 \pi$"])
+    ax6.set_yticks([0.0, np.pi/2.0, np.pi, 1.5*np.pi, run_data.x[-1]])
+    ax6.set_yticklabels([r"$0$", r"$\frac{\pi}{2}$", r"$\pi$", r"$\frac{3\pi}{2}$", r"$2 \pi$"])
+    ax6.set_title(r"$t = {:0.5f}$".format(run_data.time[-1]))
+    ## Plot colourbar
+    div6  = make_axes_locatable(ax6)
+    cbax6 = div6.append_axes("right", size = "10%", pad = 0.05)
+    cb6   = plt.colorbar(im6, cax = cbax6)
+    cb6.set_label(r"$\Im u_y$")
+
+    plt.savefig(cmdargs.out_dir + "FourierVelocityCompare.png")
     plt.close()
 
 

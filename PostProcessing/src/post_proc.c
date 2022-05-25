@@ -57,6 +57,7 @@ void PostProcessing(void) {
 	Precompute();
 	#endif
 	
+
 	//////////////////////////////
 	// Begin Snapshot Processing
 	//////////////////////////////
@@ -176,7 +177,7 @@ void Precompute(void) {
 				proc_data->grad_u_hat[SYS_DIM * indx + 1] = I * run_data->k[1][j] * run_data->u_hat[SYS_DIM * indx + 1];
 			}
 		}
-		// Perform inverse transform to get the gradients in real space
+		// Perform inverse transform to get the gradients in real space - no need to presave grad_w_hat & grad_u_hat, wont be used again
 		fftw_execute_dft_c2r(sys_vars->fftw_2d_dft_batch_c2r, proc_data->grad_w_hat, proc_data->grad_w);
 		fftw_execute_dft_c2r(sys_vars->fftw_2d_dft_batch_c2r, proc_data->grad_u_hat, proc_data->grad_u);
 		#endif
@@ -319,6 +320,11 @@ void AllocateMemory(const long int* N) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Fourier Vorticity");
 		exit(1);
 	}
+	run_data->tmp_w_hat = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * Nx * Ny_Fourier);
+	if (run_data->tmp_w_hat == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Fourier Vorticity");
+		exit(1);
+	}
 
 	// Allocate the Fourier stream funciton
 	run_data->psi_hat = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * Nx * Ny_Fourier);
@@ -331,12 +337,12 @@ void AllocateMemory(const long int* N) {
 	for (int i = 0; i < Nx; ++i) {
 		tmp2 = i * (Ny_Fourier);
 		for (int j = 0; j < Ny_Fourier; ++j) {
-			run_data->w_hat[tmp2 + j]   = 0.0 + 0.0 * I;
-			run_data->psi_hat[tmp2 + j] = 0.0 + 0.0 * I;
+			run_data->w_hat[tmp2 + j]     = 0.0 + 0.0 * I;
+			run_data->tmp_w_hat[tmp2 + j] = 0.0 + 0.0 * I;
+			run_data->psi_hat[tmp2 + j]   = 0.0 + 0.0 * I;
 		}
 	}
 
-	// --------------------------------	
 	//  Allocate Stats Data
 	// --------------------------------
 	#if defined(__REAL_STATS) || defined(__ENST_FLUX) || defined(__ENRG_FLUX) || defined(__SEC_PHASE_SYNC) || defined(__VEL_INC_STATS) || defined(__STR_FUNC_STATS) || defined(__GRAD_STATS)
@@ -353,35 +359,54 @@ void AllocateMemory(const long int* N) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Fourier Velocity");
 		exit(1);
 	}
+	run_data->tmp_u_hat = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * Nx * Ny_Fourier * SYS_DIM);
+	if (run_data->tmp_u_hat == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Fourier Velocity");
+		exit(1);
+	}
 
 	// Allocate current Fourier vorticity
-	run_data->u = (double* )fftw_malloc(sizeof(double) * Nx * (Ny + 2) * SYS_DIM);
+	run_data->u = (double* )fftw_malloc(sizeof(double) * Nx * Ny * SYS_DIM);
 	if (run_data->u == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Velocity");
 		exit(1);
 	}
-
+	#if defined(__GRAD_STATS)
+	run_data->u = (double* )fftw_malloc(sizeof(double) * Nx * Ny * SYS_DIM);
+	if (run_data->u == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Velocity");
+		exit(1);
+	}
+	#endif
+	
 	//--------------------- Allocate memory for the stats objects
 	#if defined(__REAL_STATS) || defined(__GRAD_STATS) || defined(__VEL_INC_STATS) || defined(__STR_FUNC_STATS)
 	AllocateStatsMemory(N);
 	#endif
 
+
 	// Initialize the arrays
 	for (int i = 0; i < Nx; ++i) {
 		tmp1 = i * Ny;
-		tmp2 = i * (Ny_Fourier);
+		tmp2 = i * Ny_Fourier;
 		for (int j = 0; j < Ny; ++j) {
 			if (j < Ny_Fourier) {
-				run_data->u_hat[SYS_DIM * (tmp2 + j) + 0] = 0.0 + 0.0 * I;
-				run_data->u_hat[SYS_DIM * (tmp2 + j) + 1] = 0.0 + 0.0 * I;
+				run_data->u_hat[SYS_DIM * (tmp2 + j) + 0]     = 0.0 + 0.0 * I;
+				run_data->u_hat[SYS_DIM * (tmp2 + j) + 1]     = 0.0 + 0.0 * I;
+				run_data->tmp_u_hat[SYS_DIM * (tmp2 + j) + 0] = 0.0 + 0.0 * I;
+				run_data->tmp_u_hat[SYS_DIM * (tmp2 + j) + 1] = 0.0 + 0.0 * I;
 			}
-			run_data->w[tmp2 + j] = 0.0;
+			run_data->w[tmp1 + j] = 0.0;
 			run_data->u[SYS_DIM * (tmp1 + j) + 0] = 0.0;
 			run_data->u[SYS_DIM * (tmp1 + j) + 1] = 0.0;
+			#if defined(__GRAD_STATS)
+			run_data->tmp_u[SYS_DIM * (tmp1 + j) + 0] = 0.0;
+			run_data->tmp_u[SYS_DIM * (tmp1 + j) + 1] = 0.0;
+			#endif
 		}
 	}
 	#endif
-	
+
 	// -------------------------------------
 	//  Allocate Full Field & Spectra Data
 	// -------------------------------------
@@ -409,16 +434,16 @@ void InitializeFFTWPlans(const long int* N) {
 
 	#if defined(__REAL_STATS) || defined(__VEL_INC_STATS) || defined(__STR_FUNC_STATS) || defined(__GRAD_STATS) || defined(__VORT_REAL)
 	// Initialize Fourier Transforms
-	sys_vars->fftw_2d_dft_c2r = fftw_plan_dft_c2r_2d(Nx, Ny, run_data->w_hat, run_data->w, FFTW_ESTIMATE);
+	sys_vars->fftw_2d_dft_c2r = fftw_plan_dft_c2r_2d(Nx, Ny, run_data->w_hat, run_data->w, FFTW_MEASURE);
 	if (sys_vars->fftw_2d_dft_c2r == NULL) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to initialize basic FFTW Plans \n-->> Exiting!!!\n");
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to initialize basic C2R FFTW Plan\n-->> Exiting!!!\n");
 		exit(1);
 	}
 	#endif
 	#if defined(__ENST_FLUX) || defined(__ENRG_FLUX) || defined(__SEC_PHASE_SYNC)
-	sys_vars->fftw_2d_dft_r2c = fftw_plan_dft_r2c_2d(Nx, Ny, run_data->w, run_data->w_hat, FFTW_ESTIMATE);
+	sys_vars->fftw_2d_dft_r2c = fftw_plan_dft_r2c_2d(Nx, Ny, run_data->w, run_data->w_hat, FFTW_MEASURE);
 	if (sys_vars->fftw_2d_dft_r2c == NULL) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to initialize basic FFTW Plans \n-->> Exiting!!!\n");
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to initialize basic R2C FFTW Plan\n-->> Exiting!!!\n");
 		exit(1);
 	}
 	#endif
@@ -427,7 +452,7 @@ void InitializeFFTWPlans(const long int* N) {
 	// Initialize Batch Fourier Transforms
 	sys_vars->fftw_2d_dft_batch_c2r = fftw_plan_many_dft_c2r(SYS_DIM, N_batch, SYS_DIM, run_data->u_hat, NULL, SYS_DIM, 1, run_data->u, NULL, SYS_DIM, 1, FFTW_MEASURE);
 	if (sys_vars->fftw_2d_dft_batch_c2r == NULL) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to initialize batch FFTW Plans \n-->> Exiting!!!\n");
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to initialize batch C2R FFTW Plan\n-->> Exiting!!!\n");
 		exit(1);
 	}
 	#endif
@@ -436,7 +461,7 @@ void InitializeFFTWPlans(const long int* N) {
 	// Initialize Batch Fourier Transforms
 	sys_vars->fftw_2d_dft_batch_r2c = fftw_plan_many_dft_r2c(SYS_DIM, N_batch, SYS_DIM, run_data->u, NULL, SYS_DIM, 1, run_data->u_hat, NULL, SYS_DIM, 1, FFTW_MEASURE);
 	if (sys_vars->fftw_2d_dft_batch_r2c == NULL) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to initialize batch FFTW Plans \n-->> Exiting!!!\n");
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to initialize batch R2C FFTW Plan\n-->> Exiting!!!\n");
 		exit(1);
 	}
 	#endif
@@ -451,6 +476,7 @@ void FreeMemoryAndCleanUp(void) {
 	//  Free memory
 	// --------------------------------
 	fftw_free(run_data->w_hat);
+	fftw_free(run_data->tmp_w_hat);
 	fftw_free(run_data->time);
 	fftw_free(run_data->psi_hat);
 	for (int i = 0; i < SYS_DIM; ++i) {
@@ -461,6 +487,10 @@ void FreeMemoryAndCleanUp(void) {
 	fftw_free(run_data->w);
 	fftw_free(run_data->u);
 	fftw_free(run_data->u_hat);
+	fftw_free(run_data->tmp_u_hat);
+	#if defined(__GRAD_STATS)
+	fftw_free(run_data->tmp_u);
+	#endif
 	#endif
 
 	#if defined(__REAL_STATS) || defined(__VEL_INC_STATS) || defined(__STR_FUNC_STATS) || defined(__GRAD_STATS)

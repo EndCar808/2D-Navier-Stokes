@@ -533,6 +533,16 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
         def __init__(self, in_file = in_f):
             ## Get non time dependent datasets
             with h5py.File(in_file, 'r') as f:
+                ## Get the wavevectors
+                if 'kx' in list(f.keys()):
+                    self.kx = f["kx"][:]
+                if 'ky' in list(f.keys()):
+                    self.ky = f["ky"][:]
+                ## Get the collocation points
+                if 'x' in list(f.keys()):
+                    self.x = f["x"][:]
+                if 'y' in list(f.keys()):
+                    self.y = f["y"][:]
                 ## Get the number of sectors
                 if 'SectorAngles' in list(f.keys()):
                     self.theta        = f["SectorAngles"][:]
