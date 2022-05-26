@@ -98,6 +98,43 @@ def run_commands_parallel(cmd_lsit, proc_limit):
 #####################################
 ##       DATA FILE FUNCTIONS       ##
 #####################################
+def import_data(input_dir, post_file):
+
+    """
+    Calls all import functions to import solver and post processing data
+
+    Input Parameters:
+        input_dir : string
+                    - Path to the input folder
+        post_file : string
+                    - Post processing data file name
+    """
+
+    # ## Initialize data objects
+    # sys_vars  = None
+    # run_data  = None
+    # spec_data = None
+    # sync_data = None
+    # post_data = None
+    
+    # ## Import simulation details
+    # sys_vars = sim_data(input_dir)
+
+    # ## Import runtime solver data
+    # run_data =  import_data(input_dir, sys_vars)
+
+    # ## Import spectra data
+    # spec_data = import_spectra_data(input_dir, sys_vars)
+
+    # ## Import post processing data
+    # post_file_path = input_dir + post_file
+    # post_data = import_post_processing_data(post_file_path, sys_vars, 'file')
+
+    # ## Import sync data
+    # sync_data = import_sync_data(input_dir, sys_vars)
+
+    return sys_vars, run_data, spec_data, sync_data, post_data
+
 def sim_data(input_dir, method = "default"):
 
     """
@@ -558,7 +595,7 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                 if 'NumTriadsPerSector_1D' in list(f.keys()):
                     self.num_triads_1d = f["NumTriadsPerSector_1D"][:, :]
                 if 'NumTriadsPerSectorAcrossSector' in list(f.keys()):
-                    self.num_triads_across_sec = f["NumTriadsPerSectorAcrossSector"][:, :]
+                    self.num_triads_2d = f["NumTriadsPerSectorAcrossSector"][:, :]
                 ## Get the enstrophy flux out of the set C
                 if 'EnstrophyFluxC' in list(f.keys()):
                     self.enst_flux_C = f["EnstrophyFluxC"][:]
@@ -668,7 +705,7 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
             ## Enstrophy Flux Per Sector
             self.enst_flux_per_sec    = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_sect))
             self.enst_flux_per_sec_1d = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_sect))
-            self.enst_flux_per_sec_across_sec = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_sect, self.num_k1_sects))
+            self.enst_flux_per_sec_2d = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_sect, self.num_k1_sects))
             ## Phase Sync arrays
             self.phase_R              = np.zeros((sim_data.ndata, self.num_sect))
             self.phase_Phi            = np.zeros((sim_data.ndata, self.num_sect))
@@ -676,8 +713,8 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
             self.triad_Phi            = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_sect))
             self.triad_R_1d           = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_sect))
             self.triad_Phi_1d         = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_sect))
-            self.triad_R_across_sec   = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_sect, self.num_k1_sects))
-            self.triad_Phi_across_sec = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_sect, self.num_k1_sects))
+            self.triad_R_2d   = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_sect, self.num_k1_sects))
+            self.triad_Phi_2d = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_sect, self.num_k1_sects))
             ## Phase Sync Stats
             self.phase_sector_counts = np.zeros((sim_data.ndata, self.num_sect, 200))
             self.phase_sector_ranges = np.zeros((sim_data.ndata, self.num_sect, 201))
@@ -729,9 +766,9 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                 if 'TriadAverageAngle_1D' in list(f[group].keys()):
                     data.triad_Phi_1d[nn, :, :] = f[group]["TriadAverageAngle_1D"][:, :]
                 if 'TriadPhaseSyncAcrossSector' in list(f[group].keys()):
-                    data.triad_R_across_sec[nn, :, :] = f[group]["TriadPhaseSyncAcrossSector"][:, :]
+                    data.triad_R_2d[nn, :, :] = f[group]["TriadPhaseSyncAcrossSector"][:, :]
                 if 'TriadAverageAngleAcrossSector' in list(f[group].keys()):
-                    data.triad_Phi_across_sec[nn, :, :] = f[group]["TriadAverageAngleAcrossSector"][:, :]
+                    data.triad_Phi_2d[nn, :, :] = f[group]["TriadAverageAngleAcrossSector"][:, :]
                 if 'EnstrophyFlux_C_theta' in list(f[group].keys()):
                     data.enst_flux_C_theta[nn, :] = f[group]["EnstrophyFlux_C_theta"][:]
                 if 'EnstrophyDiss_C_theta' in list(f[group].keys()):
@@ -773,7 +810,7 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                 if 'EnstrophyFluxPerSector_1D' in list(f[group].keys()):
                     data.enst_flux_per_sec_1d[nn, :, :] = f[group]["EnstrophyFluxPerSector_1D"][:, :]
                 if 'EnstrophyFluxPerSectorAcrossSector' in list(f[group].keys()):
-                    data.enst_flux_per_sec_across_sec[nn, :, :, :] = f[group]["EnstrophyFluxPerSectorAcrossSector"][:, :, :]
+                    data.enst_flux_per_sec_2d[nn, :, :, :] = f[group]["EnstrophyFluxPerSectorAcrossSector"][:, :, :]
                 if 'SectorPhasePDF_InTime_Counts' in list(f[group].keys()):
                     data.phase_sector_counts[nn, :, :] = f[group]["SectorPhasePDF_InTime_Counts"][:, :]
                 if 'SectorPhasePDF_InTime_Ranges' in list(f[group].keys()):

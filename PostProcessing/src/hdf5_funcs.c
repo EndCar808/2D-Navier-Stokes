@@ -862,7 +862,7 @@ void WriteDataToFile(double t, long int snap) {
     for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
     	for (int a = 0; a < sys_vars->num_sect; ++a) {
     		for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
-	    		tmp1[sys_vars->num_k1_sectors * (i * sys_vars->num_sect + a) + l] = proc_data->triad_R_across_sec[i][a][l];
+	    		tmp1[sys_vars->num_k1_sectors * (i * sys_vars->num_sect + a) + l] = proc_data->triad_R_2d[i][a][l];
     		}
     	}
     }
@@ -877,7 +877,7 @@ void WriteDataToFile(double t, long int snap) {
     for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
     	for (int a = 0; a < sys_vars->num_sect; ++a) {
     		for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
-	    		tmp1[sys_vars->num_k1_sectors * (i * sys_vars->num_sect + a) + l] = proc_data->triad_Phi_across_sec[i][a][l];
+	    		tmp1[sys_vars->num_k1_sectors * (i * sys_vars->num_sect + a) + l] = proc_data->triad_Phi_2d[i][a][l];
     		}
     	}
     }
@@ -945,7 +945,7 @@ void WriteDataToFile(double t, long int snap) {
     for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
     	for (int a = 0; a < sys_vars->num_sect; ++a) {
     		for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
-	    		tmp1[sys_vars->num_k1_sectors * (i * sys_vars->num_sect + a) + l] = proc_data->enst_flux_across_sec[i][a][l];
+	    		tmp1[sys_vars->num_k1_sectors * (i * sys_vars->num_sect + a) + l] = proc_data->enst_flux_2d[i][a][l];
     		}
     	}
     }
@@ -1647,7 +1647,7 @@ void FinalWriteAndClose(void) {
     for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
     	for (int a = 0; a < sys_vars->num_sect; ++a) {
     		for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
-    			tmp1[sys_vars->num_k1_sectors * (i * sys_vars->num_sect + a) + l] = proc_data->num_triads_across_sec[i][a][l];
+    			tmp1[sys_vars->num_k1_sectors * (i * sys_vars->num_sect + a) + l] = proc_data->num_triads_2d[i][a][l];
     		}
     	}
     }

@@ -28,7 +28,7 @@ import multiprocessing as mprocs
 import time as TIME
 from subprocess import Popen, PIPE
 from matplotlib.pyplot import cm
-from functions import tc, sim_data, import_data, import_spectra_data, import_post_processing_data
+from functions import tc, import_data #sim_data, import_data, import_spectra_data, import_post_processing_data
 from plot_functions import plot_sector_phase_sync_snaps
 ###############################
 ##       FUNCTION DEFS       ##
@@ -109,23 +109,24 @@ if __name__ == '__main__':
     # -----------------------------------------
     # # --------  Read In data
     # -----------------------------------------
-    ## Read in simulation parameters
-    sys_vars = sim_data(cmdargs.in_dir)
+    # ## Read in simulation parameters
+    # sys_vars = sim_data(cmdargs.in_dir)
 
-    ## Read in solver data
-    run_data = import_data(cmdargs.in_dir, sys_vars)
+    # ## Read in solver data
+    # run_data = import_data(cmdargs.in_dir, sys_vars)
 
-    ## Read in spectra data
-    spec_data = import_spectra_data(cmdargs.in_dir, sys_vars)
+    # ## Read in spectra data
+    # spec_data = import_spectra_data(cmdargs.in_dir, sys_vars)
 
-    ## Read in post processing data
-    post_data = import_post_processing_data(post_file_path, sys_vars, method)
+    # ## Read in post processing data
+    # post_data = import_post_processing_data(post_file_path, sys_vars, method)
 
-    ## Number of triad types
-    num_triad_types = 7
+    # ## Number of triad types
+    # num_triad_types = 7
+    sys_vars, run_data, spec_data, sync_data, post_data = import_data(cmdargs.in_dir, post_file_path)
     # -----------------------------------------
     # # --------  Plot Data
-    # -----------------------------------------
+    # ----------------------------------------- 
     # ##------------------------ Plot enstrophy fluxes in C
     # fig = plt.figure(figsize = (16, 8))
     # gs  = GridSpec(1, 2)
