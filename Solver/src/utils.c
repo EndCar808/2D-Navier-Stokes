@@ -394,10 +394,12 @@ int GetCMLArgs(int argc, char** argv) {
 					// Get the forcing wavenumber
 					sys_vars->force_k = atoi(optarg);
 					force_flag = 2;
+					break;
 				}
 				else if ((force_flag == 2)) {
 					// Get the force scaling variable
 					sys_vars->force_scale_var = atof(optarg);
+					break;
 				}
 				break;
 			case 'z':

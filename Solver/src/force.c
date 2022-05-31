@@ -31,10 +31,11 @@ void InitializeForcing(void) {
 	int tmp, indx;
 	double k_abs;
 	double scale_fac_f0;
-	int num_forced_modes   = 0;
-	int force_mode_counter = 0;
-	double sum_k_pow       = 0.0;
-	double scaling_exp     = 0.0;
+	int num_forced_modes         = 0;
+	int force_mode_counter       = 0;
+	double sum_k_pow             = 0.0;
+	double scaling_exp           = 0.0;
+	sys_vars->local_forcing_proc = 0;
 	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
 
 	// -----------------------------------
@@ -47,9 +48,6 @@ void InitializeForcing(void) {
 			if (run_data->k[0][i] == 0) {
 				sys_vars->local_forcing_proc = 1;
 				num_forced_modes++;
-			}
-			else {
-				sys_vars->local_forcing_proc = 0;
 			}
 		}
 

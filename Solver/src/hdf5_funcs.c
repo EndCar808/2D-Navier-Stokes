@@ -443,6 +443,7 @@ void GetOutputDirPath(void) {
 				exit(1);
 			}
 		}
+
 	}
 
 	////////////////////////////////////////////
@@ -548,7 +549,7 @@ void GetOutputDirPath(void) {
 		// ----------------------------------
 		// Construct file label from simulation data
 		sprintf(file_data, "SIM_DATA_%s_%s_%s_N[%ld,%ld]_T[%d-%d]_NU[%1.6lf]_CFL[%1.2lf]_u0[%s]_TAG[%s]/", sys_type, solv_type, model_type, sys_vars->N[0], sys_vars->N[1], (int )sys_vars->t0, (int )sys_vars->T, sys_vars->NU, sys_vars->CFL_CONST, sys_vars->u0, file_info->output_tag);
-
+		
 		// ----------------------------------
 		// Check Existence of Output Folder
 		// ----------------------------------
