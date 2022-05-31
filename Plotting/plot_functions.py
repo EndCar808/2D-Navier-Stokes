@@ -882,8 +882,8 @@ def plot_sector_phase_sync_snaps_full_sec(i, out_dir, w, enst_spec, enst_flux, e
        axtop3.set_yticks([-np.pi, -np.pi/2.0, 0., np.pi/2, np.pi])
        axtop3.set_yticklabels([r"$-\pi$", r"$\frac{-\pi}{2}$", r"$0$", r"$\frac{\pi}{2}$", r"$\pi$"])
        axtop3.grid(which = 'both', axis = 'both', linestyle = ':', linewidth = '0.6', alpha = 0.8)
-       axtop3.set_title(r"Order Parameters")
-       axtop3.set_ylabel(r"$\Phi$")
+       axtop3.set_title(r"Order Parameters (1D)")
+       axtop3.set_ylabel(r"$\Phi^{\text{1D}}$")
        ax3.plot(theta, R)
        ax3.set_xlim(theta_min, theta_max)
        ax3.set_xticks(angticks)
@@ -891,7 +891,7 @@ def plot_sector_phase_sync_snaps_full_sec(i, out_dir, w, enst_spec, enst_flux, e
        ax3.set_ylim(0 - 0.05, 1 + 0.05)
        ax3.set_xlabel(r"$\theta$")
        ax3.grid(which = 'both', axis = 'both', linestyle = ':', linewidth = '0.6', alpha = 0.8)
-       ax3.set_ylabel(r"$\mathcal{R}$")
+       ax3.set_ylabel(r"$\mathcal{R}^{\text{1D}}$")
 
        #--------------------------------
        # Plot Enstrophy Flux Per Sector  
@@ -902,11 +902,11 @@ def plot_sector_phase_sync_snaps_full_sec(i, out_dir, w, enst_spec, enst_flux, e
        ax4.set_xticks(angticks)
        ax4.set_xticklabels(angtickLabels)
        ax4.set_xlabel(r"$\theta$")
-       ax4.set_ylabel(r"$\Pi_{\mathcal{C}}$")
+       ax4.set_ylabel(r"$\Pi_{\mathcal{C}}^{\text{1D}}$")
        ax4.set_yscale('symlog')
        ax4.set_ylim(flux_min, flux_max)
        ax4.grid(which = 'both', axis = 'both', linestyle = ':', linewidth = '0.6', alpha = 0.8)
-       ax4.set_title(r"Enstrophy Flux Per Sector")
+       ax4.set_title(r"Enstrophy Flux Per Sector (1D)")
 
        #--------------------------------
        # Plot Enstrophy Spectrum  
@@ -932,11 +932,11 @@ def plot_sector_phase_sync_snaps_full_sec(i, out_dir, w, enst_spec, enst_flux, e
        ax6.set_yticklabels(angtickLabels)
        ax6.set_ylabel(r"$\theta$")
        ax6.set_xlabel(r"$\alpha$")
-       ax6.set_title(r"Sync Across Sectors")
+       ax6.set_title(r"Sync Across Sectors (2D)")
        div6  = make_axes_locatable(ax6)
        cbax6 = div6.append_axes("right", size = "10%", pad = 0.05)
        cb6   = plt.colorbar(im6, cax = cbax6)
-       cb6.set_label(r"$\mathcal{R}$")
+       cb6.set_label(r"$\mathcal{R}^{2D}$")
 
        #--------------------------------
        # Plot Avg Phase Across Sectors  
@@ -949,13 +949,13 @@ def plot_sector_phase_sync_snaps_full_sec(i, out_dir, w, enst_spec, enst_flux, e
        ax7.set_yticklabels(angtickLabels)
        ax7.set_ylabel(r"$\theta$")
        ax7.set_xlabel(r"$\alpha$")
-       ax7.set_title(r"Average Angle Across Sectors")
+       ax7.set_title(r"Average Angle Across Sectors (2D)")
        div7  = make_axes_locatable(ax7)
        cbax7 = div7.append_axes("right", size = "10%", pad = 0.05)
        cb7   = plt.colorbar(im7, cax = cbax7)
        cb7.set_ticks([-np.pi, -np.pi/2.0, 0., np.pi/2, np.pi])
        cb7.set_ticklabels([r"$-\pi$", r"$\frac{-\pi}{2}$", r"$0$", r"$\frac{\pi}{2}$", r"$\pi$"])
-       cb7.set_label(r"$\Phi$")
+       cb7.set_label(r"$\Phi^{2D}$")
 
        #--------------------------------
        # Plot Enstrophy Flux Across Sectors  
@@ -968,11 +968,11 @@ def plot_sector_phase_sync_snaps_full_sec(i, out_dir, w, enst_spec, enst_flux, e
        ax8.set_yticklabels(angtickLabels)
        ax8.set_ylabel(r"$\theta$")
        ax8.set_xlabel(r"$\alpha$")
-       ax8.set_title(r"Enstrophy Flux Across Sectors")
+       ax8.set_title(r"Enstrophy Flux Across Sectors (2D)")
        div8  = make_axes_locatable(ax8)
        cbax8 = div8.append_axes("right", size = "10%", pad = 0.05)
        cb8   = plt.colorbar(im8, cax = cbax8)
-       cb8.set_label(r"$\Pi_{\mathcal{C}}$")
+       cb8.set_label(r"$\Pi_{\mathcal{C}}^{2D}$")
 
        ## Add title and save fig
        plt.suptitle(r"$t = {:.5f}$".format(t))

@@ -869,7 +869,7 @@ void WriteDataToFile(double t, long int snap) {
     dset_dims_3d[0] = NUM_TRIAD_TYPES + 1;
     dset_dims_3d[1] = sys_vars->num_sect;
     dset_dims_3d[2] = sys_vars->num_k1_sectors;
-	status = H5LTmake_dataset(group_id, "TriadPhaseSyncAcrossSector", Dims3D, dset_dims_3d, H5T_NATIVE_DOUBLE, tmp1);
+	status = H5LTmake_dataset(group_id, "TriadPhaseSync_2D", Dims3D, dset_dims_3d, H5T_NATIVE_DOUBLE, tmp1);
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file  at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Triad Sync Parameter Across Sector", t, snap);
         exit(1);
@@ -881,7 +881,7 @@ void WriteDataToFile(double t, long int snap) {
     		}
     	}
     }
-    status = H5LTmake_dataset(group_id, "TriadAverageAngleAcrossSector", Dims3D, dset_dims_3d, H5T_NATIVE_DOUBLE, tmp1);
+    status = H5LTmake_dataset(group_id, "TriadAverageAngle_2D", Dims3D, dset_dims_3d, H5T_NATIVE_DOUBLE, tmp1);
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file  at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Triad Average Angle Across Sector", t, snap);
         exit(1);
@@ -907,17 +907,48 @@ void WriteDataToFile(double t, long int snap) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Collective Phase Order C_theta", t, snap);
         exit(1);
     }
-    status = H5LTmake_dataset(group_id, "CollectivePhaseOrder_C_theta_Triads", Dims1D, dset_dims_1d, file_info->COMPLEX_DTYPE, proc_data->phase_order_C_theta_triads);
+    fftw_complex* tmp_cmplx = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * (NUM_TRIAD_TYPES + 1) * sys_vars->num_sect);
+    for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
+    	for (int a = 0; a < sys_vars->num_sect; ++a) {
+    		tmp_cmplx[i * sys_vars->num_sect + a] = proc_data->phase_order_C_theta_triads[i][a];
+    	}
+    }
+    dset_dims_2d[0] = NUM_TRIAD_TYPES + 1;
+    dset_dims_2d[1] = sys_vars->num_sect;
+    status = H5LTmake_dataset(group_id, "CollectivePhaseOrder_C_theta_Triads", Dims2D, dset_dims_2d, file_info->COMPLEX_DTYPE, tmp_cmplx);
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Collective Phase Order C_theta Triads", t, snap);
         exit(1);
     }
-    status = H5LTmake_dataset(group_id, "CollectivePhaseOrder_C_theta_Triads_1D", Dims1D, dset_dims_1d, file_info->COMPLEX_DTYPE, proc_data->phase_order_C_theta_triads_1d);
+    for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
+    	for (int a = 0; a < sys_vars->num_sect; ++a) {
+    		tmp_cmplx[i * sys_vars->num_sect + a] = proc_data->phase_order_C_theta_triads_1d[i][a];
+    	}
+    }
+    status = H5LTmake_dataset(group_id, "CollectivePhaseOrder_C_theta_Triads_1D", Dims2D, dset_dims_2d, file_info->COMPLEX_DTYPE, tmp_cmplx);
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Collective Phase Order C_theta Triads 1D", t, snap);
         exit(1);
     }
+    fftw_complex* tmp1_cmplx = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * (NUM_TRIAD_TYPES + 1) * sys_vars->num_sect * sys_vars->num_k1_sectors);
+    for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
+    	for (int a = 0; a < sys_vars->num_sect; ++a) {
+    		for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
+    			tmp1_cmplx[i * sys_vars->num_sect + a] = proc_data->phase_order_C_theta_triads_2d[i][a][l];
+    		}
+    	}
+    }
+    dset_dims_3d[0] = NUM_TRIAD_TYPES + 1;
+    dset_dims_3d[1] = sys_vars->num_sect;
+    dset_dims_3d[1] = sys_vars->num_k1_sectors;
+    status = H5LTmake_dataset(group_id, "CollectivePhaseOrder_C_theta_Triads_2D", Dims3D, dset_dims_3d, file_info->COMPLEX_DTYPE, tmp1_cmplx);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Collective Phase Order C_theta_Triads 2D", t, snap);
+        exit(1);
+    }
 
+    fftw_free(tmp_cmplx);
+    fftw_free(tmp1_cmplx);
 
     ///------------------------ Enstrophy Flux
     for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
@@ -925,6 +956,8 @@ void WriteDataToFile(double t, long int snap) {
     		tmp[i * sys_vars->num_sect + a] = 2.0 * pow(M_PI, 2.0) * proc_data->enst_flux[i][a];
     	}
     }
+    dset_dims_2d[0] = NUM_TRIAD_TYPES + 1;
+    dset_dims_2d[1] = sys_vars->num_sect;
     status = H5LTmake_dataset(group_id, "EnstrophyFluxPerSector", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, tmp);
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Enstrophy Flux Per Sector", t, snap);
@@ -949,7 +982,10 @@ void WriteDataToFile(double t, long int snap) {
     		}
     	}
     }
-    status = H5LTmake_dataset(group_id, "EnstrophyFluxPerSectorAcrossSector", Dims3D, dset_dims_3d, H5T_NATIVE_DOUBLE, tmp1);
+    dset_dims_3d[0] = NUM_TRIAD_TYPES + 1;
+    dset_dims_3d[1] = sys_vars->num_sect;
+    dset_dims_3d[1] = sys_vars->num_k1_sectors;
+    status = H5LTmake_dataset(group_id, "EnstrophyFluxPerSector_2D", Dims3D, dset_dims_3d, H5T_NATIVE_DOUBLE, tmp1);
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file  at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Enstrophy Flux Per Sector Across Sector", t, snap);
         exit(1);
@@ -1654,7 +1690,7 @@ void FinalWriteAndClose(void) {
     dset_dims_3d[0] = NUM_TRIAD_TYPES + 1;
     dset_dims_3d[1] = sys_vars->num_sect;
     dset_dims_3d[2] = sys_vars->num_k1_sectors;
-	status = H5LTmake_dataset(file_info->output_file_handle, "NumTriadsPerSectorAcrossSector", Dims3D, dset_dims_3d, H5T_NATIVE_INT, tmp1);
+	status = H5LTmake_dataset(file_info->output_file_handle, "NumTriadsPerSector_2D", Dims3D, dset_dims_3d, H5T_NATIVE_INT, tmp1);
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!!!\n-->> Exiting...\n", "Number of Triads Per Sector Across Sector");
         exit(1);

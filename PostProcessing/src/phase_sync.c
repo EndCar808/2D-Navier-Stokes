@@ -69,8 +69,9 @@ void PhaseSyncSector(int s) {
 
 			// Initialize counters for number of triads and enstrophy flux across sectors for each triad type
 			for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
-				proc_data->num_triads_2d[i][a][l] = 0;
-				proc_data->enst_flux_2d[i][a][l]  = 0.0;
+				proc_data->num_triads_2d[i][a][l]                 = 0;
+				proc_data->enst_flux_2d[i][a][l]                  = 0.0;
+				proc_data->phase_order_C_theta_triads_2d[i][a][l] = 0.0 + 0.0 * I;
 			}
 
 			// Get the angles for the second -> sector where k1 lies
@@ -134,24 +135,21 @@ void PhaseSyncSector(int s) {
 						gen_triad_phase = fmod(triad_phase + 2.0 * M_PI + carg(flux_wght), 2.0 * M_PI) - M_PI;
 						
 						//------------------------------------------ TRIAD TYPE 0
-						// Update the combined triad phase order parameter with the appropriate contribution
-						proc_data->triad_phase_order[0][a]    += cexp(I * gen_triad_phase);
-						proc_data->triad_phase_order_1d[0][a] += cexp(I * gen_triad_phase);
-
-						// Update the triad counter for the combined triad type
+						// Update the combined triad phase order parameter with the appropriate 1D contribution
 						proc_data->num_triads[0][a]++;
-						proc_data->num_triads_1d[0][a]++;
-
-						// Update the flux contribution for type 0
+						proc_data->enst_flux[0][a]         += flux_wght * cos(triad_phase);
+						proc_data->triad_phase_order[0][a] += cexp(I * gen_triad_phase);
 						if (l == 0) {
-							proc_data->enst_flux[0][a]    += flux_wght * cos(triad_phase);
-							proc_data->enst_flux_1d[0][a] += flux_wght * cos(triad_phase);
-						}
+							// 1D contribution only depends on theta
+							proc_data->num_triads_1d[0][a]++;
+							proc_data->enst_flux_1d[0][a]         += flux_wght * cos(triad_phase);
+							proc_data->triad_phase_order_1d[0][a] += cexp(I * gen_triad_phase);
 
-						// Update collective phase order parameter for C_theta
-						if (k3_y > 0) {
-							if (cabs(flux_wght * cexp(I * triad_phase) != 0.0)) {
-								proc_data->phase_order_C_theta_triads_1d[0][a] += flux_wght * cexp(I * triad_phase) / cabs(flux_wght * cexp(I * triad_phase));
+							// Update collective phase order parameter for C_theta
+							if (k3_y > 0) {
+								if (cabs(flux_wght * cexp(I * triad_phase) != 0.0)) {
+									proc_data->phase_order_C_theta_triads_1d[0][a] += flux_wght * cexp(I * triad_phase) / cabs(flux_wght * cexp(I * triad_phase));
+								}
 							}
 						}
 
@@ -174,19 +172,19 @@ void PhaseSyncSector(int s) {
 
 						if (flux_pre_fac < 0) {
 							//------------------------------------------ TRIAD TYPE 1
-							proc_data->triad_phase_order[1][a]    += cexp(I * gen_triad_phase);
-							proc_data->triad_phase_order_1d[1][a] += cexp(I * gen_triad_phase);
 							proc_data->num_triads[1][a]++;		
-							proc_data->num_triads_1d[1][a]++;		
-
-							// Update the flux contribution for tpye 1
-							proc_data->enst_flux[1][a]    += flux_wght * cos(triad_phase);
-							proc_data->enst_flux_1d[1][a] += flux_wght * cos(triad_phase);
-
-							// Update collective phase order parameter for C_theta
-							if (k3_y > 0) {
-								if (cabs(flux_wght * cexp(I * triad_phase) != 0.0)) {
-									proc_data->phase_order_C_theta_triads_1d[1][a] += flux_wght * cexp(I * triad_phase) / cabs(flux_wght * cexp(I * triad_phase));
+							proc_data->enst_flux[1][a]         += flux_wght * cos(triad_phase);
+							proc_data->triad_phase_order[1][a] += cexp(I * gen_triad_phase);
+							if (l == 0) {
+								// 1D contribution only depends on theta
+								proc_data->num_triads_1d[1][a]++;		
+								proc_data->enst_flux_1d[1][a]         += flux_wght * cos(triad_phase);
+								proc_data->triad_phase_order_1d[1][a] += cexp(I * gen_triad_phase);
+								// Update collective phase order parameter for C_theta
+								if (k3_y > 0) {
+									if (cabs(flux_wght * cexp(I * triad_phase) != 0.0)) {
+										proc_data->phase_order_C_theta_triads_1d[1][a] += flux_wght * cexp(I * triad_phase) / cabs(flux_wght * cexp(I * triad_phase));
+									}
 								}
 							}
 
@@ -210,21 +208,19 @@ void PhaseSyncSector(int s) {
 						else if (flux_pre_fac > 0) {
 							
 							//------------------------------------------ TRIAD TYPE 2
-							proc_data->triad_phase_order[2][a]    += cexp(I * gen_triad_phase);
-							proc_data->triad_phase_order_1d[2][a] += cexp(I * gen_triad_phase);
-
-							// Update the number of triads
 							proc_data->num_triads[2][a]++;		
-							proc_data->num_triads_1d[2][a]++;		
-
-							// Update the flux contribution for tpye 2
-							proc_data->enst_flux[2][a]    += flux_wght * cos(triad_phase);
-							proc_data->enst_flux_1d[2][a] += flux_wght * cos(triad_phase);
-
-							// Update collective phase order parameter for C_theta
-							if (k3_y > 0) {
-								if (cabs(flux_wght * cexp(I * triad_phase) != 0.0)) {
-									proc_data->phase_order_C_theta_triads_1d[2][a] += flux_wght * cexp(I * triad_phase) / cabs(flux_wght * cexp(I * triad_phase));
+							proc_data->enst_flux[2][a]         += flux_wght * cos(triad_phase);
+							proc_data->triad_phase_order[2][a] += cexp(I * gen_triad_phase);
+							if (l == 0) {
+								// 1D contribution only depends on theta
+								proc_data->num_triads_1d[2][a]++;		
+								proc_data->enst_flux_1d[2][a]         += flux_wght * cos(triad_phase);
+								proc_data->triad_phase_order_1d[2][a] += cexp(I * gen_triad_phase);
+								// Update collective phase order parameter for C_theta
+								if (k3_y > 0) {
+									if (cabs(flux_wght * cexp(I * triad_phase) != 0.0)) {
+										proc_data->phase_order_C_theta_triads_1d[2][a] += flux_wght * cexp(I * triad_phase) / cabs(flux_wght * cexp(I * triad_phase));
+									}
 								}
 							}
 
@@ -259,23 +255,19 @@ void PhaseSyncSector(int s) {
 						
 						//------------------------------------------ TRIAD TYPE 0
 						// Update the combined triad phase order parameter with the appropriate contribution
-						proc_data->triad_phase_order[0][a]               += cexp(I * gen_triad_phase);
-						proc_data->triad_phase_order_2d[0][a][l] += cexp(I * gen_triad_phase);
-
-						// Update the triad counter for the combined triad type
 						proc_data->num_triads[0][a]++;
-						proc_data->num_triads_2d[0][a][l]++;
+						proc_data->enst_flux[0][a]         += flux_wght * cos(triad_phase);
+						proc_data->triad_phase_order[0][a] += cexp(I * gen_triad_phase);
 
-						// Update the flux contribution for type 0
-						if (l == 0) {
-							proc_data->enst_flux[0][a]               += flux_wght * cos(triad_phase);
-							proc_data->enst_flux_2d[0][a][l] += flux_wght * cos(triad_phase);
-						}
+						// Record the 2D contribution
+						proc_data->num_triads_2d[0][a][l]++;
+						proc_data->enst_flux_2d[0][a][l]         += flux_wght * cos(triad_phase);
+						proc_data->triad_phase_order_2d[0][a][l] += cexp(I * gen_triad_phase);
 
 						// Update collective phase order parameter for C_theta
 						if (k3_y > 0) {
 							if (cabs(flux_wght * cexp(I * triad_phase) != 0.0)) {
-								proc_data->phase_order_C_theta_triads[0][a]    += flux_wght * cexp(I * triad_phase) / cabs(flux_wght * cexp(I * triad_phase));
+								proc_data->phase_order_C_theta_triads_2d[0][a][l] += flux_wght * cexp(I * triad_phase) / cabs(flux_wght * cexp(I * triad_phase));
 							}
 						}
 
@@ -296,23 +288,24 @@ void PhaseSyncSector(int s) {
 							exit(1);
 						}
 
-						// Update collective phase order parameter for C_theta
-						if (k3_y > 0) {
-							if (cabs(flux_wght * cexp(I * triad_phase) != 0.0)) {
-								proc_data->phase_order_C_theta_triads[1][a] += flux_wght * cexp(I * triad_phase) / cabs(flux_wght * cexp(I * triad_phase));
-							}
-						}
 
 						if (flux_pre_fac < 0) {
 							//------------------------------------------ TRIAD TYPE 1
-							proc_data->triad_phase_order[1][a]               += cexp(I * gen_triad_phase);
-							proc_data->triad_phase_order_2d[1][a][l] += cexp(I * gen_triad_phase);
 							proc_data->num_triads[1][a]++;		
-							proc_data->num_triads_2d[1][a][l]++;		
+							proc_data->enst_flux[1][a]         += flux_wght * cos(triad_phase);
+							proc_data->triad_phase_order[1][a] += cexp(I * gen_triad_phase);
 
-							// Update the flux contribution for tpye 1
-							proc_data->enst_flux[1][a]               += flux_wght * cos(triad_phase);
-							proc_data->enst_flux_2d[1][a][l] += flux_wght * cos(triad_phase);
+							// Record 2D contribution
+							proc_data->num_triads_2d[1][a][l]++;		
+							proc_data->enst_flux_2d[1][a][l]         += flux_wght * cos(triad_phase);
+							proc_data->triad_phase_order_2d[1][a][l] += cexp(I * gen_triad_phase);
+
+							// Update collective phase order parameter for C_theta
+							if (k3_y > 0) {
+								if (cabs(flux_wght * cexp(I * triad_phase) != 0.0)) {
+									proc_data->phase_order_C_theta_triads_2d[1][a][l] += flux_wght * cexp(I * triad_phase) / cabs(flux_wght * cexp(I * triad_phase));
+								}
+							}
 
 							// Update the PDFs
 							gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf[1][a], gen_triad_phase);
@@ -334,21 +327,19 @@ void PhaseSyncSector(int s) {
 						else if (flux_pre_fac > 0) {
 							
 							//------------------------------------------ TRIAD TYPE 2
-							proc_data->triad_phase_order[2][a]               += cexp(I * gen_triad_phase);
-							proc_data->triad_phase_order_2d[2][a][l] += cexp(I * gen_triad_phase);
-
-							// Update the number of triads
 							proc_data->num_triads[2][a]++;		
-							proc_data->num_triads_2d[2][a][l]++;		
+							proc_data->enst_flux[2][a]         += flux_wght * cos(triad_phase);
+							proc_data->triad_phase_order[2][a] += cexp(I * gen_triad_phase);
 
 							// Update the flux contribution for tpye 2
-							proc_data->enst_flux[2][a]               += flux_wght * cos(triad_phase);
-							proc_data->enst_flux_2d[2][a][l] += flux_wght * cos(triad_phase);
+							proc_data->num_triads_2d[2][a][l]++;		
+							proc_data->enst_flux_2d[2][a][l]         += flux_wght * cos(triad_phase);
+							proc_data->triad_phase_order_2d[2][a][l] += cexp(I * gen_triad_phase);
 
 							// Update collective phase order parameter for C_theta
 							if (k3_y > 0) {
 								if (cabs(flux_wght * cexp(I * triad_phase) != 0.0)) {
-									proc_data->phase_order_C_theta_triads[2][a] += flux_wght * cexp(I * triad_phase) / cabs(flux_wght * cexp(I * triad_phase));
+									proc_data->phase_order_C_theta_triads_2d[2][a][l] += flux_wght * cexp(I * triad_phase) / cabs(flux_wght * cexp(I * triad_phase));
 								}
 							}
 
@@ -382,24 +373,20 @@ void PhaseSyncSector(int s) {
 						
 						//------------------------------------------ TRIAD TYPE 0
 						// Update the combined triad phase order parameter with the appropriate contribution
-						proc_data->triad_phase_order[0][a]               += cexp(I * gen_triad_phase);
-						proc_data->triad_phase_order_1d[0][a]            += cexp(I * gen_triad_phase);
-
-						// Update the triad counter for the combined triad type
 						proc_data->num_triads[0][a]++;
-						proc_data->num_triads_1d[0][a]++;
+						proc_data->enst_flux[0][a]         += -flux_wght * cos(triad_phase);
+						proc_data->triad_phase_order[0][a] += cexp(I * gen_triad_phase);
 
-
-						// Update the flux contribution for type 0
 						if (l == 0) {
-							proc_data->enst_flux[0][a]               += -flux_wght * cos(triad_phase);
-							proc_data->enst_flux_1d[0][a]            += -flux_wght * cos(triad_phase);
-						}
-
-						// Update collective phase order parameter for C_theta
-						if (k1_y > 0 && k2_y > 0) {
-							if (cabs(-flux_wght * cexp(I * triad_phase) != 0.0)) {
-								proc_data->phase_order_C_theta_triads_1d[1][a] += -flux_wght * cexp(I * triad_phase) / cabs(-flux_wght * cexp(I * triad_phase));
+							// 1D contributions
+							proc_data->num_triads_1d[0][a]++;
+							proc_data->enst_flux_1d[0][a]         += -flux_wght * cos(triad_phase);
+							proc_data->triad_phase_order_1d[0][a] += cexp(I * gen_triad_phase);
+							// Update collective phase order parameter for C_theta
+							if (k1_y > 0 && k2_y > 0) {
+								if (cabs(-flux_wght * cexp(I * triad_phase) != 0.0)) {
+									proc_data->phase_order_C_theta_triads_1d[1][a] += -flux_wght * cexp(I * triad_phase) / cabs(-flux_wght * cexp(I * triad_phase));
+								}
 							}
 						}
 
@@ -422,19 +409,21 @@ void PhaseSyncSector(int s) {
 
 						if (flux_pre_fac < 0) {
 							//------------------------------------------ TRIAD TYPE 3
-							proc_data->triad_phase_order[3][a]               += cexp(I * gen_triad_phase);
-							proc_data->triad_phase_order_1d[3][a]            += cexp(I * gen_triad_phase);
 							proc_data->num_triads[3][a]++;		
-							proc_data->num_triads_1d[3][a]++;		
+							proc_data->enst_flux[3][a]         += -flux_wght * cos(triad_phase);
+							proc_data->triad_phase_order[3][a] += cexp(I * gen_triad_phase);
 
-							// Update the flux contribution for tpye 3
-							proc_data->enst_flux[3][a]               += -flux_wght * cos(triad_phase);
-							proc_data->enst_flux_1d[3][a]            += -flux_wght * cos(triad_phase);
+							if (l == 0) {
+								// 1D Contirbutions
+								proc_data->num_triads_1d[3][a]++;		
+								proc_data->enst_flux_1d[3][a]         += -flux_wght * cos(triad_phase);
+								proc_data->triad_phase_order_1d[3][a] += cexp(I * gen_triad_phase);
 
-							// Update collective phase order parameter for C_theta
-							if (k1_y > 0 && k2_y > 0) {
-								if (cabs(-flux_wght * cexp(I * triad_phase) != 0.0)) {
-									proc_data->phase_order_C_theta_triads_1d[3][a] += -flux_wght * cexp(I * triad_phase) / cabs(-flux_wght * cexp(I * triad_phase));
+								// Update collective phase order parameter for C_theta
+								if (k1_y > 0 && k2_y > 0) {
+									if (cabs(-flux_wght * cexp(I * triad_phase) != 0.0)) {
+										proc_data->phase_order_C_theta_triads_1d[3][a] += -flux_wght * cexp(I * triad_phase) / cabs(-flux_wght * cexp(I * triad_phase));
+									}
 								}
 							}
 
@@ -459,21 +448,21 @@ void PhaseSyncSector(int s) {
 						else if (flux_pre_fac > 0) {
 							
 							//------------------------------------------ TRIAD TYPE 4
-							proc_data->triad_phase_order[4][a]               += cexp(I * gen_triad_phase);
-							proc_data->triad_phase_order_1d[4][a]            += cexp(I * gen_triad_phase);
-
-							// Update the number of triads
 							proc_data->num_triads[4][a]++;		
-							proc_data->num_triads_1d[4][a]++;		
+							proc_data->enst_flux[4][a]         += -flux_wght * cos(triad_phase);
+							proc_data->triad_phase_order[4][a] += cexp(I * gen_triad_phase);
 
-							// Update the flux contribution for tpye 4
-							proc_data->enst_flux[4][a]               += -flux_wght * cos(triad_phase);
-							proc_data->enst_flux_1d[4][a]            += -flux_wght * cos(triad_phase);
+							if (l == 0) {
+								// 1D contributions
+								proc_data->num_triads_1d[4][a]++;		
+								proc_data->enst_flux_1d[4][a]         += -flux_wght * cos(triad_phase);
+								proc_data->triad_phase_order_1d[4][a] += cexp(I * gen_triad_phase);
 
-							// Update collective phase order parameter for C_theta
-							if (k1_y > 0 && k2_y > 0) {
-								if (cabs(-flux_wght * cexp(I * triad_phase) != 0.0)) {
-									proc_data->phase_order_C_theta_triads_1d[4][a] += -flux_wght * cexp(I * triad_phase) / cabs(-flux_wght * cexp(I * triad_phase));
+								// Update collective phase order parameter for C_theta
+								if (k1_y > 0 && k2_y > 0) {
+									if (cabs(-flux_wght * cexp(I * triad_phase) != 0.0)) {
+										proc_data->phase_order_C_theta_triads_1d[4][a] += -flux_wght * cexp(I * triad_phase) / cabs(-flux_wght * cexp(I * triad_phase));
+									}
 								}
 							}
 
@@ -508,23 +497,19 @@ void PhaseSyncSector(int s) {
 						
 						//------------------------------------------ TRIAD TYPE 0
 						// Update the combined triad phase order parameter with the appropriate contribution
-						proc_data->triad_phase_order[0][a]               += cexp(I * gen_triad_phase);
-						proc_data->triad_phase_order_2d[0][a][l] += cexp(I * gen_triad_phase);
-
-						// Update the triad counter for the combined triad type
 						proc_data->num_triads[0][a]++;
-						proc_data->num_triads_2d[0][a][l]++;
+						proc_data->enst_flux[0][a]         += -flux_wght * cos(triad_phase);
+						proc_data->triad_phase_order[0][a] += cexp(I * gen_triad_phase);
 
 						// Update the flux contribution for type 0
-						if (l == 0) {
-							proc_data->enst_flux[0][a]               += -flux_wght * cos(triad_phase);
-							proc_data->enst_flux_2d[0][a][l] += -flux_wght * cos(triad_phase);
-						}
+						proc_data->num_triads_2d[0][a][l]++;
+						proc_data->enst_flux_2d[0][a][l]         += -flux_wght * cos(triad_phase);
+						proc_data->triad_phase_order_2d[0][a][l] += cexp(I * gen_triad_phase);
 
 						// Update collective phase order parameter for C_theta
 						if (k1_y > 0 && k2_y > 0) {
 							if (cabs(flux_wght * cexp(I * triad_phase) != 0.0)) {
-								proc_data->phase_order_C_theta_triads[0][a] += flux_wght * cexp(I * triad_phase) / cabs(flux_wght * cexp(I * triad_phase));
+								proc_data->phase_order_C_theta_triads_2d[0][a][l] += flux_wght * cexp(I * triad_phase) / cabs(flux_wght * cexp(I * triad_phase));
 							}
 						}
 
@@ -547,19 +532,18 @@ void PhaseSyncSector(int s) {
 
 						if (flux_pre_fac < 0) {
 							//------------------------------------------ TRIAD TYPE 3
-							proc_data->triad_phase_order[3][a]               += cexp(I * gen_triad_phase);
-							proc_data->triad_phase_order_2d[3][a][l] += cexp(I * gen_triad_phase);
-							proc_data->num_triads[3][a]++;		
-							proc_data->num_triads_2d[3][a][l]++;		
+							proc_data->num_triads[3][a]++;				
+							proc_data->enst_flux[3][a]         += -flux_wght * cos(triad_phase);
+							proc_data->triad_phase_order[3][a] += cexp(I * gen_triad_phase);
 
 							// Update the flux contribution for tpye 1
-							proc_data->enst_flux[3][a]               += -flux_wght * cos(triad_phase);
-							proc_data->enst_flux_2d[3][a][l] += -flux_wght * cos(triad_phase);
+							proc_data->num_triads_2d[3][a][l]++;		
+							proc_data->enst_flux_2d[3][a][l]         += -flux_wght * cos(triad_phase);
+							proc_data->triad_phase_order_2d[3][a][l] += cexp(I * gen_triad_phase);
 
-							// Update collective phase order parameter for C_theta
 							if (k1_y > 0 && k2_y > 0) {
 								if (cabs(-flux_wght * cexp(I * triad_phase) != 0.0)) {
-									proc_data->phase_order_C_theta_triads[3][a] += -flux_wght * cexp(I * triad_phase) / cabs(-flux_wght * cexp(I * triad_phase));
+									proc_data->phase_order_C_theta_triads_2d[3][a][l] += -flux_wght * cexp(I * triad_phase) / cabs(-flux_wght * cexp(I * triad_phase));
 								}
 							}
 
@@ -582,21 +566,19 @@ void PhaseSyncSector(int s) {
 						}
 						if (flux_pre_fac > 0) {
 							//------------------------------------------ TRIAD TYPE 4
-							proc_data->triad_phase_order[4][a]               += cexp(I * gen_triad_phase);
-							proc_data->triad_phase_order_2d[4][a][l] += cexp(I * gen_triad_phase);
-
-							// Update the number of triads
 							proc_data->num_triads[4][a]++;		
-							proc_data->num_triads_2d[4][a][l]++;		
+							proc_data->enst_flux[4][a]         += -flux_wght * cos(triad_phase);
+							proc_data->triad_phase_order[4][a] += cexp(I * gen_triad_phase);
 
 							// Update the flux contribution for tpye 2
-							proc_data->enst_flux[4][a]               += -flux_wght * cos(triad_phase);
-							proc_data->enst_flux_2d[4][a][l] += -flux_wght * cos(triad_phase);
+							proc_data->num_triads_2d[4][a][l]++;		
+							proc_data->enst_flux_2d[4][a][l]         += -flux_wght * cos(triad_phase);
+							proc_data->triad_phase_order_2d[4][a][l] += cexp(I * gen_triad_phase);
 
 							// Update collective phase order parameter for C_theta
 							if (k1_y > 0 && k2_y > 0) {
 								if (cabs(-flux_wght * cexp(I * triad_phase) != 0.0)) {
-									proc_data->phase_order_C_theta_triads[4][a] += -flux_wght * cexp(I * triad_phase) / cabs(-flux_wght * cexp(I * triad_phase));
+									proc_data->phase_order_C_theta_triads_2d[4][a][l] += -flux_wght * cexp(I * triad_phase) / cabs(-flux_wght * cexp(I * triad_phase));
 								}
 							}
 
@@ -624,21 +606,33 @@ void PhaseSyncSector(int s) {
 						gen_triad_phase = fmod(triad_phase + 2.0 * M_PI + carg(flux_wght), 2.0 * M_PI) - M_PI;
 
 						//------------------------------------------ TRIAD TYPE 5
-						proc_data->triad_phase_order[5][a]               += cexp(I * gen_triad_phase);
-						proc_data->triad_phase_order_2d[5][a][l] += cexp(I * gen_triad_phase);
-
-						// Update the number of triads
 						proc_data->num_triads[5][a]++;		
-						proc_data->num_triads_2d[5][a][l]++;		
+						proc_data->enst_flux[5][a]         += flux_wght * cos(triad_phase);
+						proc_data->triad_phase_order[5][a] += cexp(I * gen_triad_phase);
 
-						// Update the flux contribution for tpye 2
-						proc_data->enst_flux[5][a]               += flux_wght * cos(triad_phase);
-						proc_data->enst_flux_2d[5][a][l] += flux_wght * cos(triad_phase);
+						// Update 2D contributions
+						proc_data->num_triads_2d[5][a][l]++;		
+						proc_data->enst_flux_2d[5][a][l]         += flux_wght * cos(triad_phase);
+						proc_data->triad_phase_order_2d[5][a][l] += cexp(I * gen_triad_phase);
 
 						// Update collective phase order parameter for C_theta
 						if (k1_y > 0 && k2_y > 0 && k3_y > 0) {
 							if (cabs(flux_wght * cexp(I * triad_phase) != 0.0)) {
-								proc_data->phase_order_C_theta_triads[5][a] += flux_wght * cexp(I * triad_phase) / cabs(flux_wght * cexp(I * triad_phase));
+								proc_data->phase_order_C_theta_triads_2d[5][a][l] += flux_wght * cexp(I * triad_phase) / cabs(flux_wght * cexp(I * triad_phase));
+							}
+						}
+
+						if (l == 0) {
+							// 1D contributions
+							proc_data->num_triads_1d[5][a]++;		
+							proc_data->enst_flux_1d[5][a]         += flux_wght * cos(triad_phase);
+							proc_data->triad_phase_order_1d[5][a] += cexp(I * gen_triad_phase);
+
+							// Update collective phase order parameter for C_theta
+							if (k1_y > 0 && k2_y > 0 && k3_y > 0) {
+								if (cabs(flux_wght * cexp(I * triad_phase) != 0.0)) {
+									proc_data->phase_order_C_theta_triads_1d[5][a] += flux_wght * cexp(I * triad_phase) / cabs(flux_wght * cexp(I * triad_phase));
+								}
 							}
 						}
 
@@ -665,21 +659,33 @@ void PhaseSyncSector(int s) {
 						gen_triad_phase = fmod(triad_phase + 2.0 * M_PI + carg(flux_wght), 2.0 * M_PI) - M_PI;
 
 						//------------------------------------------ TRIAD TYPE 6
-						proc_data->triad_phase_order[6][a]               += cexp(I * gen_triad_phase);
-						proc_data->triad_phase_order_2d[6][a][l] += cexp(I * gen_triad_phase);
-
-						// Update the number of triads
 						proc_data->num_triads[6][a]++;		
-						proc_data->num_triads_2d[6][a][l]++;		
+						proc_data->enst_flux[6][a]         += flux_wght * cos(triad_phase);
+						proc_data->triad_phase_order[6][a] += cexp(I * gen_triad_phase);
 
-						// Update the flux contribution for tpye 2
-						proc_data->enst_flux[6][a]               += flux_wght * cos(triad_phase);
-						proc_data->enst_flux_2d[6][a][l] += flux_wght * cos(triad_phase);
+						// Update 2D contributions
+						proc_data->num_triads_2d[6][a][l]++;		
+						proc_data->enst_flux_2d[6][a][l]         += flux_wght * cos(triad_phase);
+						proc_data->triad_phase_order_2d[6][a][l] += cexp(I * gen_triad_phase);
 
 						// Update collective phase order parameter for C_theta
 						if (k1_y > 0 && k2_y > 0 && k3_y > 0) {
 							if (cabs(flux_wght * cexp(I * triad_phase) != 0.0)) {
-								proc_data->phase_order_C_theta_triads[6][a] += flux_wght * cexp(I * triad_phase) / cabs(flux_wght * cexp(I * triad_phase));
+								proc_data->phase_order_C_theta_triads_2d[6][a][l] += flux_wght * cexp(I * triad_phase) / cabs(flux_wght * cexp(I * triad_phase));
+							}
+						}
+
+						if (l == 0) {
+							// 1D contributions
+							proc_data->num_triads_1d[6][a]++;		
+							proc_data->enst_flux_1d[6][a]         += flux_wght * cos(triad_phase);
+							proc_data->triad_phase_order_1d[6][a] += cexp(I * gen_triad_phase);
+
+							// Update collective phase order parameter for C_theta
+							if (k1_y > 0 && k2_y > 0 && k3_y > 0) {
+								if (cabs(flux_wght * cexp(I * triad_phase) != 0.0)) {
+									proc_data->phase_order_C_theta_triads_1d[6][a] += flux_wght * cexp(I * triad_phase) / cabs(flux_wght * cexp(I * triad_phase));
+								}
 							}
 						}
 
@@ -898,6 +904,11 @@ void AllocatePhaseSyncMemory(const long int* N) {
 			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Triad Phase Sync Phase Order Parameter 1D");
 			exit(1);
 		}
+		proc_data->phase_order_C_theta_triads_2d[i] = (fftw_complex** )fftw_malloc(sizeof(fftw_complex*) * sys_vars->num_sect);
+		if (proc_data->phase_order_C_theta_triads_2d[i] == NULL) {
+			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Triad Phase Sync Phase Order Parameter 2D");
+			exit(1);
+		}
 
 		//--------------- Allocate memory for the phase order parameter for the triad phases
 		proc_data->triad_phase_order[i] = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->num_sect);
@@ -957,7 +968,13 @@ void AllocatePhaseSyncMemory(const long int* N) {
 			exit(1);
 		}
 		for (int l = 0; l < sys_vars->num_sect; ++l) {
-			/// Allocate memory for the phase order parameter for the triad phases
+			// Allocate memory for the collective phase order parameter for 2d contributions to the enstrophy flux
+			proc_data->phase_order_C_theta_triads_2d[i][l] = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->num_k1_sectors);
+			if (proc_data->phase_order_C_theta_triads_2d[i][l] == NULL) {
+				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Triad Phase Sync Phase Order Parameter 2D");
+				exit(1);
+			}
+			// Allocate memory for the phase order parameter for the triad phases
 			proc_data->triad_phase_order_2d[i][l] = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->num_k1_sectors);
 			if (proc_data->triad_phase_order_2d[i][l] == NULL) {
 				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Triad Phase Sync Phase Order Parameter");
@@ -986,23 +1003,25 @@ void AllocatePhaseSyncMemory(const long int* N) {
 		proc_data->phase_Phi[i]   = 0.0;
 		proc_data->phase_order[i] = 0.0 + 0.0 * I;
 		for (int j = 0; j < NUM_TRIAD_TYPES + 1; ++j) {
-			proc_data->num_triads[j][i]           = 0;
-			proc_data->enst_flux[j][i]            = 0.0;
-			proc_data->triad_R[j][i]              = 0.0;
-			proc_data->triad_Phi[j][i]            = 0.0;
-			proc_data->num_triads_1d[j][i]        = 0;                        
-			proc_data->enst_flux_1d[j][i]         = 0.0;                  
-			proc_data->triad_R_1d[j][i]           = 0.0;                  
-			proc_data->triad_Phi_1d[j][i]         = 0.0;                    
-			proc_data->triad_phase_order[j][i]    = 0.0 + 0.0 * I;
-			proc_data->triad_phase_order_1d[j][i] = 0.0 + 0.0 * I;
-			proc_data->phase_order_C_theta_triads[j][i] = 0.0 + 0.0 * I;
+			proc_data->num_triads[j][i]                    = 0;
+			proc_data->enst_flux[j][i]                     = 0.0;
+			proc_data->triad_R[j][i]                       = 0.0;
+			proc_data->triad_Phi[j][i]                     = 0.0;
+			proc_data->num_triads_1d[j][i]                 = 0;                        
+			proc_data->enst_flux_1d[j][i]                  = 0.0;                  
+			proc_data->triad_R_1d[j][i]                    = 0.0;                  
+			proc_data->triad_Phi_1d[j][i]                  = 0.0;                    
+			proc_data->triad_phase_order[j][i]             = 0.0 + 0.0 * I;
+			proc_data->triad_phase_order_1d[j][i]          = 0.0 + 0.0 * I;
+			proc_data->phase_order_C_theta_triads[j][i]    = 0.0 + 0.0 * I;
+			proc_data->phase_order_C_theta_triads_1d[j][i] = 0.0 + 0.0 * I;
 			for (int k = 0; k < sys_vars->num_k1_sectors; ++k) {
-				proc_data->num_triads_2d[j][i][k]        = 0;
-				proc_data->enst_flux_2d[j][i][k]   	  	 = 0.0;
-				proc_data->triad_R_2d[j][i][k]     	  	 = 0.0;
-				proc_data->triad_Phi_2d[j][i][k]         = 0.0;
-				proc_data->triad_phase_order_2d[j][i][k] = 0.0 + 0.0 * I;
+				proc_data->num_triads_2d[j][i][k]                 = 0;
+				proc_data->enst_flux_2d[j][i][k]                  = 0.0;
+				proc_data->triad_R_2d[j][i][k]                    = 0.0;
+				proc_data->triad_Phi_2d[j][i][k]                  = 0.0;
+				proc_data->triad_phase_order_2d[j][i][k]          = 0.0 + 0.0 * I;
+				proc_data->phase_order_C_theta_triads_2d[j][i][k] = 0.0 + 0.0 * I;
 			}
 		}
 	}
@@ -1600,7 +1619,9 @@ void FreePhaseSyncObjects(void) {
 			fftw_free(proc_data->triad_R_2d[i][l]);
 			fftw_free(proc_data->triad_Phi_2d[i][l]);
 			fftw_free(proc_data->num_triads_2d[i][l]);
+			fftw_free(proc_data->phase_order_C_theta_triads_2d[i][l]);
 		}
+		fftw_free(proc_data->phase_order_C_theta_triads_2d[i]);
 		fftw_free(proc_data->enst_flux_2d[i]);
 		fftw_free(proc_data->triad_phase_order_2d[i]);
 		fftw_free(proc_data->triad_R_2d[i]);

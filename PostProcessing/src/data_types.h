@@ -210,6 +210,7 @@ typedef struct postprocess_data_struct {
     fftw_complex* phase_order_C_theta;										 // Array to hold the phase order parameter for each C_theta
     fftw_complex* phase_order_C_theta_triads[NUM_TRIAD_TYPES + 1];			 // Array to hold the phase order parameter for each C_theta triads
     fftw_complex* phase_order_C_theta_triads_1d[NUM_TRIAD_TYPES + 1];		 // Array to hold the phase order parameter for each C_theta triads for 1d contributions
+    fftw_complex** phase_order_C_theta_triads_2d[NUM_TRIAD_TYPES + 1];		 // Array to hold the phase order parameter for each C_theta triads for 1d contributions
     fftw_complex* dw_hat_dt; 									             // Array to hold the RHS of the vorticity equation
     fftw_complex* grad_w_hat;												 // Array to hold the derivative of the vorticity in the x and y direction in Fourier space     
     fftw_complex* grad_u_hat;												 // Array to hold the derivative of the velocity in the x and y direction in Fourier space     

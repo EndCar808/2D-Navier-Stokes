@@ -532,7 +532,7 @@ void FluxSpectra(int snap) {
 	// -------------------------------------
 	// Accumulate the flux for each k
 	for (int i = 1; i < sys_vars->n_spec; ++i) {
-		if (i >= (int)(sys_vars->kmax_frac * sys_vars->kmax)) {
+		if (i >= (int)round(sqrt(sys_vars->kmax_C_sqr))) {
 			// Record the enstrophy flux out of the set C
 			#if defined(__ENST_FLUX)
 			proc_data->enst_flux_C[snap] += proc_data->enst_flux_spec[i];

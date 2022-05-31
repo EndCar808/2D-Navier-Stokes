@@ -46,22 +46,6 @@ void RealSpaceStats(int s) {
 	#endif
 
 	// --------------------------------
-	// Get The Real Space Velocities
-	// --------------------------------
-	// #if defined(__REAL_STATS) || defined(__VEL_INC_STATS) || defined(__STR_FUNC_STATS)
-	// // Do the stats on the tmp_u array -> ignores the last two empty columns
-	// for (int i = 0; i < Nx; ++i) {
-	// 	tmp = i * (Ny + 2);
-	// 	for (int j = 0; j < Ny; ++j) {
-	// 		indx = tmp + j;
-
-	// 		run_data->tmp_u[SYS_DIM * (i * Ny + j) + 0] = run_data->u[SYS_DIM * indx + 0];
-	// 		run_data->tmp_u[SYS_DIM * (i * Ny + j) + 1] = run_data->u[SYS_DIM * indx + 1];
-	// 	}
-	// }
-	// #endif
-
-	// --------------------------------
 	// Get In-Time Histogram Limits
 	// --------------------------------
 	#if defined(__REAL_STATS)

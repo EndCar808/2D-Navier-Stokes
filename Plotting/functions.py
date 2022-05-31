@@ -594,8 +594,8 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                 ## Get the number of triads per sector
                 if 'NumTriadsPerSector_1D' in list(f.keys()):
                     self.num_triads_1d = f["NumTriadsPerSector_1D"][:, :]
-                if 'NumTriadsPerSectorAcrossSector' in list(f.keys()):
-                    self.num_triads_2d = f["NumTriadsPerSectorAcrossSector"][:, :]
+                if 'NumTriadsPerSector_2D' in list(f.keys()):
+                    self.num_triads_2d = f["NumTriadsPerSector_2D"][:, :, :]
                 ## Get the enstrophy flux out of the set C
                 if 'EnstrophyFluxC' in list(f.keys()):
                     self.enst_flux_C = f["EnstrophyFluxC"][:]
@@ -651,8 +651,8 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                     self.grad_w_y_counts = f["VorticityGradient_y_BinCounts"][:]
 
                 ## Get the number of k1 sectors 
-                if 'TriadPhaseSyncAcrossSector' in list(f['Snap_00000'].keys()):
-                    self.num_k1_sects = f['Snap_00000']['TriadPhaseSyncAcrossSector'][:, :, :].shape[-1]
+                if 'TriadPhaseSync_2D' in list(f['Snap_00000'].keys()):
+                    self.num_k1_sects = f['Snap_00000']['TriadPhaseSync_2D'][:, :, :].shape[-1]
 
             ## Data indicators
             self.no_w     = False
@@ -702,17 +702,18 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
             self.phase_order_C_theta           = np.ones((sim_data.ndata, self.num_sect)) * np.complex(0.0, 0.0)
             self.phase_order_C_theta_triads    = np.ones((sim_data.ndata, self.num_sect)) * np.complex(0.0, 0.0)
             self.phase_order_C_theta_triads_1d = np.ones((sim_data.ndata, self.num_sect)) * np.complex(0.0, 0.0)
+            self.phase_order_C_theta_triads_2d = np.ones((sim_data.ndata, self.num_sect, self.num_k1_sects)) * np.complex(0.0, 0.0)
             ## Enstrophy Flux Per Sector
             self.enst_flux_per_sec    = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_sect))
             self.enst_flux_per_sec_1d = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_sect))
             self.enst_flux_per_sec_2d = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_sect, self.num_k1_sects))
             ## Phase Sync arrays
-            self.phase_R              = np.zeros((sim_data.ndata, self.num_sect))
-            self.phase_Phi            = np.zeros((sim_data.ndata, self.num_sect))
-            self.triad_R              = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_sect))
-            self.triad_Phi            = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_sect))
-            self.triad_R_1d           = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_sect))
-            self.triad_Phi_1d         = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_sect))
+            self.phase_R      = np.zeros((sim_data.ndata, self.num_sect))
+            self.phase_Phi    = np.zeros((sim_data.ndata, self.num_sect))
+            self.triad_R      = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_sect))
+            self.triad_Phi    = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_sect))
+            self.triad_R_1d   = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_sect))
+            self.triad_Phi_1d = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_sect))
             self.triad_R_2d   = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_sect, self.num_k1_sects))
             self.triad_Phi_2d = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_sect, self.num_k1_sects))
             ## Phase Sync Stats
@@ -765,10 +766,10 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                     data.triad_R_1d[nn, :, :] = f[group]["TriadPhaseSync_1D"][:, :]
                 if 'TriadAverageAngle_1D' in list(f[group].keys()):
                     data.triad_Phi_1d[nn, :, :] = f[group]["TriadAverageAngle_1D"][:, :]
-                if 'TriadPhaseSyncAcrossSector' in list(f[group].keys()):
-                    data.triad_R_2d[nn, :, :] = f[group]["TriadPhaseSyncAcrossSector"][:, :]
-                if 'TriadAverageAngleAcrossSector' in list(f[group].keys()):
-                    data.triad_Phi_2d[nn, :, :] = f[group]["TriadAverageAngleAcrossSector"][:, :]
+                if 'TriadPhaseSync_2D' in list(f[group].keys()):
+                    data.triad_R_2d[nn, :, :] = f[group]["TriadPhaseSync_2D"][:, :]
+                if 'TriadAverageAngle_2D' in list(f[group].keys()):
+                    data.triad_Phi_2d[nn, :, :] = f[group]["TriadAverageAngle_2D"][:, :]
                 if 'EnstrophyFlux_C_theta' in list(f[group].keys()):
                     data.enst_flux_C_theta[nn, :] = f[group]["EnstrophyFlux_C_theta"][:]
                 if 'EnstrophyDiss_C_theta' in list(f[group].keys()):
@@ -776,9 +777,11 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                 if 'PhaseOrder_C_theta' in list(f[group].keys()):
                     data.phase_order_C_theta[nn, :] = f[group]["PhaseOrder_C_theta"][:]
                 if 'PhaseOrder_C_theta_triads' in list(f[group].keys()):
-                    data.phase_order_C_theta_triads[nn, :] = f[group]["PhaseOrder_C_theta_triads"][:]
+                    data.phase_order_C_theta_triads[nn, :, :] = f[group]["PhaseOrder_C_theta_triads"][:, :]
                 if 'PhaseOrder_C_theta_triads_1D' in list(f[group].keys()):
-                    data.phase_order_C_theta_triads_1d[nn, :] = f[group]["PhaseOrder_C_theta_triads_1D"][:]
+                    data.phase_order_C_theta_triads_1d[nn, :, :] = f[group]["PhaseOrder_C_theta_triads_1D"][:, :]
+                if 'PhaseOrder_C_theta_triads_2D' in list(f[group].keys()):
+                    data.phase_order_C_theta_triads_2d[nn, :, :, :] = f[group]["PhaseOrder_C_theta_triads_2D"][:, :, :]
                 if 'w_hat' in list(f[group].keys()):
                     data.w_hat[nn, :, :] = f[group]["w_hat"][:, :]
                 if 'NonlinearTerm' in list(f[group].keys()):
@@ -809,8 +812,8 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                     data.enst_flux_per_sec[nn, :, :] = f[group]["EnstrophyFluxPerSector"][:, :]
                 if 'EnstrophyFluxPerSector_1D' in list(f[group].keys()):
                     data.enst_flux_per_sec_1d[nn, :, :] = f[group]["EnstrophyFluxPerSector_1D"][:, :]
-                if 'EnstrophyFluxPerSectorAcrossSector' in list(f[group].keys()):
-                    data.enst_flux_per_sec_2d[nn, :, :, :] = f[group]["EnstrophyFluxPerSectorAcrossSector"][:, :, :]
+                if 'EnstrophyFluxPerSector_2D' in list(f[group].keys()):
+                    data.enst_flux_per_sec_2d[nn, :, :, :] = f[group]["EnstrophyFluxPerSector_2D"][:, :, :]
                 if 'SectorPhasePDF_InTime_Counts' in list(f[group].keys()):
                     data.phase_sector_counts[nn, :, :] = f[group]["SectorPhasePDF_InTime_Counts"][:, :]
                 if 'SectorPhasePDF_InTime_Ranges' in list(f[group].keys()):
