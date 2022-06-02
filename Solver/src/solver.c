@@ -80,7 +80,7 @@ void SpectralSolve(void) {
 	// Initialize the collocation points and wavenumber space 
 	InitializeSpaceVariables(run_data->x, run_data->k, N);
 
-	// Get initial conditions
+	// Get initial conditions - seed for random number generator is set here
 	InitialConditions(run_data->w_hat, run_data->u, run_data->u_hat, N);
 
 	// Initialize the forcing 
@@ -367,57 +367,61 @@ void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdif
 		for (int j = 0; j < Ny_Fourier; ++j) {
 			indx = tmp + j;
 
-			#if defined(PHASE_ONLY)
-			tmp_a_k_norm = cabs(run_data->w_hat[indx]);
-			#endif
-
-
-			#if defined(__EULER)
-			// Update the Fourier space vorticity with the RHS
-			run_data->w_hat[indx] = run_data->w_hat[indx] + (dt * (RK5_B1 * RK_data->RK1[indx]) + dt * (RK5_B3 * RK_data->RK3[indx]) + dt * (RK5_B4 * RK_data->RK4[indx]) + dt * (RK5_B5 * RK_data->RK5[indx]) + dt * (RK5_B6 * RK_data->RK6[indx]));
-			#elif defined(__NAVIER)
-			// Compute the pre factors for the RK4CN update step
-			k_sqr = (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
-			
-			if((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
-				// Both Hyperviscosity and Ekman drag
-				D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW) + sys_vars->EKMN_ALPHA * pow(k_sqr, sys_vars->EKMN_DRAG_POW)); 
-			}
-			else if((sys_vars->HYPER_VISC_FLAG != HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
-				// No hyperviscosity but we have Ekman drag
-				D_fac = dt * (sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA * pow(k_sqr, sys_vars->EKMN_DRAG_POW)); 
-			}
-			else if((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG != EKMN_DRAG)) {
-				// Hyperviscosity only
-				D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW)); 
-			#else 
-				// No hyper viscosity or no ekman drag -> just normal viscosity
-				D_fac = dt * (sys_vars->NU * k_sqr); 
-			}
-			
-			// Complete the update step
-			run_data->w_hat[indx] = run_data->w_hat[indx] * ((2.0 - D_fac) / (2.0 + D_fac)) + (2.0 * dt / (2.0 + D_fac)) * (RK5_B1 * RK_data->RK1[indx] + RK5_B3 * RK_data->RK3[indx] + RK5_B4 * RK_data->RK4[indx] + RK5_B5 * RK_data->RK5[indx] + RK5_B6 * RK_data->RK6[indx]);
-			#endif
-			#if defined(PHASE_ONLY)
-			// Reset the amplitudes
-			run_data->w_hat[indx] *= (tmp_a_k_norm / cabs(run_data->w_hat[indx]));
-			#endif
-			#if defined(__DPRK5)
-			if (iters > 1) {
-				// Get the higher order update step
-				dp_ho_step = run_data->w_hat[indx] + (dt * (RK5_Bs1 * RK_data->RK1[indx]) + dt * (RK5_Bs3 * RK_data->RK3[indx]) + dt * (RK5_Bs4 * RK_data->RK4[indx]) + dt * (RK5_Bs5 * RK_data->RK5[indx]) + dt * (RK5_Bs6 * RK_data->RK6[indx])) + dt * (RK5_Bs7 * RK_data->RK7[indx]));
+			if ((run_data->k[0][i] != 0) || (run_data->k[1][j]  != 0)) {
 				#if defined(PHASE_ONLY)
-				// Reset the amplitudes
-				dp_ho_step *= (tmp_a_k_norm / cabs(run_data->w_hat[indx]))
+				tmp_a_k_norm = cabs(run_data->w_hat[indx]);
 				#endif
 
-				// Denominator in the error
-				err_denom = DP_ABS_TOL + DPMax(cabs(RK_data->w_hat_last[indx]), cabs(run_data->w_hat[indx])) * DP_REL_TOL;
+				#if defined(__EULER)
+				// Update the Fourier space vorticity with the RHS
+				run_data->w_hat[indx] = run_data->w_hat[indx] + (dt * (RK5_B1 * RK_data->RK1[indx]) + dt * (RK5_B3 * RK_data->RK3[indx]) + dt * (RK5_B4 * RK_data->RK4[indx]) + dt * (RK5_B5 * RK_data->RK5[indx]) + dt * (RK5_B6 * RK_data->RK6[indx]));
+				#elif defined(__NAVIER)
+				// Compute the pre factors for the RK4CN update step
+				k_sqr = (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
+				
+				if((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
+					// Both Hyperviscosity and Ekman drag
+					D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW) + sys_vars->EKMN_ALPHA * pow(k_sqr, sys_vars->EKMN_DRAG_POW)); 
+				}
+				else if((sys_vars->HYPER_VISC_FLAG != HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
+					// No hyperviscosity but we have Ekman drag
+					D_fac = dt * (sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA * pow(k_sqr, sys_vars->EKMN_DRAG_POW)); 
+				}
+				else if((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG != EKMN_DRAG)) {
+					// Hyperviscosity only
+					D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW)); 
+				#else 
+					// No hyper viscosity or no ekman drag -> just normal viscosity
+					D_fac = dt * (sys_vars->NU * k_sqr); 
+				}
+				
+				// Complete the update step
+				run_data->w_hat[indx] = run_data->w_hat[indx] * ((2.0 - D_fac) / (2.0 + D_fac)) + (2.0 * dt / (2.0 + D_fac)) * (RK5_B1 * RK_data->RK1[indx] + RK5_B3 * RK_data->RK3[indx] + RK5_B4 * RK_data->RK4[indx] + RK5_B5 * RK_data->RK5[indx] + RK5_B6 * RK_data->RK6[indx]);
+				#endif
+				#if defined(PHASE_ONLY)
+				// Reset the amplitudes
+				run_data->w_hat[indx] *= (tmp_a_k_norm / cabs(run_data->w_hat[indx]));
+				#endif
+				#if defined(__DPRK5)
+				if (iters > 1) {
+					// Get the higher order update step
+					dp_ho_step = run_data->w_hat[indx] + (dt * (RK5_Bs1 * RK_data->RK1[indx]) + dt * (RK5_Bs3 * RK_data->RK3[indx]) + dt * (RK5_Bs4 * RK_data->RK4[indx]) + dt * (RK5_Bs5 * RK_data->RK5[indx]) + dt * (RK5_Bs6 * RK_data->RK6[indx])) + dt * (RK5_Bs7 * RK_data->RK7[indx]));
+					#if defined(PHASE_ONLY)
+					// Reset the amplitudes
+					dp_ho_step *= (tmp_a_k_norm / cabs(run_data->w_hat[indx]))
+					#endif
 
-				// Compute the sum for the error
-				err_sum += pow((run_data->w_hat[indx] - dp_ho_step) /  err_denom, 2.0);
+					// Denominator in the error
+					err_denom = DP_ABS_TOL + DPMax(cabs(RK_data->w_hat_last[indx]), cabs(run_data->w_hat[indx])) * DP_REL_TOL;
+
+					// Compute the sum for the error
+					err_sum += pow((run_data->w_hat[indx] - dp_ho_step) /  err_denom, 2.0);
+				}
+				#endif
 			}
-			#endif
+			else {
+				run_data->w_hat[indx] = 0.0 + 0.0 * I;
+			}
 		}
 	}
 	#if defined(__NONLIN)
@@ -443,8 +447,13 @@ void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdif
 			for (int j = 0; j < Ny_Fourier; ++j) {
 				indx = tmp + j;
 
-				// Record the vorticity
-				RK_data->w_hat_last[indx] = run_data->w_hat[indx];
+				if ((run_data->k[0][i] != 0) || (run_data->k[1][j]  != 0)) {
+					// Record the vorticity
+					RK_data->w_hat_last[indx] = run_data->w_hat[indx];
+				}
+				else {
+					run_data->w_hat_last[indx] = 0.0 + 0.0 * I;
+				}
 			}
 		}
 	}
@@ -582,41 +591,46 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Nx, RK_da
 		for (int j = 0; j < Ny_Fourier; ++j) {
 			indx = tmp + j;
 
-			#if defined(PHASE_ONLY)
-			// Pre-record the amplitudes
-			tmp_a_k_norm = cabs(run_data->w_hat[indx]);
-			#endif
+			if ((run_data->k[0][i] != 0) || (run_data->k[1][j]  != 0)) {
+				#if defined(PHASE_ONLY)
+				// Pre-record the amplitudes
+				tmp_a_k_norm = cabs(run_data->w_hat[indx]);
+				#endif
 
-			#if defined(__EULER)
-			// Update Fourier vorticity with the RHS
-			run_data->w_hat[indx] = run_data->w_hat[indx] + (dt * (RK4_B1 * RK_data->RK1[indx]) + dt * (RK4_B2 * RK_data->RK2[indx]) + dt * (RK4_B3 * RK_data->RK3[indx]) + dt * (RK4_B4 * RK_data->RK4[indx]));
-			#elif defined(__NAVIER)
-			// Compute the pre factors for the RK4CN update step
-			k_sqr = (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
-			
-			if((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
-				// Both Hyperviscosity and Ekman drag
-				D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW) + sys_vars->EKMN_ALPHA * pow(k_sqr, sys_vars->EKMN_DRAG_POW)); 
-			}
-			else if((sys_vars->HYPER_VISC_FLAG != HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
-				// No hyperviscosity but we have Ekman drag
-				D_fac = dt * (sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA * pow(k_sqr, sys_vars->EKMN_DRAG_POW));
-			}
-			else if((sys_vars->HYPER_VISC_FLAG = HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG != EKMN_DRAG)) {
-				// Hyperviscosity only
-				D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW));
+				#if defined(__EULER)
+				// Update Fourier vorticity with the RHS
+				run_data->w_hat[indx] = run_data->w_hat[indx] + (dt * (RK4_B1 * RK_data->RK1[indx]) + dt * (RK4_B2 * RK_data->RK2[indx]) + dt * (RK4_B3 * RK_data->RK3[indx]) + dt * (RK4_B4 * RK_data->RK4[indx]));
+				#elif defined(__NAVIER)
+				// Compute the pre factors for the RK4CN update step
+				k_sqr = (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
+				
+				if((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
+					// Both Hyperviscosity and Ekman drag
+					D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW) + sys_vars->EKMN_ALPHA * pow(k_sqr, sys_vars->EKMN_DRAG_POW)); 
+				}
+				else if((sys_vars->HYPER_VISC_FLAG != HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
+					// No hyperviscosity but we have Ekman drag
+					D_fac = dt * (sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA * pow(k_sqr, sys_vars->EKMN_DRAG_POW));
+				}
+				else if((sys_vars->HYPER_VISC_FLAG = HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG != EKMN_DRAG)) {
+					// Hyperviscosity only
+					D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW));
+				}
+				else {
+					// No hyper viscosity or no ekman drag -> just normal viscosity
+					D_fac = dt * (sys_vars->NU * k_sqr);
+				}
+				
+				// Update Fourier vorticity
+				run_data->w_hat[indx] = run_data->w_hat[indx] * ((2.0 - D_fac) / (2.0 + D_fac)) + (2.0 * dt / (2.0 + D_fac)) * (RK4_B1 * RK_data->RK1[indx] + RK4_B2 * RK_data->RK2[indx] + RK4_B3 * RK_data->RK3[indx] + RK4_B4 * RK_data->RK4[indx]);
+				#endif
+				#if defined(PHASE_ONLY)
+				run_data->w_hat[indx] *= (tmp_a_k_norm / cabs(run_data->w_hat[indx]));
+				#endif
 			}
 			else {
-				// No hyper viscosity or no ekman drag -> just normal viscosity
-				D_fac = dt * (sys_vars->NU * k_sqr);
+				run_data->w_hat[indx] = 0.0 + 0.0 * I;
 			}
-			
-			// Update Fourier vorticity
-			run_data->w_hat[indx] = run_data->w_hat[indx] * ((2.0 - D_fac) / (2.0 + D_fac)) + (2.0 * dt / (2.0 + D_fac)) * (RK4_B1 * RK_data->RK1[indx] + RK4_B2 * RK_data->RK2[indx] + RK4_B3 * RK_data->RK3[indx] + RK4_B4 * RK_data->RK4[indx]);
-			#endif
-			#if defined(PHASE_ONLY)
-			run_data->w_hat[indx] *= (tmp_a_k_norm / cabs(run_data->w_hat[indx]));
-			#endif
 		}
 	}
 	#if defined(__NONLIN)
@@ -665,12 +679,12 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* non
 				k_sqr = I / (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 
 				// Fill fill fourier velocities array
-				dw_hat_dt[SYS_DIM * (indx) + 0] = k_sqr * ((double) run_data->k[1][j]) * w_hat[indx];
-				dw_hat_dt[SYS_DIM * (indx) + 1] = -1.0 * k_sqr * ((double) run_data->k[0][i]) * w_hat[indx];
+				dw_hat_dt[SYS_DIM * indx + 0] = k_sqr * ((double) run_data->k[1][j]) * w_hat[indx];
+				dw_hat_dt[SYS_DIM * indx + 1] = -1.0 * k_sqr * ((double) run_data->k[0][i]) * w_hat[indx];
 			}
 			else {
-				dw_hat_dt[SYS_DIM * (indx) + 0] = 0.0 + 0.0 * I;
-				dw_hat_dt[SYS_DIM * (indx) + 1] = 0.0 + 0.0 * I;
+				dw_hat_dt[SYS_DIM * indx + 0] = 0.0 + 0.0 * I;
+				dw_hat_dt[SYS_DIM * indx + 1] = 0.0 + 0.0 * I;
 			}
 		}
 	}
@@ -691,8 +705,14 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* non
 			indx = tmp + j;
 
 			// Fill vorticity derivatives array
-			dw_hat_dt[SYS_DIM * indx + 0] = I * ((double) run_data->k[0][i]) * w_hat[indx];
-			dw_hat_dt[SYS_DIM * indx + 1] = I * ((double) run_data->k[1][j]) * w_hat[indx]; 
+			if ((run_data->k[0][i] != 0) || (run_data->k[1][j]  != 0)) {
+				dw_hat_dt[SYS_DIM * indx + 0] = I * ((double) run_data->k[0][i]) * w_hat[indx];
+				dw_hat_dt[SYS_DIM * indx + 1] = I * ((double) run_data->k[1][j]) * w_hat[indx]; 
+			}
+			else {
+				dw_hat_dt[SYS_DIM * indx + 0] = 0.0 + 0.0 * I;
+				dw_hat_dt[SYS_DIM * indx + 1] = 0.0 + 0.0 * I;
+			}
 		}
 	}
 
@@ -731,12 +751,18 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* non
  		for (int j = 0; j < Ny_Fourier; ++j) {
  			indx = tmp + j;
 
- 			dw_hat_dt[indx] *= 1.0 / pow((Nx * Ny), 2.0);
+ 			if ((run_data->k[0][i] != 0) || (run_data->k[1][j]  != 0)) {
+ 				dw_hat_dt[indx] *= 1.0 / pow((Nx * Ny), 2.0);
+ 			}
+ 			else {
+ 				dw_hat_dt[indx] = 0.0 + 0.0 * I;
+ 				dw_hat_dt[indx] = 0.0 + 0.0 * I;
+ 			}
  		}
  	}
- 	// -------------------------------------
- 	// Apply Dealiasing & Forcing
- 	// -------------------------------------
+ 	// ----------------------------------------
+ 	// Apply Dealiasing & Forcing`& Conjugacy
+ 	// ----------------------------------------
  	// Apply dealiasing 
  	ApplyDealiasing(dw_hat_dt, 1, sys_vars->N);
 
@@ -746,6 +772,9 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* non
 			dw_hat_dt[run_data->forcing_indx[i]] += run_data->forcing[i]; 
 		}
 	}
+
+	// Ensure conjugacy in the ky = 0 modes of the intial condition
+    ForceConjugacy(w_hat, N);
 }
 /**
  * Function to apply the selected dealiasing filter to the input array. Can be Fourier vorticity or velocity
@@ -849,7 +878,13 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 				indx = tmp + j;
 
 				// Fill vorticity
-				w_hat[indx] = I * (run_data->k[0][i] * u_hat[SYS_DIM * (indx) + 1] - run_data->k[1][j] * u_hat[SYS_DIM * (indx) + 0]);
+				if (run_data->k[0][i] == 0 || run_data->k[1][j] != 0) {
+					w_hat[indx] = I * (run_data->k[0][i] * u_hat[SYS_DIM * (indx) + 1] - run_data->k[1][j] * u_hat[SYS_DIM * (indx) + 0]);
+				}
+				else {
+					// Zero mode is always 0 + 0 * I
+					w_hat[indx] = 0.0 + 0.0 * I;
+				}
 			}
 		}
 	}
@@ -1004,17 +1039,23 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 			for (int j = 0; j < Ny_Fourier; ++j) {
 				indx = tmp + j;
 
-				if (!(strcmp(sys_vars->u0, "DECAY_TURB_BB"))) {
-					// Compute the Fouorier vorticity
-					w_hat[indx] *= sqrt(DT_E0 / enrg);
+				if (run_data->k[0][i] == 0 || run_data->k[1][j] != 0) {
+					if (!(strcmp(sys_vars->u0, "DECAY_TURB_BB"))) {
+						// Compute the Fouorier vorticity
+						w_hat[indx] *= sqrt(DT_E0 / enrg);
+					}
+					else if (!(strcmp(sys_vars->u0, "DECAY_TURB_NB"))) {
+						// Compute the Fouorier vorticity
+						w_hat[indx] *= sqrt(DT2_E0 / enrg);
+					}
+					else if (!(strcmp(sys_vars->u0, "DECAY_TURB_EXP"))) {
+						// Compute the Fouorier vorticity
+						w_hat[indx] *= sqrt(DTEXP_E0 / enrg);
+					}
 				}
-				else if (!(strcmp(sys_vars->u0, "DECAY_TURB_NB"))) {
-					// Compute the Fouorier vorticity
-					w_hat[indx] *= sqrt(DT2_E0 / enrg);
-				}
-				else if (!(strcmp(sys_vars->u0, "DECAY_TURB_EXP"))) {
-					// Compute the Fouorier vorticity
-					w_hat[indx] *= sqrt(DTEXP_E0 / enrg);
+				else {
+					// Zero mode is always 0 + 0 * I
+					w_hat[indx] = 0.0 + 0.0 * I;
 				}
 			}
 		}
@@ -1161,7 +1202,13 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 				k_sqrd = (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 
 				// Compute the vorticity 
-				w_hat[indx] = -k_sqrd * psi_hat[indx];
+				if (run_data->k[0][i] != 0 || run_data->k[1][j] != 0) {
+					w_hat[indx] = -k_sqrd * psi_hat[indx];
+				}
+				else {
+					// Zero mode is always 0 + 0 * I
+					w_hat[indx] = 0.0 + 0.0 * I;
+				}
 			}
 		}
         
@@ -1247,7 +1294,13 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 				k_sqrd = (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 
 				// Compute the vorticity 
-				w_hat[indx] = k_sqrd * psi_hat[indx];
+				if (run_data->k[0][i] != 0 || run_data->k[1][j] != 0) {
+					w_hat[indx] = k_sqrd * psi_hat[indx];
+				}
+				else {
+					// Zero mode is always 0 + 0 * I
+					w_hat[indx] = 0.0 + 0.0 * I;
+				}
 			}
 		}
 
@@ -1454,7 +1507,13 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 				indx = tmp + j;
 
 				// Fill vorticity
-				w_hat[indx] = ((double)rand() / (double) RAND_MAX) * cexp(((double)rand() / (double) RAND_MAX)* 2.0 * M_PI * I);
+				if ((run_data->k[0][i] != 0) || (run_data->k[1][j] != 0)){
+					w_hat[indx] = ((double)rand() / (double) RAND_MAX) * cexp(((double)rand() / (double) RAND_MAX)* 2.0 * M_PI * I);
+				}
+				else {
+					// Zero mode is always 0 + 0 * I
+					w_hat[indx] = 0.0 + 0.0 * I;
+				}
 			}
 		}		
 	}
@@ -1619,7 +1678,10 @@ void ForceConjugacy(fftw_complex* w_hat, const long int* N) {
 			// Fill the conjugate modes with the conjugate of the postive k modes
 			run_data->w_hat[tmp] = conj(conj_data[abs(run_data->k[0][i])]);
 		}
-	}	
+	}
+
+	// Free memory
+	fftw_free(conj_data);
 }
 /**
  * Function to initialize all the integration time variables
@@ -2403,7 +2465,7 @@ void FreeMemory(RK_data_struct* RK_data) {
 		fftw_free(run_data->x[i]);
 		fftw_free(run_data->k[i]);
 		if (sys_vars->local_forcing_proc) {
-			fftw_free(run_data->forcing_k);
+			fftw_free(run_data->forcing_k[i]);
 		}
 	}
 

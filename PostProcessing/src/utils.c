@@ -49,7 +49,7 @@ int GetCMLArgs(int argc, char** argv) {
 	// Output & Input file directory
 	strncpy(file_info->output_dir, "NONE", 512);  // Set default output directory to the Tmp folder
 	strncpy(file_info->input_dir, "NONE", 512);  // Set default output directory to the Tmp folder
-	strncpy(file_info->output_tag, "NO_TAG", 64);
+	strncpy(file_info->output_tag, "No-Tag", 64);
 	file_info->input_file_only = 0; // used to indicate if input file was file only i.e., not output folder
 	file_info->output_file_only = 0; // used to indicate if output file should be file only i.e., not output folder
 	// Number of wavevector space sectors

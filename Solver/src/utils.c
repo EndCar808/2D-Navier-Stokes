@@ -52,7 +52,7 @@ int GetCMLArgs(int argc, char** argv) {
 	strncpy(file_info->input_dir, "./Data/Solver/InitialConditions/", 512);  // Set default to Initial Conditions folder
 	// Output file directory
 	strncpy(file_info->output_dir, "./Data/Tmp/", 512);  // Set default output directory to the Tmp folder
-	strncpy(file_info->output_tag, "NO_TAG", 64);
+	strncpy(file_info->output_tag, "No-Tag", 64);
 	file_info->file_only = 0; // used to indicate if output file should be file only i.e., not output folder
 	// System dimensions
 	sys_vars->N[0] = 64;
@@ -369,6 +369,12 @@ int GetCMLArgs(int argc, char** argv) {
 				if (!(strcmp(optarg,"ZERO")) && (force_flag == 0)) {
 					// Killing certain modes
 					strncpy(sys_vars->forcing, "ZERO", 64);
+					force_flag = 1;
+					break;
+				}
+				if (!(strcmp(optarg,"CONST_GAUSS")) && (force_flag == 0)) {
+					// Deterministic, constant in time, forcing of low wavenumbers
+					strncpy(sys_vars->forcing, "CONST_GAUSS", 64);
 					force_flag = 1;
 					break;
 				}
