@@ -774,7 +774,7 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* non
 	}
 
 	// Ensure conjugacy in the ky = 0 modes of the intial condition
-    ForceConjugacy(w_hat, N);
+    ForceConjugacy(w_hat, sys_vars->N);
 }
 /**
  * Function to apply the selected dealiasing filter to the input array. Can be Fourier vorticity or velocity

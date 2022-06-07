@@ -211,7 +211,9 @@ void InitializeForcing(void) {
 
 		// Allocate memory for the guassian data and conjugacy arrays
 		fftw_complex* gauss_data = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * num_forced_modes);
-		fftw_complex* conj_data  = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * run_data->N[0]);
+		fftw_complex* conj_data  = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->N[0]);
+		double r1, r2;
+		double re_f, im_f;
 
 		// Generate the gaussian data and record the modes to conjugate later
 		force_mode_counter = 0;
@@ -297,7 +299,7 @@ void InitializeForcing(void) {
 						// Fill the forcing data arrays with the normalized forcing
 						run_data->forcing[force_mode_counter]         = (gauss_data[force_mode_counter] / sqrt(scale_fac_f0) ) * sqrt(0.0025);
 						run_data->forcing_indx[force_mode_counter]    = indx;
-						run_data->forcing_scaling[force_mode_counter] = sqrt(0.0025) / run_data->nu;
+						run_data->forcing_scaling[force_mode_counter] = sqrt(0.0025); /// run_data->nu;
 						run_data->forcing_k[0][force_mode_counter]    = run_data->k[0][i];
 						run_data->forcing_k[1][force_mode_counter]    = run_data->k[1][j];
 						force_mode_counter++;						

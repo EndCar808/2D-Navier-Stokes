@@ -199,14 +199,14 @@ void ComputeSystemMeasurables(double t, int iter, RK_data_struct* RK_data) {
 							#endif
 
 							#if defined(__ENRG_FLUX)
-							run_data->d_enrg_dt_sbst[iter] += tmp_deriv * (1.0 / k_sqr);
+							run_data->d_enrg_dt_sbst[iter] += (tmp_deriv + tmp_diss) * (1.0 / k_sqr);
 							run_data->enrg_diss_sbst[iter] += tmp_diss * (1.0 / k_sqr);
-							run_data->enrg_flux_sbst[iter] += (tmp_deriv - tmp_diss) * (1.0 / k_sqr);
+							run_data->enrg_flux_sbst[iter] += tmp_deriv * (1.0 / k_sqr);
 							#endif
 							#if defined(__ENST_FLUX)
-							run_data->d_enst_dt_sbst[iter] += tmp_deriv; 
+							run_data->d_enst_dt_sbst[iter] += tmp_deriv + tmp_diss; 
 							run_data->enst_diss_sbst[iter] += tmp_diss;
-							run_data->enst_flux_sbst[iter] += tmp_deriv - tmp_diss; 
+							run_data->enst_flux_sbst[iter] += tmp_deriv; 
 							#endif
 						}
 					}
@@ -225,14 +225,14 @@ void ComputeSystemMeasurables(double t, int iter, RK_data_struct* RK_data) {
 							#endif
 
 							#if defined(__ENRG_FLUX)
-							run_data->d_enrg_dt_sbst[iter] += tmp_deriv * (2.0 / k_sqr);
+							run_data->d_enrg_dt_sbst[iter] += (tmp_deriv + tmp_diss) * (2.0 / k_sqr);
 							run_data->enrg_diss_sbst[iter] += tmp_diss * (2.0 / k_sqr);
-							run_data->enrg_flux_sbst[iter] += (tmp_deriv - tmp_diss) * (2.0 / k_sqr);
+							run_data->enrg_flux_sbst[iter] += tmp_deriv * (2.0 / k_sqr);
 							#endif
 							#if defined(__ENST_FLUX)
-							run_data->d_enst_dt_sbst[iter] += 2.0 * tmp_deriv;
+							run_data->d_enst_dt_sbst[iter] += 2.0 * (tmp_deriv + tmp_diss);
 							run_data->enst_diss_sbst[iter] += 2.0 * tmp_diss; 
-							run_data->enst_flux_sbst[iter] += 2.0 * (tmp_deriv - tmp_diss);
+							run_data->enst_flux_sbst[iter] += 2.0 * tmp_deriv;
 							#endif
 						}
 					}
@@ -261,14 +261,14 @@ void ComputeSystemMeasurables(double t, int iter, RK_data_struct* RK_data) {
 					run_data->enst_spect[spec_indx] += const_fac * norm_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
 					#endif
 					#if defined(__ENST_FLUX_SPECT)
-					run_data->d_enst_dt_spect[spec_indx] += tmp_deriv;
+					run_data->d_enst_dt_spect[spec_indx] += tmp_deriv + tmp_diss;
 					run_data->enst_diss_spect[spec_indx] += tmp_diss;
-					run_data->enst_flux_spect[spec_indx] += tmp_deriv - tmp_diss;
+					run_data->enst_flux_spect[spec_indx] += tmp_deriv;
 					#endif
 					#if defined(__ENRG_FLUX_SPECT)
-					run_data->d_enrg_dt_spect[spec_indx] += tmp_deriv / k_sqr;
+					run_data->d_enrg_dt_spect[spec_indx] += (tmp_deriv + tmp_diss) / k_sqr;
 					run_data->enrg_diss_spect[spec_indx] += tmp_diss / k_sqr;
-					run_data->enrg_flux_spect[spec_indx] += (tmp_deriv - tmp_diss) / k_sqr;
+					run_data->enrg_flux_spect[spec_indx] += tmp_deriv / k_sqr;
 					#endif
 				}
 				else {
@@ -280,14 +280,14 @@ void ComputeSystemMeasurables(double t, int iter, RK_data_struct* RK_data) {
 					run_data->enst_spect[spec_indx] += 2.0 * const_fac * norm_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
 					#endif
 					#if defined(__ENST_FLUX_SPECT)
-					run_data->d_enst_dt_spect[spec_indx] += 2.0 * tmp_deriv;
+					run_data->d_enst_dt_spect[spec_indx] += 2.0 * (tmp_deriv + tmp_diss);
 					run_data->enst_diss_spect[spec_indx] += 2.0 * tmp_diss;
-					run_data->enst_flux_spect[spec_indx] += (tmp_deriv - tmp_diss);
+					run_data->enst_flux_spect[spec_indx] += 2.0 * tmp_deriv;
 					#endif
 					#if defined(__ENRG_FLUX_SPECT)
-					run_data->d_enrg_dt_spect[spec_indx] += 2.0 * tmp_deriv / k_sqr;
+					run_data->d_enrg_dt_spect[spec_indx] += 2.0 * (tmp_deriv + tmp_diss) / k_sqr;
 					run_data->enrg_diss_spect[spec_indx] += 2.0 * tmp_diss / k_sqr;
-					run_data->enrg_flux_spect[spec_indx] += (tmp_deriv - tmp_diss) / k_sqr;
+					run_data->enrg_flux_spect[spec_indx] += 2.0 * tmp_deriv / k_sqr;
 					#endif
 				}
 			}
