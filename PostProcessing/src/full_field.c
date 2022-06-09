@@ -397,6 +397,8 @@ void FluxSpectra(int snap) {
 
 	// Initialize Collective phase order array
 	for (int i = 0; i < sys_vars->num_sect; ++i) {
+		proc_data->enst_flux_C_theta[i]   = 0.0;
+		proc_data->enst_diss_C_theta[i]   = 0.0;
 		proc_data->phase_order_C_theta[i] = 0.0 + 0.0 * I;
 	}
 
@@ -510,12 +512,12 @@ void FluxSpectra(int snap) {
 							if (proc_data->phase_angle[indx] >= proc_data->theta[a] - proc_data->dtheta/2.0 && proc_data->phase_angle[indx] < proc_data->theta[a] + proc_data->dtheta/2.0) {
 								
 								// Record the flux and dissipation
-								proc_data->enst_diss_C_theta[a] += tmp_diss;
-								proc_data->enst_flux_C_theta[a] += tmp_deriv;
+								proc_data->enst_diss_C_theta[a] += 2.0 * tmp_diss;
+								proc_data->enst_flux_C_theta[a] += 2.0 * tmp_deriv;
 
 								// Record the phase sync
 								if (cabs(tmp_deriv) != 0.0) {
-									proc_data->phase_order_C_theta[a] += (tmp_deriv + tmp_diss) / cabs(tmp_deriv);
+									proc_data->phase_order_C_theta[a] += 2.0 * (tmp_deriv + tmp_diss) / cabs(tmp_deriv);
 								}
 							}
 						}
@@ -606,7 +608,9 @@ void AllocateFullFieldMemory(const long int* N) {
 	//  Allocate Spectra Arrays
 	// --------------------------------
 	// Get the size of the spectra
-	sys_vars->n_spec = (int) sqrt(pow((double)Nx / 2.0, 2.0) + pow((double)Ny / 2.0, 2.0)) + 1;
+	sys_vars->n_spec = (int) round(sqrt((double)(Nx / 2.0) * (Nx / 2.0) + (double)(Ny / 2.0) * (Ny / 2.0)));
+	// sys_vars->n_spec = (int) round(sqrt((double)(Nx)));
+
 
 	#if defined(__SPECTRA)
 	// Allocate memory for the enstrophy spectrum
