@@ -219,7 +219,7 @@ def sim_data(input_dir, method = "default"):
                     data.dx = float(line.split()[-2].rstrip(',').lstrip('['))
 
             ## Get spectrum size
-            data.spec_size = int(np.sqrt((data.Nx / 2)**2 + (data.Ny / 2)**2) + 1)
+            data.spec_size = int(np.round(np.sqrt((data.Nx / 2)**2 + (data.Ny / 2)**2)) + 1)
             # data.spec_size = int(np.round(np.sqrt(data.Nx)))
     else:
 
@@ -255,7 +255,7 @@ def sim_data(input_dir, method = "default"):
             data.ndata = len([g for g in f.keys() if 'Iter' in g])
 
         ## Get spectrum size
-        data.spec_size = int(np.sqrt((data.Nx / 2)**2 + (data.Ny / 2)**2) + 1)
+        data.spec_size = int(np.round(np.sqrt((data.Nx / 2)**2 + (data.Ny / 2)**2)) + 1)
         # data.spec_size = int(np.round(np.sqrt(data.Nx)))
 
 
@@ -459,21 +459,21 @@ def import_spectra_data(input_file, sim_data, method = "default"):
         for group in f.keys():
             if "Iter" in group:
                 if 'EnergySpectrum' in list(f[group].keys()):
-                    data.enrg_spectrum[nn, :] = f[group]["EnergySpectrum"][:sim_data.spec_size]
+                    data.enrg_spectrum[nn, :] = f[group]["EnergySpectrum"][:]
                 if 'EnstrophySpectrum' in list(f[group].keys()):
-                    data.enst_spectrum[nn, :] = f[group]["EnstrophySpectrum"][:sim_data.spec_size]
+                    data.enst_spectrum[nn, :] = f[group]["EnstrophySpectrum"][:]
                 if 'EnergyFluxSpectrum' in list(f[group].keys()):
-                    data.enrg_flux_spectrum[nn, :] = f[group]["EnergyFluxSpectrum"][:sim_data.spec_size]
+                    data.enrg_flux_spectrum[nn, :] = f[group]["EnergyFluxSpectrum"][:]
                 if 'EnergyDissipationSpectrum' in list(f[group].keys()):
-                    data.enrg_diss_spectrum[nn, :] = f[group]["EnergyDissipationSpectrum"][:sim_data.spec_size]
+                    data.enrg_diss_spectrum[nn, :] = f[group]["EnergyDissipationSpectrum"][:]
                 if 'TimeDerivativeEnergySpectrum' in list(f[group].keys()):
-                    data.d_enrg_dt_spectrum[nn, :] = f[group]["TimeDerivativeEnergySpectrum"][:sim_data.spec_size]
+                    data.d_enrg_dt_spectrum[nn, :] = f[group]["TimeDerivativeEnergySpectrum"][:]
                 if 'EnstrophyFluxSpectrum' in list(f[group].keys()):
-                    data.enst_flux_spectrum[nn, :] = f[group]["EnstrophyFluxSpectrum"][:sim_data.spec_size]
+                    data.enst_flux_spectrum[nn, :] = f[group]["EnstrophyFluxSpectrum"][:]
                 if 'EnstrophyDissipationSpectrum' in list(f[group].keys()):
-                    data.enst_diss_spectrum[nn, :] = f[group]["EnstrophyDissipationSpectrum"][:sim_data.spec_size]
+                    data.enst_diss_spectrum[nn, :] = f[group]["EnstrophyDissipationSpectrum"][:]
                 if 'TimeDerivativeEnstrophySpectrum' in list(f[group].keys()):
-                    data.d_enst_dt_spectrum[nn, :] = f[group]["TimeDerivativeEnstrophySpectrum"][:sim_data.spec_size]
+                    data.d_enst_dt_spectrum[nn, :] = f[group]["TimeDerivativeEnstrophySpectrum"][:]
                 nn += 1
             else:
                 continue
@@ -595,6 +595,9 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                 if 'NumTriadsPerSector' in list(f.keys()):
                     self.num_triads = f["NumTriadsPerSector"][:, :]
                 ## Get the number of triads per sector
+                if 'NumTriadsPerSector' in list(f.keys()):
+                    self.num_triads_test = f["NumTriadsTest"][:]
+                ## Get the number of triads per sector
                 if 'NumTriadsPerSector_1D' in list(f.keys()):
                     self.num_triads_1d = f["NumTriadsPerSector_1D"][:, :]
                 if 'NumTriadsPerSector_2D' in list(f.keys()):
@@ -669,9 +672,9 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
             ## Get the max wavenumber
             self.kmax = int(sim_data.Nx / 3)
             ## Allocate spectra aarrays
-            self.phases        = np.zeros((sim_data.ndata, int(2 * self.kmax - 1), int(2 * self.kmax - 1)))
-            self.enrg_spectrum = np.zeros((sim_data.ndata, int(2 * self.kmax - 1), int(2 * self.kmax - 1)))
-            self.enst_spectrum = np.zeros((sim_data.ndata, int(2 * self.kmax - 1), int(2 * self.kmax - 1)))
+            self.phases        = np.zeros((sim_data.ndata, int(2 * self.kmax + 1), int(2 * self.kmax + 1)))
+            self.enrg_spectrum = np.zeros((sim_data.ndata, int(2 * self.kmax + 1), int(2 * self.kmax + 1)))
+            self.enst_spectrum = np.zeros((sim_data.ndata, int(2 * self.kmax + 1), int(2 * self.kmax + 1)))
             ## Allocate the increment arrays
             self.u_pdf_ranges = np.zeros((sim_data.ndata, 1001))
             self.u_pdf_counts = np.zeros((sim_data.ndata, 1000))
@@ -727,6 +730,11 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
             self.triad_sector_wghtd_counts = np.zeros((sim_data.ndata, self.num_sect, 200, NUM_TRIAD_TYPES))
             self.triad_sector_wghtd_ranges = np.zeros((sim_data.ndata, self.num_sect, 201, NUM_TRIAD_TYPES))
 
+            ## Test phase sync data
+            self.enst_flux_test = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES))
+            self.triad_R_test   = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES))
+            self.triad_Phi_test = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES))
+
     ## Create instance of data class
     data = PostProcessData()
 
@@ -742,9 +750,9 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                 if 'FullFieldPhases' in list(f[group].keys()):
                     data.phases[nn, :] = f[group]["FullFieldPhases"][:, :]
                 if 'FullFieldEnstrophySpectrum' in list(f[group].keys()):
-                    data.enst_spectrum[nn, :] = f[group]["FullFieldEnstrophySpectrum"][:, :sim_data.spec_size]
+                    data.enst_spectrum[nn, :] = f[group]["FullFieldEnstrophySpectrum"][:, :]
                 if 'FullFieldEnergySpectrum' in list(f[group].keys()):
-                    data.enrg_spectrum[nn, :] = f[group]["FullFieldEnergySpectrum"][:, :sim_data.spec_size]
+                    data.enrg_spectrum[nn, :] = f[group]["FullFieldEnergySpectrum"][:, :]
                 if 'VelocityPDFCounts' in list(f[group].keys()):
                     data.u_pdf_counts[nn, :] = f[group]["VelocityPDFCounts"][:]
                 if 'VelocityPDFRanges' in list(f[group].keys()):
@@ -754,9 +762,9 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                 if 'VorticityPDFRanges' in list(f[group].keys()):
                     data.w_pdf_ranges[nn, :] = f[group]["VorticityPDFRanges"][:]
                 if 'EnstrophySpectrum' in list(f[group].keys()):
-                    data.enst_spectrum_1d[nn, :] = f[group]["EnstrophySpectrum"][:sim_data.spec_size]
+                    data.enst_spectrum_1d[nn, :] = f[group]["EnstrophySpectrum"][:]
                 if 'EnergySpectrum' in list(f[group].keys()):
-                    data.enrg_spectrum_1d[nn, :] = f[group]["EnergySpectrum"][:sim_data.spec_size]
+                    data.enrg_spectrum_1d[nn, :] = f[group]["EnergySpectrum"][:]
                 if 'PhaseSync' in list(f[group].keys()):
                     data.phase_R[nn, :] = f[group]["PhaseSync"][:]
                 if 'AverageAngle' in list(f[group].keys()):
@@ -800,17 +808,17 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                 if 'EnstrophyDissipationField'  in list(f[group].keys()):
                     data.enst_diss_field[nn, :, :] = np.fft.irfft2(f[group]["EnstrophyDissipationField"][:, :])
                 if 'EnstrophyTimeDerivativeSpectrum' in list(f[group].keys()):
-                    data.d_enst_dt_spec[nn, :] = f[group]["EnstrophyTimeDerivativeSpectrum"][:sim_data.spec_size]
+                    data.d_enst_dt_spec[nn, :] = f[group]["EnstrophyTimeDerivativeSpectrum"][:]
                 if 'EnstrophyFluxSpectrum' in list(f[group].keys()):
-                    data.enst_flux_spec[nn, :] = f[group]["EnstrophyFluxSpectrum"][:sim_data.spec_size]
+                    data.enst_flux_spec[nn, :] = f[group]["EnstrophyFluxSpectrum"][:]
                 if 'EnstrophyDissSpectrum' in list(f[group].keys()):
-                    data.enst_diss_spec[nn, :] = f[group]["EnstrophyDissSpectrum"][:sim_data.spec_size]
+                    data.enst_diss_spec[nn, :] = f[group]["EnstrophyDissSpectrum"][:]
                 if 'EnergyFluxSpectrum' in list(f[group].keys()):
-                    data.enrg_flux_spec[nn, :] = f[group]["EnergyFluxSpectrum"][:sim_data.spec_size]
+                    data.enrg_flux_spec[nn, :] = f[group]["EnergyFluxSpectrum"][:]
                 if 'EnergyTimeDerivativeSpectrum' in list(f[group].keys()):
-                    data.d_enrg_dt_spec[nn, :] = f[group]["EnergyTimeDerivativeSpectrum"][:sim_data.spec_size]
+                    data.d_enrg_dt_spec[nn, :] = f[group]["EnergyTimeDerivativeSpectrum"][:]
                 if 'EnergyDissSpectrum' in list(f[group].keys()):
-                    data.enrg_diss_spec[nn, :] = f[group]["EnergyDissSpectrum"][:sim_data.spec_size]
+                    data.enrg_diss_spec[nn, :] = f[group]["EnergyDissSpectrum"][:]
                 if 'EnstrophyFluxPerSector' in list(f[group].keys()):
                     data.enst_flux_per_sec[nn, :, :] = f[group]["EnstrophyFluxPerSector"][:, :]
                 if 'EnstrophyFluxPerSector_1D' in list(f[group].keys()):
@@ -829,6 +837,13 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                     data.triad_sector_wghtd_counts[nn, :, :, :] = f[group]["SectorTriadPhaseWeightedPDF_InTime_Counts"][:, :, :]
                 if 'SectorTriadPhaseWeightedPDF_InTime_Ranges' in list(f[group].keys()):
                     data.triad_sector_wghtd_ranges[nn, :, :, :] = f[group]["SectorTriadPhaseWeightedPDF_InTime_Ranges"][:, :, :]
+
+                if 'TriadPhaseSyncTest' in list(f[group].keys()):
+                    data.triad_R_test[nn, :] = f[group]["TriadPhaseSyncTest"][:]
+                if 'TriadAverageAngleTest' in list(f[group].keys()):
+                    data.triad_Phi_test[nn, :] = f[group]["TriadAverageAngleTest"][:]
+                if 'EnstrophyFluxTest' in list(f[group].keys()):
+                    data.enst_flux_test[nn, :] = f[group]["EnstrophyFluxTest"][:]
                 nn += 1
             else:
                 continue

@@ -60,16 +60,17 @@
 #define __FULL_FIELD
 // #define __SPECTRA
 #define __SEC_PHASE_SYNC
+// #define __SEC_PHASE_SYNC_STATS
 #define __ENST_FLUX
 #define __ENRG_FLUX
 
 
 // Postprocessing data sets
 #define __VORT_FOUR
-#define __VORT_REAL
-#define __MODES
-#define __REALSPACE
-#define __NONLIN
+// #define __VORT_REAL
+// #define __MODES
+// #define __REALSPACE
+// #define __NONLIN
 #define __TIME
 #define __COLLOC_PTS
 #define __WAVELIST
@@ -209,6 +210,7 @@ typedef struct postprocess_data_struct {
     fftw_complex* enst_diss_field;											 // Array to holde the enstrophy dissipation field in Fourier space.
     fftw_complex* phase_order_C_theta;										 // Array to hold the phase order parameter for each C_theta
     fftw_complex* phase_order_C_theta_triads[NUM_TRIAD_TYPES + 1];			 // Array to hold the phase order parameter for each C_theta triads
+    fftw_complex phase_order_C_theta_triads_test[NUM_TRIAD_TYPES + 1];			 // Array to hold the phase order parameter for each C_theta triads
     fftw_complex* phase_order_C_theta_triads_1d[NUM_TRIAD_TYPES + 1];		 // Array to hold the phase order parameter for each C_theta triads for 1d contributions
     fftw_complex** phase_order_C_theta_triads_2d[NUM_TRIAD_TYPES + 1];		 // Array to hold the phase order parameter for each C_theta triads for 1d contributions
     fftw_complex* dw_hat_dt; 									             // Array to hold the RHS of the vorticity equation
@@ -227,16 +229,21 @@ typedef struct postprocess_data_struct {
     int** num_wave_vecs;													 // Array to hold the number of wavevector triads per secotr
     fftw_complex* phase_order;       							 			 // Array to hold the phase order parameter for each sector for the individual phases
     fftw_complex* triad_phase_order[NUM_TRIAD_TYPES + 1]; 		 			 // Array to hold the phase order parameter for each sector for each of the triad phase types including combined
+    fftw_complex triad_phase_order_test[NUM_TRIAD_TYPES + 1]; 		 			 // Array to hold the phase order parameter for each sector for each of the triad phase types including combined
     fftw_complex* triad_phase_order_1d[NUM_TRIAD_TYPES + 1]; 		 		 // Array to hold the phase order parameter for 1d contributions for each sector for each of the triad phase types including combined
     fftw_complex** triad_phase_order_2d[NUM_TRIAD_TYPES + 1];		 		 // Array to hold the phase order parameter for each sector for each of the triad phase types including combined
     double* phase_R;				 							 			 // Array to hold the phase sync per sector for the individual phases
     double* phase_Phi;               							 			 // Array to hold the average phase per sector for the individual phases
     double* enst_flux[NUM_TRIAD_TYPES + 1];						 			 // Array to hold the flux of enstrophy for each triad type for each sector
+    double enst_flux_test[NUM_TRIAD_TYPES + 1];						 			 // Array to hold the flux of enstrophy for each triad type for each sector
     double* enst_flux_1d[NUM_TRIAD_TYPES + 1];					 			 // Array to hold the flux of enstrophy for 1d contributoins for each triad type for each sector
     int* num_triads[NUM_TRIAD_TYPES + 1];						 			 // Array to hold the number of triads for each triad type
+    int num_triads_test[NUM_TRIAD_TYPES + 1];						 			 // Array to hold the number of triads for each triad type
     int* num_triads_1d[NUM_TRIAD_TYPES + 1];					 			 // Array to hold the number of triads for 1d contributions for each triad type
     double* triad_R[NUM_TRIAD_TYPES + 1];						 			 // Array to hold the phase sync per sector for each of the triad phase types including all together
     double* triad_Phi[NUM_TRIAD_TYPES + 1];     				 			 // Array to hold the average phase per sector for each of the triad phase types including all together
+    double triad_R_test[NUM_TRIAD_TYPES + 1];						 			 // Array to hold the phase sync per sector for each of the triad phase types including all together
+    double triad_Phi_test[NUM_TRIAD_TYPES + 1];     				 			 // Array to hold the average phase per sector for each of the triad phase types including all together
     double* triad_R_1d[NUM_TRIAD_TYPES + 1];						 		 // Array to hold the phase sync for 1d contributions per sector for each of the triad phase types including all together
     double* triad_Phi_1d[NUM_TRIAD_TYPES + 1];     				 			 // Array to hold the average phase for 1d contributions per sector for each of the triad phase types including all together
     double** enst_flux_2d[NUM_TRIAD_TYPES + 1];					 			 // Array to hold the flux of enstrophy for each triad type for each sector

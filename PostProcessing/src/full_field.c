@@ -35,17 +35,18 @@ void FullFieldData(void) {
 	const long int Nx 		  = sys_vars->N[0];
 	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
 
+
 	// --------------------------------
 	// Fill The Full Field Arrays
 	// --------------------------------
 	for (int i = 0; i < Nx; ++i) {
-		if (abs(run_data->k[0][i]) < sys_vars->kmax) {
+		if (abs(run_data->k[0][i]) <= sys_vars->kmax) {
 			tmp  = i * Ny_Fourier;	
-			tmp1 = (sys_vars->kmax - 1 - run_data->k[0][i]) * (2 * sys_vars->kmax - 1); // kx > 0 - are the first kmax rows hence the -kx
-			tmp2 = (sys_vars->kmax - 1 + run_data->k[0][i]) * (2 * sys_vars->kmax - 1); // kx < 0 - are the next kmax rows hence the +kx
+			tmp1 = (sys_vars->kmax - run_data->k[0][i]) * (2 * sys_vars->kmax + 1); // kx > 0 - are the first kmax rows hence the -kx
+			tmp2 = (sys_vars->kmax + run_data->k[0][i]) * (2 * sys_vars->kmax + 1); // kx < 0 - are the next kmax rows hence the +kx
 			for (int j = 0; j < Ny_Fourier; ++j) {
 				indx = tmp + j;
-				if (abs(run_data->k[1][j]) < sys_vars->kmax) {
+				if (abs(run_data->k[1][j]) <= sys_vars->kmax) {
 
 					// Compute |k|^2 and 1 / |k|^2
 					k_sqr = (double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]); 
@@ -60,45 +61,46 @@ void FullFieldData(void) {
 					phase = fmod(carg(run_data->w_hat[indx]) + 2.0 * M_PI, 2.0 * M_PI);
 					amp   = cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
 
+	 				// printf("kmax:\t%ld\tkx:\t%d\tky:\t%d\ti1:\t%ld\tj1:\t%ld\t-\t2kmax - 1:\t%ld\t-\ti2:\t%ld\tj2:\t%ld\n", sys_vars->kmax, run_data->k[0][i], run_data->k[1][j], sys_vars->kmax - run_data->k[0][i], sys_vars->kmax + run_data->k[1][j], 2 * sys_vars->kmax + 1, sys_vars->kmax + run_data->k[0][i], sys_vars->kmax - run_data->k[1][j]);
 					// fill the full field phases and spectra
-	 				if (k_sqr < sys_vars->kmax_sqr) {
+	 				if (k_sqr <= sys_vars->kmax_sqr) {
 	 					// No conjugate for ky = 0
 	 					if (run_data->k[1][j] == 0) {
 	 						// proc_data->k_full[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]] = 
-	 						proc_data->phases[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]] = phase;
-	 						proc_data->amps[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = cabs(run_data->w_hat[indx]);
-	 						proc_data->enrg[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = amp * k_sqr_fac;
-	 						proc_data->enst[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = amp;
+	 						proc_data->phases[(int)(tmp1 + sys_vars->kmax + run_data->k[1][j])] = phase;
+	 						proc_data->amps[(int)(tmp1 + sys_vars->kmax + run_data->k[1][j])]   = cabs(run_data->w_hat[indx]);
+	 						proc_data->enrg[(int)(tmp1 + sys_vars->kmax + run_data->k[1][j])]   = amp * k_sqr_fac;
+	 						proc_data->enst[(int)(tmp1 + sys_vars->kmax + run_data->k[1][j])]   = amp;
 	 					}
 	 					else {
 	 						// Fill data and its conjugate
-	 						proc_data->phases[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]] = phase;
-	 						proc_data->phases[tmp2 + sys_vars->kmax - 1 - run_data->k[1][j]] = fmod(-phase + 2.0 * M_PI, 2.0 * M_PI);
-	 						proc_data->amps[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]] 	 = cabs(run_data->w_hat[indx]);
-	 						proc_data->amps[tmp2 + sys_vars->kmax - 1 - run_data->k[1][j]]   = cabs(run_data->w_hat[indx]);
-	 						proc_data->enrg[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = amp * k_sqr_fac;
-	 						proc_data->enrg[tmp2 + sys_vars->kmax - 1 - run_data->k[1][j]]   = amp * k_sqr_fac;
-	 						proc_data->enst[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = amp;
-	 						proc_data->enst[tmp2 + sys_vars->kmax - 1 - run_data->k[1][j]]   = amp;
+							proc_data->phases[(int)(tmp1 + sys_vars->kmax + run_data->k[1][j])] = phase;
+							proc_data->phases[(int)(tmp2 + sys_vars->kmax - run_data->k[1][j])] = fmod(-phase + 2.0 * M_PI, 2.0 * M_PI);
+							proc_data->amps[(int)(tmp1 + sys_vars->kmax + run_data->k[1][j])]   = cabs(run_data->w_hat[indx]);
+							proc_data->amps[(int)(tmp2 + sys_vars->kmax - run_data->k[1][j])]   = cabs(run_data->w_hat[indx]);
+							proc_data->enrg[(int)(tmp1 + sys_vars->kmax + run_data->k[1][j])]   = amp * k_sqr_fac;
+							proc_data->enrg[(int)(tmp2 + sys_vars->kmax - run_data->k[1][j])]   = amp * k_sqr_fac;
+							proc_data->enst[(int)(tmp1 + sys_vars->kmax + run_data->k[1][j])]   = amp;
+							proc_data->enst[(int)(tmp2 + sys_vars->kmax - run_data->k[1][j])]   = amp;
 	 					}
 	 				}
 	 				else {
 	 					// All dealiased modes set to zero
 						if (run_data->k[1][j] == 0) {
-	 						proc_data->phases[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]] = -50.0;
-	 						proc_data->amps[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = -50.0;
-	 						proc_data->enrg[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = -50.0;
-	 						proc_data->enst[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = -50.0;
+	 						proc_data->phases[(int)(tmp1 + sys_vars->kmax + run_data->k[1][j])] = -50.0;
+	 						proc_data->amps[(int)(tmp1 + sys_vars->kmax + run_data->k[1][j])]   = -50.0;
+	 						proc_data->enrg[(int)(tmp1 + sys_vars->kmax + run_data->k[1][j])]   = -50.0;
+	 						proc_data->enst[(int)(tmp1 + sys_vars->kmax + run_data->k[1][j])]   = -50.0;
 	 					}
 	 					else {	
-	 						proc_data->phases[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]] = -50.0;
-	 						proc_data->phases[tmp2 + sys_vars->kmax - 1 - run_data->k[1][j]] = -50.0;
-	 						proc_data->amps[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = -50.0;
-	 						proc_data->amps[tmp2 + sys_vars->kmax - 1 - run_data->k[1][j]]   = -50.0;
-	 						proc_data->enrg[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = -50.0;
-	 						proc_data->enrg[tmp2 + sys_vars->kmax - 1 - run_data->k[1][j]]   = -50.0;
-	 						proc_data->enst[tmp1 + sys_vars->kmax - 1 + run_data->k[1][j]]   = -50.0;
-	 						proc_data->enst[tmp2 + sys_vars->kmax - 1 - run_data->k[1][j]]   = -50.0;
+	 						proc_data->phases[(int)(tmp1 + sys_vars->kmax + run_data->k[1][j])] = -50.0;
+	 						proc_data->phases[(int)(tmp2 + sys_vars->kmax - run_data->k[1][j])] = -50.0;
+	 						proc_data->amps[(int)(tmp1 + sys_vars->kmax + run_data->k[1][j])]   = -50.0;
+	 						proc_data->amps[(int)(tmp2 + sys_vars->kmax - run_data->k[1][j])]   = -50.0;
+	 						proc_data->enrg[(int)(tmp1 + sys_vars->kmax + run_data->k[1][j])]   = -50.0;
+	 						proc_data->enrg[(int)(tmp2 + sys_vars->kmax - run_data->k[1][j])]   = -50.0;
+	 						proc_data->enst[(int)(tmp1 + sys_vars->kmax + run_data->k[1][j])]   = -50.0;
+	 						proc_data->enst[(int)(tmp2 + sys_vars->kmax - run_data->k[1][j])]   = -50.0;
 	 					}
 	 				}
 				}	
@@ -444,7 +446,7 @@ void FluxSpectra(int snap) {
 				spec_indx = (int) round(sqrt(k_sqr));
 
 				// Update spectrum bin
-				if ((j == 0) || (Ny_Fourier - 1)) {
+				if ((j == 0) || (j == Ny_Fourier - 1)) {
 					#if defined(__ENRG_FLUX) || defined(__ENST_FLUX) || defined(__SEC_PHASE_SYNC)
 					// Get temporary values
 					tmp_deriv = creal(run_data->w_hat[indx] * conj(proc_data->dw_hat_dt[indx]) + conj(run_data->w_hat[indx]) * proc_data->dw_hat_dt[indx]) * const_fac * norm_fac;
@@ -467,7 +469,7 @@ void FluxSpectra(int snap) {
 					proc_data->enst_diss_field[indx] = pre_fac * run_data->w_hat[indx];
 
 					// Compute the enstrophy flux, dissipation and collective phase for C_theta
-					if (k_sqr > sys_vars->kmax_C_sqr && k_sqr < sys_vars->kmax_sqr) {
+					if (sqrt(k_sqr) >= sqrt(sys_vars->kmax_C_sqr) - 0.5 && sqrt(k_sqr) <= sqrt(sys_vars->kmax_sqr) + 0.5) {
 						for (int a = 0; a < sys_vars->num_sect; ++a) {
 							if (proc_data->phase_angle[indx] >= proc_data->theta[a] - proc_data->dtheta/2.0 && proc_data->phase_angle[indx] < proc_data->theta[a] + proc_data->dtheta/2.0) {
 								
@@ -507,7 +509,7 @@ void FluxSpectra(int snap) {
 					proc_data->enst_diss_field[indx] = pre_fac * run_data->w_hat[indx];
 
 					// Compute the enstrophy flux, dissipation and collective phase for C_theta
-					if (k_sqr > sys_vars->kmax_C_sqr && k_sqr < sys_vars->kmax_sqr) {
+					if (sqrt(k_sqr) >= sqrt(sys_vars->kmax_C_sqr) - 0.5 && sqrt(k_sqr) <= sqrt(sys_vars->kmax_sqr) + 0.5) {
 						for (int a = 0; a < sys_vars->num_sect; ++a) {
 							if (proc_data->phase_angle[indx] >= proc_data->theta[a] - proc_data->dtheta/2.0 && proc_data->phase_angle[indx] < proc_data->theta[a] + proc_data->dtheta/2.0) {
 								
@@ -564,37 +566,37 @@ void AllocateFullFieldMemory(const long int* N) {
 	// --------------------------------
 	#if defined(__FULL_FIELD)
 	// Allocate memory for the full field phases
-	proc_data->phases = (double* )fftw_malloc(sizeof(double) * (2 * sys_vars->kmax - 1) * (2 * sys_vars->kmax - 1));
+	proc_data->phases = (double* )fftw_malloc(sizeof(double) * (2 * sys_vars->kmax + 1) * (2 * sys_vars->kmax + 1));
 	if (proc_data->phases == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Full Field Phases");
 		exit(1);
 	}
 
 	// Allocate memory for the full field amplitudes
-	proc_data->amps = (double* )fftw_malloc(sizeof(double) * (2 * sys_vars->kmax - 1) * (2 * sys_vars->kmax - 1));
+	proc_data->amps = (double* )fftw_malloc(sizeof(double) * (2 * sys_vars->kmax + 1) * (2 * sys_vars->kmax + 1));
 	if (proc_data->amps == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Full Field Phases");
 		exit(1);
 	}
 
 	// Allocate memory for the full field enstrophy spectrum
-	proc_data->enst = (double* )fftw_malloc(sizeof(double) * (2 * sys_vars->kmax - 1) * (2 * sys_vars->kmax - 1));
+	proc_data->enst = (double* )fftw_malloc(sizeof(double) * (2 * sys_vars->kmax + 1) * (2 * sys_vars->kmax + 1));
 	if (proc_data->enst == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Full Field Enstrophy");
 		exit(1);
 	}	
 
 	// Allocate memory for the full field enrgy spectrum
-	proc_data->enrg = (double* )fftw_malloc(sizeof(double) * (2 * sys_vars->kmax - 1) * (2 * sys_vars->kmax - 1));
+	proc_data->enrg = (double* )fftw_malloc(sizeof(double) * (2 * sys_vars->kmax + 1) * (2 * sys_vars->kmax + 1));
 	if (proc_data->enrg == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Full Field Energy");
 		exit(1);
 	}	
 
 	// Initialize arrays
-	for (int i = 0; i < (2 * sys_vars->kmax - 1); ++i) {
-		tmp3 = i * (2 * sys_vars->kmax - 1);
-		for (int j = 0; j < (2 * sys_vars->kmax - 1); ++j) {
+	for (int i = 0; i < (2 * sys_vars->kmax + 1); ++i) {
+		tmp3 = i * (2 * sys_vars->kmax + 1);
+		for (int j = 0; j < (2 * sys_vars->kmax + 1); ++j) {
 			proc_data->phases[tmp3 + j] = 0.0;
 			proc_data->enst[tmp3 + j]   = 0.0;
 			proc_data->enrg[tmp3 + j]   = 0.0;
@@ -606,10 +608,9 @@ void AllocateFullFieldMemory(const long int* N) {
 
 	// --------------------------------	
 	//  Allocate Spectra Arrays
-	// --------------------------------
+	// --------------------------------	
 	// Get the size of the spectra
-	sys_vars->n_spec = (int) round(sqrt((double)(Nx / 2.0) * (Nx / 2.0) + (double)(Ny / 2.0) * (Ny / 2.0)));
-	// sys_vars->n_spec = (int) round(sqrt((double)(Nx)));
+	sys_vars->n_spec = (int) round(sqrt((double)(Nx / 2.0) * (Nx / 2.0) + (double)(Ny / 2.0) * (Ny / 2.0)) + 1);
 
 
 	#if defined(__SPECTRA)

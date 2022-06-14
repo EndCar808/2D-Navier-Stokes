@@ -16,6 +16,7 @@
 //  Function Prototpyes
 // ---------------------------------------------------------------------
 void PhaseSyncSector(int s);
+void PhaseSync(int s);
 void AllocatePhaseSyncMemory(const long int* N);
 void FreePhaseSyncObjects(void);
 // ---------------------------------------------------------------------

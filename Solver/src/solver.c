@@ -1425,8 +1425,9 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 		// Allocate Temporary Memory
 		// ---------------------------------------
 		// Allocate memory for the Real Space stream function
-		double* tmp_psi      = (double* )fftw_malloc(sizeof(double) * 2 * sys_vars->alloc_local);
-		double* tmp_psi_full = (double* )fftw_malloc(sizeof(double) * Nx * (Ny));
+		double* tmp_psi       = (double* )fftw_malloc(sizeof(double) * 2 * sys_vars->alloc_local);
+		double* tmp_psi_local = (double* )fftw_malloc(sizeof(double) * sys_vars->local_Nx * Ny);
+		double* tmp_psi_full  = (double* )fftw_malloc(sizeof(double) * Nx * Ny);
 
 
 		// ---------------------------------------
@@ -1456,7 +1457,19 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 		// ---------------------------------------
 		// Distribute Initial Condition
 		// ---------------------------------------
-		MPI_Scatter(tmp_psi_full, sys_vars->local_Nx * Ny, MPI_DOUBLE, tmp_psi, sys_vars->local_Nx * (Ny + 2), MPI_DOUBLE, 0, MPI_COMM_WORLD);
+		// Scatter the initial stream function data to the local processes
+		MPI_Scatter(tmp_psi_full, sys_vars->local_Nx * Ny, MPI_DOUBLE, tmp_psi_local, sys_vars->local_Nx * Ny, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+		// Write the local data to the appropriately padded arrays
+		for (int i = 0; i < local_Nx; ++i) {	
+			tmp = i * (Ny + 2);
+			for (int j = 0; j < Ny; ++j) {
+				indx = tmp + j;
+
+				// Write the local data to the padded arrays
+				tmp_psi[indx] = tmp_psi_local[i * Ny + j];
+			}
+		}
 
 		// ---------------------------------------
 		// Initialize Real Space Vorticity

@@ -102,7 +102,8 @@ void PostProcessing(void) {
 		//  Phase Sync
 		// --------------------------------
 		#if defined(__SEC_PHASE_SYNC) 
-		PhaseSyncSector(s);		
+		PhaseSyncSector(s);
+		PhaseSync(s);		
 		#endif
 
 		// --------------------------------
@@ -345,7 +346,7 @@ void AllocateMemory(const long int* N) {
 
 	//  Allocate Stats Data
 	// --------------------------------
-	#if defined(__REAL_STATS) || defined(__ENST_FLUX) || defined(__ENRG_FLUX) || defined(__SEC_PHASE_SYNC) || defined(__VEL_INC_STATS) || defined(__STR_FUNC_STATS) || defined(__GRAD_STATS)
+	#if defined(__REAL_STATS) || defined(__ENST_FLUX) || defined(__ENRG_FLUX) || defined(__SEC_PHASE_SYNC) || defined(__VEL_INC_STATS) || defined(__STR_FUNC_STATS) || defined(__GRAD_STATS) || defined(__VORT_REAL) || defined(__MODES) || defined(__REALSPACE)
 	// Allocate current Fourier vorticity
 	run_data->w = (double* )fftw_malloc(sizeof(double) * Nx * Ny);
 	if (run_data->w == NULL) {
@@ -432,7 +433,7 @@ void InitializeFFTWPlans(const long int* N) {
 	const long int Ny = N[1];
 	const int N_batch[SYS_DIM] = {Nx, Ny};
 
-	#if defined(__REAL_STATS) || defined(__VEL_INC_STATS) || defined(__STR_FUNC_STATS) || defined(__GRAD_STATS) || defined(__VORT_REAL)
+	#if defined(__REAL_STATS) || defined(__VEL_INC_STATS) || defined(__STR_FUNC_STATS) || defined(__GRAD_STATS) || defined(__VORT_REAL) || defined(__VORT_REAL)
 	// Initialize Fourier Transforms
 	sys_vars->fftw_2d_dft_c2r = fftw_plan_dft_c2r_2d(Nx, Ny, run_data->w_hat, run_data->w, FFTW_MEASURE);
 	if (sys_vars->fftw_2d_dft_c2r == NULL) {
@@ -440,6 +441,7 @@ void InitializeFFTWPlans(const long int* N) {
 		exit(1);
 	}
 	#endif
+
 	#if defined(__ENST_FLUX) || defined(__ENRG_FLUX) || defined(__SEC_PHASE_SYNC)
 	sys_vars->fftw_2d_dft_r2c = fftw_plan_dft_r2c_2d(Nx, Ny, run_data->w, run_data->w_hat, FFTW_MEASURE);
 	if (sys_vars->fftw_2d_dft_r2c == NULL) {
@@ -457,7 +459,7 @@ void InitializeFFTWPlans(const long int* N) {
 	}
 	#endif
 
-	#if defined(__GRAD_STATS)
+	#if defined(__GRAD_STATS) || defined(__REALSPACE)
 	// Initialize Batch Fourier Transforms
 	sys_vars->fftw_2d_dft_batch_r2c = fftw_plan_many_dft_r2c(SYS_DIM, N_batch, SYS_DIM, run_data->u, NULL, SYS_DIM, 1, run_data->u_hat, NULL, SYS_DIM, 1, FFTW_MEASURE);
 	if (sys_vars->fftw_2d_dft_batch_r2c == NULL) {
@@ -483,7 +485,7 @@ void FreeMemoryAndCleanUp(void) {
 		fftw_free(run_data->x[i]);
 		fftw_free(run_data->k[i]);
 	}
-	#if defined(__REAL_STATS) || defined(__VEL_INC_STATS) || defined(__STR_FUNC_STATS) || defined(__ENST_FLUX) || defined(__ENRG_FLUX) || defined(__SEC_PHASE_SYNC) || defined(__GRAD_STATS)
+	#if defined(__REAL_STATS) || defined(__VEL_INC_STATS) || defined(__STR_FUNC_STATS) || defined(__ENST_FLUX) || defined(__ENRG_FLUX) || defined(__SEC_PHASE_SYNC) || defined(__GRAD_STATS) || defined(__VORT_REAL) || defined(__MODES) || defined(__REALSPACE)
 	fftw_free(run_data->w);
 	fftw_free(run_data->u);
 	fftw_free(run_data->u_hat);
@@ -509,7 +511,7 @@ void FreeMemoryAndCleanUp(void) {
 	//  Free FFTW Plans
 	// --------------------------------
 	// Destroy FFTW plans
-	#if defined(__REAL_STATS) || defined(__VEL_INC_STATS) || defined(__STR_FUNC_STATS) || defined(__GRAD_STATS) || defined(__VORT_REAL)
+	#if defined(__REAL_STATS) || defined(__VEL_INC_STATS) || defined(__STR_FUNC_STATS) || defined(__GRAD_STATS) || defined(__VORT_REAL) || defined(__VORT_REAL)
 	fftw_destroy_plan(sys_vars->fftw_2d_dft_c2r);
 	#endif
 	#if defined(__ENST_FLUX) || defined(__ENRG_FLUX) || defined(__SEC_PHASE_SYNC)
@@ -518,7 +520,7 @@ void FreeMemoryAndCleanUp(void) {
 	#if defined(__ENST_FLUX) || defined(__ENRG_FLUX) || defined(__SEC_PHASE_SYNC) || defined(__REAL_STATS) || defined(__GRAD_STATS) || defined(__REALSPACE)
 	fftw_destroy_plan(sys_vars->fftw_2d_dft_batch_c2r);
 	#endif
-	#if defined(__GRAD_STATS)
+	#if defined(__GRAD_STATS) || defined(__REALSPACE)
 	fftw_destroy_plan(sys_vars->fftw_2d_dft_batch_r2c);
 	#endif	
 

@@ -202,6 +202,7 @@ void OpenInputAndInitialize(void) {
 		InitializeSpaceVariables(run_data->x, run_data->k, sys_vars->N);
 	}
 
+
 	// --------------------------------
 	//  Close HDF5 Identifiers
 	// --------------------------------
@@ -648,8 +649,8 @@ void WriteDataToFile(double t, long int snap) {
 	// -------------------------------
 	#if defined(__FULL_FIELD)
 	// The full field phases
-	dset_dims_2d[0] = 2 * sys_vars->kmax - 1;
-	dset_dims_2d[1] = 2 * sys_vars->kmax - 1;
+	dset_dims_2d[0] = 2 * sys_vars->kmax + 1;
+	dset_dims_2d[1] = 2 * sys_vars->kmax + 1;
 	status = H5LTmake_dataset(group_id, "FullFieldPhases", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, proc_data->phases);	
 	if (status < 0) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Full Field Phases", t, snap);
@@ -657,8 +658,8 @@ void WriteDataToFile(double t, long int snap) {
 	}
 
 	// The full field amplitudes
-	dset_dims_2d[0] = 2 * sys_vars->kmax - 1;
-	dset_dims_2d[1] = 2 * sys_vars->kmax - 1;
+	dset_dims_2d[0] = 2 * sys_vars->kmax + 1;
+	dset_dims_2d[1] = 2 * sys_vars->kmax + 1;
 	status = H5LTmake_dataset(group_id, "FullFieldAmplitudes", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, proc_data->amps);	
 	if (status < 0) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Full Field Amplitudes", t, snap);
@@ -666,8 +667,8 @@ void WriteDataToFile(double t, long int snap) {
 	}
 
 	// The full field energy spectrum
-	dset_dims_2d[0] = 2 * sys_vars->kmax - 1;
-	dset_dims_2d[1] = 2 * sys_vars->kmax - 1;
+	dset_dims_2d[0] = 2 * sys_vars->kmax + 1;
+	dset_dims_2d[1] = 2 * sys_vars->kmax + 1;
 	status = H5LTmake_dataset(group_id, "FullFieldEnergySpectrum", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, proc_data->enrg);		
 	if (status < 0) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Full Field Energy Spectrum", t, snap);
@@ -675,8 +676,8 @@ void WriteDataToFile(double t, long int snap) {
 	}
 
 	// The full field enstrophy spectrum
-	dset_dims_2d[0] = 2 * sys_vars->kmax - 1;
-	dset_dims_2d[1] = 2 * sys_vars->kmax - 1;
+	dset_dims_2d[0] = 2 * sys_vars->kmax + 1;
+	dset_dims_2d[1] = 2 * sys_vars->kmax + 1;
 	status = H5LTmake_dataset(group_id, "FullFieldEnstrophySpectrum", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, proc_data->enst);
 	if (status < 0) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Full Field Enstrophy Spectrum", t, snap);
@@ -802,6 +803,18 @@ void WriteDataToFile(double t, long int snap) {
         exit(1);
     }
     status = H5LTmake_dataset(group_id, "AverageAngle", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, proc_data->phase_Phi);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Average Angle", t, snap);
+        exit(1);
+    }    
+
+    dset_dims_1d[0] = NUM_TRIAD_TYPES + 1;
+    status = H5LTmake_dataset(group_id, "TriadPhaseSyncTest", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, proc_data->triad_R_test);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Phase Sync Parameter", t, snap);
+        exit(1);
+    }
+    status = H5LTmake_dataset(group_id, "TriadAverageAngleTest", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, proc_data->triad_Phi_test);
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Average Angle", t, snap);
         exit(1);
@@ -951,6 +964,13 @@ void WriteDataToFile(double t, long int snap) {
     fftw_free(tmp1_cmplx);
 
     ///------------------------ Enstrophy Flux
+    dset_dims_1d[0] = NUM_TRIAD_TYPES + 1;
+    status = H5LTmake_dataset(group_id, "EnstrophyFluxTest", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, proc_data->enst_flux_test);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Enstrophy Flux Per Sector", t, snap);
+        exit(1);
+    }
+
     for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
     	for (int a = 0; a < sys_vars->num_sect; ++a) {
     		tmp[i * sys_vars->num_sect + a] = 2.0 * pow(M_PI, 2.0) * proc_data->enst_flux[i][a];
@@ -1006,6 +1026,7 @@ void WriteDataToFile(double t, long int snap) {
 
 
     ///------------------------- Phase Order Stats Data
+    #if defined(__SEC_PHASE_SYNC_STATS)
 	// Allocate temporary memory for the phases pdfs
 	double* ranges = (double*) fftw_malloc(sizeof(double) * sys_vars->num_sect * (proc_data->phase_sect_pdf_t[0]->n + 1));
 	double* counts = (double*) fftw_malloc(sizeof(double) * sys_vars->num_sect * proc_data->phase_sect_pdf_t[0]->n);
@@ -1099,6 +1120,7 @@ void WriteDataToFile(double t, long int snap) {
     // Free temporary memory
     fftw_free(triad_ranges);
     fftw_free(triad_counts);
+    #endif
 	#endif
 
 	// -------------------------------
@@ -1651,6 +1673,13 @@ void FinalWriteAndClose(void) {
         exit(1);
     }	
 
+    dset_dims_1d[0] = NUM_TRIAD_TYPES + 1;
+	status = H5LTmake_dataset(file_info->output_file_handle, "NumTriadsTest", Dims1D, dset_dims_1d, H5T_NATIVE_INT, proc_data->num_triads_test	);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!!!\n-->> Exiting...\n", "Number of Triads Per Sector");
+        exit(1);
+    }
+
     ///------------------------- Number of Triads Per Sector
     int* tmp = (int*) fftw_malloc(sizeof(int) * sys_vars->num_sect * (NUM_TRIAD_TYPES + 1));
     for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
@@ -1702,6 +1731,7 @@ void FinalWriteAndClose(void) {
     
 
     ///-------------------------- Sector Phase PDFs
+    #if defined(__SEC_PHASE_SYNC_STATS)
     // Allocate temporary memory
 	double* ranges = (double*) fftw_malloc(sizeof(double) * sys_vars->num_sect * (proc_data->phase_sect_pdf[0]->n + 1));
 	double* counts = (double*) fftw_malloc(sizeof(double) * sys_vars->num_sect * proc_data->phase_sect_pdf[0]->n);
@@ -1767,6 +1797,7 @@ void FinalWriteAndClose(void) {
     // Free temporary memory
     fftw_free(triad_ranges);
     fftw_free(triad_counts);
+    #endif
     #endif
     // -------------------------------
     // Close HDF5 Identifiers
