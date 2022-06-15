@@ -113,6 +113,9 @@ if __name__ == '__main__':
     ## Read in spectra data
     spec_data = import_spectra_data(cmdargs.in_dir, sys_vars)
 
+    ## Read in post processing data
+    post_data = import_post_processing_data(post_file_path, sys_vars, method)
+
     if run_data.no_w:
         print("\nPreparing real space vorticity...", end = " ")
         for i in range(sys_vars.ndata):
@@ -120,6 +123,9 @@ if __name__ == '__main__':
         print("Finished!")
 
 
+    # -----------------------------------------
+    # # --------  Plot Initial Condition
+    # -----------------------------------------
     fig = plt.figure(figsize = (16, 8))
     gs  = GridSpec(2, 3)
     ax1 = fig.add_subplot(gs[0, 0])
@@ -192,4 +198,19 @@ if __name__ == '__main__':
 
 
     plt.savefig(cmdargs.out_dir + "Initial_Condition.png", bbox_inches='tight') 
+    plt.close()
+
+
+    # -----------------------------------------
+    # # --------  Plot System Measures
+    # -----------------------------------------
+    fig = plt.figure(figsize = (16, 8))
+    gs  = GridSpec(1, 1)
+    ax1 = fig.add_subplot(gs[0, 0])
+    ax1.plot(run_data.time, run_data.tot_palin[:])
+    ax1.set_xlabel(r"$t$")
+    ax1.set_ylabel(r"$\mathcal{P}$")
+    ax1.grid()
+
+    plt.savefig(cmdargs.out_dir + "TotalPalin.png", bbox_inches='tight') 
     plt.close()

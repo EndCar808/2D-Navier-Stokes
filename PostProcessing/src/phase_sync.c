@@ -78,10 +78,8 @@ void PhaseSync(int s) {
 
 						// Get polar coords for k1
 						k1_sqr       = (double) (k1_x * k1_x + k1_y * k1_y);
-						// k1_angle     = atan2((double) k1_x, (double) k1_y);
 
 						if((k1_sqr > 0 && k1_sqr <= sys_vars->kmax_C_sqr)) {
-						// if((k1_sqr > 0 && k1_sqr <= sys_vars->kmax)) {									
 							
 							// Find the k2 wavevector
 							k2_x = k3_x - k1_x;
@@ -89,10 +87,8 @@ void PhaseSync(int s) {
 							
 							// Get polar coords for k2
 							k2_sqr       = (double) (k2_x * k2_x + k2_y * k2_y);
-							// k2_angle     = atan2((double)k2_x, (double) k2_y);
 
 							if ((k2_sqr > 0 && k2_sqr <= sys_vars->kmax_C_sqr)) {
-							// if ((k2_sqr > 0 && k2_sqr <= sys_vars->kmax)) {
 
 								// Get correct phase index -> recall that to access kx > 0, use -kx
 								tmp_k1 = (sys_vars->kmax - k1_x) * (2 * sys_vars->kmax + 1);	
@@ -111,35 +107,33 @@ void PhaseSync(int s) {
 								// Define the generalized triad phase for the first term in the flux
 								gen_triad_phase = fmod(triad_phase + 2.0 * M_PI + carg(flux_wght), 2.0 * M_PI) - M_PI;
 
-								// if ((k2_sqr <= sys_vars->kmax_C_sqr) && (k1_sqr <= sys_vars->kmax_C_sqr)) {
-									proc_data->num_triads_test[0]++;
-									proc_data->enst_flux_test[0]         += flux_wght * cos(triad_phase);
-									proc_data->triad_phase_order_test[0] += cexp(I * gen_triad_phase);
+								proc_data->num_triads_test[0]++;
+								proc_data->enst_flux_test[0]         += flux_wght * cos(triad_phase);
+								proc_data->triad_phase_order_test[0] += cexp(I * gen_triad_phase);
 
-									if (flux_pre_fac < 0) {
-										//------------------------------------------ TRIAD TYPE 1
-										proc_data->num_triads_test[1]++;		
-										proc_data->enst_flux_test[1]         += flux_wght * cos(triad_phase);
-										proc_data->triad_phase_order_test[1] += cexp(I * gen_triad_phase);
-					
-									}
-									else if (flux_pre_fac > 0) {									
-										//------------------------------------------ TRIAD TYPE 2
-										proc_data->num_triads_test[2]++;		
-										proc_data->enst_flux_test[2]         += flux_wght * cos(triad_phase);
-										proc_data->triad_phase_order_test[2] += cexp(I * gen_triad_phase);
-									}
-									else if (flux_pre_fac == 0.0 || flux_wght == 0.0) {
+								if (flux_pre_fac < 0) {
+									//------------------------------------------ TRIAD TYPE 1
+									proc_data->num_triads_test[1]++;		
+									proc_data->enst_flux_test[1]         += flux_wght * cos(triad_phase);
+									proc_data->triad_phase_order_test[1] += cexp(I * gen_triad_phase);
+				
+								}
+								else if (flux_pre_fac > 0) {									
+									//------------------------------------------ TRIAD TYPE 2
+									proc_data->num_triads_test[2]++;		
+									proc_data->enst_flux_test[2]         += flux_wght * cos(triad_phase);
+									proc_data->triad_phase_order_test[2] += cexp(I * gen_triad_phase);
+								}
+								else if (flux_pre_fac == 0.0 || flux_wght == 0.0) {
 
-										// Define the generalized triad phase for the zero contribution terms
-										gen_triad_phase = fmod(triad_phase + 2.0 * M_PI + carg(flux_wght), 2.0 * M_PI) - M_PI;
+									// Define the generalized triad phase for the zero contribution terms
+									gen_triad_phase = fmod(triad_phase + 2.0 * M_PI + carg(flux_wght), 2.0 * M_PI) - M_PI;
 
-										//------------------------------------------ TRIAD TYPE 5
-										proc_data->num_triads_test[5]++;		
-										proc_data->enst_flux_test[5]         += flux_wght * cos(triad_phase);
-										proc_data->triad_phase_order_test[5] += cexp(I * gen_triad_phase);
-									}
-								// }
+									//------------------------------------------ TRIAD TYPE 5
+									proc_data->num_triads_test[5]++;		
+									proc_data->enst_flux_test[5]         += flux_wght * cos(triad_phase);
+									proc_data->triad_phase_order_test[5] += cexp(I * gen_triad_phase);
+								}
 								else {
 									// Define the generalized triad phase for the ignored terms
 									gen_triad_phase = fmod(triad_phase + 2.0 * M_PI + carg(flux_wght), 2.0 * M_PI) - M_PI;
@@ -169,9 +163,7 @@ void PhaseSync(int s) {
 
 						// Get polar coords for k1
 						k1_sqr       = (double) (k1_x * k1_x + k1_y * k1_y);
-						// k1_angle     = atan2((double) k1_x, (double) k1_y);
 
-						// if((k1_sqr > 0 && k1_sqr <= sys_vars->kmax_sqr)) {									
 						if((k1_sqr > sys_vars->kmax_C_sqr && k1_sqr <= sys_vars->kmax_sqr)) {									
 							
 							// Find the k2 wavevector
@@ -180,9 +172,7 @@ void PhaseSync(int s) {
 							
 							// Get polar coords for k2
 							k2_sqr       = (double) (k2_x * k2_x + k2_y * k2_y);
-							// k2_angle     = atan2((double)k2_x, (double) k2_y);
 
-							// if ((k2_sqr > 0 && k2_sqr <= sys_vars->kmax_sqr)) {
 							if ((k2_sqr > sys_vars->kmax_C_sqr && k2_sqr <= sys_vars->kmax_sqr)) {
 
 								// Get correct phase index -> recall that to access kx > 0, use -kx
@@ -202,35 +192,33 @@ void PhaseSync(int s) {
 								// Define the generalized triad phase for the first term in the flux
 								gen_triad_phase = fmod(triad_phase + 2.0 * M_PI + carg(flux_wght), 2.0 * M_PI) - M_PI;
 
-								// if ((k2_sqr > sys_vars->kmax_C_sqr) && (k1_sqr > sys_vars->kmax_C_sqr)) {
-									proc_data->num_triads_test[0]++;
-									proc_data->enst_flux_test[0]         += -flux_wght * cos(triad_phase);
-									proc_data->triad_phase_order_test[0] += cexp(I * gen_triad_phase);
+								proc_data->num_triads_test[0]++;
+								proc_data->enst_flux_test[0]         += -flux_wght * cos(triad_phase);
+								proc_data->triad_phase_order_test[0] += cexp(I * gen_triad_phase);
 
-									if (flux_pre_fac < 0) {
-										//------------------------------------------ TRIAD TYPE 3
-										proc_data->num_triads_test[3]++;		
-										proc_data->enst_flux_test[3]         += -flux_wght * cos(triad_phase);
-										proc_data->triad_phase_order_test[3] += cexp(I * gen_triad_phase);
-					
-									}
-									else if (flux_pre_fac > 0) {									
-										//------------------------------------------ TRIAD TYPE 4
-										proc_data->num_triads_test[4]++;		
-										proc_data->enst_flux_test[4]         += -flux_wght * cos(triad_phase);
-										proc_data->triad_phase_order_test[4] += cexp(I * gen_triad_phase);
-									}
-									else if (flux_pre_fac == 0.0 || flux_wght == 0.0) {
+								if (flux_pre_fac < 0) {
+									//------------------------------------------ TRIAD TYPE 3
+									proc_data->num_triads_test[3]++;		
+									proc_data->enst_flux_test[3]         += -flux_wght * cos(triad_phase);
+									proc_data->triad_phase_order_test[3] += cexp(I * gen_triad_phase);
+				
+								}
+								else if (flux_pre_fac > 0) {									
+									//------------------------------------------ TRIAD TYPE 4
+									proc_data->num_triads_test[4]++;		
+									proc_data->enst_flux_test[4]         += -flux_wght * cos(triad_phase);
+									proc_data->triad_phase_order_test[4] += cexp(I * gen_triad_phase);
+								}
+								else if (flux_pre_fac == 0.0 || flux_wght == 0.0) {
 
-										// Define the generalized triad phase for the zero contribution terms
-										gen_triad_phase = fmod(triad_phase + 2.0 * M_PI + carg(flux_wght), 2.0 * M_PI) - M_PI;
+									// Define the generalized triad phase for the zero contribution terms
+									gen_triad_phase = fmod(triad_phase + 2.0 * M_PI + carg(flux_wght), 2.0 * M_PI) - M_PI;
 
-										//------------------------------------------ TRIAD TYPE 5
-										proc_data->num_triads_test[5]++;		
-										proc_data->enst_flux_test[5]         += -flux_wght * cos(triad_phase);
-										proc_data->triad_phase_order_test[5] += cexp(I * gen_triad_phase);
-									}
-								// }
+									//------------------------------------------ TRIAD TYPE 5
+									proc_data->num_triads_test[5]++;		
+									proc_data->enst_flux_test[5]         += -flux_wght * cos(triad_phase);
+									proc_data->triad_phase_order_test[5] += cexp(I * gen_triad_phase);
+								}
 								else {
 									// Define the generalized triad phase for the ignored terms
 									gen_triad_phase = fmod(triad_phase + 2.0 * M_PI + carg(flux_wght), 2.0 * M_PI) - M_PI;
@@ -363,9 +351,10 @@ void PhaseSyncSector(int s) {
 					///	 Positive Flux term
 					///
 					if ( (k3_sqr > sys_vars->kmax_C_sqr && ((k3_angle >= S_k3_lwr && k3_angle < S_k3_upr) || (k3_angle_neg >= S_k3_lwr && k3_angle_neg < S_k3_upr)))
-						&& ( (k1_sqr <= sys_vars->kmax_C_sqr && ((k1_angle >= S_k3_lwr && k1_angle < S_k3_upr) || (k1_angle_neg >= S_k3_lwr && k1_angle_neg < S_k3_upr)))
-						 || (k2_sqr <= sys_vars->kmax_C_sqr && ((k2_angle >= S_k3_lwr && k2_angle < S_k3_upr) || (k2_angle_neg >= S_k3_lwr && k2_angle_neg < S_k3_upr))) 
-						 || ( !((k2_angle >= S_k3_lwr && k2_angle < S_k3_upr) || (k2_angle_neg >= S_k3_lwr && k2_angle_neg < S_k3_upr)) && !((k1_angle >= S_k3_lwr && k1_angle < S_k3_upr) || (k1_angle_neg >= S_k3_lwr && k1_angle_neg < S_k3_upr))) ) ){
+						&& ( (k1_sqr <= sys_vars->kmax_C_sqr && ((k1_angle >= S_k3_lwr && k1_angle < S_k3_upr) || (k1_angle_neg >= S_k3_lwr && k1_angle_neg < S_k3_upr)) && !((k2_angle >= S_k3_lwr && k2_angle < S_k3_upr) || (k2_angle_neg >= S_k3_lwr && k2_angle_neg < S_k3_upr)) )
+						 || (k2_sqr <= sys_vars->kmax_C_sqr && ((k2_angle >= S_k3_lwr && k2_angle < S_k3_upr) || (k2_angle_neg >= S_k3_lwr && k2_angle_neg < S_k3_upr)) && !((k1_angle >= S_k3_lwr && k1_angle < S_k3_upr) || (k1_angle_neg >= S_k3_lwr && k1_angle_neg < S_k3_upr)) )
+						 ||  ( (k1_sqr <= sys_vars->kmax_C_sqr && ((k1_angle >= S_k3_lwr && k1_angle < S_k3_upr) || (k1_angle_neg >= S_k3_lwr && k1_angle_neg < S_k3_upr)) ) && (k2_sqr <= sys_vars->kmax_C_sqr && ((k2_angle >= S_k3_lwr && k2_angle < S_k3_upr) || (k2_angle_neg >= S_k3_lwr && k2_angle_neg < S_k3_upr))) )
+						 || ( !((k2_angle >= S_k3_lwr && k2_angle < S_k3_upr) || (k2_angle_neg >= S_k3_lwr && k2_angle_neg < S_k3_upr)) && !((k1_angle >= S_k3_lwr && k1_angle < S_k3_upr) || (k1_angle_neg >= S_k3_lwr && k1_angle_neg < S_k3_upr))) ) ) {
 
 						// Define the generalized triad phase for the first term in the flux
 						gen_triad_phase = fmod(triad_phase + 2.0 * M_PI + carg(flux_wght), 2.0 * M_PI) - M_PI;
@@ -1288,6 +1277,7 @@ void AllocatePhaseSyncMemory(const long int* N) {
 				proc_data->phase_order_C_theta_triads_2d[j][i][k] = 0.0 + 0.0 * I;
 			}
 		}
+		printf("theta[%d]: %lf\tdtheta/2: %lf\n", i, proc_data->theta[i], proc_data->dtheta/2.0);
 	}
 	
 
@@ -1403,8 +1393,8 @@ void AllocatePhaseSyncMemory(const long int* N) {
 			}	
 		}
 	}
-	// Estimate for the number of triads across sectors -> we will resize this dimension to correct size after search is performed
-	int num_triad_est               = (int) 3 * ceil(M_PI * pow(sys_vars->N[0], 2.0) + 2.0 * sqrt(2) * M_PI * sys_vars->N[0]);
+	// Estimate for the number of triads across sectors -> we will resize this dimension to correct size after search is performed NOTE: Needs to be bigger than all triads in the cirlce i.e., one sector
+	int num_triad_est               = (int) ceil(M_PI * pow(sys_vars->N[0], 2.0) + 2.0 * sqrt(2) * M_PI * sys_vars->N[0]) * 100;
 	sys_vars->num_triad_per_sec_est = num_triad_est;
 	for (int a = 0; a < sys_vars->num_sect; ++a) {
 		for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
@@ -1451,7 +1441,6 @@ void AllocatePhaseSyncMemory(const long int* N) {
 	strcpy(file_info->wave_vec_data_name, "./Data/PostProcess/PhaseSync");
 	sprintf(wave_vec_file, "/Wavevector_Data_N[%d,%d]_SECTORS[%d]_KFRAC[%1.2lf].h5", (int)sys_vars->N[0], (int)sys_vars->N[1], sys_vars->num_sect, sys_vars->kmax_frac);	
 	strcat(file_info->wave_vec_data_name, wave_vec_file);
-
 
 	// Check if Wavector file exists
 	if (access(file_info->wave_vec_data_name, F_OK) == 0) {
@@ -1515,9 +1504,8 @@ void AllocatePhaseSyncMemory(const long int* N) {
 		fftw_complex k1, k3;
 		double C_theta_lwr, C_theta_upr, C_theta_alt_upr, C_theta_alt_lwr, k2_sect_lwr, k2_sect_upr;
 		
-
 		// Print to screen that a pre computation search is needed for the phase sync wavevectors and begin timeing it
-		printf("\n["YELLOW"NOTE"RESET"] --- Performing search over wavevectors for Phase Sync computation...");
+		printf("\n["YELLOW"NOTE"RESET"] --- Performing search over wavevectors for Phase Sync computation...\n");
 		struct timeval begin, end;
 		gettimeofday(&begin, NULL);
 
