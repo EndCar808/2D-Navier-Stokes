@@ -61,7 +61,6 @@ void FullFieldData(void) {
 					phase = fmod(carg(run_data->w_hat[indx]) + 2.0 * M_PI, 2.0 * M_PI);
 					amp   = cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
 
-	 				// printf("kmax:\t%ld\tkx:\t%d\tky:\t%d\ti1:\t%ld\tj1:\t%ld\t-\t2kmax - 1:\t%ld\t-\ti2:\t%ld\tj2:\t%ld\n", sys_vars->kmax, run_data->k[0][i], run_data->k[1][j], sys_vars->kmax - run_data->k[0][i], sys_vars->kmax + run_data->k[1][j], 2 * sys_vars->kmax + 1, sys_vars->kmax + run_data->k[0][i], sys_vars->kmax - run_data->k[1][j]);
 					// fill the full field phases and spectra
 	 				if (k_sqr <= sys_vars->kmax_sqr) {
 	 					// No conjugate for ky = 0
@@ -469,7 +468,8 @@ void FluxSpectra(int snap) {
 					proc_data->enst_diss_field[indx] = pre_fac * run_data->w_hat[indx];
 
 					// Compute the enstrophy flux, dissipation and collective phase for C_theta
-					if (sqrt(k_sqr) >= sqrt(sys_vars->kmax_C_sqr) - 0.5 && sqrt(k_sqr) <= sqrt(sys_vars->kmax_sqr) + 0.5) {
+					if (k_sqr > sys_vars->kmax_C_sqr && k_sqr <= sys_vars->kmax_sqr) {
+					// if (sqrt(k_sqr) >= sqrt(sys_vars->kmax_C_sqr) - 0.5 && sqrt(k_sqr) <= sqrt(sys_vars->kmax_sqr) + 0.5) {
 						for (int a = 0; a < sys_vars->num_sect; ++a) {
 							if (proc_data->phase_angle[indx] >= proc_data->theta[a] - proc_data->dtheta/2.0 && proc_data->phase_angle[indx] < proc_data->theta[a] + proc_data->dtheta/2.0) {
 								
@@ -509,7 +509,8 @@ void FluxSpectra(int snap) {
 					proc_data->enst_diss_field[indx] = pre_fac * run_data->w_hat[indx];
 
 					// Compute the enstrophy flux, dissipation and collective phase for C_theta
-					if (sqrt(k_sqr) >= sqrt(sys_vars->kmax_C_sqr) - 0.5 && sqrt(k_sqr) <= sqrt(sys_vars->kmax_sqr) + 0.5) {
+					if (k_sqr > sys_vars->kmax_C_sqr && k_sqr <= sys_vars->kmax_sqr) {
+					// if (sqrt(k_sqr) >= sqrt(sys_vars->kmax_C_sqr) - 0.5 && sqrt(k_sqr) <= sqrt(sys_vars->kmax_sqr) + 0.5) {
 						for (int a = 0; a < sys_vars->num_sect; ++a) {
 							if (proc_data->phase_angle[indx] >= proc_data->theta[a] - proc_data->dtheta/2.0 && proc_data->phase_angle[indx] < proc_data->theta[a] + proc_data->dtheta/2.0) {
 								
@@ -526,7 +527,6 @@ void FluxSpectra(int snap) {
 					}
 					#endif
 				}
-
 			}
 		}
 	}

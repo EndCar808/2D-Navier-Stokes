@@ -1428,6 +1428,7 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 		double* tmp_psi       = (double* )fftw_malloc(sizeof(double) * 2 * sys_vars->alloc_local);
 		double* tmp_psi_local = (double* )fftw_malloc(sizeof(double) * sys_vars->local_Nx * Ny);
 		double* tmp_psi_full  = (double* )fftw_malloc(sizeof(double) * Nx * Ny);
+		fftw_complex* tmp_psi_hat = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->alloc_local);
 
 
 		// ---------------------------------------
@@ -1436,8 +1437,10 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 		if (!sys_vars->rank) {
 			// Get input file path
 			char tmp_path[512];
+			char tmp_filename[512];
 			strcpy(tmp_path, file_info->input_dir);
-			strcat(tmp_path, "MaxPalinstrophy/maxdpdt_P10000_N512_IG0_psi_f.h5"); 
+			sprintf(tmp_filename, "MaxPalinstrophy/maxdpdt_P10000_N%ld_IG0_psi_f.h5", sys_vars->N[0]);
+			strcat(tmp_path, tmp_filename); 
 			strcpy(file_info->input_file_name, tmp_path); 
 
 			// Open input file containing initial condition
@@ -1471,23 +1474,29 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 			}
 		}
 
+		// --------------------------------------------
+		// Transform to Fourier Space Stream Function
+		// --------------------------------------------
+		fftw_mpi_execute_dft_r2c((sys_vars->fftw_2d_dft_r2c), tmp_psi, tmp_psi_hat);
+
 		// ---------------------------------------
-		// Initialize Real Space Vorticity
+		// Initialize Fourier Space Vorticity
 		// ---------------------------------------
 		for (int i = 0; i < local_Nx; ++i) {	
-			tmp = i * (Ny + 2);
-			for (int j = 0; j < Ny; ++j) {
+			tmp = i * Ny_Fourier;
+			for (int j = 0; j < Ny_Fourier; ++j) {
 				indx = tmp + j;
 
 				// Compute the real space vorticity from stream function
-				run_data->w[indx] = - (double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]) * tmp_psi[indx];
+				run_data->w_hat[indx] = - (double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]) * tmp_psi_hat[indx];
 			}
 		}
-
-		// ---------------------------------------
-		// Transform to Fourier Space Vorticity
-		// ---------------------------------------
-		fftw_mpi_execute_dft_r2c((sys_vars->fftw_2d_dft_r2c), run_data->w, w_hat);
+		
+		// Free temporary memory
+		fftw_free(tmp_psi);
+		fftw_free(tmp_psi_hat);
+		fftw_free(tmp_psi_full);
+		fftw_free(tmp_psi_local);
 	}
 	else if (!(strcmp(sys_vars->u0, "GAUSS_BLOB"))) {
 	

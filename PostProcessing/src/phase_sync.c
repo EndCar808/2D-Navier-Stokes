@@ -49,12 +49,12 @@ void PhaseSync(int s) {
 	}
 
 	// Loop through the k wavevector (k is the k3 wavevector)
-	for (int tmp_k_x = 0; tmp_k_x <= 2 * (int) (sys_vars->N[0] / 2) - 1; ++tmp_k_x) {
+	for (int tmp_k_x = 0; tmp_k_x <= sys_vars->N[0] - 1; ++tmp_k_x) {
 		
 		// Get k3_x
 		k3_x = tmp_k_x - (int) (sys_vars->N[0] / 2) + 1;
 
-		for (int tmp_k_y = 0; tmp_k_y <= 2 * (int) (sys_vars->N[1] / 2) - 1; ++tmp_k_y) {
+		for (int tmp_k_y = 0; tmp_k_y <= sys_vars->N[1] - 1; ++tmp_k_y) {
 			
 			// Get k3_y
 			k3_y = tmp_k_y - (int) (sys_vars->N[1] / 2) + 1;
@@ -63,15 +63,15 @@ void PhaseSync(int s) {
 			k3_sqr       = (double) (k3_x * k3_x + k3_y * k3_y);
 			// k_angle     = atan2((double)k3_x, (double)k3_y);
 			
-			if ((k3_sqr > sys_vars->kmax_C_sqr && k3_sqr < sys_vars->kmax_sqr)) {
+			if ((k3_sqr > sys_vars->kmax_C_sqr && k3_sqr <= sys_vars->kmax_sqr)) {
 
 				// Loop through the k1 wavevector
-				for (int tmp_k1_x = 0; tmp_k1_x <= 2 * (int) (sys_vars->N[0] / 2) - 1; ++tmp_k1_x) {
+				for (int tmp_k1_x = 0; tmp_k1_x <= sys_vars->N[0] - 1; ++tmp_k1_x) {
 					
 					// Get k1_x
 					k1_x = tmp_k1_x - (int) (sys_vars->N[0] / 2) + 1;
 
-					for (int tmp_k1_y = 0; tmp_k1_y <= 2 * (int) (sys_vars->N[1] / 2) - 1; ++tmp_k1_y) {
+					for (int tmp_k1_y = 0; tmp_k1_y <= sys_vars->N[1] - 1; ++tmp_k1_y) {
 						
 						// Get k1_y
 						k1_y = tmp_k1_y - (int) (sys_vars->N[1] / 2) + 1;
@@ -80,7 +80,8 @@ void PhaseSync(int s) {
 						k1_sqr       = (double) (k1_x * k1_x + k1_y * k1_y);
 						// k1_angle     = atan2((double) k1_x, (double) k1_y);
 
-						if((k1_sqr > 0 && k1_sqr <= sys_vars->kmax_C_sqr)) {									
+						if((k1_sqr > 0 && k1_sqr <= sys_vars->kmax_C_sqr)) {
+						// if((k1_sqr > 0 && k1_sqr <= sys_vars->kmax)) {									
 							
 							// Find the k2 wavevector
 							k2_x = k3_x - k1_x;
@@ -91,6 +92,7 @@ void PhaseSync(int s) {
 							// k2_angle     = atan2((double)k2_x, (double) k2_y);
 
 							if ((k2_sqr > 0 && k2_sqr <= sys_vars->kmax_C_sqr)) {
+							// if ((k2_sqr > 0 && k2_sqr <= sys_vars->kmax)) {
 
 								// Get correct phase index -> recall that to access kx > 0, use -kx
 								tmp_k1 = (sys_vars->kmax - k1_x) * (2 * sys_vars->kmax + 1);	
@@ -109,33 +111,35 @@ void PhaseSync(int s) {
 								// Define the generalized triad phase for the first term in the flux
 								gen_triad_phase = fmod(triad_phase + 2.0 * M_PI + carg(flux_wght), 2.0 * M_PI) - M_PI;
 
-								proc_data->num_triads_test[0]++;
-								proc_data->enst_flux_test[0]         += flux_wght * cos(triad_phase);
-								proc_data->triad_phase_order_test[0] += cexp(I * gen_triad_phase);
+								// if ((k2_sqr <= sys_vars->kmax_C_sqr) && (k1_sqr <= sys_vars->kmax_C_sqr)) {
+									proc_data->num_triads_test[0]++;
+									proc_data->enst_flux_test[0]         += flux_wght * cos(triad_phase);
+									proc_data->triad_phase_order_test[0] += cexp(I * gen_triad_phase);
 
-								if (flux_pre_fac < 0) {
-									//------------------------------------------ TRIAD TYPE 1
-									proc_data->num_triads_test[1]++;		
-									proc_data->enst_flux_test[1]         += flux_wght * cos(triad_phase);
-									proc_data->triad_phase_order_test[1] += cexp(I * gen_triad_phase);
-				
-								}
-								else if (flux_pre_fac > 0) {									
-									//------------------------------------------ TRIAD TYPE 2
-									proc_data->num_triads_test[2]++;		
-									proc_data->enst_flux_test[2]         += flux_wght * cos(triad_phase);
-									proc_data->triad_phase_order_test[2] += cexp(I * gen_triad_phase);
-								}
-								else if (flux_pre_fac == 0.0 || flux_wght == 0.0) {
+									if (flux_pre_fac < 0) {
+										//------------------------------------------ TRIAD TYPE 1
+										proc_data->num_triads_test[1]++;		
+										proc_data->enst_flux_test[1]         += flux_wght * cos(triad_phase);
+										proc_data->triad_phase_order_test[1] += cexp(I * gen_triad_phase);
+					
+									}
+									else if (flux_pre_fac > 0) {									
+										//------------------------------------------ TRIAD TYPE 2
+										proc_data->num_triads_test[2]++;		
+										proc_data->enst_flux_test[2]         += flux_wght * cos(triad_phase);
+										proc_data->triad_phase_order_test[2] += cexp(I * gen_triad_phase);
+									}
+									else if (flux_pre_fac == 0.0 || flux_wght == 0.0) {
 
-									// Define the generalized triad phase for the zero contribution terms
-									gen_triad_phase = fmod(triad_phase + 2.0 * M_PI + carg(flux_wght), 2.0 * M_PI) - M_PI;
+										// Define the generalized triad phase for the zero contribution terms
+										gen_triad_phase = fmod(triad_phase + 2.0 * M_PI + carg(flux_wght), 2.0 * M_PI) - M_PI;
 
-									//------------------------------------------ TRIAD TYPE 5
-									proc_data->num_triads_test[5]++;		
-									proc_data->enst_flux_test[5]         += flux_wght * cos(triad_phase);
-									proc_data->triad_phase_order_test[5] += cexp(I * gen_triad_phase);
-								}
+										//------------------------------------------ TRIAD TYPE 5
+										proc_data->num_triads_test[5]++;		
+										proc_data->enst_flux_test[5]         += flux_wght * cos(triad_phase);
+										proc_data->triad_phase_order_test[5] += cexp(I * gen_triad_phase);
+									}
+								// }
 								else {
 									// Define the generalized triad phase for the ignored terms
 									gen_triad_phase = fmod(triad_phase + 2.0 * M_PI + carg(flux_wght), 2.0 * M_PI) - M_PI;
@@ -153,21 +157,22 @@ void PhaseSync(int s) {
 			else if ((k3_sqr <= sys_vars->kmax_C_sqr)) {
 
 				// Loop through the k1 wavevector
-				for (int tmp_k1_x = 0; tmp_k1_x <= 2 * (int) (sys_vars->N[0] / 2) - 1; ++tmp_k1_x) {
+				for (int tmp_k1_x = 0; tmp_k1_x <= sys_vars->N[0] - 1; ++tmp_k1_x) {
 					
 					// Get k1_x
 					k1_x = tmp_k1_x - (int) (sys_vars->N[0] / 2) + 1;
 
-					for (int tmp_k1_y = 0; tmp_k1_y <= 2 * (int) (sys_vars->N[0] / 2) - 1; ++tmp_k1_y) {
+					for (int tmp_k1_y = 0; tmp_k1_y <= sys_vars->N[1] - 1; ++tmp_k1_y) {
 						
 						// Get k1_y
-						k1_y = tmp_k1_y - (int) (sys_vars->N[0] / 2) + 1;
+						k1_y = tmp_k1_y - (int) (sys_vars->N[1] / 2) + 1;
 
 						// Get polar coords for k1
 						k1_sqr       = (double) (k1_x * k1_x + k1_y * k1_y);
 						// k1_angle     = atan2((double) k1_x, (double) k1_y);
 
-						if((k1_sqr > sys_vars->kmax_C_sqr && k1_sqr < sys_vars->kmax_sqr)) {									
+						// if((k1_sqr > 0 && k1_sqr <= sys_vars->kmax_sqr)) {									
+						if((k1_sqr > sys_vars->kmax_C_sqr && k1_sqr <= sys_vars->kmax_sqr)) {									
 							
 							// Find the k2 wavevector
 							k2_x = k3_x - k1_x;
@@ -177,7 +182,8 @@ void PhaseSync(int s) {
 							k2_sqr       = (double) (k2_x * k2_x + k2_y * k2_y);
 							// k2_angle     = atan2((double)k2_x, (double) k2_y);
 
-							if ((k2_sqr > sys_vars->kmax_C_sqr && k1_sqr < sys_vars->kmax_sqr)) {
+							// if ((k2_sqr > 0 && k2_sqr <= sys_vars->kmax_sqr)) {
+							if ((k2_sqr > sys_vars->kmax_C_sqr && k2_sqr <= sys_vars->kmax_sqr)) {
 
 								// Get correct phase index -> recall that to access kx > 0, use -kx
 								tmp_k1 = (sys_vars->kmax - k1_x) * (2 * sys_vars->kmax + 1);	
@@ -196,40 +202,42 @@ void PhaseSync(int s) {
 								// Define the generalized triad phase for the first term in the flux
 								gen_triad_phase = fmod(triad_phase + 2.0 * M_PI + carg(flux_wght), 2.0 * M_PI) - M_PI;
 
-								proc_data->num_triads_test[0]++;
-								proc_data->enst_flux_test[0]         += -flux_wght * cos(triad_phase);
-								proc_data->triad_phase_order_test[0] += cexp(I * gen_triad_phase);
+								// if ((k2_sqr > sys_vars->kmax_C_sqr) && (k1_sqr > sys_vars->kmax_C_sqr)) {
+									proc_data->num_triads_test[0]++;
+									proc_data->enst_flux_test[0]         += -flux_wght * cos(triad_phase);
+									proc_data->triad_phase_order_test[0] += cexp(I * gen_triad_phase);
 
-								if (flux_pre_fac < 0) {
-									//------------------------------------------ TRIAD TYPE 3
-									proc_data->num_triads_test[3]++;		
-									proc_data->enst_flux_test[3]         += -flux_wght * cos(triad_phase);
-									proc_data->triad_phase_order_test[3] += cexp(I * gen_triad_phase);
-				
-								}
-								else if (flux_pre_fac > 0) {									
-									//------------------------------------------ TRIAD TYPE 4
-									proc_data->num_triads_test[4]++;		
-									proc_data->enst_flux_test[4]         += -flux_wght * cos(triad_phase);
-									proc_data->triad_phase_order_test[4] += cexp(I * gen_triad_phase);
-								}
-								else if (flux_pre_fac == 0.0 || flux_wght == 0.0) {
+									if (flux_pre_fac < 0) {
+										//------------------------------------------ TRIAD TYPE 3
+										proc_data->num_triads_test[3]++;		
+										proc_data->enst_flux_test[3]         += -flux_wght * cos(triad_phase);
+										proc_data->triad_phase_order_test[3] += cexp(I * gen_triad_phase);
+					
+									}
+									else if (flux_pre_fac > 0) {									
+										//------------------------------------------ TRIAD TYPE 4
+										proc_data->num_triads_test[4]++;		
+										proc_data->enst_flux_test[4]         += -flux_wght * cos(triad_phase);
+										proc_data->triad_phase_order_test[4] += cexp(I * gen_triad_phase);
+									}
+									else if (flux_pre_fac == 0.0 || flux_wght == 0.0) {
 
-									// Define the generalized triad phase for the zero contribution terms
-									gen_triad_phase = fmod(triad_phase + 2.0 * M_PI + carg(flux_wght), 2.0 * M_PI) - M_PI;
+										// Define the generalized triad phase for the zero contribution terms
+										gen_triad_phase = fmod(triad_phase + 2.0 * M_PI + carg(flux_wght), 2.0 * M_PI) - M_PI;
 
-									//------------------------------------------ TRIAD TYPE 5
-									proc_data->num_triads_test[5]++;		
-									proc_data->enst_flux_test[5]         += flux_wght * cos(triad_phase);
-									proc_data->triad_phase_order_test[5] += cexp(I * gen_triad_phase);
-								}
+										//------------------------------------------ TRIAD TYPE 5
+										proc_data->num_triads_test[5]++;		
+										proc_data->enst_flux_test[5]         += -flux_wght * cos(triad_phase);
+										proc_data->triad_phase_order_test[5] += cexp(I * gen_triad_phase);
+									}
+								// }
 								else {
 									// Define the generalized triad phase for the ignored terms
 									gen_triad_phase = fmod(triad_phase + 2.0 * M_PI + carg(flux_wght), 2.0 * M_PI) - M_PI;
 
 									//------------------------------------------ TRIAD TYPE 6
 									proc_data->num_triads_test[6]++;		
-									proc_data->enst_flux_test[6]         += flux_wght * cos(triad_phase);
+									proc_data->enst_flux_test[6]         += -flux_wght * cos(triad_phase);
 									proc_data->triad_phase_order_test[6] += cexp(I * gen_triad_phase);
 								}
 							}
@@ -355,8 +363,8 @@ void PhaseSyncSector(int s) {
 					///	 Positive Flux term
 					///
 					if ( (k3_sqr > sys_vars->kmax_C_sqr && ((k3_angle >= S_k3_lwr && k3_angle < S_k3_upr) || (k3_angle_neg >= S_k3_lwr && k3_angle_neg < S_k3_upr)))
-						&& ( (k1_sqr < sys_vars->kmax_C_sqr && ((k1_angle >= S_k3_lwr && k1_angle < S_k3_upr) || (k1_angle_neg >= S_k3_lwr && k1_angle_neg < S_k3_upr)))
-						 || (k2_sqr < sys_vars->kmax_C_sqr && ((k2_angle >= S_k3_lwr && k2_angle < S_k3_upr) || (k2_angle_neg >= S_k3_lwr && k2_angle_neg < S_k3_upr))) 
+						&& ( (k1_sqr <= sys_vars->kmax_C_sqr && ((k1_angle >= S_k3_lwr && k1_angle < S_k3_upr) || (k1_angle_neg >= S_k3_lwr && k1_angle_neg < S_k3_upr)))
+						 || (k2_sqr <= sys_vars->kmax_C_sqr && ((k2_angle >= S_k3_lwr && k2_angle < S_k3_upr) || (k2_angle_neg >= S_k3_lwr && k2_angle_neg < S_k3_upr))) 
 						 || ( !((k2_angle >= S_k3_lwr && k2_angle < S_k3_upr) || (k2_angle_neg >= S_k3_lwr && k2_angle_neg < S_k3_upr)) && !((k1_angle >= S_k3_lwr && k1_angle < S_k3_upr) || (k1_angle_neg >= S_k3_lwr && k1_angle_neg < S_k3_upr))) ) ){
 
 						// Define the generalized triad phase for the first term in the flux
@@ -607,7 +615,7 @@ void PhaseSyncSector(int s) {
 					///
 					else if ( (k1_sqr > sys_vars->kmax_C_sqr && ((k1_angle >= S_k3_lwr && k1_angle < S_k3_upr) || (k1_angle_neg >= S_k3_lwr && k1_angle_neg < S_k3_upr))) 
 						&& (k2_sqr > sys_vars->kmax_C_sqr && ((k2_angle >= S_k3_lwr && k2_angle < S_k3_upr) || (k2_angle_neg >= S_k3_lwr && k2_angle_neg < S_k3_upr)))
-						&& ((k3_sqr < sys_vars->kmax_C_sqr && ((k3_angle >= S_k3_lwr && k3_angle < S_k3_upr) || (k3_angle_neg >= S_k3_lwr && k3_angle_neg < S_k3_upr))) 
+						&& ((k3_sqr <= sys_vars->kmax_C_sqr && ((k3_angle >= S_k3_lwr && k3_angle < S_k3_upr) || (k3_angle_neg >= S_k3_lwr && k3_angle_neg < S_k3_upr))) 
 						|| !((k3_angle >= S_k3_lwr && k3_angle < S_k3_upr) || (k3_angle_neg >= S_k3_lwr && k3_angle_neg < S_k3_upr)) ) ){
 						
 						// Define the generalized triad phase for the first term in the flux
@@ -1562,40 +1570,40 @@ void AllocatePhaseSyncMemory(const long int* N) {
 				nn = 0;
 
 				// Loop through the k wavevector (k is the k3 wavevector)
-				for (int tmp_k_x = 0; tmp_k_x <= 2 * (int) (sys_vars->N[0] / 2) - 1; ++tmp_k_x) {
+				for (int tmp_k_x = 0; tmp_k_x <= sys_vars->N[0] - 1; ++tmp_k_x) {
 					
 					// Get k_x
 					k_x = tmp_k_x - (int) (sys_vars->N[0] / 2) + 1;
 
-					for (int tmp_k_y = 0; tmp_k_y <= 2 * (int) (sys_vars->N[0] / 2) - 1; ++tmp_k_y) {
+					for (int tmp_k_y = 0; tmp_k_y <= sys_vars->N[1] - 1; ++tmp_k_y) {
 						
 						// Get k_y
-						k_y = tmp_k_y - (int) (sys_vars->N[0] / 2) + 1;
+						k_y = tmp_k_y - (int) (sys_vars->N[1] / 2) + 1;
 
 						// Get polar coords for the k wavevector
 						k_sqr       = (double) (k_x * k_x + k_y * k_y);
 						k_angle     = atan2((double)k_x, (double)k_y);
 						k_angle_neg = atan2((double)-k_x, (double)-k_y);
 						
-						if ((k_sqr > 0 && k_sqr < sys_vars->kmax_sqr) && ((k_angle >= C_theta_lwr && k_angle < C_theta_upr) || ((k_angle_neg >= C_theta_lwr && k_angle_neg < C_theta_upr)))) {
+						if ((k_sqr > 0 && k_sqr <= sys_vars->kmax_sqr) && ((k_angle >= C_theta_lwr && k_angle < C_theta_upr) || ((k_angle_neg >= C_theta_lwr && k_angle_neg < C_theta_upr)))) {
 
 							// Loop through the k1 wavevector
-							for (int tmp_k1_x = 0; tmp_k1_x <= 2 * (int) (sys_vars->N[0] / 2) - 1; ++tmp_k1_x) {
+							for (int tmp_k1_x = 0; tmp_k1_x <= sys_vars->N[0] - 1; ++tmp_k1_x) {
 								
 								// Get k1_x
 								k1_x = tmp_k1_x - (int) (sys_vars->N[0] / 2) + 1;
 
-								for (int tmp_k1_y = 0; tmp_k1_y <= 2 * (int) (sys_vars->N[0] / 2) - 1; ++tmp_k1_y) {
+								for (int tmp_k1_y = 0; tmp_k1_y <= sys_vars->N[1] - 1; ++tmp_k1_y) {
 									
 									// Get k1_y
-									k1_y = tmp_k1_y - (int) (sys_vars->N[0] / 2) + 1;
+									k1_y = tmp_k1_y - (int) (sys_vars->N[1] / 2) + 1;
 
 									// Get polar coords for k1
 									k1_sqr       = (double) (k1_x * k1_x + k1_y * k1_y);
 									k1_angle     = atan2((double) k1_x, (double) k1_y);
 									k1_angle_neg = atan2((double)-k1_x, (double)-k1_y);
 
-									if((k1_sqr > 0 && k1_sqr < sys_vars->kmax_sqr) && ((k1_angle >= C_theta_alt_lwr && k1_angle < C_theta_alt_upr) || (k1_angle_neg >= C_theta_alt_lwr && k1_angle_neg < C_theta_alt_upr))) {									
+									if((k1_sqr > 0 && k1_sqr <= sys_vars->kmax_sqr) && ((k1_angle >= C_theta_alt_lwr && k1_angle < C_theta_alt_upr) || (k1_angle_neg >= C_theta_alt_lwr && k1_angle_neg < C_theta_alt_upr))) {									
 										
 										// Find the k2 wavevector
 										k2_x = k_x - k1_x;
@@ -1606,7 +1614,7 @@ void AllocatePhaseSyncMemory(const long int* N) {
 										k2_angle     = atan2((double)k2_x, (double) k2_y);
 										k2_angle_neg = atan2((double)-k2_x, (double) -k2_y);
 
-										if ((k2_sqr > 0 && k2_sqr < sys_vars->kmax_sqr) && ((k2_angle >= k2_sect_lwr && k2_angle < k2_sect_upr) || (k2_angle_neg >= k2_sect_lwr && k2_angle_neg < k2_sect_upr))) {
+										if ((k2_sqr > 0 && k2_sqr <= sys_vars->kmax_sqr) && ((k2_angle >= k2_sect_lwr && k2_angle < k2_sect_upr) || (k2_angle_neg >= k2_sect_lwr && k2_angle_neg < k2_sect_upr))) {
 											// Add k1 vector
 											proc_data->phase_sync_wave_vecs[a][l][K1_X][nn] = k1_x;
 											proc_data->phase_sync_wave_vecs[a][l][K1_Y][nn] = k1_y;
@@ -1635,25 +1643,25 @@ void AllocatePhaseSyncMemory(const long int* N) {
 								}
 							}
 						}
-						else if ((k_sqr > 0 && k_sqr < sys_vars->kmax_sqr) && !((k_angle >= C_theta_lwr && k_angle < C_theta_upr) || (k_angle_neg >= C_theta_lwr && k_angle_neg < C_theta_upr)) ) { // && ((k_angle >= C_theta_alt_lwr && k_angle < C_theta_alt_upr) || (k_angle_neg >= C_theta_alt_lwr && k_angle_neg < C_theta_alt_upr))
+						else if ((k_sqr > 0 && k_sqr <= sys_vars->kmax_sqr) && !((k_angle >= C_theta_lwr && k_angle < C_theta_upr) || (k_angle_neg >= C_theta_lwr && k_angle_neg < C_theta_upr)) ) { // && ((k_angle >= C_theta_alt_lwr && k_angle < C_theta_alt_upr) || (k_angle_neg >= C_theta_alt_lwr && k_angle_neg < C_theta_alt_upr))
 
 							// Loop through the k1 wavevector
-							for (int tmp_k1_x = 0; tmp_k1_x <= 2 * (int) (sys_vars->N[0] / 2) - 1; ++tmp_k1_x) {
+							for (int tmp_k1_x = 0; tmp_k1_x <= sys_vars->N[0] - 1; ++tmp_k1_x) {
 								
 								// Get k1_x
 								k1_x = tmp_k1_x - (int) (sys_vars->N[0] / 2) + 1;
 
-								for (int tmp_k1_y = 0; tmp_k1_y <= 2 * (int) (sys_vars->N[0] / 2) - 1; ++tmp_k1_y) {
+								for (int tmp_k1_y = 0; tmp_k1_y <= sys_vars->N[1] - 1; ++tmp_k1_y) {
 									
 									// Get k1_y
-									k1_y = tmp_k1_y - (int) (sys_vars->N[0] / 2) + 1;
+									k1_y = tmp_k1_y - (int) (sys_vars->N[1] / 2) + 1;
 
 									// Get polar coords for k1
 									k1_sqr       = (double) (k1_x * k1_x + k1_y * k1_y);
 									k1_angle     = atan2((double) k1_x, (double) k1_y);
 									k1_angle_neg = atan2((double)-k1_x, (double)-k1_y);
 
-									if((k1_sqr > 0 && k1_sqr < sys_vars->kmax_sqr) && ((k1_angle >= C_theta_lwr && k1_angle < C_theta_lwr) || (k1_angle_neg >= C_theta_lwr && k1_angle_neg < C_theta_lwr))) {									
+									if((k1_sqr > 0 && k1_sqr <= sys_vars->kmax_sqr) && ((k1_angle >= C_theta_lwr && k1_angle < C_theta_lwr) || (k1_angle_neg >= C_theta_lwr && k1_angle_neg < C_theta_lwr))) {									
 										
 										// Find the k2 wavevector
 										k2_x = k_x - k1_x;
@@ -1664,7 +1672,7 @@ void AllocatePhaseSyncMemory(const long int* N) {
 										k2_angle     = atan2((double)k2_x, (double) k2_y);
 										k2_angle_neg = atan2((double)-k2_x, (double) -k2_y);
 
-										if ((k2_sqr > 0 && k2_sqr < sys_vars->kmax_sqr) && ((k2_angle >= C_theta_lwr && k2_angle < C_theta_upr) || (k2_angle_neg >= C_theta_lwr && k2_angle_neg < C_theta_upr))) {
+										if ((k2_sqr > 0 && k2_sqr <= sys_vars->kmax_sqr) && ((k2_angle >= C_theta_lwr && k2_angle < C_theta_upr) || (k2_angle_neg >= C_theta_lwr && k2_angle_neg < C_theta_upr))) {
 											// Add k1 vector
 											proc_data->phase_sync_wave_vecs[a][l][K1_X][nn] = k1_x;
 											proc_data->phase_sync_wave_vecs[a][l][K1_Y][nn] = k1_y;
@@ -1693,15 +1701,15 @@ void AllocatePhaseSyncMemory(const long int* N) {
 								}
 							}
 						}
-						// if ((k_sqr > 0 && k_sqr < sys_vars->kmax_C_sqr) && ((k_angle >= C_theta_lwr && k_angle < C_theta_upr) || ((k_angle_neg >= C_theta_lwr && k_angle_neg < C_theta_upr)))) {
+						// if ((k_sqr > 0 && k_sqr <= sys_vars->kmax_C_sqr) && ((k_angle >= C_theta_lwr && k_angle < C_theta_upr) || ((k_angle_neg >= C_theta_lwr && k_angle_neg < C_theta_upr)))) {
 
 						// 	// Loop through the k1 wavevector
-						// 	for (int tmp_k1_x = 0; tmp_k1_x <= 2 * (int) (sys_vars->N[0] / 2) - 1; ++tmp_k1_x) {
+						// 	for (int tmp_k1_x = 0; tmp_k1_x <= sys_vars->N[0] - 1; ++tmp_k1_x) {
 								
 						// 		// Get k1_x
 						// 		k1_x = tmp_k1_x - (int) (sys_vars->N[0] / 2) + 1;
 
-						// 		for (int tmp_k1_y = 0; tmp_k1_y <= 2 * (int) (sys_vars->N[0] / 2) - 1; ++tmp_k1_y) {
+						// 		for (int tmp_k1_y = 0; tmp_k1_y <= sys_vars->N[0] - 1; ++tmp_k1_y) {
 									
 						// 			// Get k1_y
 						// 			k1_y = tmp_k1_y - (int) (sys_vars->N[0] / 2) + 1;
