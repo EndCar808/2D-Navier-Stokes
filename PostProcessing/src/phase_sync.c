@@ -1623,7 +1623,9 @@ void AllocatePhaseSyncMemory(const long int* N) {
 											proc_data->phase_sync_wave_vecs[a][l][K1_ANGLE_NEG][nn] = k1_angle_neg;
 											proc_data->phase_sync_wave_vecs[a][l][K2_ANGLE_NEG][nn] = k2_angle_neg;
 											proc_data->phase_sync_wave_vecs[a][l][K3_ANGLE_NEG][nn] = k_angle_neg;
-											
+											// // Indicate which flux term this data is in
+											// proc_data->phase_sync_wave_vecs[a][l][FLUX_TERM][nn] = POS_FLUX_TERM;
+
 											// Increment
 											nn++;
 										}
@@ -1681,7 +1683,9 @@ void AllocatePhaseSyncMemory(const long int* N) {
 											proc_data->phase_sync_wave_vecs[a][l][K1_ANGLE_NEG][nn] = k1_angle_neg;
 											proc_data->phase_sync_wave_vecs[a][l][K2_ANGLE_NEG][nn] = k2_angle_neg;
 											proc_data->phase_sync_wave_vecs[a][l][K3_ANGLE_NEG][nn] = k_angle_neg;
-											
+											// // Indicate which flux term this data is in
+											// proc_data->phase_sync_wave_vecs[a][l][FLUX_TERM][nn] = NEG_FLUX_TERM;
+
 											// Increment
 											nn++;
 										}

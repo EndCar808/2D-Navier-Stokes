@@ -94,7 +94,7 @@
 #define N_BINS_SEC_INTIME 200   // The number of bins in the sector pdfs in time
 #define NUM_TRIAD_TYPES 6 		// The number of triad types contributing to the flux
 #define NUM_K1_SECTORS 8		// The number of k1 sectors to search over in a reduced search @ +/- 30, 45, 60 & 90 degrees
-#define NUM_K_DATA 15           // The number of wavevector data to precompute and store
+#define NUM_K_DATA 16           // The number of wavevector data to precompute and store
 #define	K1_X 	  0 			// The index for the k1_x wavenuber
 #define	K1_Y 	  1 			// The index for the k1_y wavenuber
 #define	K2_X 	  2 			// The index for the k2_x wavenuber
@@ -110,7 +110,9 @@
 #define	K1_ANGLE_NEG  12 		// The index for the anlge of -k1
 #define	K2_ANGLE_NEG  13 		// The index for the anlge of -k2
 #define	K3_ANGLE_NEG  14 		// The index for the anlge of -k3
-
+#define FLUX_TERM 15			// Indicator which identifies whether data is in postive or negative flux term
+#define POS_FLUX_TERM 0 		// Indicates postive flux term
+#define NEG_FLUX_TERM 1         // Indicates negative flux term
 // ---------------------------------------------------------------------
 //  Global Struct Definitions
 // ---------------------------------------------------------------------
