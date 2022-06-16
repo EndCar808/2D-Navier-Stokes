@@ -49,19 +49,19 @@ void PhaseSync(int s) {
 	}
 
 	// Loop through the k wavevector (k is the k3 wavevector)
-	for (int tmp_k_x = 0; tmp_k_x <= sys_vars->N[0] - 1; ++tmp_k_x) {
+	for (int tmp_k3_x = 0; tmp_k3_x <= sys_vars->N[0] - 1; ++tmp_k3_x) {
 		
 		// Get k3_x
-		k3_x = tmp_k_x - (int) (sys_vars->N[0] / 2) + 1;
+		k3_x = tmp_k3_x - (int) (sys_vars->N[0] / 2) + 1;
 
-		for (int tmp_k_y = 0; tmp_k_y <= sys_vars->N[1] - 1; ++tmp_k_y) {
+		for (int tmp_k3_y = 0; tmp_k3_y <= sys_vars->N[1] - 1; ++tmp_k3_y) {
 			
 			// Get k3_y
-			k3_y = tmp_k_y - (int) (sys_vars->N[1] / 2) + 1;
+			k3_y = tmp_k3_y - (int) (sys_vars->N[1] / 2) + 1;
 
 			// Get polar coords for the k wavevector
 			k3_sqr       = (double) (k3_x * k3_x + k3_y * k3_y);
-			// k_angle     = atan2((double)k3_x, (double)k3_y);
+			// k3_angle     = atan2((double)k3_x, (double)k3_y);
 			
 			if ((k3_sqr > sys_vars->kmax_C_sqr && k3_sqr <= sys_vars->kmax_sqr)) {
 
@@ -347,14 +347,9 @@ void PhaseSyncSector(int s) {
 					triad_phase = proc_data->phases[tmp_k1 + sys_vars->kmax + k1_y] + proc_data->phases[tmp_k2 + sys_vars->kmax + k2_y] - proc_data->phases[tmp_k3 + sys_vars->kmax + k3_y];
 
 					///////////////////////////////////////////
-					///
 					///	 Positive Flux term
-					///
-					if ( (k3_sqr > sys_vars->kmax_C_sqr && ((k3_angle >= S_k3_lwr && k3_angle < S_k3_upr) || (k3_angle_neg >= S_k3_lwr && k3_angle_neg < S_k3_upr)))
-						&& ( (k1_sqr <= sys_vars->kmax_C_sqr && ((k1_angle >= S_k3_lwr && k1_angle < S_k3_upr) || (k1_angle_neg >= S_k3_lwr && k1_angle_neg < S_k3_upr)) && !((k2_angle >= S_k3_lwr && k2_angle < S_k3_upr) || (k2_angle_neg >= S_k3_lwr && k2_angle_neg < S_k3_upr)) )
-						 || (k2_sqr <= sys_vars->kmax_C_sqr && ((k2_angle >= S_k3_lwr && k2_angle < S_k3_upr) || (k2_angle_neg >= S_k3_lwr && k2_angle_neg < S_k3_upr)) && !((k1_angle >= S_k3_lwr && k1_angle < S_k3_upr) || (k1_angle_neg >= S_k3_lwr && k1_angle_neg < S_k3_upr)) )
-						 ||  ( (k1_sqr <= sys_vars->kmax_C_sqr && ((k1_angle >= S_k3_lwr && k1_angle < S_k3_upr) || (k1_angle_neg >= S_k3_lwr && k1_angle_neg < S_k3_upr)) ) && (k2_sqr <= sys_vars->kmax_C_sqr && ((k2_angle >= S_k3_lwr && k2_angle < S_k3_upr) || (k2_angle_neg >= S_k3_lwr && k2_angle_neg < S_k3_upr))) )
-						 || ( !((k2_angle >= S_k3_lwr && k2_angle < S_k3_upr) || (k2_angle_neg >= S_k3_lwr && k2_angle_neg < S_k3_upr)) && !((k1_angle >= S_k3_lwr && k1_angle < S_k3_upr) || (k1_angle_neg >= S_k3_lwr && k1_angle_neg < S_k3_upr))) ) ) {
+					///////////////////////////////////////////
+					if (proc_data->phase_sync_wave_vecs[a][l][FLUX_TERM][n] == POS_FLUX_TERM) {
 
 						// Define the generalized triad phase for the first term in the flux
 						gen_triad_phase = fmod(triad_phase + 2.0 * M_PI + carg(flux_wght), 2.0 * M_PI) - M_PI;
@@ -468,6 +463,114 @@ void PhaseSyncSector(int s) {
 							gsl_status = gsl_histogram_accumulate(proc_data->triad_sect_wghtd_pdf_t[2][a], gen_triad_phase, fabs(flux_wght));
 							if (gsl_status != 0) {
 								fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase Weighted PDF Type 2 In Time", a, s, gsl_status, gen_triad_phase);
+								exit(1);
+							}
+							#endif
+						}
+						else if (flux_pre_fac == 0.0 || flux_wght == 0.0) {
+
+							// Define the generalized triad phase for the zero contribution terms
+							gen_triad_phase = fmod(triad_phase + 2.0 * M_PI + carg(flux_wght), 2.0 * M_PI) - M_PI;
+
+							//------------------------------------------ TRIAD TYPE 5
+							proc_data->num_triads[5][a]++;		
+							proc_data->enst_flux[5][a]         += flux_wght * cos(triad_phase);
+							proc_data->triad_phase_order[5][a] += cexp(I * gen_triad_phase);
+
+							// // Update collective phase order parameter for C_theta
+							// if (cabs(flux_wght * cexp(I * triad_phase) != 0.0)) {
+							// 	proc_data->phase_order_C_theta_triads_2d[5][a][l] += flux_wght * cexp(I * triad_phase) / cabs(flux_wght * cexp(I * triad_phase));
+							// }
+
+							// // Update 2D contributions
+							// proc_data->num_triads_2d[5][a][l]++;		
+							// proc_data->enst_flux_2d[5][a][l]         += flux_wght * cos(triad_phase);
+							// proc_data->triad_phase_order_2d[5][a][l] += cexp(I * gen_triad_phase);
+
+
+							// if (l == 0) {
+							// 	// 1D contributions
+							// 	proc_data->num_triads_1d[5][a]++;		
+							// 	proc_data->enst_flux_1d[5][a]         += flux_wght * cos(triad_phase);
+							// 	proc_data->triad_phase_order_1d[5][a] += cexp(I * gen_triad_phase);
+
+							// 	// Update collective phase order parameter for C_theta
+							// 	if (k1_y > 0 && k2_y > 0 && k3_y > 0) {
+							// 		if (cabs(flux_wght * cexp(I * triad_phase) != 0.0)) {
+							// 			proc_data->phase_order_C_theta_triads_1d[5][a] += flux_wght * cexp(I * triad_phase) / cabs(flux_wght * cexp(I * triad_phase));
+							// 		}
+							// 	}
+							// }
+
+							// Update the PDFs
+							#if defined(__SEC_PHASE_SYNC_STATS)
+							gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf[5][a], gen_triad_phase);
+							if (gsl_status != 0) {
+								fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 5", a, s, gsl_status, gen_triad_phase);
+								exit(1);
+							}
+							gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf_t[5][a], gen_triad_phase);
+							if (gsl_status != 0) {
+								fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 5 In Time", a, s, gsl_status, gen_triad_phase);
+								exit(1);
+							}
+							gsl_status = gsl_histogram_accumulate(proc_data->triad_sect_wghtd_pdf_t[5][a], gen_triad_phase, fabs(flux_wght)); 
+							if (gsl_status != 0) {
+								fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase Weighted PDF Type 5 In Time", a, s, gsl_status, gen_triad_phase);
+								exit(1);
+							}
+							#endif
+						}
+						else {
+							// Define the generalized triad phase for the ignored terms
+							gen_triad_phase = fmod(triad_phase + 2.0 * M_PI + carg(flux_wght), 2.0 * M_PI) - M_PI;
+
+							//------------------------------------------ TRIAD TYPE 6
+							proc_data->num_triads[6][a]++;		
+							proc_data->enst_flux[6][a]         += flux_wght * cos(triad_phase);
+							proc_data->triad_phase_order[6][a] += cexp(I * gen_triad_phase);
+
+							// // Update 2D contributions
+							// proc_data->num_triads_2d[6][a][l]++;		
+							// proc_data->enst_flux_2d[6][a][l]         += flux_wght * cos(triad_phase);
+							// proc_data->triad_phase_order_2d[6][a][l] += cexp(I * gen_triad_phase);
+
+							// // Update collective phase order parameter for C_theta
+							// if (k1_y > 0 && k2_y > 0 && k3_y > 0) {
+							// 	if (cabs(flux_wght * cexp(I * triad_phase) != 0.0)) {
+							// 		proc_data->phase_order_C_theta_triads_2d[6][a][l] += flux_wght * cexp(I * triad_phase) / cabs(flux_wght * cexp(I * triad_phase));
+							// 	}
+							// }
+
+							// if (l == 0) {
+							// 	// 1D contributions
+							// 	proc_data->num_triads_1d[6][a]++;		
+							// 	proc_data->enst_flux_1d[6][a]         += flux_wght * cos(triad_phase);
+							// 	proc_data->triad_phase_order_1d[6][a] += cexp(I * gen_triad_phase);
+
+							// 	// Update collective phase order parameter for C_theta
+							// 	if (k1_y > 0 && k2_y > 0 && k3_y > 0) {
+							// 		if (cabs(flux_wght * cexp(I * triad_phase) != 0.0)) {
+							// 			proc_data->phase_order_C_theta_triads_1d[6][a] += flux_wght * cexp(I * triad_phase) / cabs(flux_wght * cexp(I * triad_phase));
+							// 		}
+							// 	}
+							// }
+
+							// Update the PDFs
+							#if defined(__SEC_PHASE_SYNC_STATS)
+							gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf[6][a], gen_triad_phase);
+							if (gsl_status != 0) {
+								fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 6", a, s, gsl_status, gen_triad_phase);
+								exit(1);
+							}
+							gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf_t[6][a], gen_triad_phase);
+							if (gsl_status != 0) {
+								fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 6 In Time", a, s, gsl_status, gen_triad_phase);
+								exit(1);
+							}
+							gsl_status = gsl_histogram_accumulate(proc_data->triad_sect_wghtd_pdf_t[6][a], gen_triad_phase, fabs(flux_wght)); 
+							if (gsl_status != 0) {
+								fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase Weighted PDF Type 6 In Time", a, s, gsl_status, gen_triad_phase);
 								exit(1);
 							}
 							#endif
@@ -599,13 +702,9 @@ void PhaseSyncSector(int s) {
 					// 	}
 					// }
 					///////////////////////////////////////////
-					///
-					///	 Negative Flux term: 
-					///
-					else if ( (k1_sqr > sys_vars->kmax_C_sqr && ((k1_angle >= S_k3_lwr && k1_angle < S_k3_upr) || (k1_angle_neg >= S_k3_lwr && k1_angle_neg < S_k3_upr))) 
-						&& (k2_sqr > sys_vars->kmax_C_sqr && ((k2_angle >= S_k3_lwr && k2_angle < S_k3_upr) || (k2_angle_neg >= S_k3_lwr && k2_angle_neg < S_k3_upr)))
-						&& ((k3_sqr <= sys_vars->kmax_C_sqr && ((k3_angle >= S_k3_lwr && k3_angle < S_k3_upr) || (k3_angle_neg >= S_k3_lwr && k3_angle_neg < S_k3_upr))) 
-						|| !((k3_angle >= S_k3_lwr && k3_angle < S_k3_upr) || (k3_angle_neg >= S_k3_lwr && k3_angle_neg < S_k3_upr)) ) ){
+					///	 Negative Flux term
+					///////////////////////////////////////////
+					else if (proc_data->phase_sync_wave_vecs[a][l][FLUX_TERM][n] == NEG_FLUX_TERM) {
 						
 						// Define the generalized triad phase for the first term in the flux
 						gen_triad_phase = fmod(triad_phase + 2.0 * M_PI + carg(-flux_wght), 2.0 * M_PI) - M_PI;
@@ -724,6 +823,114 @@ void PhaseSyncSector(int s) {
 							gsl_status = gsl_histogram_accumulate(proc_data->triad_sect_wghtd_pdf_t[4][a], gen_triad_phase, fabs(-flux_wght));
 							if (gsl_status != 0) {
 								fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase Weighted PDF Type 4 In Time", a, s, gsl_status, gen_triad_phase);
+								exit(1);
+							}
+							#endif
+						}
+						else if (flux_pre_fac == 0.0 || flux_wght == 0.0) {
+
+							// Define the generalized triad phase for the zero contribution terms
+							gen_triad_phase = fmod(triad_phase + 2.0 * M_PI + carg(flux_wght), 2.0 * M_PI) - M_PI;
+
+							//------------------------------------------ TRIAD TYPE 5
+							proc_data->num_triads[5][a]++;		
+							proc_data->enst_flux[5][a]         += flux_wght * cos(triad_phase);
+							proc_data->triad_phase_order[5][a] += cexp(I * gen_triad_phase);
+
+							// // Update collective phase order parameter for C_theta
+							// if (cabs(flux_wght * cexp(I * triad_phase) != 0.0)) {
+							// 	proc_data->phase_order_C_theta_triads_2d[5][a][l] += flux_wght * cexp(I * triad_phase) / cabs(flux_wght * cexp(I * triad_phase));
+							// }
+
+							// // Update 2D contributions
+							// proc_data->num_triads_2d[5][a][l]++;		
+							// proc_data->enst_flux_2d[5][a][l]         += flux_wght * cos(triad_phase);
+							// proc_data->triad_phase_order_2d[5][a][l] += cexp(I * gen_triad_phase);
+
+
+							// if (l == 0) {
+							// 	// 1D contributions
+							// 	proc_data->num_triads_1d[5][a]++;		
+							// 	proc_data->enst_flux_1d[5][a]         += flux_wght * cos(triad_phase);
+							// 	proc_data->triad_phase_order_1d[5][a] += cexp(I * gen_triad_phase);
+
+							// 	// Update collective phase order parameter for C_theta
+							// 	if (k1_y > 0 && k2_y > 0 && k3_y > 0) {
+							// 		if (cabs(flux_wght * cexp(I * triad_phase) != 0.0)) {
+							// 			proc_data->phase_order_C_theta_triads_1d[5][a] += flux_wght * cexp(I * triad_phase) / cabs(flux_wght * cexp(I * triad_phase));
+							// 		}
+							// 	}
+							// }
+
+							// Update the PDFs
+							#if defined(__SEC_PHASE_SYNC_STATS)
+							gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf[5][a], gen_triad_phase);
+							if (gsl_status != 0) {
+								fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 5", a, s, gsl_status, gen_triad_phase);
+								exit(1);
+							}
+							gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf_t[5][a], gen_triad_phase);
+							if (gsl_status != 0) {
+								fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 5 In Time", a, s, gsl_status, gen_triad_phase);
+								exit(1);
+							}
+							gsl_status = gsl_histogram_accumulate(proc_data->triad_sect_wghtd_pdf_t[5][a], gen_triad_phase, fabs(flux_wght)); 
+							if (gsl_status != 0) {
+								fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase Weighted PDF Type 5 In Time", a, s, gsl_status, gen_triad_phase);
+								exit(1);
+							}
+							#endif
+						}
+						else {
+							// Define the generalized triad phase for the ignored terms
+							gen_triad_phase = fmod(triad_phase + 2.0 * M_PI + carg(flux_wght), 2.0 * M_PI) - M_PI;
+
+							//------------------------------------------ TRIAD TYPE 6
+							proc_data->num_triads[6][a]++;		
+							proc_data->enst_flux[6][a]         += flux_wght * cos(triad_phase);
+							proc_data->triad_phase_order[6][a] += cexp(I * gen_triad_phase);
+
+							// // Update 2D contributions
+							// proc_data->num_triads_2d[6][a][l]++;		
+							// proc_data->enst_flux_2d[6][a][l]         += flux_wght * cos(triad_phase);
+							// proc_data->triad_phase_order_2d[6][a][l] += cexp(I * gen_triad_phase);
+
+							// // Update collective phase order parameter for C_theta
+							// if (k1_y > 0 && k2_y > 0 && k3_y > 0) {
+							// 	if (cabs(flux_wght * cexp(I * triad_phase) != 0.0)) {
+							// 		proc_data->phase_order_C_theta_triads_2d[6][a][l] += flux_wght * cexp(I * triad_phase) / cabs(flux_wght * cexp(I * triad_phase));
+							// 	}
+							// }
+
+							// if (l == 0) {
+							// 	// 1D contributions
+							// 	proc_data->num_triads_1d[6][a]++;		
+							// 	proc_data->enst_flux_1d[6][a]         += flux_wght * cos(triad_phase);
+							// 	proc_data->triad_phase_order_1d[6][a] += cexp(I * gen_triad_phase);
+
+							// 	// Update collective phase order parameter for C_theta
+							// 	if (k1_y > 0 && k2_y > 0 && k3_y > 0) {
+							// 		if (cabs(flux_wght * cexp(I * triad_phase) != 0.0)) {
+							// 			proc_data->phase_order_C_theta_triads_1d[6][a] += flux_wght * cexp(I * triad_phase) / cabs(flux_wght * cexp(I * triad_phase));
+							// 		}
+							// 	}
+							// }
+
+							// Update the PDFs
+							#if defined(__SEC_PHASE_SYNC_STATS)
+							gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf[6][a], gen_triad_phase);
+							if (gsl_status != 0) {
+								fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 6", a, s, gsl_status, gen_triad_phase);
+								exit(1);
+							}
+							gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf_t[6][a], gen_triad_phase);
+							if (gsl_status != 0) {
+								fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 6 In Time", a, s, gsl_status, gen_triad_phase);
+								exit(1);
+							}
+							gsl_status = gsl_histogram_accumulate(proc_data->triad_sect_wghtd_pdf_t[6][a], gen_triad_phase, fabs(flux_wght)); 
+							if (gsl_status != 0) {
+								fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase Weighted PDF Type 6 In Time", a, s, gsl_status, gen_triad_phase);
 								exit(1);
 							}
 							#endif
@@ -851,114 +1058,6 @@ void PhaseSyncSector(int s) {
 					// 		#endif
 					// 	}
 					// }
-					else if (flux_pre_fac == 0.0 || flux_wght == 0.0) {
-
-						// Define the generalized triad phase for the zero contribution terms
-						gen_triad_phase = fmod(triad_phase + 2.0 * M_PI + carg(flux_wght), 2.0 * M_PI) - M_PI;
-
-						//------------------------------------------ TRIAD TYPE 5
-						proc_data->num_triads[5][a]++;		
-						proc_data->enst_flux[5][a]         += flux_wght * cos(triad_phase);
-						proc_data->triad_phase_order[5][a] += cexp(I * gen_triad_phase);
-
-						// // Update collective phase order parameter for C_theta
-						// if (cabs(flux_wght * cexp(I * triad_phase) != 0.0)) {
-						// 	proc_data->phase_order_C_theta_triads_2d[5][a][l] += flux_wght * cexp(I * triad_phase) / cabs(flux_wght * cexp(I * triad_phase));
-						// }
-
-						// // Update 2D contributions
-						// proc_data->num_triads_2d[5][a][l]++;		
-						// proc_data->enst_flux_2d[5][a][l]         += flux_wght * cos(triad_phase);
-						// proc_data->triad_phase_order_2d[5][a][l] += cexp(I * gen_triad_phase);
-
-
-						// if (l == 0) {
-						// 	// 1D contributions
-						// 	proc_data->num_triads_1d[5][a]++;		
-						// 	proc_data->enst_flux_1d[5][a]         += flux_wght * cos(triad_phase);
-						// 	proc_data->triad_phase_order_1d[5][a] += cexp(I * gen_triad_phase);
-
-						// 	// Update collective phase order parameter for C_theta
-						// 	if (k1_y > 0 && k2_y > 0 && k3_y > 0) {
-						// 		if (cabs(flux_wght * cexp(I * triad_phase) != 0.0)) {
-						// 			proc_data->phase_order_C_theta_triads_1d[5][a] += flux_wght * cexp(I * triad_phase) / cabs(flux_wght * cexp(I * triad_phase));
-						// 		}
-						// 	}
-						// }
-
-						// Update the PDFs
-						#if defined(__SEC_PHASE_SYNC_STATS)
-						gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf[5][a], gen_triad_phase);
-						if (gsl_status != 0) {
-							fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 5", a, s, gsl_status, gen_triad_phase);
-							exit(1);
-						}
-						gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf_t[5][a], gen_triad_phase);
-						if (gsl_status != 0) {
-							fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 5 In Time", a, s, gsl_status, gen_triad_phase);
-							exit(1);
-						}
-						gsl_status = gsl_histogram_accumulate(proc_data->triad_sect_wghtd_pdf_t[5][a], gen_triad_phase, fabs(flux_wght)); 
-						if (gsl_status != 0) {
-							fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase Weighted PDF Type 5 In Time", a, s, gsl_status, gen_triad_phase);
-							exit(1);
-						}
-						#endif
-					}
-					else {
-						// Define the generalized triad phase for the ignored terms
-						gen_triad_phase = fmod(triad_phase + 2.0 * M_PI + carg(flux_wght), 2.0 * M_PI) - M_PI;
-
-						//------------------------------------------ TRIAD TYPE 6
-						proc_data->num_triads[6][a]++;		
-						proc_data->enst_flux[6][a]         += flux_wght * cos(triad_phase);
-						proc_data->triad_phase_order[6][a] += cexp(I * gen_triad_phase);
-
-						// // Update 2D contributions
-						// proc_data->num_triads_2d[6][a][l]++;		
-						// proc_data->enst_flux_2d[6][a][l]         += flux_wght * cos(triad_phase);
-						// proc_data->triad_phase_order_2d[6][a][l] += cexp(I * gen_triad_phase);
-
-						// // Update collective phase order parameter for C_theta
-						// if (k1_y > 0 && k2_y > 0 && k3_y > 0) {
-						// 	if (cabs(flux_wght * cexp(I * triad_phase) != 0.0)) {
-						// 		proc_data->phase_order_C_theta_triads_2d[6][a][l] += flux_wght * cexp(I * triad_phase) / cabs(flux_wght * cexp(I * triad_phase));
-						// 	}
-						// }
-
-						// if (l == 0) {
-						// 	// 1D contributions
-						// 	proc_data->num_triads_1d[6][a]++;		
-						// 	proc_data->enst_flux_1d[6][a]         += flux_wght * cos(triad_phase);
-						// 	proc_data->triad_phase_order_1d[6][a] += cexp(I * gen_triad_phase);
-
-						// 	// Update collective phase order parameter for C_theta
-						// 	if (k1_y > 0 && k2_y > 0 && k3_y > 0) {
-						// 		if (cabs(flux_wght * cexp(I * triad_phase) != 0.0)) {
-						// 			proc_data->phase_order_C_theta_triads_1d[6][a] += flux_wght * cexp(I * triad_phase) / cabs(flux_wght * cexp(I * triad_phase));
-						// 		}
-						// 	}
-						// }
-
-						// Update the PDFs
-						#if defined(__SEC_PHASE_SYNC_STATS)
-						gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf[6][a], gen_triad_phase);
-						if (gsl_status != 0) {
-							fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 6", a, s, gsl_status, gen_triad_phase);
-							exit(1);
-						}
-						gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf_t[6][a], gen_triad_phase);
-						if (gsl_status != 0) {
-							fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 6 In Time", a, s, gsl_status, gen_triad_phase);
-							exit(1);
-						}
-						gsl_status = gsl_histogram_accumulate(proc_data->triad_sect_wghtd_pdf_t[6][a], gen_triad_phase, fabs(flux_wght)); 
-						if (gsl_status != 0) {
-							fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase Weighted PDF Type 6 In Time", a, s, gsl_status, gen_triad_phase);
-							exit(1);
-						}
-						#endif
-					}
 				}
 			}
 		}
@@ -1497,12 +1596,12 @@ void AllocatePhaseSyncMemory(const long int* N) {
 	else {
 		//------------------- Fill the wavevector arrays
 		int nn;
-		double theta_k1;
-		int k_x, k_y, k1_x, k1_y, k2_x, k2_y;
-		double k1_sqr, k1_angle, k2_sqr, k2_angle, k_sqr, k_angle;
-		double k_angle_neg, k1_angle_neg, k2_angle_neg;
+		double C_theta_k3, C_theta_k1, C_theta_k2;
+		int k3_x, k3_y, k1_x, k1_y, k2_x, k2_y;
+		double k1_sqr, k1_angle, k2_sqr, k2_angle, k3_sqr, k3_angle;
+		double k3_angle_neg, k1_angle_neg, k2_angle_neg;
 		fftw_complex k1, k3;
-		double C_theta_lwr, C_theta_upr, C_theta_alt_upr, C_theta_alt_lwr, k2_sect_lwr, k2_sect_upr;
+		double C_theta_k3_lwr, C_theta_k3_upr, C_theta_k1_upr, C_theta_k1_lwr, C_theta_k2_lwr, C_theta_k2_upr;
 		
 		// Print to screen that a pre computation search is needed for the phase sync wavevectors and begin timeing it
 		printf("\n["YELLOW"NOTE"RESET"] --- Performing search over wavevectors for Phase Sync computation...\n");
@@ -1513,30 +1612,31 @@ void AllocatePhaseSyncMemory(const long int* N) {
 		for (int a = 0; a < sys_vars->num_sect; ++a) {
 			
 			// Get the angles for the current sector
-			C_theta_lwr = proc_data->theta[a] - proc_data->dtheta / 2.0;
-			C_theta_upr = proc_data->theta[a] + proc_data->dtheta / 2.0;
+			C_theta_k3 = proc_data->theta[a];
+			C_theta_k3_lwr = C_theta_k3 - proc_data->dtheta / 2.0;
+			C_theta_k3_upr = C_theta_k3 + proc_data->dtheta / 2.0;
 
 			// Loop through second sector choice
 			for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
 
 				// Get the angles for the second sector
 				if (sys_vars->num_k1_sectors == NUM_K1_SECTORS) {
-					theta_k1 = MyMod(proc_data->theta[a] + (k1_sector_angles[l] * proc_data->dtheta/2.0) + M_PI, 2.0 * M_PI) - M_PI;
+					C_theta_k1 = MyMod(C_theta_k3 + (k1_sector_angles[l] * proc_data->dtheta/2.0) + M_PI, 2.0 * M_PI) - M_PI;
 				}
 				else {
-					theta_k1 = proc_data->theta[(a + l) % sys_vars->num_sect];
+					C_theta_k1 = proc_data->theta[(a + l) % sys_vars->num_sect];
 				}
-				C_theta_alt_lwr = theta_k1 - proc_data->dtheta / 2.0;
-				C_theta_alt_upr = theta_k1 + proc_data->dtheta / 2.0;
+				C_theta_k1_lwr = C_theta_k1 - proc_data->dtheta / 2.0;
+				C_theta_k1_upr = C_theta_k1 + proc_data->dtheta / 2.0;
 
 				// Find the sector for k2 -> as the mid point of the sector of k3 - k1
-				k3 = cexp(I * proc_data->theta[a]);
-				k1 = cexp(I * theta_k1);
+				k3 = cexp(I * C_theta_k3);
+				k1 = cexp(I * C_theta_k1);
 
 				// Compute the mid angle for the sector of k2
-				if (theta_k1 == proc_data->theta[a]) {
+				if (C_theta_k1 == C_theta_k3) {
 					// Either k1, k2 and k3 are all in the same sector
-					proc_data->mid_angle_sum[a * sys_vars->num_k1_sectors + l] = proc_data->theta[a];
+					proc_data->mid_angle_sum[a * sys_vars->num_k1_sectors + l] = C_theta_k3;
 				}
 				else {
 					// Or we find the sector for k2 using arg{(k3 - k1) / (k3^* - k1^*)}
@@ -1551,29 +1651,30 @@ void AllocatePhaseSyncMemory(const long int* N) {
 				}
 
 				// Compute the boundaries for the k2 sector
-				k2_sect_lwr = proc_data->mid_angle_sum[a * sys_vars->num_k1_sectors + l] - proc_data->dtheta/2.0;
-				k2_sect_upr = proc_data->mid_angle_sum[a * sys_vars->num_k1_sectors + l] + proc_data->dtheta/2.0;
+				C_theta_k2 = proc_data->mid_angle_sum[a * sys_vars->num_k1_sectors + l];
+				C_theta_k2_lwr = proc_data->mid_angle_sum[a * sys_vars->num_k1_sectors + l] - proc_data->dtheta/2.0;
+				C_theta_k2_upr = proc_data->mid_angle_sum[a * sys_vars->num_k1_sectors + l] + proc_data->dtheta/2.0;
 				
 				// Initialize increment
 				nn = 0;
 
 				// Loop through the k wavevector (k is the k3 wavevector)
-				for (int tmp_k_x = 0; tmp_k_x <= sys_vars->N[0] - 1; ++tmp_k_x) {
+				for (int tmp_k3_x = 0; tmp_k3_x <= sys_vars->N[0] - 1; ++tmp_k3_x) {
 					
-					// Get k_x
-					k_x = tmp_k_x - (int) (sys_vars->N[0] / 2) + 1;
+					// Get k3_x
+					k3_x = tmp_k3_x - (int) (sys_vars->N[0] / 2) + 1;
 
-					for (int tmp_k_y = 0; tmp_k_y <= sys_vars->N[1] - 1; ++tmp_k_y) {
+					for (int tmp_k3_y = 0; tmp_k3_y <= sys_vars->N[1] - 1; ++tmp_k3_y) {
 						
-						// Get k_y
-						k_y = tmp_k_y - (int) (sys_vars->N[1] / 2) + 1;
+						// Get k3_y
+						k3_y = tmp_k3_y - (int) (sys_vars->N[1] / 2) + 1;
 
 						// Get polar coords for the k wavevector
-						k_sqr       = (double) (k_x * k_x + k_y * k_y);
-						k_angle     = atan2((double)k_x, (double)k_y);
-						k_angle_neg = atan2((double)-k_x, (double)-k_y);
+						k3_sqr       = (double) (k3_x * k3_x + k3_y * k3_y);
+						k3_angle     = atan2((double)k3_x, (double)k3_y);
+						k3_angle_neg = atan2((double)-k3_x, (double)-k3_y);
 						
-						if ((k_sqr > 0 && k_sqr <= sys_vars->kmax_sqr) && ((k_angle >= C_theta_lwr && k_angle < C_theta_upr) || ((k_angle_neg >= C_theta_lwr && k_angle_neg < C_theta_upr)))) {
+						if ((k3_sqr > sys_vars->kmax_C_sqr && k3_sqr <= sys_vars->kmax_sqr) && ((k3_angle >= C_theta_k3_lwr && k3_angle < C_theta_k3_upr) || ((k3_angle_neg >= C_theta_k3_lwr && k3_angle_neg < C_theta_k3_upr)))) {
 
 							// Loop through the k1 wavevector
 							for (int tmp_k1_x = 0; tmp_k1_x <= sys_vars->N[0] - 1; ++tmp_k1_x) {
@@ -1591,18 +1692,20 @@ void AllocatePhaseSyncMemory(const long int* N) {
 									k1_angle     = atan2((double) k1_x, (double) k1_y);
 									k1_angle_neg = atan2((double)-k1_x, (double)-k1_y);
 
-									if((k1_sqr > 0 && k1_sqr <= sys_vars->kmax_sqr) && ((k1_angle >= C_theta_alt_lwr && k1_angle < C_theta_alt_upr) || (k1_angle_neg >= C_theta_alt_lwr && k1_angle_neg < C_theta_alt_upr))) {									
+									if( ((k1_sqr > 0 && k1_sqr <= sys_vars->kmax_C_sqr) && ((k1_angle >= C_theta_k3_lwr && k1_angle < C_theta_k3_upr) || (k1_angle_neg >= C_theta_k3_lwr && k1_angle_neg < C_theta_k3_upr)) && (C_theta_k3 == C_theta_k1))
+										|| ((k1_sqr > 0 && k1_sqr <= sys_vars->kmax_sqr) && ((k1_angle >= C_theta_k1_lwr && k1_angle < C_theta_k1_upr) || (k1_angle_neg >= C_theta_k1_lwr && k1_angle_neg < C_theta_k1_upr)) && (C_theta_k3 != C_theta_k1)) ) {
 										
 										// Find the k2 wavevector
-										k2_x = k_x - k1_x;
-										k2_y = k_y - k1_y;
+										k2_x = k3_x - k1_x;
+										k2_y = k3_y - k1_y;
 										
 										// Get polar coords for k2
 										k2_sqr       = (double) (k2_x * k2_x + k2_y * k2_y);
 										k2_angle     = atan2((double)k2_x, (double) k2_y);
 										k2_angle_neg = atan2((double)-k2_x, (double) -k2_y);
 
-										if ((k2_sqr > 0 && k2_sqr <= sys_vars->kmax_sqr) && ((k2_angle >= k2_sect_lwr && k2_angle < k2_sect_upr) || (k2_angle_neg >= k2_sect_lwr && k2_angle_neg < k2_sect_upr))) {
+										if ( ((k2_sqr > 0 && k2_sqr <= sys_vars->kmax_C_sqr) && ((k2_angle >= C_theta_k3_lwr && k2_angle < C_theta_k3_upr) || (k2_angle_neg >= C_theta_k3_lwr && k2_angle_neg < C_theta_k3_upr)) && (C_theta_k3 == C_theta_k2))
+											 || ((k2_sqr > 0 && k2_sqr <= sys_vars->kmax_sqr) && ((k2_angle >= C_theta_k2_lwr && k2_angle < C_theta_k2_upr) || (k2_angle_neg >= C_theta_k2_lwr && k2_angle_neg < C_theta_k2_upr)) && (C_theta_k3 != C_theta_k2)) ) {
 											// Add k1 vector
 											proc_data->phase_sync_wave_vecs[a][l][K1_X][nn] = k1_x;
 											proc_data->phase_sync_wave_vecs[a][l][K1_Y][nn] = k1_y;
@@ -1610,21 +1713,21 @@ void AllocatePhaseSyncMemory(const long int* N) {
 											proc_data->phase_sync_wave_vecs[a][l][K2_X][nn] = k2_x;
 											proc_data->phase_sync_wave_vecs[a][l][K2_Y][nn] = k2_y;
 											// Add the k3 vector
-											proc_data->phase_sync_wave_vecs[a][l][K3_X][nn] = k_x;
-											proc_data->phase_sync_wave_vecs[a][l][K3_Y][nn] = k_y;
+											proc_data->phase_sync_wave_vecs[a][l][K3_X][nn] = k3_x;
+											proc_data->phase_sync_wave_vecs[a][l][K3_Y][nn] = k3_y;
 											// Add the |k1|^2, |k2|^2, |k3|^2 
 											proc_data->phase_sync_wave_vecs[a][l][K1_SQR][nn] = k1_sqr;
 											proc_data->phase_sync_wave_vecs[a][l][K2_SQR][nn] = k2_sqr;
-											proc_data->phase_sync_wave_vecs[a][l][K3_SQR][nn] = k_sqr;
+											proc_data->phase_sync_wave_vecs[a][l][K3_SQR][nn] = k3_sqr;
 											// Add the angles for +/- k1, k2, k3
 											proc_data->phase_sync_wave_vecs[a][l][K1_ANGLE][nn]     = k1_angle;
 											proc_data->phase_sync_wave_vecs[a][l][K2_ANGLE][nn]     = k2_angle;
-											proc_data->phase_sync_wave_vecs[a][l][K3_ANGLE][nn]     = k_angle;
+											proc_data->phase_sync_wave_vecs[a][l][K3_ANGLE][nn]     = k3_angle;
 											proc_data->phase_sync_wave_vecs[a][l][K1_ANGLE_NEG][nn] = k1_angle_neg;
 											proc_data->phase_sync_wave_vecs[a][l][K2_ANGLE_NEG][nn] = k2_angle_neg;
-											proc_data->phase_sync_wave_vecs[a][l][K3_ANGLE_NEG][nn] = k_angle_neg;
-											// // Indicate which flux term this data is in
-											// proc_data->phase_sync_wave_vecs[a][l][FLUX_TERM][nn] = POS_FLUX_TERM;
+											proc_data->phase_sync_wave_vecs[a][l][K3_ANGLE_NEG][nn] = k3_angle_neg;
+											// Indicate which flux term this data is in
+											proc_data->phase_sync_wave_vecs[a][l][FLUX_TERM][nn] = POS_FLUX_TERM;
 
 											// Increment
 											nn++;
@@ -1633,7 +1736,8 @@ void AllocatePhaseSyncMemory(const long int* N) {
 								}
 							}
 						}
-						else if ((k_sqr > 0 && k_sqr <= sys_vars->kmax_sqr) && !((k_angle >= C_theta_lwr && k_angle < C_theta_upr) || (k_angle_neg >= C_theta_lwr && k_angle_neg < C_theta_upr)) ) { // && ((k_angle >= C_theta_alt_lwr && k_angle < C_theta_alt_upr) || (k_angle_neg >= C_theta_alt_lwr && k_angle_neg < C_theta_alt_upr))
+						else if ( ((k3_sqr > 0 && k3_sqr <= sys_vars->kmax_sqr) &&  ((k3_angle >= C_theta_k1_lwr && k3_angle < C_theta_k1_upr) || (k3_angle_neg >= C_theta_k1_lwr && k3_angle_neg < C_theta_k1_upr)))       // !((k3_angle >= C_theta_k3_lwr && k3_angle < C_theta_k3_upr) || (k3_angle_neg >= C_theta_k3_lwr && k3_angle_neg < C_theta_k3_upr)) 
+								  || ((k3_sqr > 0 && k3_sqr <= sys_vars->kmax_C_sqr) && ((k3_angle >= C_theta_k3_lwr && k3_angle < C_theta_k3_upr) || (k3_angle_neg >= C_theta_k3_lwr && k3_angle_neg < C_theta_k3_upr))) ) {
 
 							// Loop through the k1 wavevector
 							for (int tmp_k1_x = 0; tmp_k1_x <= sys_vars->N[0] - 1; ++tmp_k1_x) {
@@ -1651,18 +1755,18 @@ void AllocatePhaseSyncMemory(const long int* N) {
 									k1_angle     = atan2((double) k1_x, (double) k1_y);
 									k1_angle_neg = atan2((double)-k1_x, (double)-k1_y);
 
-									if((k1_sqr > 0 && k1_sqr <= sys_vars->kmax_sqr) && ((k1_angle >= C_theta_lwr && k1_angle < C_theta_lwr) || (k1_angle_neg >= C_theta_lwr && k1_angle_neg < C_theta_lwr))) {									
+									if((k1_sqr > sys_vars->kmax_C_sqr && k1_sqr <= sys_vars->kmax_sqr) && ((k1_angle >= C_theta_k3_lwr && k1_angle < C_theta_k3_upr) || (k1_angle_neg >= C_theta_k3_lwr && k1_angle_neg < C_theta_k3_upr))) {									
 										
 										// Find the k2 wavevector
-										k2_x = k_x - k1_x;
-										k2_y = k_y - k1_y;
+										k2_x = k3_x - k1_x;
+										k2_y = k3_y - k1_y;
 										
 										// Get polar coords for k2
 										k2_sqr       = (double) (k2_x * k2_x + k2_y * k2_y);
 										k2_angle     = atan2((double)k2_x, (double) k2_y);
 										k2_angle_neg = atan2((double)-k2_x, (double) -k2_y);
 
-										if ((k2_sqr > 0 && k2_sqr <= sys_vars->kmax_sqr) && ((k2_angle >= C_theta_lwr && k2_angle < C_theta_upr) || (k2_angle_neg >= C_theta_lwr && k2_angle_neg < C_theta_upr))) {
+										if ((k2_sqr > sys_vars->kmax_C_sqr && k2_sqr <= sys_vars->kmax_sqr) && ((k2_angle >= C_theta_k3_lwr && k2_angle < C_theta_k3_upr) || (k2_angle_neg >= C_theta_k3_lwr && k2_angle_neg < C_theta_k3_upr))) {
 											// Add k1 vector
 											proc_data->phase_sync_wave_vecs[a][l][K1_X][nn] = k1_x;
 											proc_data->phase_sync_wave_vecs[a][l][K1_Y][nn] = k1_y;
@@ -1670,21 +1774,21 @@ void AllocatePhaseSyncMemory(const long int* N) {
 											proc_data->phase_sync_wave_vecs[a][l][K2_X][nn] = k2_x;
 											proc_data->phase_sync_wave_vecs[a][l][K2_Y][nn] = k2_y;
 											// Add the k3 vector
-											proc_data->phase_sync_wave_vecs[a][l][K3_X][nn] = k_x;
-											proc_data->phase_sync_wave_vecs[a][l][K3_Y][nn] = k_y;
+											proc_data->phase_sync_wave_vecs[a][l][K3_X][nn] = k3_x;
+											proc_data->phase_sync_wave_vecs[a][l][K3_Y][nn] = k3_y;
 											// Add the |k1|^2, |k2|^2, |k3|^2 
 											proc_data->phase_sync_wave_vecs[a][l][K1_SQR][nn] = k1_sqr;
 											proc_data->phase_sync_wave_vecs[a][l][K2_SQR][nn] = k2_sqr;
-											proc_data->phase_sync_wave_vecs[a][l][K3_SQR][nn] = k_sqr;
+											proc_data->phase_sync_wave_vecs[a][l][K3_SQR][nn] = k3_sqr;
 											// Add the angles for +/- k1, k2, k3
 											proc_data->phase_sync_wave_vecs[a][l][K1_ANGLE][nn]     = k1_angle;
 											proc_data->phase_sync_wave_vecs[a][l][K2_ANGLE][nn]     = k2_angle;
-											proc_data->phase_sync_wave_vecs[a][l][K3_ANGLE][nn]     = k_angle;
+											proc_data->phase_sync_wave_vecs[a][l][K3_ANGLE][nn]     = k3_angle;
 											proc_data->phase_sync_wave_vecs[a][l][K1_ANGLE_NEG][nn] = k1_angle_neg;
 											proc_data->phase_sync_wave_vecs[a][l][K2_ANGLE_NEG][nn] = k2_angle_neg;
-											proc_data->phase_sync_wave_vecs[a][l][K3_ANGLE_NEG][nn] = k_angle_neg;
-											// // Indicate which flux term this data is in
-											// proc_data->phase_sync_wave_vecs[a][l][FLUX_TERM][nn] = NEG_FLUX_TERM;
+											proc_data->phase_sync_wave_vecs[a][l][K3_ANGLE_NEG][nn] = k3_angle_neg;
+											// Indicate which flux term this data is in
+											proc_data->phase_sync_wave_vecs[a][l][FLUX_TERM][nn] = NEG_FLUX_TERM;
 
 											// Increment
 											nn++;
@@ -1693,64 +1797,6 @@ void AllocatePhaseSyncMemory(const long int* N) {
 								}
 							}
 						}
-						// if ((k_sqr > 0 && k_sqr <= sys_vars->kmax_C_sqr) && ((k_angle >= C_theta_lwr && k_angle < C_theta_upr) || ((k_angle_neg >= C_theta_lwr && k_angle_neg < C_theta_upr)))) {
-
-						// 	// Loop through the k1 wavevector
-						// 	for (int tmp_k1_x = 0; tmp_k1_x <= sys_vars->N[0] - 1; ++tmp_k1_x) {
-								
-						// 		// Get k1_x
-						// 		k1_x = tmp_k1_x - (int) (sys_vars->N[0] / 2) + 1;
-
-						// 		for (int tmp_k1_y = 0; tmp_k1_y <= sys_vars->N[0] - 1; ++tmp_k1_y) {
-									
-						// 			// Get k1_y
-						// 			k1_y = tmp_k1_y - (int) (sys_vars->N[0] / 2) + 1;
-
-						// 			// Get polar coords for k1
-						// 			k1_sqr       = (double) (k1_x * k1_x + k1_y * k1_y);
-						// 			k1_angle     = atan2((double) k1_x, (double) k1_y);
-						// 			k1_angle_neg = atan2((double)-k1_x, (double)-k1_y);
-
-						// 			if((k1_sqr > 0 && k1_sqr < sys_vars->kmax_sqr) && ((k1_angle >= C_theta_lwr && k1_angle < C_theta_lwr) || (k1_angle_neg >= C_theta_lwr && k1_angle_neg < C_theta_lwr))) {									
-										
-						// 				// Find the k2 wavevector
-						// 				k2_x = k_x - k1_x;
-						// 				k2_y = k_y - k1_y;
-										
-						// 				// Get polar coords for k2
-						// 				k2_sqr       = (double) (k2_x * k2_x + k2_y * k2_y);
-						// 				k2_angle     = atan2((double)k2_x, (double) k2_y);
-						// 				k2_angle_neg = atan2((double)-k2_x, (double) -k2_y);
-
-						// 				if ((k2_sqr > 0 && k2_sqr < sys_vars->kmax_sqr) && ((k2_angle >= C_theta_lwr && k2_angle < C_theta_upr) || (k2_angle_neg >= C_theta_lwr && k2_angle_neg < C_theta_upr))) {
-						// 					// Add k1 vector
-						// 					proc_data->phase_sync_wave_vecs[a][l][K1_X][nn] = k1_x;
-						// 					proc_data->phase_sync_wave_vecs[a][l][K1_Y][nn] = k1_y;
-						// 					// Add the k2 vector
-						// 					proc_data->phase_sync_wave_vecs[a][l][K2_X][nn] = k2_x;
-						// 					proc_data->phase_sync_wave_vecs[a][l][K2_Y][nn] = k2_y;
-						// 					// Add the k3 vector
-						// 					proc_data->phase_sync_wave_vecs[a][l][K3_X][nn] = k_x;
-						// 					proc_data->phase_sync_wave_vecs[a][l][K3_Y][nn] = k_y;
-						// 					// Add the |k1|^2, |k2|^2, |k3|^2 
-						// 					proc_data->phase_sync_wave_vecs[a][l][K1_SQR][nn] = k1_sqr;
-						// 					proc_data->phase_sync_wave_vecs[a][l][K2_SQR][nn] = k2_sqr;
-						// 					proc_data->phase_sync_wave_vecs[a][l][K3_SQR][nn] = k_sqr;
-						// 					// Add the angles for +/- k1, k2, k3
-						// 					proc_data->phase_sync_wave_vecs[a][l][K1_ANGLE][nn]     = k1_angle;
-						// 					proc_data->phase_sync_wave_vecs[a][l][K2_ANGLE][nn]     = k2_angle;
-						// 					proc_data->phase_sync_wave_vecs[a][l][K3_ANGLE][nn]     = k_angle;
-						// 					proc_data->phase_sync_wave_vecs[a][l][K1_ANGLE_NEG][nn] = k1_angle_neg;
-						// 					proc_data->phase_sync_wave_vecs[a][l][K2_ANGLE_NEG][nn] = k2_angle_neg;
-						// 					proc_data->phase_sync_wave_vecs[a][l][K3_ANGLE_NEG][nn] = k_angle_neg;
-											
-						// 					// Increment
-						// 					nn++;
-						// 				}
-						// 			}
-						// 		}
-						// 	}
-						// }
 					}
 				}
 				// Record the number of triad wavevectors
