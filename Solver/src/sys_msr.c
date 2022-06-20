@@ -370,7 +370,7 @@ void InitializeSystemMeasurables(RK_data_struct* RK_data) {
 	const long int Nx = sys_vars->N[0];
 	const long int Ny = sys_vars->N[1];
 
-	sys_vars->n_spect = (int) sqrt(pow((double)Nx / 2.0, 2.0) + pow((double)Ny / 2.0, 2.0)) + 1;
+	sys_vars->n_spect = (int) round(sqrt((double)(Nx / 2.0) * (Nx / 2.0) + (double)(Ny / 2.0) * (Ny / 2.0)) + 1);
 	int n_spect = sys_vars->n_spect;
 	#endif
 

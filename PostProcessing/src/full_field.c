@@ -514,6 +514,7 @@ void FluxSpectra(int snap) {
 						for (int a = 0; a < sys_vars->num_sect; ++a) {
 							if (proc_data->phase_angle[indx] >= proc_data->theta[a] - proc_data->dtheta/2.0 && proc_data->phase_angle[indx] < proc_data->theta[a] + proc_data->dtheta/2.0) {
 								
+
 								// Record the flux and dissipation
 								proc_data->enst_diss_C_theta[a] += 2.0 * tmp_diss;
 								proc_data->enst_flux_C_theta[a] += 2.0 * tmp_deriv;
@@ -560,6 +561,9 @@ void AllocateFullFieldMemory(const long int* N) {
 	const long int Nx = N[0];
 	const long int Ny = N[1];
 	const long int Ny_Fourier = Ny / 2 + 1;
+
+	// Compute maximum wavenumber
+	sys_vars->kmax = (int) (Nx / 3.0);	
 
 	// --------------------------------	
 	//  Allocate Full Field Arrays

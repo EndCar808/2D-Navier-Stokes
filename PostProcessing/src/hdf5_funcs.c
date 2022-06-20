@@ -1679,6 +1679,20 @@ void FinalWriteAndClose(void) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!!!\n-->> Exiting...\n", "Number of Triads Per Sector");
         exit(1);
     }
+    double* tmp_test = (double*) fftw_malloc(sizeof(double) * proc_data->num_triads_test[0] * (6));
+    for (int i = 0; i < 6; ++i) {
+    	for (int a = 0; a < proc_data->num_triads_test[0]; ++a) {
+    		tmp_test[i * proc_data->num_triads_test[0] + a] = proc_data->phase_sync_wave_vecs_test[i][a];
+    	}
+    }
+    dset_dims_2d[0] = 6;
+    dset_dims_2d[1] = proc_data->num_triads_test[0];
+	status = H5LTmake_dataset(file_info->output_file_handle, "WavevectorDataTest", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, tmp_test);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!!!\n-->> Exiting...\n", "Wavevector Data Test");
+        exit(1);
+    }
+    fftw_free(tmp_test);
 
     ///------------------------- Number of Triads Per Sector
     int* tmp = (int*) fftw_malloc(sizeof(int) * sys_vars->num_sect * (NUM_TRIAD_TYPES + 1));

@@ -595,8 +595,11 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                 if 'NumTriadsPerSector' in list(f.keys()):
                     self.num_triads = f["NumTriadsPerSector"][:, :]
                 ## Get the number of triads per sector
-                if 'NumTriadsPerSector' in list(f.keys()):
+                if 'NumTriadsTest' in list(f.keys()):
                     self.num_triads_test = f["NumTriadsTest"][:]
+                 ## Get the wavevector data for the phase syc
+                if 'WavevectorDataTest' in list(f.keys()):
+                    self.wave_vec_data_test = f["WavevectorDataTest"][:]
                 ## Get the number of triads per sector
                 if 'NumTriadsPerSector_1D' in list(f.keys()):
                     self.num_triads_1d = f["NumTriadsPerSector_1D"][:, :]
@@ -670,7 +673,7 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
             NUM_TRIAD_TYPES = 7
 
             ## Get the max wavenumber
-            self.kmax = int(sim_data.Nx / 3)
+            self.kmax = int((sim_data.Nx / 3))
             ## Allocate spectra aarrays
             self.phases        = np.zeros((sim_data.ndata, int(2 * self.kmax + 1), int(2 * self.kmax + 1)))
             self.enrg_spectrum = np.zeros((sim_data.ndata, int(2 * self.kmax + 1), int(2 * self.kmax + 1)))

@@ -309,9 +309,6 @@ void AllocateMemory(const long int* N) {
 	const long int Ny = N[1];
 	const long int Ny_Fourier = Ny / 2 + 1;
 
-	// Compute maximum wavenumber
-	sys_vars->kmax = (int) (Nx / 3);	
-
 	// --------------------------------
 	//  Allocate Field Data
 	// --------------------------------

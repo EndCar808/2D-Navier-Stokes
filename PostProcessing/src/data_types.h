@@ -228,6 +228,7 @@ typedef struct postprocess_data_struct {
     double* phase_angle;										 			 // Array to hold the pre computed arctangents of the wavevectors for the individual phases   
     double* k1_sector_angles;									 			 // Array to hold the pre computed arctangents of the wavevectors for the individual phases   
     double**** phase_sync_wave_vecs;										 // Array of pointers to arrays to hold the wavevectors in a given sector
+    double** phase_sync_wave_vecs_test;									     // Array of pointers to arrays to hold the wavevectors in the test case
     int** num_wave_vecs;													 // Array to hold the number of wavevector triads per secotr
     fftw_complex* phase_order;       							 			 // Array to hold the phase order parameter for each sector for the individual phases
     fftw_complex* triad_phase_order[NUM_TRIAD_TYPES + 1]; 		 			 // Array to hold the phase order parameter for each sector for each of the triad phase types including combined

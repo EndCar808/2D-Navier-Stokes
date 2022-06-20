@@ -790,6 +790,8 @@ void ApplyDealiasing(fftw_complex* array, int array_dim, const long int* N) {
 	const long int Nx         = N[0];
 	const long int Ny         = N[1];
 	const long int Ny_Fourier = Ny / 2 + 1;
+	double k_sqr;
+	double kmax_sqr = pow((int) (Nx / 3.0), 2.0);
 	#if defined(__DEALIAS_HOU_LI)
 	double hou_li_filter;
 	#endif
@@ -802,8 +804,11 @@ void ApplyDealiasing(fftw_complex* array, int array_dim, const long int* N) {
 		for (int j = 0; j < Ny_Fourier; ++j) {
 			indx = array_dim * (tmp + j);
 
+			// Get |k|^2
+			k_sqr = (double) run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j];
+
 			#if defined(__DEALIAS_23)
-			if (sqrt((double) run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]) > Nx / 3) {
+			if (k_sqr > kmax_sqr) {
 				for (int l = 0; l < array_dim; ++l) {
 					// Set dealised modes to 0
 					array[indx + l] = 0.0 + 0.0 * I;	
