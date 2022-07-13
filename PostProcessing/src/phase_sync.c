@@ -81,7 +81,7 @@ void PhaseSync(int s) {
 						// Get polar coords for k1
 						k1_sqr       = (double) (k1_x * k1_x + k1_y * k1_y);
 
-						if((k1_sqr > 0 && k1_sqr <= sys_vars->kmax_C_sqr)) {
+						if((k1_sqr > 0.0 && k1_sqr <= sys_vars->kmax_C_sqr)) {
 							
 							// Find the k2 wavevector
 							k2_x = k3_x - k1_x;
@@ -90,7 +90,7 @@ void PhaseSync(int s) {
 							// Get polar coords for k2
 							k2_sqr       = (double) (k2_x * k2_x + k2_y * k2_y);
 
-							if ((k2_sqr > 0 && k2_sqr <= sys_vars->kmax_C_sqr)) {
+							if ((k2_sqr > 0.0 && k2_sqr <= sys_vars->kmax_C_sqr)) {
 
 								// Get correct phase index -> recall that to access kx > 0, use -kx
 								tmp_k1 = (sys_vars->kmax - k1_x) * (2 * sys_vars->kmax + 1);	
@@ -294,10 +294,10 @@ void PhaseSyncSector(int s) {
 	// Loop through the sectors for k3
 	for (int a = 0; a < sys_vars->num_sect; ++a) {	
 
-		// Get the sector for k3
-		S_k3 = proc_data->theta[a];
-		S_k3_upr = S_k3 + proc_data->dtheta/2.0;
-		S_k3_lwr = S_k3 - proc_data->dtheta/2.0;
+		// // Get the sector for k3
+		// S_k3 = proc_data->theta[a];
+		// S_k3_upr = S_k3 + proc_data->dtheta/2.0;
+		// S_k3_lwr = S_k3 - proc_data->dtheta/2.0;
 
 		// Initialize counters number of triads and enstrophy flux for each triad type
 		for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
@@ -319,15 +319,15 @@ void PhaseSyncSector(int s) {
 				proc_data->phase_order_C_theta_triads_2d[i][a][l] = 0.0 + 0.0 * I;
 			}
 
-			// Get the angles for the second -> sector where k1 lies
-			if (sys_vars->num_k1_sectors == NUM_K1_SECTORS) {
-				S_k1 = MyMod(proc_data->theta[a] + (proc_data->k1_sector_angles[l] * proc_data->dtheta/2.0) + M_PI, 2.0 * M_PI) - M_PI;
-			}
-			else {
-				S_k1 = proc_data->theta[(a + l) % sys_vars->num_sect];
-			}
-			S_k1_lwr = S_k1 - proc_data->dtheta / 2.0;
-			S_k1_upr = S_k1 + proc_data->dtheta / 2.0;
+			// // Get the angles for the second -> sector where k1 lies
+			// if (sys_vars->num_k1_sectors == NUM_K1_SECTORS) {
+			// 	S_k1 = MyMod(proc_data->theta[a] + (proc_data->k1_sector_angles[l] * proc_data->dtheta/2.0) + M_PI, 2.0 * M_PI) - M_PI;
+			// }
+			// else {
+			// 	S_k1 = proc_data->theta[(a + l) % sys_vars->num_sect];
+			// }
+			// S_k1_lwr = S_k1 - proc_data->dtheta / 2.0;
+			// S_k1_upr = S_k1 + proc_data->dtheta / 2.0;
 			
 			// Loop through wavevectors
 			if (proc_data->num_wave_vecs[a][l] != 0) {
@@ -1560,6 +1560,7 @@ void AllocatePhaseSyncMemory(const long int* N) {
 		}
 	}
 
+
 	///----------- Allocate memory for the sparse search k1 sector angles
 	double k1_sector_angles[NUM_K1_SECTORS] = {-sys_vars->num_sect/2.0, -sys_vars->num_sect/3.0, -sys_vars->num_sect/4.0, -sys_vars->num_sect/6.0, sys_vars->num_sect/6.0, sys_vars->num_sect/4.0, sys_vars->num_sect/3.0, sys_vars->num_sect/2.0};
 	proc_data->k1_sector_angles = (double* )fftw_malloc(sizeof(double) * NUM_K1_SECTORS);
@@ -1650,50 +1651,57 @@ void AllocatePhaseSyncMemory(const long int* N) {
 			C_theta_k3_lwr = C_theta_k3 - proc_data->dtheta / 2.0;
 			C_theta_k3_upr = C_theta_k3 + proc_data->dtheta / 2.0;
 
-			// Loop through second sector choice
+			// Loop through k1 sector choice
 			for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
 
-				// Get the angles for the second sector
+				// Get the angles for the k1 sector
 				if (sys_vars->num_k1_sectors == NUM_K1_SECTORS) {
-					C_theta_k1 = MyMod(C_theta_k3 + (k1_sector_angles[l] * proc_data->dtheta/2.0) + M_PI, 2.0 * M_PI) - M_PI;
+					// Reduced k1 sector search
+					C_theta_k1     = MyMod(C_theta_k3 + (k1_sector_angles[l] * proc_data->dtheta/2.0) + M_PI, 2.0 * M_PI) - M_PI;
+					C_theta_k1_lwr = C_theta_k1 - proc_data->dtheta / 2.0;
+					C_theta_k1_upr = C_theta_k1 + proc_data->dtheta / 2.0;
+				}
+				else if (sys_vars->num_k1_sectors == 1){
+					// When k1 can vary anywhere -> no restriction to sector
+					C_theta_k1     = 0.0;
+					C_theta_k1_lwr = C_theta_k1 - M_PI;
+					C_theta_k1_upr = C_theta_k1 + M_PI;
 				}
 				else {
-					C_theta_k1 = proc_data->theta[(a + l) % sys_vars->num_sect];
+					// Full search over sectors
+					C_theta_k1     = proc_data->theta[(a + l) % sys_vars->num_sect];
+					C_theta_k1_lwr = C_theta_k1 - proc_data->dtheta / 2.0;
+					C_theta_k1_upr = C_theta_k1 + proc_data->dtheta / 2.0;
 				}
-				C_theta_k1_lwr = C_theta_k1 - proc_data->dtheta / 2.0;
-				C_theta_k1_upr = C_theta_k1 + proc_data->dtheta / 2.0;
+				
+				// // Find the sector for k2 -> as the mid point of the sector of k3 - k1
+				// k3 = cexp(I * C_theta_k3);
+				// k1 = cexp(I * C_theta_k1);
 
-				// Find the sector for k2 -> as the mid point of the sector of k3 - k1
-				k3 = cexp(I * C_theta_k3);
-				k1 = cexp(I * C_theta_k1);
+				// // Compute the mid angle for the sector of k2
+				// if (C_theta_k1 == C_theta_k3) {
+				// 	// Either k1, k2 and k3 are all in the same sector
+				// 	proc_data->mid_angle_sum[a * sys_vars->num_k1_sectors + l] = C_theta_k3;
+				// }
+				// else {
+				// 	// Or we find the sector for k2 using arg{(k3 - k1) / (k3^* - k1^*)}
+				// 	proc_data->mid_angle_sum[a * sys_vars->num_k1_sectors + l] = creal(1.0 / (2.0 * I) * (clog(k3 - k1) - clog(conj(k3) - conj(k1))));
+				// }
 
-				// Compute the mid angle for the sector of k2
-				if (C_theta_k1 == C_theta_k3) {
-					// Either k1, k2 and k3 are all in the same sector
-					proc_data->mid_angle_sum[a * sys_vars->num_k1_sectors + l] = C_theta_k3;
-				}
-				else {
-					// Or we find the sector for k2 using arg{(k3 - k1) / (k3^* - k1^*)}
-					proc_data->mid_angle_sum[a * sys_vars->num_k1_sectors + l] = creal(1.0 / (2.0 * I) * (clog(k3 - k1) - clog(conj(k3) - conj(k1))));
-				}
+				// // Ensure the angle is a mid angle of a sector
+				// for (int i = 0; i < sys_vars->num_sect; ++i) {
+				// 	if (proc_data->mid_angle_sum[a * sys_vars->num_k1_sectors + l] >= proc_data->theta[i] - proc_data->dtheta/2.0 && proc_data->mid_angle_sum[a * sys_vars->num_k1_sectors + l] < proc_data->theta[i] + proc_data->dtheta/2.0) {
+				// 		proc_data->mid_angle_sum[a * sys_vars->num_k1_sectors + l] = proc_data->theta[i];
+				// 	}
+				// }
 
-				// Ensure the angle is a mid angle of a sector
-				for (int i = 0; i < sys_vars->num_sect; ++i) {
-					if (proc_data->mid_angle_sum[a * sys_vars->num_k1_sectors + l] >= proc_data->theta[i] - proc_data->dtheta/2.0 && proc_data->mid_angle_sum[a * sys_vars->num_k1_sectors + l] < proc_data->theta[i] + proc_data->dtheta/2.0) {
-						proc_data->mid_angle_sum[a * sys_vars->num_k1_sectors + l] = proc_data->theta[i];
-					}
-				}
-
-				// Compute the boundaries for the k2 sector
-				C_theta_k2 = proc_data->mid_angle_sum[a * sys_vars->num_k1_sectors + l];
-				C_theta_k2_lwr = proc_data->mid_angle_sum[a * sys_vars->num_k1_sectors + l] - proc_data->dtheta/2.0;
-				C_theta_k2_upr = proc_data->mid_angle_sum[a * sys_vars->num_k1_sectors + l] + proc_data->dtheta/2.0;
+				// // Compute the boundaries for the k2 sector
+				// C_theta_k2 = proc_data->mid_angle_sum[a * sys_vars->num_k1_sectors + l];
+				// C_theta_k2_lwr = proc_data->mid_angle_sum[a * sys_vars->num_k1_sectors + l] - proc_data->dtheta/2.0;
+				// C_theta_k2_upr = proc_data->mid_angle_sum[a * sys_vars->num_k1_sectors + l] + proc_data->dtheta/2.0;
 				
 				// Initialize increment
 				nn = 0;
-
-
-				printf("C_k3: %lf\tC_k1: %lf\t--\tC_k3: %lf\tC_k2: %lf\n", C_theta_k3, C_theta_k1, C_theta_k3, C_theta_k2);
 
 				// Loop through the k wavevector (k is the k3 wavevector)
 				for (int tmp_k3_x = 0; tmp_k3_x <= sys_vars->N[0] - 1; ++tmp_k3_x) {
@@ -1729,8 +1737,8 @@ void AllocatePhaseSyncMemory(const long int* N) {
 									k1_angle     = atan2((double) k1_x, (double) k1_y);
 									k1_angle_neg = atan2((double)-k1_x, (double)-k1_y);
 
-									if( ((k1_sqr > 0 && k1_sqr <= sys_vars->kmax_C_sqr) && ((k1_angle >= C_theta_k3_lwr && k1_angle < C_theta_k3_upr) || (k1_angle_neg >= C_theta_k3_lwr && k1_angle_neg < C_theta_k3_upr)))
-										|| ((k1_sqr > 0 && k1_sqr <= sys_vars->kmax_sqr) && ((k1_angle >= C_theta_k1_lwr && k1_angle < C_theta_k1_upr) ) && !((k1_angle >= C_theta_k3_lwr && k1_angle < C_theta_k3_upr) || (k1_angle_neg >= C_theta_k3_lwr && k1_angle_neg < C_theta_k3_upr))) ) { 
+									if( ((k1_sqr > 0.0 && k1_sqr <= sys_vars->kmax_C_sqr) && ((k1_angle >= C_theta_k3_lwr && k1_angle < C_theta_k3_upr) || (k1_angle_neg >= C_theta_k3_lwr && k1_angle_neg < C_theta_k3_upr)))
+										|| ((k1_sqr > 0.0 && k1_sqr <= sys_vars->kmax_sqr) && ((k1_angle >= C_theta_k1_lwr && k1_angle < C_theta_k1_upr) ) && !((k1_angle >= C_theta_k3_lwr && k1_angle < C_theta_k3_upr) || (k1_angle_neg >= C_theta_k3_lwr && k1_angle_neg < C_theta_k3_upr))) ) { 
 										
 										// Find the k2 wavevector
 										k2_x = k3_x - k1_x;
@@ -1741,7 +1749,7 @@ void AllocatePhaseSyncMemory(const long int* N) {
 										k2_angle     = atan2((double)k2_x, (double) k2_y);
 										k2_angle_neg = atan2((double)-k2_x, (double) -k2_y);
 
-										if ( (k2_sqr > 0 && k2_sqr <= sys_vars->kmax_sqr) && !((k2_sqr > sys_vars->kmax_C_sqr && k2_sqr <= sys_vars->kmax_sqr) && ((k2_angle >= C_theta_k3_lwr && k2_angle < C_theta_k3_upr) || (k2_angle_neg >= C_theta_k3_lwr && k2_angle_neg < C_theta_k3_upr)))  ) {
+										if ( (k2_sqr > 0.0 && k2_sqr <= sys_vars->kmax_sqr) && !((k2_sqr > sys_vars->kmax_C_sqr && k2_sqr <= sys_vars->kmax_sqr) && ((k2_angle >= C_theta_k3_lwr && k2_angle < C_theta_k3_upr) || (k2_angle_neg >= C_theta_k3_lwr && k2_angle_neg < C_theta_k3_upr)))  ) {
 										
 											// Add k1 vector
 											proc_data->phase_sync_wave_vecs[a][l][K1_X][nn] = k1_x;
@@ -1773,8 +1781,8 @@ void AllocatePhaseSyncMemory(const long int* N) {
 								}
 							}
 						}
-						else if ( ((k3_sqr > 0 && k3_sqr <= sys_vars->kmax_sqr) &&  ((k3_angle >= C_theta_k1_lwr && k3_angle < C_theta_k1_upr) || (k3_angle_neg >= C_theta_k1_lwr && k3_angle_neg < C_theta_k1_upr)) && !((k3_angle >= C_theta_k3_lwr && k3_angle < C_theta_k3_upr) || (k3_angle_neg >= C_theta_k3_lwr && k3_angle_neg < C_theta_k3_upr))) 
-								  || ((k3_sqr > 0 && k3_sqr <= sys_vars->kmax_C_sqr) && ((k3_angle >= C_theta_k3_lwr && k3_angle < C_theta_k3_upr) || (k3_angle_neg >= C_theta_k3_lwr && k3_angle_neg < C_theta_k3_upr)) ) ) { 
+						else if ( ((k3_sqr > 0.0 && k3_sqr <= sys_vars->kmax_sqr) &&  ((k3_angle >= C_theta_k1_lwr && k3_angle < C_theta_k1_upr) || (k3_angle_neg >= C_theta_k1_lwr && k3_angle_neg < C_theta_k1_upr)) && !((k3_angle >= C_theta_k3_lwr && k3_angle < C_theta_k3_upr) || (k3_angle_neg >= C_theta_k3_lwr && k3_angle_neg < C_theta_k3_upr))) 
+								  || ((k3_sqr > 0.0 && k3_sqr <= sys_vars->kmax_C_sqr) && ((k3_angle >= C_theta_k3_lwr && k3_angle < C_theta_k3_upr) || (k3_angle_neg >= C_theta_k3_lwr && k3_angle_neg < C_theta_k3_upr)) ) ) { 
 
 							// Loop through the k1 wavevector
 							for (int tmp_k1_x = 0; tmp_k1_x <= sys_vars->N[0] - 1; ++tmp_k1_x) {

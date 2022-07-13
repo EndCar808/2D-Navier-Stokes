@@ -105,8 +105,9 @@ int GetCMLArgs(int argc, char** argv) {
 				break;
 			case 'a':
 				if (sector_flag == 0) {
-					// Get the number of sectors to use
-					sys_vars->num_sect = atoi(optarg); 
+					// Get the number of k3 and k1 sectors to use
+					sys_vars->num_sect       = atoi(optarg); 
+					sys_vars->num_k1_sectors = atoi(optarg);
 					sector_flag++;
 					if (sys_vars->num_sect <= 0) {
 						fprintf(stderr, "\n["RED"ERROR"RESET"]: Error in reading in command line agument ["CYAN"%s"RESET"], number of sector angles must be strictly positive, number provided ["CYAN"%d"RESET"]\n--->> Now Exiting!\n", "sys_vars->num_sect", sys_vars->num_sect);
@@ -116,11 +117,17 @@ int GetCMLArgs(int argc, char** argv) {
 				}
 				else if (sector_flag == 1) {
 					// If full search is turned on set the number of k1 sectors to the number of sectors
-					sys_vars->num_k1_sectors = sys_vars->num_sect;
+					sys_vars->num_k1_sectors = atoi(optarg);
+					sector_flag++;
 					if (sys_vars->num_sect <= 0) {
 						fprintf(stderr, "\n["RED"ERROR"RESET"]: Error in reading in command line agument ["CYAN"%s"RESET"], number of sector angles must be strictly positive, number provided ["CYAN"%d"RESET"]\n--->> Now Exiting!\n", "sys_vars->num_sect", sys_vars->num_sect);
 						exit(1);
 					}
+				}
+				else if (sector_flag == 2) {
+					// If reduced k1 sectors search is selected set to NUM_K1_SECTORS
+					sys_vars->num_k1_sectors = NUM_K1_SECTORS;
+					sector_flag++;
 				}
 				else {
 					break;
