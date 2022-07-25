@@ -415,6 +415,7 @@ void PhaseSyncSector(int s) {
 						#endif
 
 						if (flux_pre_fac < 0) {
+							
 							//------------------------------------------ TRIAD TYPE 1
 							proc_data->num_triads[1][a]++;		
 							proc_data->enst_flux[1][a]         += flux_wght * cos(triad_phase);
@@ -1372,7 +1373,7 @@ void AllocatePhaseSyncMemory(const long int* N) {
 	//--------------- Initialize arrays
 	proc_data->dtheta = 2.0 * M_PI / (double )sys_vars->num_sect;
 	for (int i = 0; i < sys_vars->num_sect; ++i) {
-		proc_data->theta[i] = -M_PI + i * proc_data->dtheta + proc_data->dtheta / 2.0;
+		proc_data->theta[i] = -M_PI + i * proc_data->dtheta + proc_data->dtheta / 2.0 + 1e-10;
 		proc_data->phase_R[i]     = 0.0;
 		proc_data->phase_Phi[i]   = 0.0;
 		proc_data->phase_order[i] = 0.0 + 0.0 * I;
@@ -1398,7 +1399,6 @@ void AllocatePhaseSyncMemory(const long int* N) {
 				proc_data->phase_order_C_theta_triads_2d[j][i][k] = 0.0 + 0.0 * I;
 			}
 		}
-		printf("theta[%d]: %lf\tdtheta/2: %lf\n", i, proc_data->theta[i], proc_data->dtheta/2.0);
 	}
 	
 
@@ -1579,6 +1579,8 @@ void AllocatePhaseSyncMemory(const long int* N) {
 	// Check if Wavector file exists
 	if (access(file_info->wave_vec_data_name, F_OK) == 0) {
 		printf("\n["YELLOW"NOTE"RESET"] --- Reading in wavevectors data for Phase Sync computation...");
+		printf("\nNumber of k_3 Sectors: ["CYAN"%d"RESET"]\nNumber of k_1 Sectors: ["CYAN"%d"RESET"]\n\n", sys_vars->num_sect, sys_vars->num_k1_sectors);
+
 		
 		//----------------------- Open file with default I/O access properties
 		file_info->wave_vec_file_handle = H5Fopen(file_info->wave_vec_data_name, H5F_ACC_RDWR, H5P_DEFAULT);
@@ -1640,6 +1642,7 @@ void AllocatePhaseSyncMemory(const long int* N) {
 		
 		// Print to screen that a pre computation search is needed for the phase sync wavevectors and begin timeing it
 		printf("\n["YELLOW"NOTE"RESET"] --- Performing search over wavevectors for Phase Sync computation...\n");
+		printf("\nNumber of k_3 Sectors: ["CYAN"%d"RESET"]\nNumber of k_1 Sectors: ["CYAN"%d"RESET"]\n\n", sys_vars->num_sect, sys_vars->num_k1_sectors);
 		struct timeval begin, end;
 		gettimeofday(&begin, NULL);
 
@@ -1664,8 +1667,8 @@ void AllocatePhaseSyncMemory(const long int* N) {
 				else if (sys_vars->num_k1_sectors == 1){
 					// When k1 can vary anywhere -> no restriction to sector
 					C_theta_k1     = 0.0;
-					C_theta_k1_lwr = C_theta_k1 - M_PI;
-					C_theta_k1_upr = C_theta_k1 + M_PI;
+					C_theta_k1_lwr = C_theta_k1 - M_PI + 1e-10;
+					C_theta_k1_upr = C_theta_k1 + M_PI + 1e-10;
 				}
 				else {
 					// Full search over sectors
@@ -1718,6 +1721,11 @@ void AllocatePhaseSyncMemory(const long int* N) {
 						k3_sqr       = (double) (k3_x * k3_x + k3_y * k3_y);
 						k3_angle     = atan2((double)k3_x, (double)k3_y);
 						k3_angle_neg = atan2((double)-k3_x, (double)-k3_y);
+
+						if (a == sys_vars->num_sect/2 && k3_x == 1 && k3_y == 4) {
+							printf("k3_x: %d\tk3_y: %d\nk3_angle: %lf\nk3_angle_neg: %lf\n", k3_x, k3_y, k3_angle, k3_angle_neg);
+							// printf("First: %s\tSecond: %s\nk3_angle: %lf\nk3_angle_neg: %lf\n", k3_x, k3_y, k3_angle, k3_angle_neg);
+						}
 						
 						if ((k3_sqr > sys_vars->kmax_C_sqr && k3_sqr <= sys_vars->kmax_sqr) && ((k3_angle >= C_theta_k3_lwr && k3_angle < C_theta_k3_upr) || (k3_angle_neg >= C_theta_k3_lwr && k3_angle_neg < C_theta_k3_upr) )) {  
 
@@ -1737,6 +1745,13 @@ void AllocatePhaseSyncMemory(const long int* N) {
 									k1_angle     = atan2((double) k1_x, (double) k1_y);
 									k1_angle_neg = atan2((double)-k1_x, (double)-k1_y);
 
+									if (a == sys_vars->num_sect/2 && k1_x == -3 && k1_y == 1 && k3_x == 1 && k3_y == 4) {
+										printf("k1_x: %d\nk1_y: %d\nk1_angle: %lf\nFirst: %s\nSecond: %s\n", k1_x, k1_y, k1_angle, (((k1_angle >= C_theta_k3_lwr && k1_angle < C_theta_k3_upr) || (k1_angle_neg >= C_theta_k3_lwr && k1_angle_neg < C_theta_k3_upr))) ? "Yes" : "No", 
+											((k1_sqr > 0.0 && k1_sqr <= sys_vars->kmax_sqr) && ((k1_angle >= C_theta_k1_lwr && k1_angle < C_theta_k1_upr) ) && !((k1_angle >= C_theta_k3_lwr && k1_angle < C_theta_k3_upr) || (k1_angle_neg >= C_theta_k3_lwr && k1_angle_neg < C_theta_k3_upr))) ? "Yes" : "No");
+										printf("k1_angle: %lf\nC_theta_k1_lwr: %1.16lf\nC_theta_k1_upr: %1.16lf\n", k1_angle, C_theta_k1_lwr, C_theta_k1_upr);
+									}
+
+
 									if( ((k1_sqr > 0.0 && k1_sqr <= sys_vars->kmax_C_sqr) && ((k1_angle >= C_theta_k3_lwr && k1_angle < C_theta_k3_upr) || (k1_angle_neg >= C_theta_k3_lwr && k1_angle_neg < C_theta_k3_upr)))
 										|| ((k1_sqr > 0.0 && k1_sqr <= sys_vars->kmax_sqr) && ((k1_angle >= C_theta_k1_lwr && k1_angle < C_theta_k1_upr) ) && !((k1_angle >= C_theta_k3_lwr && k1_angle < C_theta_k3_upr) || (k1_angle_neg >= C_theta_k3_lwr && k1_angle_neg < C_theta_k3_upr))) ) { 
 										
@@ -1749,8 +1764,20 @@ void AllocatePhaseSyncMemory(const long int* N) {
 										k2_angle     = atan2((double)k2_x, (double) k2_y);
 										k2_angle_neg = atan2((double)-k2_x, (double) -k2_y);
 
-										if ( (k2_sqr > 0.0 && k2_sqr <= sys_vars->kmax_sqr) && !((k2_sqr > sys_vars->kmax_C_sqr && k2_sqr <= sys_vars->kmax_sqr) && ((k2_angle >= C_theta_k3_lwr && k2_angle < C_theta_k3_upr) || (k2_angle_neg >= C_theta_k3_lwr && k2_angle_neg < C_theta_k3_upr)))  ) {
-										
+										if (a == sys_vars->num_sect/2 && k1_x == -3 && k1_y == 1 && k3_x == 1 && k3_y == 4) {
+											printf("\nk2_angle: %lf\nk2_angle_neg: %lf\nC_theta_k3_lwr: %1.16lf\nC_theta_k3_upr: %1.16lf\nFirst: %s\nSecond: %s\nPos: %s\nNeg: %s\n", k2_angle, k2_angle_neg, C_theta_k3_lwr, C_theta_k3_upr,
+												(k2_sqr > 0.0 && k2_sqr <= sys_vars->kmax_sqr) ? "Yes" : "No",
+												!((k2_sqr > sys_vars->kmax_C_sqr && k2_sqr <= sys_vars->kmax_sqr) && ((k2_angle >= C_theta_k3_lwr && k2_angle < C_theta_k3_upr) || (k2_angle_neg >= C_theta_k3_lwr && k2_angle_neg < C_theta_k3_upr))) ? "Yes" : "No", 
+												(k2_angle >= C_theta_k3_lwr && k2_angle < C_theta_k3_upr) ? "Yes" : "No",
+												(k2_angle_neg >= C_theta_k3_lwr && k2_angle_neg < C_theta_k3_upr) ? "Yes" : "No");
+										}
+
+										if ( (k2_sqr > 0.0 && k2_sqr <= sys_vars->kmax_sqr) && !((k2_sqr > sys_vars->kmax_C_sqr && k2_sqr <= sys_vars->kmax_sqr) && ((k2_angle >= C_theta_k3_lwr && k2_angle < C_theta_k3_upr) || (k2_angle_neg >= C_theta_k3_lwr && k2_angle_neg < C_theta_k3_upr))) ) {
+											
+											if (a == sys_vars->num_sect/2 && k1_x == -3 && k1_y == 2 && k2_x == 4 && k2_y == 2 && k3_x == 1 && k3_y == 4) {
+												printf("Here");
+											}
+
 											// Add k1 vector
 											proc_data->phase_sync_wave_vecs[a][l][K1_X][nn] = k1_x;
 											proc_data->phase_sync_wave_vecs[a][l][K1_Y][nn] = k1_y;

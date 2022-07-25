@@ -95,8 +95,8 @@
 #define NUM_TRIAD_TYPES 6 		// The number of triad types contributing to the flux
 #define NUM_K1_SECTORS 8		// The number of k1 sectors to search over in a reduced search @ +/- 30, 45, 60 & 90 degrees
 #define NUM_K_DATA 16           // The number of wavevector data to precompute and store
-#define	K1_X 	  0 			// The index for the k1_x wavenuber
-#define	K1_Y 	  1 			// The index for the k1_y wavenuber
+#define	K1_X	  0 			// The index for the k1_x wavenuber
+#define	K1_Y	  1 			// The index for the k1_y wavenuber
 #define	K2_X 	  2 			// The index for the k2_x wavenuber
 #define	K2_Y  	  3 			// The index for the k2_y wavenuber
 #define	K3_X  	  4 			// The index for the k3_x wavenuber
