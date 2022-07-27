@@ -422,7 +422,7 @@ void OpenOutputFile(void) {
 	if (strcmp(file_info->output_dir, "NONE") == -1) {
 		// Construct pathh
 		strcpy(file_info->output_file_name, file_info->output_dir);
-		sprintf(file_name, "PostProcessing_HDF_Data_SECTORS[%d]_KFRAC[%1.2lf]_TAG[%s].h5", sys_vars->num_sect, sys_vars->kmax_frac, file_info->output_tag);
+		sprintf(file_name, "PostProcessing_HDF_Data_SECTORS[%d,%d]_KFRAC[%1.2lf]_TAG[%s].h5", sys_vars->num_sect, sys_vars->num_k1_sectors, sys_vars->kmax_frac, file_info->output_tag);
 		strcat(file_info->output_file_name, file_name);
 
 		// Print output file path to screen
@@ -433,7 +433,7 @@ void OpenOutputFile(void) {
 
 		// Construct pathh
 		strcpy(file_info->output_file_name, file_info->input_dir);
-		sprintf(file_name, "PostProcessing_HDF_Data_SECTORS[%d]_KFRAC[%1.2lf]_TAG[%s].h5", sys_vars->num_sect, sys_vars->kmax_frac, file_info->output_tag);
+		sprintf(file_name, "PostProcessing_HDF_Data_SECTORS[%d,%d]_KFRAC[%1.2lf]_TAG[%s].h5", sys_vars->num_sect, sys_vars->num_k1_sectors, sys_vars->kmax_frac, file_info->output_tag);
 		strcat(file_info->output_file_name, file_name);
 
 		// Print output file path to screen
@@ -449,7 +449,7 @@ void OpenOutputFile(void) {
 	// --------------------------------
 	file_info->output_file_handle = H5Fcreate(file_info->output_file_name, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
 	if (file_info->output_file_handle < 0) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"]  --- Could not create HDF5 output file at: "CYAN"%s"RESET" \n-->>Exiting....\n", file_info->output_file_name);
+		fprintf(stderr, "\n["RED"ERROR"RESET"]  --- Could not create HDF5 output file at: "CYAN"%s"RESET" \n-->> Exiting....\n", file_info->output_file_name);
 		exit(1);
 	}
 

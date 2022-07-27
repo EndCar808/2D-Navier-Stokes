@@ -672,14 +672,14 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
             ## Set the number of Triad Types
             NUM_TRIAD_TYPES = 7
 
-            sim_data.spec_size = 91
+            # sim_data.spec_size = 91
 
             ## Get the max wavenumber
             self.kmax = int((sim_data.Nx / 3))
             ## Allocate spectra aarrays
-            self.phases        = np.zeros((sim_data.ndata, int(2 * self.kmax - 1), int(2 * self.kmax - 1)))
-            self.enrg_spectrum = np.zeros((sim_data.ndata, int(2 * self.kmax - 1), int(2 * self.kmax - 1)))
-            self.enst_spectrum = np.zeros((sim_data.ndata, int(2 * self.kmax - 1), int(2 * self.kmax - 1)))
+            self.phases        = np.zeros((sim_data.ndata, int(2 * self.kmax + 1), int(2 * self.kmax + 1)))
+            self.enrg_spectrum = np.zeros((sim_data.ndata, int(2 * self.kmax + 1), int(2 * self.kmax + 1)))
+            self.enst_spectrum = np.zeros((sim_data.ndata, int(2 * self.kmax + 1), int(2 * self.kmax + 1)))
             ## Allocate the increment arrays
             self.u_pdf_ranges = np.zeros((sim_data.ndata, 1001))
             self.u_pdf_counts = np.zeros((sim_data.ndata, 1000))
