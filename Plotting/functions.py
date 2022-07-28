@@ -584,13 +584,12 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                 if 'y' in list(f.keys()):
                     self.y = f["y"][:]
                 ## Get the number of sectors
-                if 'SectorAngles' in list(f.keys()):
-                    self.theta        = f["SectorAngles"][:]
-                    self.num_sect     = self.theta.shape[0]
-                    self.num_k1_sects = self.num_sect
-                if 'SectorAngles' not in list(f.keys()):
-                    self.num_sect     = int(in_f.split('_')[-3].split("[")[-1].split("]")[0])
-                    self.num_k1_sects = self.num_sect
+                if 'SectorAngles_k3' in list(f.keys()):
+                    self.theta_k3 = f["SectorAngles_k3"][:]
+                    self.num_sect = self.theta_k3.shape[0]
+                if 'SectorAngles_k1' in list(f.keys()):
+                    self.theta_k1     = f["SectorAngles_k1"][:]
+                    self.num_k1_sects = self.theta_k1.shape[0]
                 ## Get the number of triads per sector
                 if 'NumTriadsPerSector' in list(f.keys()):
                     self.num_triads = f["NumTriadsPerSector"][:, :]
@@ -659,9 +658,6 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                 if 'VorticityGradient_y_BinCounts' in list(f.keys()):
                     self.grad_w_y_counts = f["VorticityGradient_y_BinCounts"][:]
 
-                ## Get the number of k1 sectors 
-                if 'TriadPhaseSync_2D' in list(f['Snap_00000'].keys()):
-                    self.num_k1_sects = f['Snap_00000']['TriadPhaseSync_2D'][:, :, :].shape[-1]
 
             ## Data indicators
             self.no_w     = False

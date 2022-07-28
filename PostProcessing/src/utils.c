@@ -53,7 +53,7 @@ int GetCMLArgs(int argc, char** argv) {
 	file_info->input_file_only = 0; // used to indicate if input file was file only i.e., not output folder
 	file_info->output_file_only = 0; // used to indicate if output file should be file only i.e., not output folder
 	// Number of wavevector space sectors
-	sys_vars->num_sect = 40;
+	sys_vars->num_k3_sectors = 40;
 	// Fraction of maximum wavevector
 	sys_vars->kmax_frac = 1.0;
 	// Set the default amount of threads to use
@@ -106,11 +106,11 @@ int GetCMLArgs(int argc, char** argv) {
 			case 'a':
 				if (sector_flag == 0) {
 					// Get the number of k3 and k1 sectors to use
-					sys_vars->num_sect       = atoi(optarg); 
+					sys_vars->num_k3_sectors       = atoi(optarg); 
 					sys_vars->num_k1_sectors = atoi(optarg);
 					sector_flag++;
-					if (sys_vars->num_sect <= 0) {
-						fprintf(stderr, "\n["RED"ERROR"RESET"]: Error in reading in command line agument ["CYAN"%s"RESET"], number of sector angles must be strictly positive, number provided ["CYAN"%d"RESET"]\n--->> Now Exiting!\n", "sys_vars->num_sect", sys_vars->num_sect);
+					if (sys_vars->num_k3_sectors <= 0) {
+						fprintf(stderr, "\n["RED"ERROR"RESET"]: Error in reading in command line agument ["CYAN"%s"RESET"], number of sector angles must be strictly positive, number provided ["CYAN"%d"RESET"]\n--->> Now Exiting!\n", "sys_vars->num_k3_sectors", sys_vars->num_k3_sectors);
 						exit(1);
 					}
 					break;	
@@ -119,8 +119,8 @@ int GetCMLArgs(int argc, char** argv) {
 					// If full search is turned on set the number of k1 sectors to the number of sectors
 					sys_vars->num_k1_sectors = atoi(optarg);
 					sector_flag++;
-					if (sys_vars->num_sect <= 0) {
-						fprintf(stderr, "\n["RED"ERROR"RESET"]: Error in reading in command line agument ["CYAN"%s"RESET"], number of sector angles must be strictly positive, number provided ["CYAN"%d"RESET"]\n--->> Now Exiting!\n", "sys_vars->num_sect", sys_vars->num_sect);
+					if (sys_vars->num_k3_sectors <= 0) {
+						fprintf(stderr, "\n["RED"ERROR"RESET"]: Error in reading in command line agument ["CYAN"%s"RESET"], number of sector angles must be strictly positive, number provided ["CYAN"%d"RESET"]\n--->> Now Exiting!\n", "sys_vars->num_k3_sectors", sys_vars->num_k3_sectors);
 						exit(1);
 					}
 				}
@@ -136,7 +136,7 @@ int GetCMLArgs(int argc, char** argv) {
 				// Get the number of omp threads to use
 				sys_vars->num_threads = atoi(optarg); 
 				if (sys_vars->num_threads <= 0) {
-					fprintf(stderr, "\n["RED"ERROR"RESET"]: Error in reading in command line agument ["CYAN"%s"RESET"], number of OMP threads must be greater than or equal to 1, umber provided ["CYAN"%d"RESET"]\n--->> Now Exiting!\n", "sys_vars->num_sect", sys_vars->num_threads);
+					fprintf(stderr, "\n["RED"ERROR"RESET"]: Error in reading in command line agument ["CYAN"%s"RESET"], number of OMP threads must be greater than or equal to 1, umber provided ["CYAN"%d"RESET"]\n--->> Now Exiting!\n", "sys_vars->num_k3_sectors", sys_vars->num_threads);
 					exit(1);
 				}
 				break;

@@ -397,7 +397,7 @@ void FluxSpectra(int snap) {
 	}
 
 	// Initialize Collective phase order array
-	for (int i = 0; i < sys_vars->num_sect; ++i) {
+	for (int i = 0; i < sys_vars->num_k3_sectors; ++i) {
 		proc_data->enst_flux_C_theta[i]   = 0.0;
 		proc_data->enst_diss_C_theta[i]   = 0.0;
 		proc_data->phase_order_C_theta[i] = 0.0 + 0.0 * I;
@@ -470,8 +470,8 @@ void FluxSpectra(int snap) {
 					// Compute the enstrophy flux, dissipation and collective phase for C_theta
 					if (k_sqr > sys_vars->kmax_C_sqr && k_sqr <= sys_vars->kmax_sqr) {
 					// if (sqrt(k_sqr) >= sqrt(sys_vars->kmax_C_sqr) - 0.5 && sqrt(k_sqr) <= sqrt(sys_vars->kmax_sqr) + 0.5) {
-						for (int a = 0; a < sys_vars->num_sect; ++a) {
-							if (proc_data->phase_angle[indx] >= proc_data->theta[a] - proc_data->dtheta/2.0 && proc_data->phase_angle[indx] < proc_data->theta[a] + proc_data->dtheta/2.0) {
+						for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
+							if (proc_data->phase_angle[indx] >= proc_data->theta_k3[a] - proc_data->dtheta_k3/2.0 && proc_data->phase_angle[indx] < proc_data->theta_k3[a] + proc_data->dtheta_k3/2.0) {
 								
 								// Record the flux and dissipation
 								proc_data->enst_diss_C_theta[a] += tmp_diss;
@@ -511,8 +511,8 @@ void FluxSpectra(int snap) {
 					// Compute the enstrophy flux, dissipation and collective phase for C_theta
 					if (k_sqr > sys_vars->kmax_C_sqr && k_sqr <= sys_vars->kmax_sqr) {
 					// if (sqrt(k_sqr) >= sqrt(sys_vars->kmax_C_sqr) - 0.5 && sqrt(k_sqr) <= sqrt(sys_vars->kmax_sqr) + 0.5) {
-						for (int a = 0; a < sys_vars->num_sect; ++a) {
-							if (proc_data->phase_angle[indx] >= proc_data->theta[a] - proc_data->dtheta/2.0 && proc_data->phase_angle[indx] < proc_data->theta[a] + proc_data->dtheta/2.0) {
+						for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
+							if (proc_data->phase_angle[indx] >= proc_data->theta_k3[a] - proc_data->dtheta_k3/2.0 && proc_data->phase_angle[indx] < proc_data->theta_k3[a] + proc_data->dtheta_k3/2.0) {
 								
 
 								// Record the flux and dissipation
@@ -670,7 +670,7 @@ void AllocateFullFieldMemory(const long int* N) {
 	}
 
 	// --------------------------------	
-	//  Allocate C_\theta Enstrophy Flux
+	//  Allocate C_\theta_k3 Enstrophy Flux
 	// --------------------------------
 	#if defined(__SEC_PHASE_SYNC)
 	// The enstrophy flux out of the set C

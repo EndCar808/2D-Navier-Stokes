@@ -291,12 +291,12 @@ void PhaseSyncSector(int s) {
 
 
 	// Loop through the sectors for k3
-	for (int a = 0; a < sys_vars->num_sect; ++a) {	
+	for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {	
 
 		// // Get the sector for k3
-		// S_k3 = proc_data->theta[a];
-		// S_k3_upr = S_k3 + proc_data->dtheta/2.0;
-		// S_k3_lwr = S_k3 - proc_data->dtheta/2.0;
+		// S_k3 = proc_data->theta_k3[a];
+		// S_k3_upr = S_k3 + proc_data->dtheta_k3/2.0;
+		// S_k3_lwr = S_k3 - proc_data->dtheta_k3/2.0;
 
 		// Initialize counters number of triads and enstrophy flux for each triad type
 		for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
@@ -320,13 +320,13 @@ void PhaseSyncSector(int s) {
 
 			// // Get the angles for the second -> sector where k1 lies
 			// if (sys_vars->num_k1_sectors == NUM_K1_SECTORS) {
-			// 	S_k1 = MyMod(proc_data->theta[a] + (proc_data->k1_sector_angles[l] * proc_data->dtheta/2.0) + M_PI, 2.0 * M_PI) - M_PI;
+			// 	S_k1 = MyMod(proc_data->theta_k3[a] + (proc_data->k1_sector_angles[l] * proc_data->dtheta_k3/2.0) + M_PI, 2.0 * M_PI) - M_PI;
 			// }
 			// else {
-			// 	S_k1 = proc_data->theta[(a + l) % sys_vars->num_sect];
+			// 	S_k1 = proc_data->theta_k3[(a + l) % sys_vars->num_k3_sectors];
 			// }
-			// S_k1_lwr = S_k1 - proc_data->dtheta / 2.0;
-			// S_k1_upr = S_k1 + proc_data->dtheta / 2.0;
+			// S_k1_lwr = S_k1 - proc_data->dtheta_k3 / 2.0;
+			// S_k1_upr = S_k1 + proc_data->dtheta_k3 / 2.0;
 			
 			// Loop through wavevectors
 			if (proc_data->num_wave_vecs[a][l] != 0) {
@@ -381,7 +381,7 @@ void PhaseSyncSector(int s) {
 						proc_data->enst_flux[0][a]         += flux_wght * cos(triad_phase);
 						proc_data->triad_phase_order[0][a] += cexp(I * gen_triad_phase);
 						// if (l == 0) {
-						// 	// 1D contribution only depends on theta
+						// 	// 1D contribution only depends on theta_k3
 						// 	proc_data->num_triads_1d[0][a]++;
 						// 	proc_data->enst_flux_1d[0][a]         += flux_wght * cos(triad_phase);
 						// 	proc_data->triad_phase_order_1d[0][a] += cexp(I * gen_triad_phase);
@@ -420,7 +420,7 @@ void PhaseSyncSector(int s) {
 							proc_data->enst_flux[1][a]         += flux_wght * cos(triad_phase);
 							proc_data->triad_phase_order[1][a] += cexp(I * gen_triad_phase);
 							// if (l == 0) {
-							// 	// 1D contribution only depends on theta
+							// 	// 1D contribution only depends on theta_k3
 							// 	proc_data->num_triads_1d[1][a]++;		
 							// 	proc_data->enst_flux_1d[1][a]         += flux_wght * cos(triad_phase);
 							// 	proc_data->triad_phase_order_1d[1][a] += cexp(I * gen_triad_phase);
@@ -458,7 +458,7 @@ void PhaseSyncSector(int s) {
 							proc_data->enst_flux[2][a]         += flux_wght * cos(triad_phase);
 							proc_data->triad_phase_order[2][a] += cexp(I * gen_triad_phase);
 							// if (l == 0) {
-							// 	// 1D contribution only depends on theta
+							// 	// 1D contribution only depends on theta_k3
 							// 	proc_data->num_triads_1d[2][a]++;		
 							// 	proc_data->enst_flux_1d[2][a]         += flux_wght * cos(triad_phase);
 							// 	proc_data->triad_phase_order_1d[2][a] += cexp(I * gen_triad_phase);
@@ -1086,7 +1086,7 @@ void PhaseSyncSector(int s) {
 	}
 
 	//------------------- Record the data for the triads
-	for (int a = 0; a < sys_vars->num_sect; ++a) {
+	for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
 		for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
 			// Normalize the phase order parameters
 			if (proc_data->num_triads[i][a] != 0) {
@@ -1114,7 +1114,7 @@ void PhaseSyncSector(int s) {
 	}
 
 	//------------- Reset order parameters for next iteration
-	for (int a = 0; a < sys_vars->num_sect; ++a) {
+	for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
 		for (int type = 0; type < NUM_TRIAD_TYPES; ++type) {
 			proc_data->triad_phase_order[type][a]    = 0.0 + 0.0 * I;
 			// proc_data->triad_phase_order_1d[type][a] = 0.0 + 0.0 * I;
@@ -1146,8 +1146,13 @@ void AllocatePhaseSyncMemory(const long int* N) {
 	//  Allocate Sector Angles
 	// --------------------------------
 	// Allocate the array of sector angles
-	proc_data->theta = (double* )fftw_malloc(sizeof(double) * (sys_vars->num_sect));
-	if (proc_data->theta == NULL) {
+	proc_data->theta_k3 = (double* )fftw_malloc(sizeof(double) * (sys_vars->num_k3_sectors));
+	if (proc_data->theta_k3 == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Phase Sync Sector Angles");
+		exit(1);
+	}
+	proc_data->theta_k1 = (double* )fftw_malloc(sizeof(double) * (sys_vars->num_k1_sectors));
+	if (proc_data->theta_k1 == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Phase Sync Sector Angles");
 		exit(1);
 	}
@@ -1159,24 +1164,24 @@ void AllocatePhaseSyncMemory(const long int* N) {
 	for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
 		///--------------- Number of Triads
 		// Allocate memory for the phase order parameter for the triad phases
-		proc_data->num_triads[i] = (int* )fftw_malloc(sizeof(int) * sys_vars->num_sect);
+		proc_data->num_triads[i] = (int* )fftw_malloc(sizeof(int) * sys_vars->num_k3_sectors);
 		if (proc_data->num_triads[i] == NULL) {
 			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Number of Triads Per Sector");
 			exit(1);
 		}
-		proc_data->num_triads_1d[i] = (int* )fftw_malloc(sizeof(int) * sys_vars->num_sect);
+		proc_data->num_triads_1d[i] = (int* )fftw_malloc(sizeof(int) * sys_vars->num_k3_sectors);
 		if (proc_data->num_triads_1d[i] == NULL) {
 			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Number of Triads Per Sector 1D");
 			exit(1);
 		}
 
 		///--------------- Enstrophy Flux
-		proc_data->enst_flux[i] = (double* )fftw_malloc(sizeof(double) * (sys_vars->num_sect));
+		proc_data->enst_flux[i] = (double* )fftw_malloc(sizeof(double) * (sys_vars->num_k3_sectors));
 		if (proc_data->enst_flux[i] == NULL) {
 			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Enstrophy Flux Per Sector");
 			exit(1);
 		}
-		proc_data->enst_flux_1d[i] = (double* )fftw_malloc(sizeof(double) * (sys_vars->num_sect));
+		proc_data->enst_flux_1d[i] = (double* )fftw_malloc(sizeof(double) * (sys_vars->num_k3_sectors));
 		if (proc_data->enst_flux_1d[i] == NULL) {
 			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Enstrophy Flux Per Sector 1D");
 			exit(1);
@@ -1184,18 +1189,18 @@ void AllocatePhaseSyncMemory(const long int* N) {
 
 		///-------------- Number of Triads and Enstrophy Flux across sectors
 		// Allocate memory for the number of triads per sector
-		proc_data->num_triads_2d[i] = (int** )fftw_malloc(sizeof(int* ) * sys_vars->num_sect);
+		proc_data->num_triads_2d[i] = (int** )fftw_malloc(sizeof(int* ) * sys_vars->num_k3_sectors);
 		if (proc_data->num_triads_2d[i] == NULL) {
 			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Number of Triads Per Sector");
 			exit(1);
 		}
 		// Allocate memory for the flux of enstrophy across sectors
-		proc_data->enst_flux_2d[i] = (double** )fftw_malloc(sizeof(double* ) * sys_vars->num_sect);
+		proc_data->enst_flux_2d[i] = (double** )fftw_malloc(sizeof(double* ) * sys_vars->num_k3_sectors);
 		if (proc_data->enst_flux_2d[i] == NULL) {
 			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Enstrophy Flux Per Sector");
 			exit(1);
 		}	
-		for (int l = 0; l < sys_vars->num_sect; ++l) {
+		for (int l = 0; l < sys_vars->num_k3_sectors; ++l) {
 			proc_data->num_triads_2d[i][l] = (int* )fftw_malloc(sizeof(int) * sys_vars->num_k1_sectors);
 			if (proc_data->num_triads_2d[i][l] == NULL) {
 				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Number of Triads Per Sector");
@@ -1214,7 +1219,7 @@ void AllocatePhaseSyncMemory(const long int* N) {
 	//  Allocate Mid Angle Sum
 	// --------------------------------
 	// Allocate memory for the precomputed sector midpoint angle sums -> this is used to determine which sector k2 is
-	proc_data->mid_angle_sum = (double* )fftw_malloc(sizeof(double) * sys_vars->num_sect * sys_vars->num_k1_sectors);
+	proc_data->mid_angle_sum = (double* )fftw_malloc(sizeof(double) * sys_vars->num_k3_sectors * sys_vars->num_k1_sectors);
 	if (proc_data->mid_angle_sum == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Midpoint Sector Angles");
 		exit(1);
@@ -1243,19 +1248,19 @@ void AllocatePhaseSyncMemory(const long int* N) {
 	//  Allocate Individual Phases Sync
 	// -------------------------------------
 	// Allocate memory for the phase order parameter for the individual phases
-	proc_data->phase_order = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->num_sect);
+	proc_data->phase_order = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->num_k3_sectors);
 	if (proc_data->phase_order == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Phase Sync Phase Order Parameter");
 		exit(1);
 	}
 	// Allocate the array of phase sync per sector for the individual phases
-	proc_data->phase_R = (double* )fftw_malloc(sizeof(double) * sys_vars->num_sect);
+	proc_data->phase_R = (double* )fftw_malloc(sizeof(double) * sys_vars->num_k3_sectors);
 	if (proc_data->phase_R == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Phase Sync Parameter");
 		exit(1);
 	}
 	// Allocate the array of average phase per sector for the individual phases
-	proc_data->phase_Phi = (double* )fftw_malloc(sizeof(double) * sys_vars->num_sect);
+	proc_data->phase_Phi = (double* )fftw_malloc(sizeof(double) * sys_vars->num_k3_sectors);
 	if (proc_data->phase_Phi == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Average Phase");
 		exit(1);
@@ -1267,56 +1272,56 @@ void AllocatePhaseSyncMemory(const long int* N) {
 	// -------------------------------------
 	// Allocate memory for each  of the triad types
 	for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
-		//--------------- Allocate memory for the collective phase order parameter for theta
-		proc_data->phase_order_C_theta_triads[i] = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->num_sect);
+		//--------------- Allocate memory for the collective phase order parameter for theta_k3
+		proc_data->phase_order_C_theta_triads[i] = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->num_k3_sectors);
 		if (proc_data->phase_order_C_theta_triads[i] == NULL) {
 			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Triad Phase Sync Phase Order Parameter");
 			exit(1);
 		}
-		proc_data->phase_order_C_theta_triads_1d[i] = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->num_sect);
+		proc_data->phase_order_C_theta_triads_1d[i] = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->num_k3_sectors);
 		if (proc_data->phase_order_C_theta_triads_1d[i] == NULL) {
 			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Triad Phase Sync Phase Order Parameter 1D");
 			exit(1);
 		}
-		proc_data->phase_order_C_theta_triads_2d[i] = (fftw_complex** )fftw_malloc(sizeof(fftw_complex*) * sys_vars->num_sect);
+		proc_data->phase_order_C_theta_triads_2d[i] = (fftw_complex** )fftw_malloc(sizeof(fftw_complex*) * sys_vars->num_k3_sectors);
 		if (proc_data->phase_order_C_theta_triads_2d[i] == NULL) {
 			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Triad Phase Sync Phase Order Parameter 2D");
 			exit(1);
 		}
 
 		//--------------- Allocate memory for the phase order parameter for the triad phases
-		proc_data->triad_phase_order[i] = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->num_sect);
+		proc_data->triad_phase_order[i] = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->num_k3_sectors);
 		if (proc_data->triad_phase_order[i] == NULL) {
 			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Triad Phase Sync Phase Order Parameter");
 			exit(1);
 		}
 		// Allocate the array of phase sync per sector for the triad phases
-		proc_data->triad_R[i] = (double* )fftw_malloc(sizeof(double) * sys_vars->num_sect);
+		proc_data->triad_R[i] = (double* )fftw_malloc(sizeof(double) * sys_vars->num_k3_sectors);
 		if (proc_data->triad_R[i] == NULL) {
 			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Triad Phase Sync Parameter");
 			exit(1);
 		}
 		// Allocate the array of average phase per sector for the triad phases
-		proc_data->triad_Phi[i] = (double* )fftw_malloc(sizeof(double) * sys_vars->num_sect);
+		proc_data->triad_Phi[i] = (double* )fftw_malloc(sizeof(double) * sys_vars->num_k3_sectors);
 		if (proc_data->triad_Phi[i] == NULL) {
 			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Average Triad Phase");
 			exit(1);
 		}
 
 		//--------------- Allocate memory for the phase order parameter for the triad phases for 1d contributions
-		proc_data->triad_phase_order_1d[i] = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->num_sect);
+		proc_data->triad_phase_order_1d[i] = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->num_k3_sectors);
 		if (proc_data->triad_phase_order_1d[i] == NULL) {
 			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Triad Phase Sync Phase Order Parameter 1D");
 			exit(1);
 		}
 		// Allocate the array of phase sync per sector for the triad phases
-		proc_data->triad_R_1d[i] = (double* )fftw_malloc(sizeof(double) * sys_vars->num_sect);
+		proc_data->triad_R_1d[i] = (double* )fftw_malloc(sizeof(double) * sys_vars->num_k3_sectors);
 		if (proc_data->triad_R_1d[i] == NULL) {
 			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Triad Phase Sync Parameter 1D");
 			exit(1);
 		}
 		// Allocate the array of average phase per sector for the triad phases
-		proc_data->triad_Phi_1d[i] = (double* )fftw_malloc(sizeof(double) * sys_vars->num_sect);
+		proc_data->triad_Phi_1d[i] = (double* )fftw_malloc(sizeof(double) * sys_vars->num_k3_sectors);
 		if (proc_data->triad_Phi_1d[i] == NULL) {
 			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Average Triad Phase 1D");
 			exit(1);
@@ -1324,24 +1329,24 @@ void AllocatePhaseSyncMemory(const long int* N) {
 
 		///------------- Allocate memory for arrays across sectors
 		/// Allocate memory for the phase order parameter for the triad phases
-		proc_data->triad_phase_order_2d[i] = (fftw_complex** )fftw_malloc(sizeof(fftw_complex*) * sys_vars->num_sect);
+		proc_data->triad_phase_order_2d[i] = (fftw_complex** )fftw_malloc(sizeof(fftw_complex*) * sys_vars->num_k3_sectors);
 		if (proc_data->triad_phase_order_2d[i] == NULL) {
 			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Triad Phase Sync Phase Order Parameter");
 			exit(1);
 		}
 		// Allocate the array of phase sync per sector for the triad phases
-		proc_data->triad_R_2d[i] = (double** )fftw_malloc(sizeof(double*) * sys_vars->num_sect);
+		proc_data->triad_R_2d[i] = (double** )fftw_malloc(sizeof(double*) * sys_vars->num_k3_sectors);
 		if (proc_data->triad_R_2d[i] == NULL) {
 			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Triad Phase Sync Parameter");
 			exit(1);
 		}
 		// Allocate the array of average phase per sector for the triad phases
-		proc_data->triad_Phi_2d[i] = (double** )fftw_malloc(sizeof(double*) * sys_vars->num_sect);
+		proc_data->triad_Phi_2d[i] = (double** )fftw_malloc(sizeof(double*) * sys_vars->num_k3_sectors);
 		if (proc_data->triad_Phi_2d[i] == NULL) {
 			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Average Triad Phase");
 			exit(1);
 		}
-		for (int l = 0; l < sys_vars->num_sect; ++l) {
+		for (int l = 0; l < sys_vars->num_k3_sectors; ++l) {
 			// Allocate memory for the collective phase order parameter for 2d contributions to the enstrophy flux
 			proc_data->phase_order_C_theta_triads_2d[i][l] = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->num_k1_sectors);
 			if (proc_data->phase_order_C_theta_triads_2d[i][l] == NULL) {
@@ -1370,9 +1375,9 @@ void AllocatePhaseSyncMemory(const long int* N) {
 	}
 
 	//--------------- Initialize arrays
-	proc_data->dtheta = 2.0 * M_PI / (double )sys_vars->num_sect;
-	for (int i = 0; i < sys_vars->num_sect; ++i) {
-		proc_data->theta[i] = -M_PI + i * proc_data->dtheta + proc_data->dtheta / 2.0 + 1e-10;
+	proc_data->dtheta_k3 = 2.0 * M_PI / (double )sys_vars->num_k3_sectors;
+	for (int i = 0; i < sys_vars->num_k3_sectors; ++i) {
+		proc_data->theta_k3[i] = -M_PI + i * proc_data->dtheta_k3 + proc_data->dtheta_k3 / 2.0 + 1e-10;
 		proc_data->phase_R[i]     = 0.0;
 		proc_data->phase_Phi[i]   = 0.0;
 		proc_data->phase_order[i] = 0.0 + 0.0 * I;
@@ -1399,6 +1404,11 @@ void AllocatePhaseSyncMemory(const long int* N) {
 			}
 		}
 	}
+	// Initialize k1 sector array
+	proc_data->dtheta_k1 = 2.0 * M_PI / (double )sys_vars->num_k1_sectors;
+	for (int i = 0; i < sys_vars->num_k1_sectors; ++i) {
+		proc_data->theta_k1[i] = -M_PI + i * proc_data->dtheta_k1 + proc_data->dtheta_k1 / 2.0 + 1e-10;
+	}
 	
 
 	// -------------------------------------
@@ -1406,17 +1416,17 @@ void AllocatePhaseSyncMemory(const long int* N) {
 	// -------------------------------------
 	#if defined(__SEC_PHASE_SYNC_STATS)
 	// Allocate memory for the arrays stats objects
-	proc_data->phase_sect_pdf         = (gsl_histogram** )fftw_malloc(sizeof(gsl_histogram) * sys_vars->num_sect);
-	proc_data->phase_sect_pdf_t       = (gsl_histogram** )fftw_malloc(sizeof(gsl_histogram) * sys_vars->num_sect);
-	proc_data->phase_sect_wghtd_pdf_t = (gsl_histogram** )fftw_malloc(sizeof(gsl_histogram) * sys_vars->num_sect);
+	proc_data->phase_sect_pdf         = (gsl_histogram** )fftw_malloc(sizeof(gsl_histogram) * sys_vars->num_k3_sectors);
+	proc_data->phase_sect_pdf_t       = (gsl_histogram** )fftw_malloc(sizeof(gsl_histogram) * sys_vars->num_k3_sectors);
+	proc_data->phase_sect_wghtd_pdf_t = (gsl_histogram** )fftw_malloc(sizeof(gsl_histogram) * sys_vars->num_k3_sectors);
 	for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
-		proc_data->triad_sect_pdf[i]         = (gsl_histogram** )fftw_malloc(sizeof(gsl_histogram) * sys_vars->num_sect);
-		proc_data->triad_sect_pdf_t[i]       = (gsl_histogram** )fftw_malloc(sizeof(gsl_histogram) * sys_vars->num_sect);
-		proc_data->triad_sect_wghtd_pdf_t[i] = (gsl_histogram** )fftw_malloc(sizeof(gsl_histogram) * sys_vars->num_sect);
+		proc_data->triad_sect_pdf[i]         = (gsl_histogram** )fftw_malloc(sizeof(gsl_histogram) * sys_vars->num_k3_sectors);
+		proc_data->triad_sect_pdf_t[i]       = (gsl_histogram** )fftw_malloc(sizeof(gsl_histogram) * sys_vars->num_k3_sectors);
+		proc_data->triad_sect_wghtd_pdf_t[i] = (gsl_histogram** )fftw_malloc(sizeof(gsl_histogram) * sys_vars->num_k3_sectors);
 	}
 	
 	// Allocate stats objects for each sector and set ranges
-	for (int i = 0; i < sys_vars->num_sect; ++i) {
+	for (int i = 0; i < sys_vars->num_k3_sectors; ++i) {
 		// Allocate pdfs for the individual phases
 		proc_data->phase_sect_pdf[i] = gsl_histogram_alloc(N_BINS_SEC);
 		if (proc_data->phase_sect_pdf[i] == NULL) {
@@ -1492,19 +1502,19 @@ void AllocatePhaseSyncMemory(const long int* N) {
 	//  Allocate Triad Wavevector Array
 	// -------------------------------------
 	//------------ Allocate memory for the triad wavevectors per sector and their data 
-	proc_data->phase_sync_wave_vecs = (double**** )fftw_malloc(sizeof(double***) * sys_vars->num_sect);
+	proc_data->phase_sync_wave_vecs = (double**** )fftw_malloc(sizeof(double***) * sys_vars->num_k3_sectors);
 	if (proc_data->phase_sync_wave_vecs == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Phase Sync Wavevectors");
 		exit(1);
 	}
-	for (int a = 0; a < sys_vars->num_sect; ++a) {
+	for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
 		proc_data->phase_sync_wave_vecs[a] = (double*** )fftw_malloc(sizeof(double**) * sys_vars->num_k1_sectors);
 		if (proc_data->phase_sync_wave_vecs[a] == NULL) {
 			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Phase Sync Wavevectors");
 			exit(1);
 		}	
 	}
-	for (int a = 0; a < sys_vars->num_sect; ++a) {
+	for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
 		for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
 			proc_data->phase_sync_wave_vecs[a][l] = (double** )fftw_malloc(sizeof(double*) * NUM_K_DATA);
 			if (proc_data->phase_sync_wave_vecs[a][l] == NULL) {
@@ -1521,7 +1531,7 @@ void AllocatePhaseSyncMemory(const long int* N) {
 	// Estimate for the number of triads across sectors -> we will resize this dimension to correct size after search is performed NOTE: Needs to be bigger than all triads in the cirlce i.e., one sector
 	int num_triad_est               = (int) ceil(M_PI * pow(sys_vars->N[0], 2.0) + 2.0 * sqrt(2) * M_PI * sys_vars->N[0]) * 100;
 	sys_vars->num_triad_per_sec_est = num_triad_est;
-	for (int a = 0; a < sys_vars->num_sect; ++a) {
+	for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
 		for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
 			for (int n = 0; n < NUM_K_DATA; ++n) {
 				proc_data->phase_sync_wave_vecs[a][l][n] = (double* )fftw_malloc(sizeof(double) * num_triad_est);
@@ -1541,19 +1551,19 @@ void AllocatePhaseSyncMemory(const long int* N) {
 	}
 
 	//------------ Allocate memory for the number of wavevector triads per sector
-	proc_data->num_wave_vecs = (int** )fftw_malloc(sizeof(int*) * sys_vars->num_sect);
+	proc_data->num_wave_vecs = (int** )fftw_malloc(sizeof(int*) * sys_vars->num_k3_sectors);
 	if (proc_data->num_wave_vecs == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Number of Phase Sync Wavevectors");
 		exit(1);
 	}
-	for (int a = 0; a < sys_vars->num_sect; ++a) {
+	for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
 		proc_data->num_wave_vecs[a] = (int* )fftw_malloc(sizeof(int) * sys_vars->num_k1_sectors);
 		if (proc_data->num_wave_vecs[a] == NULL) {
 			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Number of Phase Sync Wavevectors");
 			exit(1);
 		}	
 	}
-	for (int a = 0; a < sys_vars->num_sect; ++a) {
+	for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
 		for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
 			proc_data->num_wave_vecs[a][l] = sys_vars->num_triad_per_sec_est;
 		}
@@ -1561,7 +1571,7 @@ void AllocatePhaseSyncMemory(const long int* N) {
 
 
 	///----------- Allocate memory for the sparse search k1 sector angles
-	double k1_sector_angles[NUM_K1_SECTORS] = {-sys_vars->num_sect/2.0, -sys_vars->num_sect/3.0, -sys_vars->num_sect/4.0, -sys_vars->num_sect/6.0, sys_vars->num_sect/6.0, sys_vars->num_sect/4.0, sys_vars->num_sect/3.0, sys_vars->num_sect/2.0};
+	double k1_sector_angles[NUM_K1_SECTORS] = {-sys_vars->num_k3_sectors/2.0, -sys_vars->num_k3_sectors/3.0, -sys_vars->num_k3_sectors/4.0, -sys_vars->num_k3_sectors/6.0, sys_vars->num_k3_sectors/6.0, sys_vars->num_k3_sectors/4.0, sys_vars->num_k3_sectors/3.0, sys_vars->num_k3_sectors/2.0};
 	proc_data->k1_sector_angles = (double* )fftw_malloc(sizeof(double) * NUM_K1_SECTORS);
 	memcpy(proc_data->k1_sector_angles, k1_sector_angles, sizeof(k1_sector_angles));
 
@@ -1572,13 +1582,13 @@ void AllocatePhaseSyncMemory(const long int* N) {
 	char dset_name[64];
 	char wave_vec_file[128];
 	strcpy(file_info->wave_vec_data_name, "./Data/PostProcess/PhaseSync");
-	sprintf(wave_vec_file, "/Wavevector_Data_N[%d,%d]_SECTORS[%d,%d]_KFRAC[%1.2lf].h5", (int)sys_vars->N[0], (int)sys_vars->N[1], sys_vars->num_sect, sys_vars->num_k1_sectors, sys_vars->kmax_frac);	
+	sprintf(wave_vec_file, "/Wavevector_Data_N[%d,%d]_SECTORS[%d,%d]_KFRAC[%1.2lf].h5", (int)sys_vars->N[0], (int)sys_vars->N[1], sys_vars->num_k3_sectors, sys_vars->num_k1_sectors, sys_vars->kmax_frac);	
 	strcat(file_info->wave_vec_data_name, wave_vec_file);
 
 	// Check if Wavector file exists
 	if (access(file_info->wave_vec_data_name, F_OK) == 0) {
 		printf("\n["YELLOW"NOTE"RESET"] --- Reading in wavevectors data for Phase Sync computation...");
-		printf("\nNumber of k_3 Sectors: ["CYAN"%d"RESET"]\nNumber of k_1 Sectors: ["CYAN"%d"RESET"]\n\n", sys_vars->num_sect, sys_vars->num_k1_sectors);
+		printf("\nNumber of k_3 Sectors: ["CYAN"%d"RESET"]\nNumber of k_1 Sectors: ["CYAN"%d"RESET"]\n\n", sys_vars->num_k3_sectors, sys_vars->num_k1_sectors);
 
 		
 		//----------------------- Open file with default I/O access properties
@@ -1590,19 +1600,19 @@ void AllocatePhaseSyncMemory(const long int* N) {
 
 		///----------------------- Read in Wavector Data
 		// Read in the number of wavevectors
-		int* tmp_num_wavevecs = (int* )fftw_malloc(sizeof(int) * sys_vars->num_sect * sys_vars->num_k1_sectors);
+		int* tmp_num_wavevecs = (int* )fftw_malloc(sizeof(int) * sys_vars->num_k3_sectors * sys_vars->num_k1_sectors);
 		if(H5LTread_dataset(file_info->wave_vec_file_handle, "NumWavevectors", H5T_NATIVE_INT, tmp_num_wavevecs) < 0) {
 			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to read in data for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Number of Wavevectors");
 			exit(1);	
 		}
-		for (int a = 0; a < sys_vars->num_sect; ++a) {
+		for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
 			for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
 				proc_data->num_wave_vecs[a][l] = tmp_num_wavevecs[a * sys_vars->num_k1_sectors + l];
 			}
 		}
 
 		// Read in wavevector data
-		for (int a = 0; a < sys_vars->num_sect; ++a) {
+		for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
 			for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
 				double* tmp_wave_vec_data = (double*)fftw_malloc(sizeof(double) * NUM_K_DATA * proc_data->num_wave_vecs[a][l]);
 				sprintf(dset_name, "WVData_Sector_%d_%d", a, l);
@@ -1641,17 +1651,17 @@ void AllocatePhaseSyncMemory(const long int* N) {
 		
 		// Print to screen that a pre computation search is needed for the phase sync wavevectors and begin timeing it
 		printf("\n["YELLOW"NOTE"RESET"] --- Performing search over wavevectors for Phase Sync computation...\n");
-		printf("\nNumber of k_3 Sectors: ["CYAN"%d"RESET"]\nNumber of k_1 Sectors: ["CYAN"%d"RESET"]\n\n", sys_vars->num_sect, sys_vars->num_k1_sectors);
+		printf("\nNumber of k_3 Sectors: ["CYAN"%d"RESET"]\nNumber of k_1 Sectors: ["CYAN"%d"RESET"]\n\n", sys_vars->num_k3_sectors, sys_vars->num_k1_sectors);
 		struct timeval begin, end;
 		gettimeofday(&begin, NULL);
 
 		// Loop through the sectors for k3
-		for (int a = 0; a < sys_vars->num_sect; ++a) {
+		for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
 			
 			// Get the angles for the current sector
-			C_theta_k3 = proc_data->theta[a];
-			C_theta_k3_lwr = C_theta_k3 - proc_data->dtheta / 2.0;
-			C_theta_k3_upr = C_theta_k3 + proc_data->dtheta / 2.0;
+			C_theta_k3 = proc_data->theta_k3[a];
+			C_theta_k3_lwr = C_theta_k3 - proc_data->dtheta_k3 / 2.0;
+			C_theta_k3_upr = C_theta_k3 + proc_data->dtheta_k3 / 2.0;
 
 			// Loop through k1 sector choice
 			for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
@@ -1659,9 +1669,9 @@ void AllocatePhaseSyncMemory(const long int* N) {
 				// Get the angles for the k1 sector
 				if (sys_vars->num_k1_sectors == NUM_K1_SECTORS) {
 					// Reduced k1 sector search
-					C_theta_k1     = MyMod(C_theta_k3 + (k1_sector_angles[l] * proc_data->dtheta/2.0) + M_PI, 2.0 * M_PI) - M_PI;
-					C_theta_k1_lwr = C_theta_k1 - proc_data->dtheta / 2.0;
-					C_theta_k1_upr = C_theta_k1 + proc_data->dtheta / 2.0;
+					C_theta_k1     = MyMod(C_theta_k3 + (k1_sector_angles[l] * proc_data->dtheta_k3/2.0) + M_PI, 2.0 * M_PI) - M_PI;
+					C_theta_k1_lwr = C_theta_k1 - proc_data->dtheta_k3 / 2.0;
+					C_theta_k1_upr = C_theta_k1 + proc_data->dtheta_k3 / 2.0;
 				}
 				else if (sys_vars->num_k1_sectors == 1){
 					// When k1 can vary anywhere -> no restriction to sector
@@ -1671,9 +1681,9 @@ void AllocatePhaseSyncMemory(const long int* N) {
 				}
 				else {
 					// Full search over sectors
-					C_theta_k1     = proc_data->theta[(a + l) % sys_vars->num_sect];
-					C_theta_k1_lwr = C_theta_k1 - proc_data->dtheta / 2.0;
-					C_theta_k1_upr = C_theta_k1 + proc_data->dtheta / 2.0;
+					C_theta_k1     = proc_data->theta_k1[(a + l) % sys_vars->num_k1_sectors];
+					C_theta_k1_lwr = C_theta_k1 - proc_data->dtheta_k3 / 2.0;
+					C_theta_k1_upr = C_theta_k1 + proc_data->dtheta_k3 / 2.0;
 				}
 				
 				// // Find the sector for k2 -> as the mid point of the sector of k3 - k1
@@ -1691,16 +1701,16 @@ void AllocatePhaseSyncMemory(const long int* N) {
 				// }
 
 				// // Ensure the angle is a mid angle of a sector
-				// for (int i = 0; i < sys_vars->num_sect; ++i) {
-				// 	if (proc_data->mid_angle_sum[a * sys_vars->num_k1_sectors + l] >= proc_data->theta[i] - proc_data->dtheta/2.0 && proc_data->mid_angle_sum[a * sys_vars->num_k1_sectors + l] < proc_data->theta[i] + proc_data->dtheta/2.0) {
-				// 		proc_data->mid_angle_sum[a * sys_vars->num_k1_sectors + l] = proc_data->theta[i];
+				// for (int i = 0; i < sys_vars->num_k3_sectors; ++i) {
+				// 	if (proc_data->mid_angle_sum[a * sys_vars->num_k1_sectors + l] >= proc_data->theta_k3[i] - proc_data->dtheta_k3/2.0 && proc_data->mid_angle_sum[a * sys_vars->num_k1_sectors + l] < proc_data->theta_k3[i] + proc_data->dtheta_k3/2.0) {
+				// 		proc_data->mid_angle_sum[a * sys_vars->num_k1_sectors + l] = proc_data->theta_k3[i];
 				// 	}
 				// }
 
 				// // Compute the boundaries for the k2 sector
 				// C_theta_k2 = proc_data->mid_angle_sum[a * sys_vars->num_k1_sectors + l];
-				// C_theta_k2_lwr = proc_data->mid_angle_sum[a * sys_vars->num_k1_sectors + l] - proc_data->dtheta/2.0;
-				// C_theta_k2_upr = proc_data->mid_angle_sum[a * sys_vars->num_k1_sectors + l] + proc_data->dtheta/2.0;
+				// C_theta_k2_lwr = proc_data->mid_angle_sum[a * sys_vars->num_k1_sectors + l] - proc_data->dtheta_k3/2.0;
+				// C_theta_k2_upr = proc_data->mid_angle_sum[a * sys_vars->num_k1_sectors + l] + proc_data->dtheta_k3/2.0;
 				
 				// Initialize increment
 				nn = 0;
@@ -1721,10 +1731,10 @@ void AllocatePhaseSyncMemory(const long int* N) {
 						k3_angle     = atan2((double)k3_x, (double)k3_y);
 						k3_angle_neg = atan2((double)-k3_x, (double)-k3_y);
 
-						if (a == sys_vars->num_sect/2 && l == 1 && k3_x == -2 && k3_y == -4) {
-							printf("k3_x: %d\tk3_y: %d\nk3_angle: %lf\nk3_angle_neg: %lf\n\n", k3_x, k3_y, k3_angle, k3_angle_neg);
-							// printf("First: %s\tSecond: %s\nk3_angle: %lf\nk3_angle_neg: %lf\n", k3_x, k3_y, k3_angle, k3_angle_neg);
-						}
+						// if (a == sys_vars->num_k3_sectors/2 && l == 1 && k3_x == -2 && k3_y == -4) {
+						// 	printf("k3_x: %d\tk3_y: %d\nk3_angle: %lf\nk3_angle_neg: %lf\n\n", k3_x, k3_y, k3_angle, k3_angle_neg);
+						// 	// printf("First: %s\tSecond: %s\nk3_angle: %lf\nk3_angle_neg: %lf\n", k3_x, k3_y, k3_angle, k3_angle_neg);
+						// }
 						
 						if ((k3_sqr > sys_vars->kmax_C_sqr && k3_sqr <= sys_vars->kmax_sqr) && ((k3_angle >= C_theta_k3_lwr && k3_angle < C_theta_k3_upr) || (k3_angle_neg >= C_theta_k3_lwr && k3_angle_neg < C_theta_k3_upr) )) {  
 
@@ -1744,7 +1754,7 @@ void AllocatePhaseSyncMemory(const long int* N) {
 									k1_angle     = atan2((double) k1_x, (double) k1_y);
 									k1_angle_neg = atan2((double)-k1_x, (double)-k1_y);
 
-									// if (a == sys_vars->num_sect/2 && l == 1 && k1_x == -4 && k1_y == -3 && k3_x == -2 && k3_y == -4) {
+									// if (a == sys_vars->num_k3_sectors/2 && l == 1 && k1_x == -4 && k1_y == -3 && k3_x == -2 && k3_y == -4) {
 									// 	printf("k1_x: %d\tk1_y: %d\nk1_angle: %lf\nk1_angle_neg: %lf\nC_theta_k1_lwr: %1.16lf\nC_theta_k1_upr: %1.16lf\n", k1_x, k1_y, k1_angle, k1_angle_neg, C_theta_k1_lwr, C_theta_k1_upr);
 									// 	for (int i = 0; i < 50; ++i) printf("-");
 									// 	printf("\nk1 in k3 Sector: %s\n  - In Sector k3: %s\n  - k1 in small scales: %s\n", ((k1_sqr > 0.0 && k1_sqr <= sys_vars->kmax_C_sqr) && ((k1_angle >= C_theta_k3_lwr && k1_angle < C_theta_k3_upr) || (k1_angle_neg >= C_theta_k3_lwr && k1_angle_neg < C_theta_k3_upr))) ? "Yes" : "No", 
@@ -1757,7 +1767,7 @@ void AllocatePhaseSyncMemory(const long int* N) {
 									// }
 
 									if( ((k1_sqr > 0.0 && k1_sqr <= sys_vars->kmax_C_sqr) && ((k1_angle >= C_theta_k3_lwr && k1_angle < C_theta_k3_upr) || (k1_angle_neg >= C_theta_k3_lwr && k1_angle_neg < C_theta_k3_upr)))
-										|| ((k1_sqr > 0.0 && k1_sqr <= sys_vars->kmax_sqr) && ((k1_angle >= C_theta_k1_lwr && k1_angle < C_theta_k1_upr)|| (k1_angle_neg >= C_theta_k1_lwr && k1_angle_neg < C_theta_k1_upr)) && !((k1_angle >= C_theta_k3_lwr && k1_angle < C_theta_k3_upr) || (k1_angle_neg >= C_theta_k3_lwr && k1_angle_neg < C_theta_k3_upr))) ) { 
+										|| ((k1_sqr > 0.0 && k1_sqr <= sys_vars->kmax_sqr) && ((k1_angle >= C_theta_k1_lwr && k1_angle < C_theta_k1_upr) || (k1_angle_neg >= C_theta_k1_lwr && k1_angle_neg < C_theta_k1_upr)) && !((k1_angle >= C_theta_k3_lwr && k1_angle < C_theta_k3_upr) || (k1_angle_neg >= C_theta_k3_lwr && k1_angle_neg < C_theta_k3_upr))) ) { 
 										
 										// Find the k2 wavevector
 										k2_x = k3_x - k1_x;
@@ -1768,19 +1778,19 @@ void AllocatePhaseSyncMemory(const long int* N) {
 										k2_angle     = atan2((double)k2_x, (double) k2_y);
 										k2_angle_neg = atan2((double)-k2_x, (double) -k2_y);
 
-										if (a == sys_vars->num_sect/2 && l == 1 && k1_x == -4 && k1_y == -3 && k3_x == -2 && k3_y == -4) {
-											printf("\nk2_angle: %lf\nk2_angle_neg: %lf\nC_theta_k3_lwr: %1.16lf\nC_theta_k3_upr: %1.16lf\nValid Wavevec: %s\nNot in C_theta(k3): %s\nk2 in Pos k3 Sector: %s\nk2 in Neg k3 Sector: %s\n", k2_angle, k2_angle_neg, C_theta_k3_lwr, C_theta_k3_upr,
-												(k2_sqr > 0.0 && k2_sqr <= sys_vars->kmax_sqr) ? "Yes" : "No",
-												!((k2_sqr > sys_vars->kmax_C_sqr && k2_sqr <= sys_vars->kmax_sqr) && ((k2_angle >= C_theta_k3_lwr && k2_angle < C_theta_k3_upr) || (k2_angle_neg >= C_theta_k3_lwr && k2_angle_neg < C_theta_k3_upr))) ? "Yes" : "No", 
-												(k2_angle >= C_theta_k3_lwr && k2_angle < C_theta_k3_upr) ? "Yes" : "No",
-												(k2_angle_neg >= C_theta_k3_lwr && k2_angle_neg < C_theta_k3_upr) ? "Yes" : "No");
-										}
+										// if (a == sys_vars->num_k3_sectors/2 && l == 1 && k1_x == -4 && k1_y == -3 && k3_x == -2 && k3_y == -4) {
+										// 	printf("\nk2_angle: %lf\nk2_angle_neg: %lf\nC_theta_k3_lwr: %1.16lf\nC_theta_k3_upr: %1.16lf\nValid Wavevec: %s\nNot in C_theta(k3): %s\nk2 in Pos k3 Sector: %s\nk2 in Neg k3 Sector: %s\n", k2_angle, k2_angle_neg, C_theta_k3_lwr, C_theta_k3_upr,
+										// 		(k2_sqr > 0.0 && k2_sqr <= sys_vars->kmax_sqr) ? "Yes" : "No",
+										// 		!((k2_sqr > sys_vars->kmax_C_sqr && k2_sqr <= sys_vars->kmax_sqr) && ((k2_angle >= C_theta_k3_lwr && k2_angle < C_theta_k3_upr) || (k2_angle_neg >= C_theta_k3_lwr && k2_angle_neg < C_theta_k3_upr))) ? "Yes" : "No", 
+										// 		(k2_angle >= C_theta_k3_lwr && k2_angle < C_theta_k3_upr) ? "Yes" : "No",
+										// 		(k2_angle_neg >= C_theta_k3_lwr && k2_angle_neg < C_theta_k3_upr) ? "Yes" : "No");
+										// }
 
 										if ( (k2_sqr > 0.0 && k2_sqr <= sys_vars->kmax_sqr) && !((k2_sqr > sys_vars->kmax_C_sqr && k2_sqr <= sys_vars->kmax_sqr) && ((k2_angle >= C_theta_k3_lwr && k2_angle < C_theta_k3_upr) || (k2_angle_neg >= C_theta_k3_lwr && k2_angle_neg < C_theta_k3_upr))) ) {
 											
-											if (a == sys_vars->num_sect/2 && l == 1 && k1_x == -4 && k1_y == -2 && k2_x == 2 && k2_y == -2 && k3_x == -2 && k3_y == -4) {
-												printf("\n\nHere: \na = %d - l = %d\nk1_x: %d\nk1_y: %d\nk2_x: %d\nk2_y: %d\nk3_x: %d\nk3_y: %d\n", a, l, k1_x, k1_y, k2_x, k2_y, k3_x, k3_y);
-											}
+											// if (a == sys_vars->num_k3_sectors/2 && l == 1 && k1_x == -4 && k1_y == -2 && k2_x == 2 && k2_y == -2 && k3_x == -2 && k3_y == -4) {
+											// 	printf("\n\nHere: \na = %d - l = %d\nk1_x: %d\nk1_y: %d\nk2_x: %d\nk2_y: %d\nk3_x: %d\nk3_y: %d\n", a, l, k1_x, k1_y, k2_x, k2_y, k3_x, k3_y);
+											// }
 
 											// Add k1 vector
 											proc_data->phase_sync_wave_vecs[a][l][K1_X][nn] = k1_x;
@@ -1815,6 +1825,12 @@ void AllocatePhaseSyncMemory(const long int* N) {
 						else if ( ((k3_sqr > 0.0 && k3_sqr <= sys_vars->kmax_sqr) &&  ((k3_angle >= C_theta_k1_lwr && k3_angle < C_theta_k1_upr) || (k3_angle_neg >= C_theta_k1_lwr && k3_angle_neg < C_theta_k1_upr)) && !((k3_angle >= C_theta_k3_lwr && k3_angle < C_theta_k3_upr) || (k3_angle_neg >= C_theta_k3_lwr && k3_angle_neg < C_theta_k3_upr))) 
 								  || ((k3_sqr > 0.0 && k3_sqr <= sys_vars->kmax_C_sqr) && ((k3_angle >= C_theta_k3_lwr && k3_angle < C_theta_k3_upr) || (k3_angle_neg >= C_theta_k3_lwr && k3_angle_neg < C_theta_k3_upr)) ) ) { 
 
+							if (a == 0 && k3_x == -1 && k3_y == 0) {
+								printf("a: %d\tl: %d\tk3_a: %1.16lf\tk3_a_n: %1.16lf\tC_k1_lwr: %1.16lf\tC_k1_upr: %1.16lf\nFirst: %s\n - k3 in k1 Sec: %s\nSecond: %s\n",a, l, k3_angle, k3_angle_neg, C_theta_k1_lwr, C_theta_k1_upr, ((k3_sqr > 0.0 && k3_sqr <= sys_vars->kmax_sqr) &&  ((k3_angle >= C_theta_k1_lwr && k3_angle < C_theta_k1_upr) || (k3_angle_neg >= C_theta_k1_lwr && k3_angle_neg < C_theta_k1_upr)) && !((k3_angle >= C_theta_k3_lwr && k3_angle < C_theta_k3_upr) || (k3_angle_neg >= C_theta_k3_lwr && k3_angle_neg < C_theta_k3_upr))) ? "Yes" : "No",
+									((k3_angle >= C_theta_k1_lwr && k3_angle < C_theta_k1_upr) || (k3_angle_neg >= C_theta_k1_lwr && k3_angle_neg < C_theta_k1_upr)) ? "Yes" : "No",
+									((k3_sqr > 0.0 && k3_sqr <= sys_vars->kmax_C_sqr) && ((k3_angle >= C_theta_k3_lwr && k3_angle < C_theta_k3_upr) || (k3_angle_neg >= C_theta_k3_lwr && k3_angle_neg < C_theta_k3_upr)) ) ? "Yes" : "No");
+							}
+
 							// Loop through the k1 wavevector
 							for (int tmp_k1_x = 0; tmp_k1_x <= sys_vars->N[0] - 1; ++tmp_k1_x) {
 								
@@ -1843,6 +1859,10 @@ void AllocatePhaseSyncMemory(const long int* N) {
 										k2_angle_neg = atan2((double)-k2_x, (double) -k2_y);
 
 										if ((k2_sqr > sys_vars->kmax_C_sqr && k2_sqr <= sys_vars->kmax_sqr) && ((k2_angle >= C_theta_k3_lwr && k2_angle < C_theta_k3_upr) || (k2_angle_neg >= C_theta_k3_lwr && k2_angle_neg < C_theta_k3_upr))) {
+
+											if (a == 0 && k1_x == -2 && k1_y == -4 && k2_x == 1 && k2_y == 4 && k3_x == -1 && k3_y == 0) {
+												printf("Here\n");
+											}
 											// Add k1 vector
 											proc_data->phase_sync_wave_vecs[a][l][K1_X][nn] = k1_x;
 											proc_data->phase_sync_wave_vecs[a][l][K1_Y][nn] = k1_y;
@@ -1881,7 +1901,7 @@ void AllocatePhaseSyncMemory(const long int* N) {
 		}
 
 		///-------------------- Realloc the last dimension in wavevector array to its correct size
-		for (int a = 0; a < sys_vars->num_sect; ++a) {
+		for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
 			for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
 				for (int n = 0; n < NUM_K_DATA; ++n) {
 					if (proc_data->num_wave_vecs[a][l] == 0) {
@@ -1912,14 +1932,14 @@ void AllocatePhaseSyncMemory(const long int* N) {
 		}	
 
 		// Write the number of wavevectors per sector
-		int* tmp_num_wavevecs = (int* )fftw_malloc(sizeof(int) * sys_vars->num_sect * sys_vars->num_k1_sectors);
-		for (int a = 0; a < sys_vars->num_sect; ++a){
+		int* tmp_num_wavevecs = (int* )fftw_malloc(sizeof(int) * sys_vars->num_k3_sectors * sys_vars->num_k1_sectors);
+		for (int a = 0; a < sys_vars->num_k3_sectors; ++a){
 			for (int l = 0; l < sys_vars->num_k1_sectors; ++l){
 				tmp_num_wavevecs[a * sys_vars->num_k1_sectors + l] = proc_data->num_wave_vecs[a][l];
 			}
 		}
 
-		dset_dims_2d[0] = sys_vars->num_sect;
+		dset_dims_2d[0] = sys_vars->num_k3_sectors;
 		dset_dims_2d[1] = sys_vars->num_k1_sectors;
 		status = H5LTmake_dataset(file_info->wave_vec_file_handle, "NumWavevectors", Dims2D, dset_dims_2d, H5T_NATIVE_INT, tmp_num_wavevecs);
 		if (status < 0) {
@@ -1928,7 +1948,7 @@ void AllocatePhaseSyncMemory(const long int* N) {
 		}
 
 		// Write the wavevector data
-		for (int a = 0; a < sys_vars->num_sect; ++a){
+		for (int a = 0; a < sys_vars->num_k3_sectors; ++a){
 			for (int l = 0; l < sys_vars->num_k1_sectors; ++l){
 				double* tmp_wave_vec_data = (double* )fftw_malloc(sizeof(double) * NUM_K_DATA * proc_data->num_wave_vecs[a][l]);
 				for (int k = 0; k < NUM_K_DATA; ++k) {
@@ -1975,7 +1995,8 @@ void FreePhaseSyncObjects(void) {
 	// --------------------------------
 	//  Free Memory
 	// --------------------------------
-	fftw_free(proc_data->theta);
+	fftw_free(proc_data->theta_k3);
+	fftw_free(proc_data->theta_k1);
 	fftw_free(proc_data->mid_angle_sum);
 	fftw_free(proc_data->phase_angle);
 	fftw_free(proc_data->phase_order);
@@ -1995,7 +2016,7 @@ void FreePhaseSyncObjects(void) {
 		fftw_free(proc_data->triad_R_1d[i]);
 		fftw_free(proc_data->triad_Phi_1d[i]);
 		fftw_free(proc_data->num_triads_1d[i]);
-		for (int l = 0; l < sys_vars->num_sect; ++l) {
+		for (int l = 0; l < sys_vars->num_k3_sectors; ++l) {
 			fftw_free(proc_data->enst_flux_2d[i][l]);
 			fftw_free(proc_data->triad_phase_order_2d[i][l]);
 			fftw_free(proc_data->triad_R_2d[i][l]);
@@ -2010,7 +2031,7 @@ void FreePhaseSyncObjects(void) {
 		fftw_free(proc_data->triad_Phi_2d[i]);
 		fftw_free(proc_data->num_triads_2d[i]);
 	}
-	for (int a = 0; a < sys_vars->num_sect; ++a) {
+	for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
 		for (int l = 0; l < sys_vars->num_k1_sectors; ++l){
 			if (proc_data->num_wave_vecs[a][l] != 0) {
 				for (int n = 0; n < NUM_K_DATA; ++n) {
@@ -2021,7 +2042,7 @@ void FreePhaseSyncObjects(void) {
 		}
 		fftw_free(proc_data->phase_sync_wave_vecs[a]);
 	}
-	for (int a = 0; a < sys_vars->num_sect; ++a) {
+	for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
 		fftw_free(proc_data->num_wave_vecs[a]);
 	}
 	for (int n = 0; n < 6; ++n) {
@@ -2032,7 +2053,7 @@ void FreePhaseSyncObjects(void) {
 	//  Free GSL objects
 	// --------------------------------
 	#if defined(__SEC_PHASE_SYNC_STATS)
-	for (int i = 0; i < sys_vars->num_sect; ++i) {
+	for (int i = 0; i < sys_vars->num_k3_sectors; ++i) {
 		gsl_histogram_free(proc_data->phase_sect_pdf[i]);
 		gsl_histogram_free(proc_data->phase_sect_pdf_t[i]);
 		gsl_histogram_free(proc_data->phase_sect_wghtd_pdf_t[i]);

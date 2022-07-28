@@ -135,7 +135,8 @@ typedef struct system_vars_struct {
 	double kmax_C;						// The radius of the set C -> = kmax_frac * kmax
 	double kmax_C_sqr;					// The sqr of the radius for the set C
 	double kmax_sqr;                    // The largest dealiased wavenumber squared
-	int num_sect;						// The number of sectors in wavenumber space to be used when computing the Kuramoto order parameter 
+	int num_k3_sectors;					// The number of sectors in wavenumber space to be used when computing the Kuramoto order parameter 
+	int num_k1_sectors;					// Variable to control the number of k1 sectors
 	double t0;							// Intial time
 	double T;							// Final time
 	double t;							// Time variable
@@ -164,7 +165,6 @@ typedef struct system_vars_struct {
 	int num_threads;					// The number of OMP threads to use
 	int thread_id;						// The ID of the OMP threads
 	int num_triad_per_sec_est;          // The estimate number of triads per sector
-	int num_k1_sectors;					// Variable to control the number of k1 sectors
 } system_vars_struct;
 
 // Runtime data struct
@@ -194,7 +194,8 @@ typedef struct postprocess_data_struct {
 	double* enst;			   		 							             // Array to hold the full field zero centred enstrophy
 	double* enst_spec; 		   		 							             // Array to hold the enstrophy spectrum
     double* enrg_spec; 		   		 							             // Array to hold the energy spectrum
-    double dtheta; 												             // The angle between sectors
+    double dtheta_k3; 												         // The angle between sector mid points for k3
+    double dtheta_k1; 												         // The angle between sector mid points for k1
 	bool pos_flux_term_cond;									             // Boolean to store the condition on the wavevectors for the first (positive) term in the enstrophy flux
 	bool neg_flux_term_cond;									             // Boolean to store the condition on the wavevectors for the second (negative) term in the enstrophy flux
     double* d_enst_dt_spec;										             // Array to hold the time derivative of the enstrophy spectrum
@@ -223,7 +224,8 @@ typedef struct postprocess_data_struct {
     double* nonlinterm;											 			 // Array to hold the nonlinear term after multiplication in real space -> for nonlinear RHS funciotn
     double* nabla_w;											 			 // Array to hold the gradient of the real space vorticity -> for nonlinear RHS function
     double* nabla_psi;											 			 // Array to hold the gradient of the real space stream function -> for nonlinear RHS function
-	double* theta;                   							 			 // Array to hold the angles for the sector boundaries
+	double* theta_k3;                   							 		 // Array to hold the angles for the sector mid points for k3
+	double* theta_k1;                   							 		 // Array to hold the angles for the sector mid points for k1
     double* mid_angle_sum;									     			 // Array to hold the pre computed midpoint angle sums -> this will determine which sector k2 is in
     double* phase_angle;										 			 // Array to hold the pre computed arctangents of the wavevectors for the individual phases   
     double* k1_sector_angles;									 			 // Array to hold the pre computed arctangents of the wavevectors for the individual phases   
