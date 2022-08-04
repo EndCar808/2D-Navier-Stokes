@@ -214,6 +214,7 @@ if __name__ == '__main__':
                 executable = str(parser[section]['executable'])
             if 'plotting' in parser[section]:
                 plotting = str(parser[section]['plotting'])
+                print("Here", plotting)
             if 'plot_script' in parser[section]:
                 plot_script = str(parser[section]['plot_script'])
             if 'plot_options' in parser[section]:
@@ -397,6 +398,7 @@ if __name__ == '__main__':
     ##      RUN PLOTTING     ##
     ###########################
     if plotting:
+        print("Here")
         
         ## Get the number of processes to launch
         proc_limit = num_plotting_job_threads

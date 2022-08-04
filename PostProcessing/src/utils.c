@@ -53,7 +53,9 @@ int GetCMLArgs(int argc, char** argv) {
 	file_info->input_file_only = 0; // used to indicate if input file was file only i.e., not output folder
 	file_info->output_file_only = 0; // used to indicate if output file should be file only i.e., not output folder
 	// Number of wavevector space sectors
-	sys_vars->num_k3_sectors = 40;
+	sys_vars->num_k3_sectors = 24;
+	sys_vars->num_k1_sectors = 24;
+	sys_vars->REDUCED_K1_SEARCH_FLAG = 0;
 	// Fraction of maximum wavevector
 	sys_vars->kmax_frac = 1.0;
 	// Set the default amount of threads to use
@@ -106,7 +108,7 @@ int GetCMLArgs(int argc, char** argv) {
 			case 'a':
 				if (sector_flag == 0) {
 					// Get the number of k3 and k1 sectors to use
-					sys_vars->num_k3_sectors       = atoi(optarg); 
+					sys_vars->num_k3_sectors = atoi(optarg); 
 					sys_vars->num_k1_sectors = atoi(optarg);
 					sector_flag++;
 					if (sys_vars->num_k3_sectors <= 0) {
@@ -125,8 +127,9 @@ int GetCMLArgs(int argc, char** argv) {
 					}
 				}
 				else if (sector_flag == 2) {
-					// If reduced k1 sectors search is selected set to NUM_K1_SECTORS
+					// If reduced k1 sectors search is selected set to NUM_K1_SECTORS and turn on flag
 					sys_vars->num_k1_sectors = NUM_K1_SECTORS;
+					sys_vars->REDUCED_K1_SEARCH_FLAG = 1;
 					sector_flag++;
 				}
 				else {

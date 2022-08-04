@@ -165,6 +165,7 @@ typedef struct system_vars_struct {
 	int num_threads;					// The number of OMP threads to use
 	int thread_id;						// The ID of the OMP threads
 	int num_triad_per_sec_est;          // The estimate number of triads per sector
+    int REDUCED_K1_SEARCH_FLAG;			// Flag to control whether we are doing a reduced search over specifc sectors of k1 or not
 } system_vars_struct;
 
 // Runtime data struct
