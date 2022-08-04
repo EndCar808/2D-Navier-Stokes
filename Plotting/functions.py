@@ -13,6 +13,7 @@ import numpy as np
 import h5py
 import sys
 import os
+import re
 from numba import njit
 import pyfftw
 from collections.abc import Iterable
@@ -657,6 +658,19 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                     self.grad_w_y_ranges = f["VorticityGradient_y_BinRanges"][:]
                 if 'VorticityGradient_y_BinCounts' in list(f.keys()):
                     self.grad_w_y_counts = f["VorticityGradient_y_BinCounts"][:]
+
+
+            ## Read in Wavevector Data
+            pre_data_path = re.search(r"[^Data]*", in_f).group()
+            with h5py.File(pre_data_path + 'Data/PostProcess/PhaseSync/Wavevector_Data_N[{},{}]_SECTORS[{},{}]_KFRAC[0.75].h5'.format(sim_data.Nx, sim_data.Ny, int(self.num_sect), int(self.num_k1_sects))) as f:
+                self.num_wv = f["NumWavevectors"][:, :]
+                self.wv = np.zeros((self.num_sect, self.num_k1_sects, 16, np.amax(self.num_wv)))
+                for a in range(self.num_sect):
+                    for l in range(self.num_k1_sects):
+                        tmp_arr = f["WVData_Sector_{}_{}".format(a, l)][:, :]
+                        for k in range(16):
+                            for n in range(self.num_wv[a, l]):
+                                self.wv[a, l, k, n] = tmp_arr[k, n]
 
 
             ## Data indicators

@@ -62,7 +62,7 @@ void PostProcessing(void) {
 	// Begin Snapshot Processing
 	//////////////////////////////
 	printf("\n\nStarting Snapshot Processing:\n");
-	for (int s = 0; s < 2; ++s) { //  sys_vars->num_snaps
+	for (int s = 0; s <  sys_vars->num_snaps; ++s) { // 1
 		
 		// Print update to screen
 		printf("Snapshot: %d\n", s);

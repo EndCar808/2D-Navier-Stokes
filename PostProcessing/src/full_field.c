@@ -513,15 +513,14 @@ void FluxSpectra(int snap) {
 					// if (sqrt(k_sqr) >= sqrt(sys_vars->kmax_C_sqr) - 0.5 && sqrt(k_sqr) <= sqrt(sys_vars->kmax_sqr) + 0.5) {
 						for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
 							if (proc_data->phase_angle[indx] >= proc_data->theta_k3[a] - proc_data->dtheta_k3/2.0 && proc_data->phase_angle[indx] < proc_data->theta_k3[a] + proc_data->dtheta_k3/2.0) {
-								
 
 								// Record the flux and dissipation
-								proc_data->enst_diss_C_theta[a] += 2.0 * tmp_diss;
-								proc_data->enst_flux_C_theta[a] += 2.0 * tmp_deriv;
+								proc_data->enst_diss_C_theta[a] += tmp_diss;
+								proc_data->enst_flux_C_theta[a] += tmp_deriv;
 
 								// Record the phase sync
 								if (cabs(tmp_deriv) != 0.0) {
-									proc_data->phase_order_C_theta[a] += 2.0 * (tmp_deriv + tmp_diss) / cabs(tmp_deriv);
+									proc_data->phase_order_C_theta[a] += (tmp_deriv + tmp_diss) / cabs(tmp_deriv);
 								}
 							}
 						}
