@@ -659,10 +659,14 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                 if 'VorticityGradient_y_BinCounts' in list(f.keys()):
                     self.grad_w_y_counts = f["VorticityGradient_y_BinCounts"][:]
 
+            ## Get the max wavenumber
+            self.kmax      = int((sim_data.Nx / 3))
+            self.kmax_frac = float(in_file.split('_')[-2].split("[")[-1].split("]")[0])
+            self.kmax_C    = int(self.kmax * self.kmax_frac)
 
             ## Read in Wavevector Data
             pre_data_path = re.search(r"[^Data]*", in_f).group()
-            with h5py.File(pre_data_path + 'Data/PostProcess/PhaseSync/Wavevector_Data_N[{},{}]_SECTORS[{},{}]_KFRAC[0.75].h5'.format(sim_data.Nx, sim_data.Ny, int(self.num_sect), int(self.num_k1_sects))) as f:
+            with h5py.File(pre_data_path + 'Data/PostProcess/PhaseSync/Wavevector_Data_N[{},{}]_SECTORS[{},{}]_KFRAC[{:0.2f}].h5'.format(sim_data.Nx, sim_data.Ny, int(self.num_sect), int(self.num_k1_sects), self.kmax_frac)) as f:
                 self.num_wv = f["NumWavevectors"][:, :]
                 self.wv = np.zeros((self.num_sect, self.num_k1_sects, 16, np.amax(self.num_wv)))
                 for a in range(self.num_sect):
@@ -671,7 +675,6 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                         for k in range(16):
                             for n in range(self.num_wv[a, l]):
                                 self.wv[a, l, k, n] = tmp_arr[k, n]
-
 
             ## Data indicators
             self.no_w     = False
@@ -684,8 +687,6 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
 
             # sim_data.spec_size = 91
 
-            ## Get the max wavenumber
-            self.kmax = int((sim_data.Nx / 3))
             ## Allocate spectra aarrays
             self.phases        = np.zeros((sim_data.ndata, int(2 * self.kmax + 1), int(2 * self.kmax + 1)))
             self.enrg_spectrum = np.zeros((sim_data.ndata, int(2 * self.kmax + 1), int(2 * self.kmax + 1)))
@@ -710,8 +711,6 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
             self.enst_flux_spec = np.zeros((sim_data.ndata, sim_data.spec_size))
             self.enst_diss_spec = np.zeros((sim_data.ndata, sim_data.spec_size))
             self.d_enst_dt_spec = np.zeros((sim_data.ndata, sim_data.spec_size))
-            self.kmax_frac      = float(in_file.split('_')[-2].split("[")[-1].split("]")[0])
-            self.kmax_C         = int(self.kmax * self.kmax_frac)
             ## Energy Flux Spectrum
             self.enrg_flux_spec = np.zeros((sim_data.ndata, sim_data.spec_size))
             self.enrg_diss_spec = np.zeros((sim_data.ndata, sim_data.spec_size))

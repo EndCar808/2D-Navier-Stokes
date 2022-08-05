@@ -398,7 +398,7 @@ if __name__ == '__main__':
     ##      RUN PLOTTING     ##
     ###########################
     if plotting:
-        print("Here")
+        print("Here", plotting)
         
         ## Get the number of processes to launch
         proc_limit = num_plotting_job_threads

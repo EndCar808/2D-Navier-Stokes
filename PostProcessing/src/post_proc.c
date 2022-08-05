@@ -62,7 +62,7 @@ void PostProcessing(void) {
 	// Begin Snapshot Processing
 	//////////////////////////////
 	printf("\n\nStarting Snapshot Processing:\n");
-	for (int s = 0; s <  sys_vars->num_snaps; ++s) { // 1
+	for (int s = 0; s <  sys_vars->num_snaps; ++s) {
 		
 		// Print update to screen
 		printf("Snapshot: %d\n", s);
@@ -103,7 +103,6 @@ void PostProcessing(void) {
 		// --------------------------------
 		#if defined(__SEC_PHASE_SYNC) 
 		PhaseSyncSector(s);
-		PhaseSync(s);		
 		#endif
 
 		// --------------------------------
