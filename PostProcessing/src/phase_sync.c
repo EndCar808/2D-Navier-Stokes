@@ -40,11 +40,11 @@ void PhaseSync(int s) {
 
 	for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
 		// Normalize the phase order parameters
+		proc_data->num_triads_test[i]        = 0;
+		proc_data->triad_R_test[i]           = 0.0;
+		proc_data->triad_Phi_test[i]         = 0.0;
+		proc_data->enst_flux_test[i]         = 0.0;
 		proc_data->triad_phase_order_test[i] = 0.0 + 0.0 * I;
-		proc_data->triad_R_test[i]   = 0.0;
-		proc_data->triad_Phi_test[i] = 0.0;
-		proc_data->num_triads_test[i] = 0;
-		proc_data->enst_flux_test[i] = 0.0;
 	}
 
 	int n = 0;
@@ -1421,6 +1421,13 @@ void AllocatePhaseSyncMemory(const long int* N) {
 			exit(1);
 		}
 	}
+	// Initialize phase sync test data
+	for (int n = 0; n < 6; ++n) {
+		proc_data->num_triads_test[n] = 0.0;
+		for (int i = 0; i < num_triad_est; ++i) {
+			proc_data->phase_sync_wave_vecs_test[n][i] = 0.0;
+		}
+	}
 
 	//------------ Allocate memory for the number of wavevector triads per sector
 	proc_data->num_wave_vecs = (int** )fftw_malloc(sizeof(int*) * sys_vars->num_k3_sectors);
@@ -1827,7 +1834,7 @@ void AllocatePhaseSyncMemory(const long int* N) {
 			exit(1);		
 		}
 
-		printf("\n["YELLOW"NOTE"RESET"] --- Saved wavevector data to file at ["CYAN"%s"RESET"]\n...\n", file_info->wave_vec_data_name);
+		printf("\n["YELLOW"NOTE"RESET"] --- Saved wavevector data to file at ["CYAN"%s"RESET"]...\n", file_info->wave_vec_data_name);
 
 		
 		// Finish timing pre compute step and print to screen

@@ -1681,7 +1681,7 @@ void FinalWriteAndClose(void) {
     }	
 
     dset_dims_1d[0] = NUM_TRIAD_TYPES + 1;
-	status = H5LTmake_dataset(file_info->output_file_handle, "NumTriadsTest", Dims1D, dset_dims_1d, H5T_NATIVE_INT, proc_data->num_triads_test	);
+	status = H5LTmake_dataset(file_info->output_file_handle, "NumTriadsTest", Dims1D, dset_dims_1d, H5T_NATIVE_INT, proc_data->num_triads_test);
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!!!\n-->> Exiting...\n", "Number of Triads Per Sector");
         exit(1);
@@ -1750,7 +1750,6 @@ void FinalWriteAndClose(void) {
     fftw_free(tmp);
     fftw_free(tmp1);
     
-
     ///-------------------------- Sector Phase PDFs
     #if defined(__SEC_PHASE_SYNC_STATS)
     // Allocate temporary memory
