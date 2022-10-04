@@ -1,4 +1,4 @@
-	# Enda Carroll
+# Enda Carroll
 # June 2021
 # Makfile to compile programmes for Pseudopectral Solver for the 2D Ekman Navier Stokes eqns
 
@@ -45,7 +45,7 @@ endif
 SOLVER_FLAGS := -D__NAVIER #-D__HYPER -D__ADAPTIVE_STEP -D__CFL_STEP #-D__TRANSIENTS  -D__EKMN_DRAG
 
 # Phase only flags to be passed to solver
-PHASE_ONLY := -D__NAVIER -D__PHASE_ONLY #-D__HYPER -D__TRANSIENTS
+PHASE_ONLY_FLAGS := -D__NAVIER -D__PHASE_ONLY #-D__HYPER -D__TRANSIENTS
 
 # Dataset Flags to be passed to the solver
 DSET_FLAGS := -D__SYS_MEASURES -D__ENST_FLUX -D__ENRG_FLUX -D__ENST_SPECT -D__ENRG_SPECT -D__ENST_FLUX_SPECT -D__ENRG_FLUX_SPECT -D__PHASE_SYNC # -D__VORT_REAL #-D__REALSPACE # -D__MODES  
@@ -105,7 +105,7 @@ $(OBJBIN)/%.o: $(SRCDIR)/%.c $(DEPS)
 ####-----------
 solver_phase_only: $(BIN)/solver_phase_only 
 
-$(BIN)/solver_phase_only: $(SRCOBJ) $(DEPS)
+$(BIN)/solver_phase_only: $(SRCOBJ_PO) $(DEPS)
 	$(GCC) $(CCFLAG) $(PHASE_ONLY_FLAGS) $(DSET_FLAGS) -o $@ $^ ${INCDIR} ${LIBDIR} $(LIBFLAG) $(GSLFLAG)
 
 $(OBJBIN)/%_phase_only.o: $(SRCDIR)/%.c $(DEPS)

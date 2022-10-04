@@ -48,7 +48,8 @@
 // #define __EULER
 // #define __NAVIER
 // Choose which integrator to use
-#define __RK4
+// #define __RK4
+#define __AB4
 // #define __RK5
 // #define __DPRK5
 // Choose which filter to use
@@ -140,6 +141,8 @@
 #define RING_MAX_K 10.0			// The maximum absolute wavevector value to set the ring initial condition
 #define EXTRM_ENS_MIN_K 1.5 	// The minimum absolute wavevector value for the Exponential Enstrophy initial condition
 #define EXTRM_ENS_POW 1.5 		// The power for wavevectors for the Exponential enstrophy distribution
+#define UNIF_MIN_K 2.5
+#define UNIF_MAX_K 9.5
 // Forcing parameters
 #define STOC_FORC_K_MIN	0.5		// The minimum value of the modulus forced wavevectors for the stochasitc (Gaussian) forcing
 #define STOC_FORC_K_MAX 2.5     // The maximum value of the modulus forced wavevectors for the stochastic (Gaussian) forcing
@@ -249,22 +252,25 @@ typedef struct runtime_data_struct {
 } runtime_data_struct;
 
 // Runge-Kutta Integration struct
-typedef struct RK_data_struct {
-	fftw_complex* RK1;		  // Array to hold the result of the first stage
-	fftw_complex* RK2;		  // Array to hold the result of the second stage
-	fftw_complex* RK3;		  // Array to hold the result of the third stage
-	fftw_complex* RK4;		  // Array to hold the result of the fourth stage
-	fftw_complex* RK5;		  // Array to hold the result of the fifth stage of RK5 scheme
-	fftw_complex* RK6;		  // Array to hold the result of the sixth stage of RK5 scheme
-	fftw_complex* RK7; 		  // Array to hold the result of the seventh stage of the Dormand Prince Scheme
-	fftw_complex* RK_tmp;	  // Array to hold the tempory updates to w_hat - input to RHS function
-	fftw_complex* w_hat_last; // Array to hold the values of the Fourier space vorticity from the previous iteration - used in the stepsize control in DP scheme
-	double* nabla_psi;		  // Batch array the velocities u = d\psi_dy and v = -d\psi_dx
-	double* nabla_w;		  // Batch array to hold \nabla\omega - the vorticity derivatives
-	double* nonlin;           // Array to hold the result of the nonlinear term in real space
-	double DP_err; 			  // Variable to hold the error between the embedded methods in the Dormand Prince scheme
-	int DP_fails;
-} RK_data_struct;
+typedef struct Int_data_struct {
+	fftw_complex* RK1;		  		// Array to hold the result of the first stage
+	fftw_complex* RK2;		  		// Array to hold the result of the second stage
+	fftw_complex* RK3;		  		// Array to hold the result of the third stage
+	fftw_complex* RK4;		  		// Array to hold the result of the fourth stage
+	fftw_complex* RK5;		  		// Array to hold the result of the fifth stage of RK5 scheme
+	fftw_complex* RK6;		  		// Array to hold the result of the sixth stage of RK5 scheme
+	fftw_complex* RK7; 		  		// Array to hold the result of the seventh stage of the Dormand Prince Scheme
+	fftw_complex* RK_tmp;	  		// Array to hold the tempory updates to w_hat - input to RHS function
+	fftw_complex* w_hat_last; 		// Array to hold the values of the Fourier space vorticity from the previous iteration - used in the stepsize control in DP scheme
+	double* nabla_psi;		  		// Batch array the velocities u = d\psi_dy and v = -d\psi_dx
+	double* nabla_w;		  		// Batch array to hold \nabla\omega - the vorticity derivatives
+	double* nonlin;           		// Array to hold the result of the nonlinear term in real space
+	double DP_err; 			  		// Variable to hold the error between the embedded methods in the Dormand Prince scheme
+	int DP_fails;			  		// Counter to count the number of failed steps for the Dormand Prince scheme
+	fftw_complex* AB_tmp;	  		// Array to hold the result of the RHS/Nonlinear term for the Adams Bashforth scheme
+	fftw_complex* AB_tmp_nonlin[3];	// Array to hold the previous 3 RHS/Nonlinear terms to update the Adams Bashforth scheme
+	int AB_pre_steps;				// The number of derivatives to perform for the AB4 scheme
+} Int_data_struct;
 
 // HDF5 file info struct
 typedef struct HDF_file_info_struct {

@@ -43,16 +43,17 @@ def parse_cml(argv):
         Class for command line arguments
         """
         
-        def __init__(self, in_dir = None, out_dir = None):
+        def __init__(self, in_dir = None, out_dir = None, post_file = None):
             self.in_dir     = in_dir
             self.out_dir    = out_dir
+            self.post_file  = post_file
 
     ## Initialize class
     cargs = cmd_args()
 
     try:
         ## Gather command line arguments
-        opts, args = getopt.getopt(argv, "i:o")
+        opts, args = getopt.getopt(argv, "i:o:f:")
     except:
         print("[" + tc.R + "ERROR" + tc.Rst + "] ---> Incorrect Command Line Arguements.")
         sys.exit()
@@ -67,6 +68,10 @@ def parse_cml(argv):
 
             cargs.out_dir = str(arg)
             print("Output Folder: " + tc.C + "{}".format(cargs.out_dir) + tc.Rst)
+        elif opt in ['-f']:
+            ## Read input directory
+            cargs.post_file = str(arg)
+            print("Input Post Processing File: " + tc.C + "{}".format(cargs.post_file) + tc.Rst)
 
 
     return cargs
@@ -222,24 +227,37 @@ if __name__ == '__main__':
     ## --------- Parse Commnad Line
     # -------------------------------------
     cmdargs = parse_cml(sys.argv[1:]) 
-    method  = "default"
-    
+    if cmdargs.post_file is None:
+        print("Here", cmdargs.post_file)
+        method = "default"
+        post_file_path = cmdargs.in_dir
+    else: 
+        method = "file"
+        post_file_path = cmdargs.in_dir + cmdargs.post_file
+
     # -----------------------------------------
-    ## --------  Read In data
+    # # --------  Read In data
     # -----------------------------------------
     ## Read in simulation parameters
-    sys_vars = sim_data(cmdargs.in_dir, method)
+    sys_vars = sim_data(cmdargs.in_dir)
 
     ## Read in solver data
-    run_data = import_data(cmdargs.in_dir, sys_vars, method)
+    run_data = import_data(cmdargs.in_dir, sys_vars)
 
+    # if run_data.no_w:
+    #     print("\nPreparing real space vorticity...", end = " ")
+    #     for i in range(sys_vars.ndata):
+    #         run_data.w[i, :, :] = np.fft.irfft2(run_data.w_hat[i, :, :])
+    #     print("Finished!")
+        
     ## Read in spectra data
-    spec_data = import_spectra_data(cmdargs.in_dir, sys_vars, method)
+    spec_data = import_spectra_data(cmdargs.in_dir, sys_vars)
 
     ## Read in post processing data
-    post_data = import_post_processing_data(cmdargs.in_dir, sys_vars, method)
+    post_data = import_post_processing_data(post_file_path, sys_vars, method)
+
     
-    
+
 
     # with h5py.File(cmdargs.in_dir + "/Test_Data.h5", 'r') as f:
         
@@ -394,7 +412,7 @@ if __name__ == '__main__':
     ax1 = fig.add_subplot(gs[0, 0])
     ax1.plot(kk, spec_data.enrg_spectrum[0, 1:kmax], '*-')
     ax1.plot(kk, post_data.enrg_spectrum_1d[0, 1:kmax], '.-')
-    ax1.plot(kk, post_data.enrg_spectrum_1d_alt[0, 1:kmax])
+    # ax1.plot(kk, post_data.enrg_spectrum_1d_alt[0, 1:kmax])
     if sys_vars.u0 == "DECAY_TURB_II" or sys_vars.u0 == "GAUSS_DECAY_TURB":
         spec_ic = (kk**6) / ((1 + kk/60)**18) / (10**7.6)
     elif sys_vars.u0 == "DECAY_TURB" :
@@ -414,7 +432,7 @@ if __name__ == '__main__':
     ax2 = fig.add_subplot(gs[0, 1])
     ax2.plot(kk, spec_data.enst_spectrum[0, 1:kmax], '*-')
     ax2.plot(kk, post_data.enst_spectrum_1d[0, 1:kmax], '.-')
-    ax2.plot(kk, post_data.enst_spectrum_1d_alt[0, 1:kmax])
+    # ax2.plot(kk, post_data.enst_spectrum_1d_alt[0, 1:kmax])
     if sys_vars.u0 == "DECAY_TURB_II" or sys_vars.u0 == "GAUSS_DECAY_TURB":
         spec_ic = (kk**8) / ((1 + kk/60)**18) / (10**7.6)
     elif sys_vars.u0 == "DECAY_TURB" :

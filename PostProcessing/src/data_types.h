@@ -53,13 +53,13 @@
 #define EKMN_POW -2.0 			// The power of the Eckman drag term -> 0.0 means no drag
 #define FORCING 1 				// Indicates if forcing was used in simulation
 // Post processing Modes
-// #define __REAL_STATS
-// #define __VEL_INC_STATS
+#define __REAL_STATS
+#define __VEL_INC_STATS
 // #define __STR_FUNC_STATS
-// #define __GRAD_STATS
+#define __GRAD_STATS
 #define __FULL_FIELD
-// #define __SPECTRA
-#define __SEC_PHASE_SYNC
+#define __SPECTRA
+// #define __SEC_PHASE_SYNC
 // #define __SEC_PHASE_SYNC_STATS
 #define __ENST_FLUX
 #define __ENRG_FLUX
@@ -92,6 +92,7 @@
 // #define N_SECTORS 40		 	// The number of phase sectors
 #define N_BINS_SEC 1000         // The number of bins in the sector pdfs
 #define N_BINS_SEC_INTIME 200   // The number of bins in the sector pdfs in time
+#define NUM_MOMENTS 4 			// The number of moments to record for the 2d contribution stats
 #define NUM_TRIAD_TYPES 6 		// The number of triad types contributing to the flux
 #define NUM_K1_SECTORS 8		// The number of k1 sectors to search over in a reduced search @ +/- 30, 45, 60 & 90 degrees
 #define NUM_K_DATA 17           // The number of wavevector data to precompute and store
@@ -192,80 +193,88 @@ typedef struct runtime_data_struct {
 
 // Post processing data struct
 typedef struct postprocess_data_struct {
-	double* amps;												             // Array to hold the full field zero centred amplitudes
-	double* phases;			   		 							             // Array to hold the full field zero centred phases
-	double* enrg;			   		 							             // Array to hold the full field zero centred energy
-	double* enst;			   		 							             // Array to hold the full field zero centred enstrophy
-	double* enst_spec; 		   		 							             // Array to hold the enstrophy spectrum
-    double* enrg_spec; 		   		 							             // Array to hold the energy spectrum
-    double dtheta_k3; 												         // The angle between sector mid points for k3
-    double dtheta_k1; 												         // The angle between sector mid points for k1
-	bool pos_flux_term_cond;									             // Boolean to store the condition on the wavevectors for the first (positive) term in the enstrophy flux
-	bool neg_flux_term_cond;									             // Boolean to store the condition on the wavevectors for the second (negative) term in the enstrophy flux
-    double* d_enst_dt_spec;										             // Array to hold the time derivative of the enstrophy spectrum
-    double* enst_flux_spec;										             // Array to hold the enstrophy flux spectrum
-    double* enst_diss_spec;										             // Array to hold the enstrophy dissipation spectrum
-    double* enst_flux_C;										             // Array to hold the enstrophy flux out of the set C defined by radius sys_vars->kmax_frac * sys_vars->kmax
-    double* enst_diss_C;										             // Array to hold the enstrophy dissipation in the set C defined by radius sys_vars->kmax_frac * sys_vars->kmax
-    double* enst_flux_C_theta;									             // Array to hold the enstrophy flux in/out of the set C_\theta defined by radius sys_vars->kmax_frac * sys_vars->kmax
-    double* enst_diss_C_theta;												 // Array to hold the enstrophy diss in/out of the set C_\theta defined by radius sys_vars->kmax_frac * sys_vars->kmax
-    double* d_enrg_dt_spec;										             // Array to hold the time derivative of the energy spectrum
-    double* enrg_flux_spec;										             // Array to hold the energy flux spectrum
-    double* enrg_diss_spec;										             // Array to hold the energy dissipation spectrum
-    double* enrg_flux_C;										             // Array to hold the energy flux out of the set C defined by radius sys_vars->kmax_frac * sys_vars->kmax
-    double* enrg_diss_C;										             // Array to hold the energy dissipation in the set C defined by radius sys_vars->kmax_frac * sys_vars->kmax
-    fftw_complex* enst_diss_field;											 // Array to holde the enstrophy dissipation field in Fourier space.
-    fftw_complex* phase_order_C_theta;										 // Array to hold the phase order parameter for each C_theta
-    fftw_complex* phase_order_C_theta_triads[NUM_TRIAD_TYPES + 1];			 // Array to hold the phase order parameter for each C_theta triads
-    fftw_complex phase_order_C_theta_triads_test[NUM_TRIAD_TYPES + 1];		 // Array to hold the phase order parameter for each C_theta triads
-    fftw_complex* phase_order_C_theta_triads_1d[NUM_TRIAD_TYPES + 1];		 // Array to hold the phase order parameter for each C_theta triads for 1d contributions
-    fftw_complex** phase_order_C_theta_triads_2d[NUM_TRIAD_TYPES + 1];		 // Array to hold the phase order parameter for each C_theta triads for 2d contributions
-    fftw_complex* dw_hat_dt; 									             // Array to hold the RHS of the vorticity equation
-    fftw_complex* grad_w_hat;												 // Array to hold the derivative of the vorticity in the x and y direction in Fourier space     
-    fftw_complex* grad_u_hat;												 // Array to hold the derivative of the velocity in the x and y direction in Fourier space     
-    double* grad_w;															 // Array to hold the derivative of the vorticity in the x and y direction in Real space 
-    double* grad_u;															 // Array to hold the derivative of the vorticity in the x and y direction in Real space 
-    double* nonlinterm;											 			 // Array to hold the nonlinear term after multiplication in real space -> for nonlinear RHS funciotn
-    double* nabla_w;											 			 // Array to hold the gradient of the real space vorticity -> for nonlinear RHS function
-    double* nabla_psi;											 			 // Array to hold the gradient of the real space stream function -> for nonlinear RHS function
-	double* theta_k3;                   							 		 // Array to hold the angles for the sector mid points for k3
-	double* theta_k1;                   							 		 // Array to hold the angles for the sector mid points for k1
-    double* mid_angle_sum;									     			 // Array to hold the pre computed midpoint angle sums -> this will determine which sector k2 is in
-    double* phase_angle;										 			 // Array to hold the pre computed arctangents of the wavevectors for the individual phases   
-    double* k1_sector_angles;									 			 // Array to hold the pre computed arctangents of the wavevectors for the individual phases   
-    double**** phase_sync_wave_vecs;										 // Array of pointers to arrays to hold the wavevectors in a given sector
-    double** phase_sync_wave_vecs_test;									     // Array of pointers to arrays to hold the wavevectors in the test case
-    int** num_wave_vecs;													 // Array to hold the number of wavevector triads per secotr
-    fftw_complex* phase_order;       							 			 // Array to hold the phase order parameter for each sector for the individual phases
-	fftw_complex* triad_phase_order[NUM_TRIAD_TYPES + 1]; 		 			 // Array to hold the phase order parameter for each sector for each of the triad phase types including combined
-	fftw_complex triad_phase_order_test[NUM_TRIAD_TYPES + 1]; 		 		 // Array to hold the phase order parameter for each sector for each of the triad phase types including combined
-	fftw_complex* triad_phase_order_1d[NUM_TRIAD_TYPES + 1]; 		 		 // Array to hold the phase order parameter for 1d contributions for each sector for each of the triad phase types including combined
-	fftw_complex** triad_phase_order_2d[NUM_TRIAD_TYPES + 1];		 		 // Array to hold the phase order parameter for each sector for each of the triad phase types including combined
-	double* phase_R;				 							 			 // Array to hold the phase sync per sector for the individual phases
-	double* phase_Phi;               							 			 // Array to hold the average phase per sector for the individual phases
-	double* enst_flux[NUM_TRIAD_TYPES + 1];						 			 // Array to hold the flux of enstrophy for each triad type for each sector
-	double enst_flux_test[NUM_TRIAD_TYPES + 1];						 		 // Array to hold the flux of enstrophy for each triad type for each sector
-	double* enst_flux_1d[NUM_TRIAD_TYPES + 1];					 			 // Array to hold the flux of enstrophy for 1d contributoins for each triad type for each sector
-    int* num_triads[NUM_TRIAD_TYPES + 1];						 			 // Array to hold the number of triads for each triad type
-    int num_triads_test[NUM_TRIAD_TYPES + 1];						 		 // Array to hold the number of triads for each triad type
-    int* num_triads_1d[NUM_TRIAD_TYPES + 1];					 			 // Array to hold the number of triads for 1d contributions for each triad type
-    double* triad_R[NUM_TRIAD_TYPES + 1];						 			 // Array to hold the phase sync per sector for each of the triad phase types including all together
-    double* triad_Phi[NUM_TRIAD_TYPES + 1];     				 			 // Array to hold the average phase per sector for each of the triad phase types including all together
-    double triad_R_test[NUM_TRIAD_TYPES + 1];						 		 // Array to hold the phase sync per sector for each of the triad phase types including all together
-    double triad_Phi_test[NUM_TRIAD_TYPES + 1];     				 		 // Array to hold the average phase per sector for each of the triad phase types including all together
-    double* triad_R_1d[NUM_TRIAD_TYPES + 1];						 		 // Array to hold the phase sync for 1d contributions per sector for each of the triad phase types including all together
-    double* triad_Phi_1d[NUM_TRIAD_TYPES + 1];     				 			 // Array to hold the average phase for 1d contributions per sector for each of the triad phase types including all together
-    double** enst_flux_2d[NUM_TRIAD_TYPES + 1];					 			 // Array to hold the flux of enstrophy for each triad type for each sector
-    int** num_triads_2d[NUM_TRIAD_TYPES + 1];					 			 // Array to hold the number of triads for each triad type
-    double** triad_R_2d[NUM_TRIAD_TYPES + 1];					 			 // Array to hold the phase sync per sector for each of the triad phase types including all together
-    double** triad_Phi_2d[NUM_TRIAD_TYPES + 1];		  				 	     // Array to hold the average phase per sector for each of the triad phase types including all together
-    gsl_histogram** phase_sect_pdf;			    				 			 // Struct for the histogram of the individual phases in each sector over the simulation
-    gsl_histogram** phase_sect_pdf_t;							 			 // Struct for the histogram of the individual phases in each sector over time
-    gsl_histogram** phase_sect_wghtd_pdf_t;						 			 // Struct for the weighted histogram of the individual phases in each sector over time
-    gsl_histogram** triad_sect_pdf[NUM_TRIAD_TYPES + 1];  		 			 // Struct for the histogram of each triad phase type in each sector over the simulation
-    gsl_histogram** triad_sect_pdf_t[NUM_TRIAD_TYPES + 1];		 			 // Struct for the histogram of each triad phase type in each sector over time
-	gsl_histogram** triad_sect_wghtd_pdf_t[NUM_TRIAD_TYPES + 1]; 			 // Struct for the weighted histogram of each triad phase type in each sector over time
-
+	double* amps;												             	// Array to hold the full field zero centred amplitudes
+	double* phases;			   		 							             	// Array to hold the full field zero centred phases
+	double* enrg;			   		 							             	// Array to hold the full field zero centred energy
+	double* enst;			   		 							             	// Array to hold the full field zero centred enstrophy
+	double* enst_spec; 		   		 							             	// Array to hold the enstrophy spectrum
+    double* enrg_spec; 		   		 							             	// Array to hold the energy spectrum
+    double dtheta_k3; 												         	// The angle between sector mid points for k3
+    double dtheta_k1; 												         	// The angle between sector mid points for k1
+	bool pos_flux_term_cond;									             	// Boolean to store the condition on the wavevectors for the first (positive) term in the enstrophy flux
+	bool neg_flux_term_cond;									             	// Boolean to store the condition on the wavevectors for the second (negative) term in the enstrophy flux
+    double* d_enst_dt_spec;										             	// Array to hold the time derivative of the enstrophy spectrum
+    double* enst_flux_spec;										             	// Array to hold the enstrophy flux spectrum
+    double* enst_diss_spec;										             	// Array to hold the enstrophy dissipation spectrum
+    double* enst_flux_C;										             	// Array to hold the enstrophy flux out of the set C defined by radius sys_vars->kmax_frac * sys_vars->kmax
+    double* enst_diss_C;										             	// Array to hold the enstrophy dissipation in the set C defined by radius sys_vars->kmax_frac * sys_vars->kmax
+    double* enst_flux_C_theta;									             	// Array to hold the enstrophy flux in/out of the set C_\theta defined by radius sys_vars->kmax_frac * sys_vars->kmax
+    double* enst_diss_C_theta;												 	// Array to hold the enstrophy diss in/out of the set C_\theta defined by radius sys_vars->kmax_frac * sys_vars->kmax
+    double* d_enrg_dt_spec;										             	// Array to hold the time derivative of the energy spectrum
+    double* enrg_flux_spec;										             	// Array to hold the energy flux spectrum
+    double* enrg_diss_spec;										             	// Array to hold the energy dissipation spectrum
+    double* enrg_flux_C;										             	// Array to hold the energy flux out of the set C defined by radius sys_vars->kmax_frac * sys_vars->kmax
+    double* enrg_diss_C;										             	// Array to hold the energy dissipation in the set C defined by radius sys_vars->kmax_frac * sys_vars->kmax
+    fftw_complex* enst_diss_field;											 	// Array to holde the enstrophy dissipation field in Fourier space.
+    fftw_complex* phase_order_C_theta;										 	// Array to hold the phase order parameter for each C_theta
+    fftw_complex phase_order_C_theta_triads_test[NUM_TRIAD_TYPES + 1];		 	// Array to hold the phase order parameter for each C_theta triads
+    fftw_complex* phase_order_C_theta_triads[NUM_TRIAD_TYPES + 1];			 	// Array to hold the phase order parameter for each C_theta triads
+    fftw_complex* phase_order_C_theta_triads_1d[NUM_TRIAD_TYPES + 1];		 	// Array to hold the phase order parameter for each C_theta triads for 1d contributions
+    fftw_complex** phase_order_C_theta_triads_2d[NUM_TRIAD_TYPES + 1];		 	// Array to hold the phase order parameter for each C_theta triads for 2d contributions
+    fftw_complex* phase_order_C_theta_triads_unidirec[NUM_TRIAD_TYPES + 1];		// Array to hold the unidirectional phase order parameter for each C_theta triads
+    fftw_complex* phase_order_C_theta_triads_unidirec_1d[NUM_TRIAD_TYPES + 1];	// Array to hold the unidirectional phase order parameter for each C_theta triads for 1d contributions
+    fftw_complex** phase_order_C_theta_triads_unidirec_2d[NUM_TRIAD_TYPES + 1];	// Array to hold the unidirectional phase order parameter for each C_theta triads for 2d contributions
+    fftw_complex* dw_hat_dt; 									             	// Array to hold the RHS of the vorticity equation
+    fftw_complex* grad_w_hat;												 	// Array to hold the derivative of the vorticity in the x and y direction in Fourier space     
+    fftw_complex* grad_u_hat;												 	// Array to hold the derivative of the velocity in the x and y direction in Fourier space     
+    double* grad_w;															 	// Array to hold the derivative of the vorticity in the x and y direction in Real space 
+    double* grad_u;															 	// Array to hold the derivative of the vorticity in the x and y direction in Real space 
+    double* nonlinterm;											 			 	// Array to hold the nonlinear term after multiplication in real space -> for nonlinear RHS funciotn
+    double* nabla_w;											 			 	// Array to hold the gradient of the real space vorticity -> for nonlinear RHS function
+    double* nabla_psi;											 			 	// Array to hold the gradient of the real space stream function -> for nonlinear RHS function
+	double* theta_k3;                   							 		 	// Array to hold the angles for the sector mid points for k3
+	double* theta_k1;                   							 		 	// Array to hold the angles for the sector mid points for k1
+    double* mid_angle_sum;									     			 	// Array to hold the pre computed midpoint angle sums -> this will determine which sector k2 is in
+    double* phase_angle;										 			 	// Array to hold the pre computed arctangents of the wavevectors for the individual phases   
+    double* k1_sector_angles;									 			 	// Array to hold the pre computed arctangents of the wavevectors for the individual phases   
+    double**** phase_sync_wave_vecs;										 	// Array of pointers to arrays to hold the wavevectors in a given sector
+    double** phase_sync_wave_vecs_test;									     	// Array of pointers to arrays to hold the wavevectors in the test case
+    int** num_wave_vecs;													 	// Array to hold the number of wavevector triads per secotr
+    fftw_complex* phase_order;       							 			 	// Array to hold the phase order parameter for each sector for the individual phases
+	fftw_complex* triad_phase_order[NUM_TRIAD_TYPES + 1]; 		 			 	// Array to hold the phase order parameter for each sector for each of the triad phase types including combined
+	fftw_complex triad_phase_order_test[NUM_TRIAD_TYPES + 1]; 		 		 	// Array to hold the phase order parameter for each sector for each of the triad phase types including combined
+	fftw_complex* triad_phase_order_1d[NUM_TRIAD_TYPES + 1]; 		 		 	// Array to hold the phase order parameter for 1d contributions for each sector for each of the triad phase types including combined
+	fftw_complex** triad_phase_order_2d[NUM_TRIAD_TYPES + 1];		 		 	// Array to hold the phase order parameter for each sector for each of the triad phase types including combined
+	double* phase_R;				 							 			 	// Array to hold the phase sync per sector for the individual phases
+	double* phase_Phi;               							 			 	// Array to hold the average phase per sector for the individual phases
+	double* enst_flux[NUM_TRIAD_TYPES + 1];						 			 	// Array to hold the flux of enstrophy for each triad type for each sector
+	double enst_flux_test[NUM_TRIAD_TYPES + 1];						 		 	// Array to hold the flux of enstrophy for each triad type for each sector
+	double* enst_flux_1d[NUM_TRIAD_TYPES + 1];					 			 	// Array to hold the flux of enstrophy for 1d contributoins for each triad type for each sector
+    int* num_triads[NUM_TRIAD_TYPES + 1];						 			 	// Array to hold the number of triads for each triad type
+    int num_triads_test[NUM_TRIAD_TYPES + 1];						 		 	// Array to hold the number of triads for each triad type
+    int* num_triads_1d[NUM_TRIAD_TYPES + 1];					 			 	// Array to hold the number of triads for 1d contributions for each triad type
+    double* triad_R[NUM_TRIAD_TYPES + 1];						 			 	// Array to hold the phase sync per sector for each of the triad phase types including all together
+    double* triad_Phi[NUM_TRIAD_TYPES + 1];     				 			 	// Array to hold the average phase per sector for each of the triad phase types including all together
+    double triad_R_test[NUM_TRIAD_TYPES + 1];						 		 	// Array to hold the phase sync per sector for each of the triad phase types including all together
+    double triad_Phi_test[NUM_TRIAD_TYPES + 1];     				 		 	// Array to hold the average phase per sector for each of the triad phase types including all together
+    double* triad_R_1d[NUM_TRIAD_TYPES + 1];						 		 	// Array to hold the phase sync for 1d contributions per sector for each of the triad phase types including all together
+    double* triad_Phi_1d[NUM_TRIAD_TYPES + 1];     				 			 	// Array to hold the average phase for 1d contributions per sector for each of the triad phase types including all together
+    double** enst_flux_2d[NUM_TRIAD_TYPES + 1];					 			 	// Array to hold the flux of enstrophy for each triad type for each sector
+    int** num_triads_2d[NUM_TRIAD_TYPES + 1];					 			 	// Array to hold the number of triads for each triad type
+    double** triad_R_2d[NUM_TRIAD_TYPES + 1];					 			 	// Array to hold the phase sync per sector for each of the triad phase types including all together
+    double** triad_Phi_2d[NUM_TRIAD_TYPES + 1];		  				 	     	// Array to hold the average phase per sector for each of the triad phase types including all together
+    gsl_histogram** phase_sect_pdf;			    				 			 	// Struct for the histogram of the individual phases in each sector over the simulation
+    gsl_histogram** phase_sect_pdf_t;							 			 	// Struct for the histogram of the individual phases in each sector over time
+    gsl_histogram** phase_sect_wghtd_pdf_t;						 			 	// Struct for the weighted histogram of the individual phases in each sector over time
+    gsl_histogram** triad_sect_pdf[NUM_TRIAD_TYPES + 1];  		 			 	// Struct for the histogram of each triad phase type in each sector over the simulation
+    gsl_histogram** triad_sect_pdf_t[NUM_TRIAD_TYPES + 1];		 			 	// Struct for the histogram of each triad phase type in each sector over time
+	gsl_histogram** triad_sect_wghtd_pdf_t[NUM_TRIAD_TYPES + 1]; 			 	// Struct for the weighted histogram of each triad phase type in each sector over time
+	gsl_histogram*** triad_R_2d_pdf;						 					// Array to hold the histogram objects for the 2D contributions for the Phase sync
+	gsl_histogram*** triad_Phi_2d_pdf;											// Array to hold the histogram objects for the 2D contributions for the triads
+	gsl_histogram*** enst_flux_2d_pdf;											// Array to hold the histogram objects for the 2D contributions for the enstrophy flux
+	gsl_rstat_workspace*** triad_R_2d_stats[NUM_MOMENTS];									// Workplace for the running stats for the 2d phase sync
+	gsl_rstat_workspace*** triad_Phi_2d_stats[NUM_MOMENTS];									// Workplace for the running stats for 2d average phase
+	gsl_rstat_workspace*** enst_flux_2d_stats[NUM_MOMENTS];									// Workplace for the running stats for the 2d enstrophy flux contribution
 } postprocess_data_struct;
 
 // Post processing stats data struct
@@ -278,9 +287,9 @@ typedef struct stats_data_struct {
 	gsl_rstat_workspace* r_stat_vort_incr[INCR_TYPES][NUM_INCR];	// Workplace for the running stats for the vorticity increments
 	gsl_histogram* w_pdf;		 									// Histogram struct for the vorticity distribution
 	gsl_histogram* u_pdf;		  									// Histrogam struct for the velocity distribution
+	gsl_histogram* vel_grad[SYS_DIM + 1];		 					// Array to hold the PDFs of the longitudinal and transverse velocity gradients 
+	gsl_histogram* vort_grad[SYS_DIM + 1];		 					// Array to hold the PDFs of the longitudinal and transverse vorticity gradients 
 	gsl_histogram* vel_incr[INCR_TYPES][NUM_INCR]; 					// Array to hold the PDFs of the longitudinal and transverse velocity increments for each increment
-	gsl_histogram* vel_grad[INCR_TYPES];		 					// Array to hold the PDFs of the longitudinal and transverse velocity gradients 
-	gsl_histogram* vort_grad[INCR_TYPES];		 					// Array to hold the PDFs of the longitudinal and transverse vorticity gradients 
 	gsl_histogram* w_incr[INCR_TYPES][NUM_INCR]; 					// Array to hold the PDFs of the longitudinal and transverse vorticity increments for each increment
 	double* str_func[INCR_TYPES][STR_FUNC_MAX_POW - 2];				// Array to hold the structure functions longitudinal and transverse velocity increments for each increment
 	double* str_func_abs[INCR_TYPES][STR_FUNC_MAX_POW - 2];			// Array to hold the structure functions longitudinal and transverse velocity increments for each absolute increment

@@ -316,6 +316,11 @@ int GetCMLArgs(int argc, char** argv) {
 					strncpy(sys_vars->u0, "RING", 64);
 					break;
 				}
+				else if (!(strcmp(optarg,"UNIF"))) {
+					// Uniform Phases at Large scales
+					strncpy(sys_vars->u0, "UNIF", 64);
+					break;
+				}
 				else if (!(strcmp(optarg,"RANDOM"))) {
 					// Random initial conditions
 					strncpy(sys_vars->u0, "RANDOM", 64);

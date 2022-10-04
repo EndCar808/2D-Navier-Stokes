@@ -49,14 +49,12 @@ void PostProcessing(void) {
 	AllocateMemory(sys_vars->N);
 
 	InitializeFFTWPlans(sys_vars->N);
-
 	// --------------------------------
 	//  Perform Precomputations
 	// --------------------------------
-	#if defined(__GRAD_STATS) || defined(__VEL_INCR_STATS)
+	#if defined(__GRAD_STATS) || defined(__VEL_INC_STATS)
 	Precompute();
 	#endif
-	
 
 	//////////////////////////////
 	// Begin Snapshot Processing
@@ -75,7 +73,7 @@ void PostProcessing(void) {
 		// --------------------------------
 		//  Real Space Stats
 		// --------------------------------
-		#if defined(__REAL_STATS) || defined(__VEL_INCR_STATS) || defined(__STR_FUNC_STATS) || defined(__GRAD_STATS)
+		#if defined(__REAL_STATS) || defined(__VEL_INC_STATS) || defined(__STR_FUNC_STATS) || defined(__GRAD_STATS)
 		RealSpaceStats(s);
 		#endif
 
@@ -146,7 +144,7 @@ void Precompute(void) {
 	double std_u, std_w;
 
 	// Print to screen that a pre computation step is need and begin timeing it
-	printf("\n["YELLOW"NOTE"RESET"] --- Performing a precomputation step...");
+	printf("\n["YELLOW"NOTE"RESET"] --- Performing a precomputation step...\n");
 	struct timeval begin, end;
 	gettimeofday(&begin, NULL);
 
@@ -175,6 +173,7 @@ void Precompute(void) {
 				// Compute the gradients of the vorticity
 				proc_data->grad_u_hat[SYS_DIM * indx + 0] = I * run_data->k[0][i] * run_data->u_hat[SYS_DIM * indx + 0];
 				proc_data->grad_u_hat[SYS_DIM * indx + 1] = I * run_data->k[1][j] * run_data->u_hat[SYS_DIM * indx + 1];
+				// printf("grad_u_x: %1.16lf + %1.16lf I\tgrad_u_y:  %1.16lf + %1.16lf I\n", creal(proc_data->grad_u_hat[SYS_DIM * indx + 0]), cimag(proc_data->grad_u_hat[SYS_DIM * indx + 0]), creal(proc_data->grad_u_hat[SYS_DIM * indx + 1]), cimag(proc_data->grad_u_hat[SYS_DIM * indx + 1]));
 			}
 		}
 		// Perform inverse transform to get the gradients in real space - no need to presave grad_w_hat & grad_u_hat, wont be used again
@@ -195,6 +194,7 @@ void Precompute(void) {
 				proc_data->grad_w[SYS_DIM * indx + 1] *= norm_fac;
 				proc_data->grad_u[SYS_DIM * indx + 0] *= norm_fac;
 				proc_data->grad_u[SYS_DIM * indx + 1] *= norm_fac;
+
 
 				// Add gradients to stats accumulators
 				for (int i = 0; i < SYS_DIM + 1; ++i) {
@@ -245,21 +245,22 @@ void Precompute(void) {
 	// Initialize Gradient Histograms
 	// --------------------------------
 	#if defined(__GRAD_STATS)
-	for (int i = 0; i < INCR_TYPES; ++i) {
+	for (int i = 0; i < SYS_DIM + 1; ++i) {
 		// Get the std of the gradients
 		std_u = gsl_rstat_sd(stats_data->r_stat_grad_u[i]);
 		std_w = gsl_rstat_sd(stats_data->r_stat_grad_w[i]);
 
+
 		// Velocity gradients
 		gsl_status = gsl_histogram_set_ranges_uniform(stats_data->vel_grad[i], -BIN_LIM * std_u, BIN_LIM * std_u);
 		if (gsl_status != 0) {
-			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set bin ranges for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Velocity Increments");
+			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set bin ranges for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Velocity Gradient Increments");
 			exit(1);
 		}
 		// Vorticity gradients
 		gsl_status = gsl_histogram_set_ranges_uniform(stats_data->vort_grad[i], -BIN_LIM * std_w, BIN_LIM * std_w);
 		if (gsl_status != 0) {
-			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set bin ranges for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Vorticity Increments");
+			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set bin ranges for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Vorticity Gradient Increments");
 			exit(1);
 		}
 	}
@@ -275,6 +276,7 @@ void Precompute(void) {
 			// Get the std of the incrments
 			std_u = gsl_rstat_sd(stats_data->r_stat_vel_incr[i][j]);
 			std_w = gsl_rstat_sd(stats_data->r_stat_vort_incr[i][j]);
+
 
 			// Velocity increments
 			gsl_status = gsl_histogram_set_ranges_uniform(stats_data->vel_incr[i][j], -BIN_LIM * std_u, BIN_LIM * std_u);
@@ -292,9 +294,12 @@ void Precompute(void) {
 	}
 	#endif
 
+	printf("\n["YELLOW"NOTE"RESET"] --- Precomputation step complete!\n");
+
 	// Finish timing pre compute step and print to screen
 	gettimeofday(&end, NULL);
 	// PrintTime(begin.tv_sec, end.tv_sec);
+	
 }
 /**
  * Wrapper function used to allocate the nescessary data objects
@@ -369,9 +374,9 @@ void AllocateMemory(const long int* N) {
 		exit(1);
 	}
 	#if defined(__GRAD_STATS)
-	run_data->u = (double* )fftw_malloc(sizeof(double) * Nx * Ny * SYS_DIM);
-	if (run_data->u == NULL) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Velocity");
+	run_data->tmp_u = (double* )fftw_malloc(sizeof(double) * Nx * Ny * SYS_DIM);
+	if (run_data->tmp_u == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Temporary Velocity");
 		exit(1);
 	}
 	#endif

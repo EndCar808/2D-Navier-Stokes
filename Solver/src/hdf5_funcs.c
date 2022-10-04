@@ -269,9 +269,9 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 				indx = tmp + j;
 
 				//record the amplitudes
-				run_data->a_k = cabs(run_data->w_hat[indx]);
+				run_data->a_k[i] = cabs(run_data->w_hat[indx]);
 				// record the phases 
-				run_data->phi_k = carg(run_data->w_hat[indx]);
+				run_data->phi_k[i] = carg(run_data->w_hat[indx]);
 			}
 		}
 		
@@ -284,10 +284,10 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 		mem_space_dims2D[1] = Ny_Fourier;
 
 		// Write the Fourier amplitudes
-		WriteDataFourier(0.0, 0, main_group_id, "a_k", H5T_NATIVE_DOUBLE, d_set_rank2D, dset_dims2D, slab_dims2D, mem_space_dims2D, sys_vars->local_Nx_start, run_data->a_k);
+		WriteDataReal(0.0, 0, main_group_id, "a_k", H5T_NATIVE_DOUBLE, d_set_rank2D, dset_dims2D, slab_dims2D, mem_space_dims2D, sys_vars->local_Nx_start, run_data->a_k);
 
 		// Write the Fourier phases
-		WriteDataFourier(0.0, 0, main_group_id, "phi_k", H5T_NATIVE_DOUBLE, d_set_rank2D, dset_dims2D, slab_dims2D, mem_space_dims2D, sys_vars->local_Nx_start, run_data->phi_k);
+		WriteDataReal(0.0, 0, main_group_id, "phi_k", H5T_NATIVE_DOUBLE, d_set_rank2D, dset_dims2D, slab_dims2D, mem_space_dims2D, sys_vars->local_Nx_start, run_data->phi_k);
 		#endif
 
 		///-------------------------------------- Taylor Green Initial Condition
@@ -469,6 +469,8 @@ void GetOutputDirPath(void) {
 		sprintf(solv_type, "%s", "RK5");
 		#elif defined(__DPRK5)
 		sprintf(solv_type, "%s", "DP5");
+		#elif defined(__AB4)
+		sprintf(solv_type, "%s", "AB4");
 		#else 
 		sprintf(solv_type, "%s", "UKN");
 		#endif
@@ -533,6 +535,8 @@ void GetOutputDirPath(void) {
 		sprintf(solv_type, "%s", "RK4");
 		#elif defined(__RK5)
 		sprintf(solv_type, "%s", "RK5");
+		#elif defined(__AB4)
+		sprintf(solv_type, "%s", "AB4");
 		#elif defined(__DPRK5)
 		sprintf(solv_type, "%s", "DP5");
 		#else 
@@ -875,10 +879,10 @@ void WriteDataToFile(double t, double dt, long int iters) {
 	mem_space_dims2D[1] = Ny_Fourier;
 
 	// Write the Fourier amplitudes
-	WriteDataFourier(t, (int)iters, main_group_id, "a_k", H5T_NATIVE_DOUBLE, d_set_rank2D, dset_dims2D, slab_dims2D, mem_space_dims2D, sys_vars->local_Nx_start, run_data->a_k);
+	WriteDataReal(t, (int)iters, main_group_id, "a_k", H5T_NATIVE_DOUBLE, d_set_rank2D, dset_dims2D, slab_dims2D, mem_space_dims2D, sys_vars->local_Nx_start, run_data->a_k);
 
 	// Write the Fourier phases
-	WriteDataFourier(t, (int)iters, main_group_id, "phi_k", H5T_NATIVE_DOUBLE, d_set_rank2D, dset_dims2D, slab_dims2D, mem_space_dims2D, sys_vars->local_Nx_start, run_data->phi_k);
+	WriteDataReal(t, (int)iters, main_group_id, "phi_k", H5T_NATIVE_DOUBLE, d_set_rank2D, dset_dims2D, slab_dims2D, mem_space_dims2D, sys_vars->local_Nx_start, run_data->phi_k);
 	#endif
 
 	///--------------------------------------- Taylor Green Exact Solution

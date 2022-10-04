@@ -294,8 +294,7 @@ void AllocateStatsMemory(const long int* N) {
 	}
 	#endif
 	
-
-	// --------------------------------	
+	// --------------------------------
 	//  Initialize Graient Stats
 	// --------------------------------
 	#if defined(__GRAD_STATS)
@@ -313,23 +312,21 @@ void AllocateStatsMemory(const long int* N) {
 	// Allocate Real Space gradient arrays
 	proc_data->grad_u = (double* )fftw_malloc(sizeof(double) * Nx * Ny * SYS_DIM);
 	if (proc_data->grad_u == NULL) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Velocity");
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Velocity Gradient");
 		exit(1);
 	}
 	proc_data->grad_w = (double* )fftw_malloc(sizeof(double) * Nx * Ny * SYS_DIM);
 	if (proc_data->grad_w == NULL) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Velocity");
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Vorticity Gradient");
 		exit(1);
 	}
 
-	// Initialize the gradient histograms
-	for (int i = 0; i < INCR_TYPES; ++i) {
+	for (int i = 0; i < SYS_DIM + 1; ++i) {
+		// Initialize the gradient histograms
 		stats_data->vel_grad[i]  = gsl_histogram_alloc(N_BINS);
 		stats_data->vort_grad[i] = gsl_histogram_alloc(N_BINS);
-	}
 
-	// Initialize the running stats for the gradients
-	for (int i = 0; i < SYS_DIM + 1; ++i) {
+		// Initialize the running stats for the gradients
 		stats_data->r_stat_grad_u[i] = gsl_rstat_alloc();
 		stats_data->r_stat_grad_w[i] = gsl_rstat_alloc();
 	}
@@ -429,11 +426,9 @@ void FreeStatsObjects(void) {
 	}
 	#endif
 	#if defined(__GRAD_STATS)
-	for (int i = 0; i < INCR_TYPES; ++i) {
+	for (int i = 0; i < SYS_DIM + 1; ++i) {
 		gsl_histogram_free(stats_data->vel_grad[i]);
 		gsl_histogram_free(stats_data->vort_grad[i]);
-	}
-	for (int i = 0; i < SYS_DIM + 1; ++i) {
 		gsl_rstat_free(stats_data->r_stat_grad_u[i]);
 		gsl_rstat_free(stats_data->r_stat_grad_w[i]);
 	}

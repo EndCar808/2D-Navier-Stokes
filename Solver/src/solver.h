@@ -22,10 +22,15 @@
 // Main function for the pseudospectral solver
 void SpectralSolve(void);
 // Integration functions
-#ifdef __RK4
-void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Nx, RK_data_struct* RK_data);
-#elif defined(__RK5) || defined(__DPRK5)
-void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdiff_t local_Nx, RK_data_struct* RK_data);
+#if defined(__RK4)
+void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Nx, Int_data_struct* Int_data);
+#endif
+#if defined(__AB4)
+void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Nx, Int_data_struct* Int_data);
+void AB4Step(const double dt, const long int* N, const int iters, const ptrdiff_t local_Nx, Int_data_struct* Int_data);
+#endif
+#if defined(__RK5) || defined(__DPRK5)
+void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdiff_t local_Nx, Int_data_struct* Int_data);
 #endif
 #ifdef __DPRK5
 double DPMax(double a, double b);
@@ -50,8 +55,8 @@ void PrintUpdateToTerminal(int iters, double t, double dt, double T, int save_da
 void TestTaylorGreenVortex(const double t, const long int* N, double* norms);
 void TaylorGreenSoln(const double t, const long int* N);
 // Memory Functions
-void AllocateMemory(const long int* NBatch, RK_data_struct* RK_data);
-void FreeMemory(RK_data_struct* RK_data);
+void AllocateMemory(const long int* NBatch, Int_data_struct* Int_data);
+void FreeMemory(Int_data_struct* Int_data);
 // ---------------------------------------------------------------------
 //  End of File
 // ---------------------------------------------------------------------

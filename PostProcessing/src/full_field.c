@@ -397,18 +397,20 @@ void FluxSpectra(int snap) {
 	}
 
 	// Initialize Collective phase order array
+	#if defined(__SEC_PHASE_SYNC)
 	for (int i = 0; i < sys_vars->num_k3_sectors; ++i) {
 		proc_data->enst_flux_C_theta[i]   = 0.0;
 		proc_data->enst_diss_C_theta[i]   = 0.0;
 		proc_data->phase_order_C_theta[i] = 0.0 + 0.0 * I;
 	}
-
+	#endif
 
 	// -----------------------------------
 	// Compute the Derivative
 	// -----------------------------------
 	// Compute the nonlinear term
 	NonlinearRHS(run_data->w_hat, proc_data->dw_hat_dt, proc_data->nonlinterm, proc_data->nabla_psi, proc_data->nabla_w);
+
 
 	// -------------------------------------
 	// Compute the Energy Flux Spectrum
@@ -785,7 +787,7 @@ void AllocateFullFieldMemory(const long int* N) {
 		}
 	}
 	for (int i = 0; i < sys_vars->num_snaps; ++i) {
-		#if defined(__ENST_FLUX)
+		#if defined(__SEC_PHASE_SYNC)
 		proc_data->enst_flux_C_theta[i] = 0.0;
 		proc_data->enst_diss_C_theta[i] = 0.0;
 		#endif

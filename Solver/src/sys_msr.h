@@ -18,7 +18,7 @@
 // ---------------------------------------------------------------------
 //  Function Prototypes
 // ---------------------------------------------------------------------
-void InitializeSystemMeasurables(RK_data_struct* RK_data);
+void InitializeSystemMeasurables(Int_data_struct* Int_data);
 double TotalForcing(void);
 double TotalDivergence(void);
 double TotalEnergy(void);
@@ -28,12 +28,12 @@ double EnergyDissipationRate(void);
 double EnstrophyDissipationRate(void);
 void EnergySpectrum(void);
 void EnstrophySpectrum(void);
-void EnergyFluxSpectrum(RK_data_struct* RK_data);
-void EnstrophyFluxSpectrum(RK_data_struct* RK_data);
-void EnstrophyFlux(double* d_e_dt, double* enst_flux, double* enst_diss, RK_data_struct* RK_data);
-void EnergyFlux(double* d_e_dt, double* enrg_flux, double* enrg_diss, RK_data_struct* RK_data);
-void RecordSystemMeasures(double t, int print_indx,  RK_data_struct* RK_data);
-void ComputeSystemMeasurables(double t, int iter, RK_data_struct* RK_data);
+void EnergyFluxSpectrum(Int_data_struct* Int_data);
+void EnstrophyFluxSpectrum(Int_data_struct* Int_data);
+void EnstrophyFlux(double* d_e_dt, double* enst_flux, double* enst_diss, Int_data_struct* Int_data);
+void EnergyFlux(double* d_e_dt, double* enrg_flux, double* enrg_diss, Int_data_struct* Int_data);
+void RecordSystemMeasures(double t, int print_indx,  Int_data_struct* Int_data);
+void ComputeSystemMeasurables(double t, int iter, Int_data_struct* Int_data);
 // ---------------------------------------------------------------------
 //  End of File
 // ---------------------------------------------------------------------

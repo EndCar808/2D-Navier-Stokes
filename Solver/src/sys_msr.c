@@ -27,9 +27,9 @@
  * Function to compute the system measurables such as energy, enstrophy, palinstrophy, helicity, energy and enstrophy dissipation rates, and spectra at once on the local processes for the current timestep
  * @param t 		The current time in the simulation
  * @param iter 		The index in the system arrays for the current timestep
- * @param RK_data 	Struct containing the integration varaiables needed for the nonlinear term function
+ * @param Int_data 	Struct containing the integration varaiables needed for the nonlinear term function
  */
-void ComputeSystemMeasurables(double t, int iter, RK_data_struct* RK_data) {
+void ComputeSystemMeasurables(double t, int iter, Int_data_struct* Int_data) {
 
 	// Initialize variables
 	int tmp;
@@ -123,10 +123,10 @@ void ComputeSystemMeasurables(double t, int iter, RK_data_struct* RK_data) {
 
 	#if defined(__ENRG_FLUX) || defined(__ENST_FLUX) || defined(__ENRG_FLUX_SPECT) || defined(__ENST_FLUX_SPECT)
 	// Compute the nonlinear term & subtract the forcing as the flux computation should ignore focring
-	NonlinearRHSBatch(run_data->w_hat, RK_data->RK1, RK_data->nonlin, RK_data->nabla_psi, RK_data->nabla_w);
+	NonlinearRHSBatch(run_data->w_hat, Int_data->RK1, Int_data->nonlin, Int_data->nabla_psi, Int_data->nabla_w);
 	if (sys_vars->local_forcing_proc) {
 		for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
-			RK_data->RK1[run_data->forcing_indx[i]] -= run_data->forcing[i];
+			Int_data->RK1[run_data->forcing_indx[i]] -= run_data->forcing[i];
 		}
 	}
 	#endif
@@ -194,7 +194,7 @@ void ComputeSystemMeasurables(double t, int iter, RK_data_struct* RK_data) {
 						if ((k_sqr >= lwr_sbst_lim_sqr) && (k_sqr < upr_sbst_lim_sqr)) { // define the subset to consider for the flux and dissipation
 							#if defined(__ENRG_FLUX) || defined(__ENST_FLUX)
 							// Get the derivative and dissipation terms
-							tmp_deriv = creal(run_data->w_hat[indx] * conj(RK_data->RK1[indx]) + conj(run_data->w_hat[indx]) * RK_data->RK1[indx]);
+							tmp_deriv = creal(run_data->w_hat[indx] * conj(Int_data->RK1[indx]) + conj(run_data->w_hat[indx]) * Int_data->RK1[indx]);
 							tmp_diss  = pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
 							#endif
 
@@ -220,7 +220,7 @@ void ComputeSystemMeasurables(double t, int iter, RK_data_struct* RK_data) {
 						if ((k_sqr >= lwr_sbst_lim_sqr) && (k_sqr < upr_sbst_lim_sqr)) { // define the subset to consider for the flux and dissipation
 							#if defined(__ENRG_FLUX) || defined(__ENST_FLUX)
 							// Get the derivative and dissipation terms
-							tmp_deriv = creal(run_data->w_hat[indx] * conj(RK_data->RK1[indx]) + conj(run_data->w_hat[indx]) * RK_data->RK1[indx]);
+							tmp_deriv = creal(run_data->w_hat[indx] * conj(Int_data->RK1[indx]) + conj(run_data->w_hat[indx]) * Int_data->RK1[indx]);
 							tmp_diss  = pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
 							#endif
 
@@ -248,7 +248,7 @@ void ComputeSystemMeasurables(double t, int iter, RK_data_struct* RK_data) {
 			if ((run_data->k[0][i] != 0) || (run_data->k[1][j] != 0)) {
 				#if defined(__ENRG_FLUX_SPECT) || defined(__ENST_FLUX_SPECT)
 				// Get the derivative and dissipation terms
-				tmp_deriv = creal(run_data->w_hat[indx] * conj(RK_data->RK1[indx]) + conj(run_data->w_hat[indx]) * RK_data->RK1[indx]) * const_fac * norm_fac;
+				tmp_deriv = creal(run_data->w_hat[indx] * conj(Int_data->RK1[indx]) + conj(run_data->w_hat[indx]) * Int_data->RK1[indx]) * const_fac * norm_fac;
 				tmp_diss  = pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * const_fac * norm_fac;
 				#endif
 
@@ -299,7 +299,7 @@ void ComputeSystemMeasurables(double t, int iter, RK_data_struct* RK_data) {
 			///--------------------------------- Phase Sync
 			#if defined(__PHASE_SYNC)
 			// Compute the scale dependent collective phase
-			tmp_order = RK_data->RK1[indx] * cexp(-I * carg(run_data->w_hat[indx]));
+			tmp_order = Int_data->RK1[indx] * cexp(-I * carg(run_data->w_hat[indx]));
 
 			// Average over the annulus
 			if (j == 0 || j == Ny_Fourier - 1) {
@@ -352,9 +352,9 @@ void ComputeSystemMeasurables(double t, int iter, RK_data_struct* RK_data) {
 }
 /**
  * Function to initialize and compute the system measurables and spectra of the initial conditions
- * @param RK_data The struct containing the Runge-Kutta arrays to compute the nonlinear term for the fluxes
+ * @param Int_data The struct containing the Runge-Kutta arrays to compute the nonlinear term for the fluxes
  */
-void InitializeSystemMeasurables(RK_data_struct* RK_data) {
+void InitializeSystemMeasurables(Int_data_struct* Int_data) {
 
 	// Set the size of the arrays to twice the number of printing steps to account for extra steps due to adaptive stepping
 	if (sys_vars->ADAPT_STEP_FLAG == ADAPTIVE_STEP) {
@@ -579,8 +579,8 @@ void InitializeSystemMeasurables(RK_data_struct* RK_data) {
 	// Get Measurables of the ICs
 	// ----------------------------
 	if (sys_vars->TRANS_ITERS_FLAG != TRANSIENT_ITERS) {
-		ComputeSystemMeasurables(0.0, 0, RK_data);
-		// RecordSystemMeasures(0.0, 0, RK_data);
+		ComputeSystemMeasurables(0.0, 0, Int_data);
+		// RecordSystemMeasures(0.0, 0, Int_data);
 	}
 }
 /**
@@ -1048,9 +1048,9 @@ double EnstrophyDissipationRate(void) {
  * The results will be gathered on the master process at the end of the simulation	
  * @param enst_flux The enstrophy flux 
  * @param enst_diss The enstrophy dissipation
- * @param RK_data   The Runge-Kutta struct containing the arrays for computing the nonlinear term
+ * @param Int_data   The Runge-Kutta struct containing the arrays for computing the nonlinear term
  */
-void EnstrophyFlux(double* d_e_dt, double* enst_flux, double* enst_diss, RK_data_struct* RK_data) {
+void EnstrophyFlux(double* d_e_dt, double* enst_flux, double* enst_diss, Int_data_struct* Int_data) {
 
 	// Initialize variables
 	int tmp;
@@ -1078,7 +1078,7 @@ void EnstrophyFlux(double* d_e_dt, double* enst_flux, double* enst_diss, RK_data
 	}
 
 	// Compute the nonlinear term & subtract the forcing as the flux computation should ignore focring
-	NonlinearRHSBatch(run_data->w_hat, dwhat_dt, RK_data->nonlin, RK_data->nabla_psi, RK_data->nabla_w);
+	NonlinearRHSBatch(run_data->w_hat, dwhat_dt, Int_data->nonlin, Int_data->nabla_psi, Int_data->nabla_w);
 	if (sys_vars->local_forcing_proc) {
 		for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
 			dwhat_dt[run_data->forcing_indx[i]] -= run_data->forcing[i];
@@ -1173,9 +1173,9 @@ void EnstrophyFlux(double* d_e_dt, double* enst_flux, double* enst_diss, RK_data
  * The results will be gathered on the master process and written to file at the end of the simulation
  * @param enrg_flux The energy flux in/out of a subset of modes	
  * @param enrg_diss The energy dissipation of a subset of modes
- * @param RK_data   The struct containing the Runge-Kutta arrays to be used for computing the nonlinear term
+ * @param Int_data   The struct containing the Runge-Kutta arrays to be used for computing the nonlinear term
  */
-void EnergyFlux(double* d_e_dt, double* enrg_flux, double* enrg_diss, RK_data_struct* RK_data) {
+void EnergyFlux(double* d_e_dt, double* enrg_flux, double* enrg_diss, Int_data_struct* Int_data) {
 
 	// Initialize variables
 	int tmp;
@@ -1203,7 +1203,7 @@ void EnergyFlux(double* d_e_dt, double* enrg_flux, double* enrg_diss, RK_data_st
 	}
 
 	// Compute the nonlinear term & subtract the forcing as the flux computation should ignore focring
-	NonlinearRHSBatch(run_data->w_hat, dwhat_dt, RK_data->nonlin, RK_data->nabla_psi, RK_data->nabla_w);
+	NonlinearRHSBatch(run_data->w_hat, dwhat_dt, Int_data->nonlin, Int_data->nabla_psi, Int_data->nabla_w);
 	if (sys_vars->local_forcing_proc) {
 		for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
 			dwhat_dt[run_data->forcing_indx[i]] -= run_data->forcing[i];
@@ -1304,9 +1304,9 @@ void EnergyFlux(double* d_e_dt, double* enrg_flux, double* enrg_diss, RK_data_st
 /**
  * Function to compute the energy flux spectrum for the current iteration on the local processes
  * The results of the complete spectrum will be gathered on the master rank before writing to file
- * @param  RK_data The struct containing the Runge-Kutta arrays needed for computing the nonlinear term
+ * @param  Int_data The struct containing the Runge-Kutta arrays needed for computing the nonlinear term
  */
-void EnergyFluxSpectrum(RK_data_struct* RK_data) {
+void EnergyFluxSpectrum(Int_data_struct* Int_data) {
 
 	// Initialize variables
 	int tmp;
@@ -1339,7 +1339,7 @@ void EnergyFluxSpectrum(RK_data_struct* RK_data) {
 	}
 
 	// Compute the nonlinear term & subtract the forcing as the flux computation should ignore focring
-	NonlinearRHSBatch(run_data->w_hat, dwhat_dt, RK_data->nonlin, RK_data->nabla_psi, RK_data->nabla_w);
+	NonlinearRHSBatch(run_data->w_hat, dwhat_dt, Int_data->nonlin, Int_data->nabla_psi, Int_data->nabla_w);
 	if (sys_vars->local_forcing_proc) {
 		for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
 			dwhat_dt[run_data->forcing_indx[i]] -= run_data->forcing[i];
@@ -1409,9 +1409,9 @@ void EnergyFluxSpectrum(RK_data_struct* RK_data) {
 /**
  * Function to compute the enstrophy flux spectrum for the current iteration on the local processes
  * The results are gathered on the master rank before being written to file
- * @param  RK_data The struct containing the Runge-Kutta arrays for computing the nonlinear term
+ * @param  Int_data The struct containing the Runge-Kutta arrays for computing the nonlinear term
  */
-void EnstrophyFluxSpectrum(RK_data_struct* RK_data) {
+void EnstrophyFluxSpectrum(Int_data_struct* Int_data) {
 
 	// Initialize variables
 	int tmp;
@@ -1444,7 +1444,7 @@ void EnstrophyFluxSpectrum(RK_data_struct* RK_data) {
 	}
 
 	// Compute the nonlinear term & subtract the forcing as the flux computation should ignore focring
-	NonlinearRHSBatch(run_data->w_hat, dwhat_dt, RK_data->nonlin, RK_data->nabla_psi, RK_data->nabla_w);
+	NonlinearRHSBatch(run_data->w_hat, dwhat_dt, Int_data->nonlin, Int_data->nabla_psi, Int_data->nabla_w);
 	if (sys_vars->local_forcing_proc) {
 		for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
 			dwhat_dt[run_data->forcing_indx[i]] -= run_data->forcing[i];
@@ -1515,9 +1515,9 @@ void EnstrophyFluxSpectrum(RK_data_struct* RK_data) {
  * DEPRICATED: Function to record the system measures for the current timestep 
  * @param t          The current time in the simulation
  * @param print_indx The current index of the measurables arrays
- * @param RK_data 	 The Runge-Kutta struct containing the arrays to compute the nonlinear term for the fluxes
+ * @param Int_data 	 The Runge-Kutta struct containing the arrays to compute the nonlinear term for the fluxes
  */
-void RecordSystemMeasures(double t, int print_indx, RK_data_struct* RK_data) {
+void RecordSystemMeasures(double t, int print_indx, Int_data_struct* Int_data) {
 
 	// -------------------------------
 	// Record the System Measures 
@@ -1545,10 +1545,10 @@ void RecordSystemMeasures(double t, int print_indx, RK_data_struct* RK_data) {
 		#endif
 		#if defined(__ENST_FLUX)
 		// Enstrophy and energy flux in/out and dissipation of a subset of modes
-		EnstrophyFlux(&(run_data->d_enst_dt_sbst[print_indx]), &(run_data->enst_flux_sbst[print_indx]), &(run_data->enst_diss_sbst[print_indx]), RK_data);
+		EnstrophyFlux(&(run_data->d_enst_dt_sbst[print_indx]), &(run_data->enst_flux_sbst[print_indx]), &(run_data->enst_diss_sbst[print_indx]), Int_data);
 		#endif
 		#if defined(__ENRG_FLUX)
-		EnergyFlux(&(run_data->d_enrg_dt_sbst[print_indx]), &(run_data->enrg_flux_sbst[print_indx]), &(run_data->enrg_diss_sbst[print_indx]), RK_data);
+		EnergyFlux(&(run_data->d_enrg_dt_sbst[print_indx]), &(run_data->enrg_flux_sbst[print_indx]), &(run_data->enrg_diss_sbst[print_indx]), Int_data);
 		#endif
 	}
 	else {
@@ -1566,10 +1566,10 @@ void RecordSystemMeasures(double t, int print_indx, RK_data_struct* RK_data) {
 	EnergySpectrum();
 	#endif
 	#if defined(__ENRG_FLUX_SPECT)
-	EnergyFluxSpectrum(RK_data);
+	EnergyFluxSpectrum(Int_data);
 	#endif
 	#if defined(__ENST_FLUX_SPECT)
-	EnstrophyFluxSpectrum(RK_data);
+	EnstrophyFluxSpectrum(Int_data);
 	#endif
 }
 // ---------------------------------------------------------------------
