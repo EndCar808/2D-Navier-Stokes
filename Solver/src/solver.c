@@ -58,9 +58,9 @@ void SpectralSolve(void) {
 	const long int NBatch[SYS_DIM] = {sys_vars->N[0], sys_vars->N[1] / 2 + 1};
 
 	// Initialize the Runge-Kutta struct
-	struct Int_data_struct* Int_data;	   // Initialize pointer to a Int_data_struct
-	struct Int_data_struct Int_data_tmp; // Initialize a Int_data_struct
-	Int_data = &Int_data_tmp;		       // Point the ptr to this new Int_data_struct
+	struct Int_data_struct* Int_data;	    // Initialize pointer to a Int_data_struct
+	struct Int_data_struct Int_data_tmp; 	// Initialize a Int_data_struct
+	Int_data = &Int_data_tmp;		        // Point the ptr to this new Int_data_struct
 
 	// -------------------------------
 	// Allocate memory
@@ -277,7 +277,7 @@ void AB4Step(const double dt, const long int* N, const int iters, const ptrdiff_
 		RK4Step(dt, N, sys_vars->local_Nx, Int_data);
 
 		// Save the nonlinear term for each pre step for use in the update step of the AB4 scheme
-		memcpy(&(Int_data->AB_tmp_nonlin[iters - 1][0]), Int_data->AB_tmp, sizeof(fftw_complex) * (long int)local_Nx * Ny_Fourier);
+		memcpy(&(Int_data->AB_tmp_nonlin[iters - 1][0]), Int_data->RK1, sizeof(fftw_complex) * (long int)local_Nx * Ny_Fourier);
 	}
 	else {
 		// -----------------------------------

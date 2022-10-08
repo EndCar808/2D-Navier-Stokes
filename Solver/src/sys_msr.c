@@ -57,11 +57,9 @@ void ComputeSystemMeasurables(double t, int iter, Int_data_struct* Int_data) {
 
     // Record the initial time
     #if defined(__TIME)
-	if (sys_vars->TRANS_ITERS_FLAG != TRANSIENT_ITERS) {
-	    if (!(sys_vars->rank)) {
-	    	run_data->time[iter] = t;
-	    }
-	}
+    if (!(sys_vars->rank)) {
+    	run_data->time[iter] = t;
+    }
 	#endif
 
     // If adaptive stepping check if within memory limits
