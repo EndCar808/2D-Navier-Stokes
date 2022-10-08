@@ -225,6 +225,8 @@ if __name__ == '__main__':
                 solver = bool(utils.strtobool(parser[section]['call_solver']))
             if 'call_postprocessing' in parser[section]:
                 postprocessing = bool(utils.strtobool(parser[section]['call_postprocessing']))
+            if 'plotting' in parser[section]:
+                plotting = bool(utils.strtobool(parser[section]['plotting']))
             if 'solver_procs' in parser[section]:
                 solver_procs = int(parser[section]['solver_procs'])
             if 'collect_data' in parser[section]:
@@ -398,7 +400,6 @@ if __name__ == '__main__':
     ##      RUN PLOTTING     ##
     ###########################
     if plotting:
-        print("Here", plotting)
         
         ## Get the number of processes to launch
         proc_limit = num_plotting_job_threads

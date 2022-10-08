@@ -94,7 +94,7 @@ void InitializeForcing(void) {
 
 			// Get the forcing wavenumbers
 			run_data->forcing_k[0][0] = 0;
-			run_data->forcing_k[0][1] = run_data->k[1][sys_vars->force_k];
+			run_data->forcing_k[1][0] = run_data->k[1][sys_vars->force_k];
 
 			// Get the forcing scaling 
 			run_data->forcing_scaling[0] = 1.0;
@@ -414,7 +414,7 @@ void ComputeForcing(void) {
 		//---------------------------- Compute Kolmogorov forcing -> f(u) = (sin(n y), 0); f(w) = -n cos(n y) -> f_k = -1/2 * n \delta(n)
 		else if(!(strcmp(sys_vars->forcing, "KOLM"))) {
 			// Compute the Kolmogorov forcing
-			run_data->forcing[0] = -0.5 * sys_vars->force_k * (sys_vars->force_k + 0.0 * I);
+			run_data->forcing[0] = -0.5 * sys_vars->force_scale_var * (sys_vars->force_k + 0.0 * I);
 		}
 		//---------------------------- Compute Stochastic forcing
 		else if(!(strcmp(sys_vars->forcing, "STOC"))) {

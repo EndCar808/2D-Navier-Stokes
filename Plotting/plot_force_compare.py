@@ -100,6 +100,10 @@ if __name__ == '__main__':
         method = "file"
         post_file_path = cmdargs.in_dir + cmdargs.in_file
 
+    if os.path.isdir(cmdargs.out_dir + "/SNAPS/") != True:
+        print("Making folder:" + tc.C + " SNAPS/" + tc.Rst)
+        os.mkdir(cmdargs.out_dir + "/SNAPS/")
+
     # -----------------------------------------
     # # --------  Read In data
     # -----------------------------------------
@@ -117,7 +121,7 @@ if __name__ == '__main__':
 
 
     ## Read in Brendan's data
-    data_dir = "/work/projects/TurbPhase/Phase_Dynamics_Navier_Stokes/navierstokes_mpi/3D_Euler_Spectral/results/RESULTS_NAVIER_AB4_N[256][256]_T[0-0.1]_[20-14-17]_[Kolo-Test]/"
+    data_dir = "/work/projects/TurbPhase/Phase_Dynamics_Navier_Stokes/navierstokes_mpi/3D_Euler_Spectral/results/RESULTS_NAVIER_AB4_N[256][256]_T[0-1]_[16-14-14]_[Kolo-Test]" + "/"
     print(data_dir)
 
     with h5py.File(data_dir + "HDF_Global_REAL.h5", "r") as f:
@@ -134,22 +138,24 @@ if __name__ == '__main__':
         for group in f.keys():
             if "Timestep" in group:
                 if 'W' in list(f[group].keys()):
-                    ww            = f[group]["W"][:, :]
+                    ww            = f[group]["W"][:, :] / (256 * 256)
                     bren_w_hat[nn,:, :] = np.fft.rfft2(ww)
                     bren_w[nn,    :, :] = ww
                     nn += 1
 
         fig, ax = plt.subplots(1, 2)
         im0 = ax[0].imshow(np.real(bren_w_hat[0, :, :]))
+        ax[0].set_title("Brendan's Data")
         divider = make_axes_locatable(ax[0])
         cax = divider.append_axes('right', size='5%', pad=0.05)
         fig.colorbar(im0, cax=cax, orientation='vertical')
 
         im1 = ax[1].imshow(np.imag(bren_w_hat[0, :, :]))
         divider = make_axes_locatable(ax[1])
+        ax[1].set_title("My Data")
         cax = divider.append_axes('right', size='5%', pad=0.05)
         fig.colorbar(im1, cax=cax, orientation='vertical')
-        
+        plt.tight_layout()
         plt.savefig(cmdargs.out_dir + "SNAPS/" + "BrendansIC_Fourier.png")
         plt.close()
 
@@ -162,12 +168,20 @@ if __name__ == '__main__':
         divider = make_axes_locatable(ax[1])
         cax = divider.append_axes('right', size='5%', pad=0.05)
         fig.colorbar(im, cax=cax, orientation='vertical')
-        im = ax[2].imshow(np.absolute(bren_w[0, :, :] / (256 * 256) - run_data.w[0, :, :]))
+        im = ax[2].imshow(np.absolute(bren_w[0, :, :] - run_data.w[0, :, :]))
         divider = make_axes_locatable(ax[2])
         cax = divider.append_axes('right', size='5%', pad=0.05)
         fig.colorbar(im, cax=cax, orientation='vertical')
+        plt.tight_layout()
         plt.savefig(cmdargs.out_dir + "SNAPS/" + "BrendansIC_Real.png")
         plt.close()
 
-        print(bren_w[0, :, :] /(run_data.w[0, :, :]))
+        print(np.linalg.norm(bren_w[0, :, :] - run_data.w[0, :, :]))
+        print(np.linalg.norm((bren_w[0, :, :] - run_data.w[0, :, :]).flatten()))
+        print(np.amax(np.absolute(bren_w[0, :, :] - run_data.w[0, :, :])))
         print()
+
+
+    ## Compare data
+    for t in range(sys_vars.ndata):
+        print("Iter: {}\t-\tL2 Err: {}\tLinf: {}".format(t, np.linalg.norm(bren_w[t, :, :] - run_data.w[t, :, :]), np.amax(np.absolute(bren_w[t, :, :] - run_data.w[t, :, :]))))
