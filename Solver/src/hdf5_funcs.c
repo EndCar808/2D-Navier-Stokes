@@ -51,7 +51,7 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 	herr_t status;
 	hid_t plist_id;
 
-    #if (defined(__VORT_FOUR) || defined(__MODES)) && !defined(DEBUG)
+    #if (defined(__VORT_FOUR) || defined(__MODES) || defined(__NONLIN)) && !defined(DEBUG)
 	// Create compound datatype for the complex datasets
 	file_info->COMPLEX_DTYPE = CreateComplexDatatype();
 	#endif
@@ -397,22 +397,27 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 		exit(1);		
 	}
 	#if defined(__ENST_SPECT) || defined(__ENRG_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__ENRG_FLUX_SPECT)
-	if (!sys_vars->rank) {
-		status = H5Gclose(spectra_group_id);
-		status = H5Fclose(file_info->spectra_file_handle);
-		if (status < 0) {
-			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close output file ["CYAN"%s"RESET"] at: Iter = ["CYAN"%d"RESET"] t = ["CYAN"%lf"RESET"]\n-->> Exiting...\n", file_info->spectra_file_name, 0, 0.0);
-			exit(1);		
+	if (sys_vars->TRANS_ITERS_FLAG != TRANSIENT_ITERS) {
+		if (!sys_vars->rank) {
+			status = H5Gclose(spectra_group_id);
+			status = H5Fclose(file_info->spectra_file_handle);
+			if (status < 0) {
+				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close output file ["CYAN"%s"RESET"] at: Iter = ["CYAN"%d"RESET"] t = ["CYAN"%lf"RESET"]\n-->> Exiting...\n", file_info->spectra_file_name, 0, 0.0);
+				exit(1);		
+			}
 		}
 	}
 	#endif
 	#if defined(__PHASE_SYNC)
-	if (!sys_vars->rank) {
-		status = H5Gclose(sync_group_id);
-		status = H5Fclose(file_info->sync_file_handle);
-		if (status < 0) {
-			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close output file ["CYAN"%s"RESET"] at: Iter = ["CYAN"%d"RESET"] t = ["CYAN"%lf"RESET"]\n-->> Exiting...\n", file_info->sync_file_name, 0, 0.0);
-			exit(1);		
+	if (sys_vars->TRANS_ITERS_FLAG != TRANSIENT_ITERS) {
+		if (!sys_vars->rank) {
+				status = H5Gclose(sync_group_id);
+				status = H5Fclose(file_info->sync_file_handle);
+				if (status < 0) {
+					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close output file ["CYAN"%s"RESET"] at: Iter = ["CYAN"%d"RESET"] t = ["CYAN"%lf"RESET"]\n-->> Exiting...\n", file_info->sync_file_name, 0, 0.0);
+					exit(1);		
+				}
+			}
 		}
 	}
 	#endif
@@ -627,7 +632,7 @@ void WriteDataToFile(double t, double dt, long int iters) {
 	hid_t sync_group_id = (hid_t) NULL;
 	#endif
 	hid_t plist_id;
-	#if defined(__VORT_REAL) || defined(__NONLIN) || defined(__PHASE_ONLY) || defined(TESTINGT) || defined(__VORT_FOUR)
+	#if defined(__VORT_REAL) || defined(__NONLIN) || defined(__PHASE_ONLY) || defined(TESTINGT) || defined(__VORT_FOUR) || defined(TESTING)
 	static const int d_set_rank2D = 2;
 	hsize_t dset_dims2D[d_set_rank2D];        // array to hold dims of the dataset to be created
 	hsize_t slab_dims2D[d_set_rank2D];	      // Array to hold the dimensions of the hyperslab
@@ -975,6 +980,7 @@ void WriteDataToFile(double t, double dt, long int iters) {
 		#endif
 	}
 	#endif 
+
 
 	// -------------------------------
 	// Close identifiers and File
@@ -1536,7 +1542,7 @@ void FinalWriteAndCloseOutputFile(const long int* N, int iters, int save_data_in
 	    H5Fclose(file_info->test_file_handle);
 	}
 	#endif
-	#if defined(__VORT_FOUR) || defined(__MODES)
+	#if defined(__VORT_FOUR) || defined(__MODES) || defined(__NONLIN)
 	// Close the complex datatype identifier
 	H5Tclose(file_info->COMPLEX_DTYPE);
 	#endif

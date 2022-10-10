@@ -576,10 +576,7 @@ void InitializeSystemMeasurables(Int_data_struct* Int_data) {
 	// ----------------------------
 	// Get Measurables of the ICs
 	// ----------------------------
-	if (sys_vars->TRANS_ITERS_FLAG != TRANSIENT_ITERS) {
-		ComputeSystemMeasurables(0.0, 0, Int_data);
-		// RecordSystemMeasures(0.0, 0, Int_data);
-	}
+	ComputeSystemMeasurables(0.0, 0, Int_data);
 }
 /**
  * Function used to compute the energy spectrum of the current iteration. The energy spectrum is defined as all(sum) of the energy contained in concentric annuli in

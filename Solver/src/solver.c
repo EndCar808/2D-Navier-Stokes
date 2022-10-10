@@ -115,6 +115,7 @@ void SpectralSolve(void) {
 	// Create and open the output file - also write initial conditions to file
 	CreateOutputFilesWriteICs(N, dt);
 
+
 	// -------------------------------------------------
 	// Print IC to Screen 
 	// -------------------------------------------------
@@ -176,11 +177,10 @@ void SpectralSolve(void) {
 
 			// Record System Measurables
 			ComputeSystemMeasurables(t, save_data_indx, Int_data);
-			// RecordSystemMeasures(t, save_data_indx, Int_data);
 
 			// If and when transient steps are complete write to file
 			if (iters > trans_steps) {
-				// Write the appropriate datasets to file 
+				// // Write the appropriate datasets to file 
 				WriteDataToFile(t, dt, save_data_indx);
 				
 				// Update saving data index
@@ -876,7 +876,7 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* non
  	// Add the forcing
 	if (sys_vars->local_forcing_proc) {
 		for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
-	 		printf("scale: %lf\t-\tk[%d, %d]: %1.16lf\t%1.16lfi\t\t%1.16lf\t%1.16lfi\n", sys_vars->force_scale_var, run_data->forcing_k[0][i], run_data->forcing_k[1][i], creal(dw_hat_dt[run_data->forcing_indx[i]]), cimag(dw_hat_dt[run_data->forcing_indx[i]]), creal(run_data->forcing[i]), cimag(run_data->forcing[i]));
+	 		// printf("scale: %lf\t-\tk[%d, %d]: %1.16lf\t%1.16lfi\t\t%1.16lf\t%1.16lfi\n", sys_vars->force_scale_var, run_data->forcing_k[0][i], run_data->forcing_k[1][i], creal(dw_hat_dt[run_data->forcing_indx[i]]), cimag(dw_hat_dt[run_data->forcing_indx[i]]), creal(run_data->forcing[i]), cimag(run_data->forcing[i]));
 			dw_hat_dt[run_data->forcing_indx[i]] += run_data->forcing[i]; 
 		}
 	}
@@ -1575,7 +1575,7 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 				if ((k_abs > UNIF_MIN_K && k_abs < UNIF_MAX_K)) {
 					// Get random uniform number of the phases
 					u1 = (double) rand() / (double) RAND_MAX;
-					w_hat[indx] = norm * cexp(2.0 * M_PI * I ); //* u1
+					w_hat[indx] = norm * cexp(2.0 * M_PI * I * u1); 
 				}
 				else {
 					w_hat[indx] = 0.0 + 0.0 * I;
