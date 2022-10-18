@@ -876,7 +876,7 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* non
  	// Add the forcing
 	if (sys_vars->local_forcing_proc) {
 		for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
-	 		// printf("scale: %lf\t-\tk[%d, %d]: %1.16lf\t%1.16lfi\t\t%1.16lf\t%1.16lfi\n", sys_vars->force_scale_var, run_data->forcing_k[0][i], run_data->forcing_k[1][i], creal(dw_hat_dt[run_data->forcing_indx[i]]), cimag(dw_hat_dt[run_data->forcing_indx[i]]), creal(run_data->forcing[i]), cimag(run_data->forcing[i]));
+	 		// printf("scale: %lf\t-\tk[%d, %d]: %1.16lf\t%1.16lfi\t\t%1.16lf\t%1.16lfi\tamp: %1.16lf\tamp_f:%1.16lf\tratio:%1.16lf\n", sys_vars->force_scale_var, run_data->forcing_k[0][i], run_data->forcing_k[1][i], creal(dw_hat_dt[run_data->forcing_indx[i]]), cimag(dw_hat_dt[run_data->forcing_indx[i]]), creal(run_data->forcing[i]), cimag(run_data->forcing[i]), cimag(dw_hat_dt[run_data->forcing_indx[i]]), cabs(dw_hat_dt[run_data->forcing_indx[i]]), cabs(run_data->forcing[i]), cabs(dw_hat_dt[run_data->forcing_indx[i]]) / cabs(run_data->forcing[i]));
 			dw_hat_dt[run_data->forcing_indx[i]] += run_data->forcing[i]; 
 		}
 	}

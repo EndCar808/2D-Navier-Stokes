@@ -28,7 +28,7 @@ import multiprocessing as mprocs
 import time as TIME
 from subprocess import Popen, PIPE
 from matplotlib.pyplot import cm
-from functions import tc, sim_data, import_data, import_spectra_data, import_post_processing_data
+from functions import tc, sim_data, import_data, import_spectra_data, import_post_processing_data, import_bren_data
 ###############################
 ##       FUNCTION DEFS       ##
 ###############################
@@ -98,129 +98,125 @@ if __name__ == '__main__':
         method = "file"
         post_file_path = cmdargs.in_dir + cmdargs.in_file
 
+    snaps_output_dir = cmdargs.out_dir + "RUN_INFO_SNAPS/"
+    if os.path.isdir(snaps_output_dir) != True:
+        print("Making folder:" + tc.C + " RUN_INFO_SNAPS/" + tc.Rst)
+        os.mkdir(snaps_output_dir)
+        print()
+        
     # -----------------------------------------
     # # --------  Read In data
     # -----------------------------------------
-    ## Read in simulation parameters
-    sys_vars = sim_data(cmdargs.in_dir)
+    bren_data = import_bren_data(cmdargs.in_dir)
 
-    ## Read in solver data
-    run_data = import_data(cmdargs.in_dir, sys_vars)
-
-    ## Read in spectra data
-    spec_data = import_spectra_data(cmdargs.in_dir, sys_vars)
 
 
     # -----------------------------------------
-    # # --------  Plot Data
+    # # --------  Read In data
     # -----------------------------------------
     ##---------- Energy Enstrophy
     fig = plt.figure(figsize = (32, 8))
     gs  = GridSpec(2, 2)
     ## Plot the relative energy
     ax1 = fig.add_subplot(gs[0, 0])
-    ax1.plot(run_data.time, run_data.tot_enrg / run_data.tot_enrg[0] - 1)
+    ax1.plot(bren_data.time, bren_data.tot_enrg / bren_data.tot_enrg[0] - 1)
     ax1.set_xlabel(r"$t$")
     ax1.set_title(r"Relative Energy")
     ax1.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
     ## Plot the relative enstrophy
     ax2 = fig.add_subplot(gs[0, 1])
-    ax2.plot(run_data.time, 1 - run_data.tot_enst / run_data.tot_enst[0])
+    ax2.plot(bren_data.time, 1 - bren_data.tot_enst / bren_data.tot_enst[0])
     ax2.set_xlabel(r"$t$")
     ax2.set_title(r"Relative Enstrophy")
     ax2.set_yscale('symlog')
     ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
     ## Plot the relative energy
     ax1 = fig.add_subplot(gs[1, 0])
-    ax1.plot(run_data.time, run_data.tot_enrg)
+    ax1.plot(bren_data.time, bren_data.tot_enrg)
     ax1.set_xlabel(r"$t$")
     ax1.set_title(r"Total Energy")
     ax1.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
     ## Plot the relative helicity
     ax2 = fig.add_subplot(gs[1, 1])
-    ax2.plot(run_data.time, run_data.tot_enst)
+    ax2.plot(bren_data.time, bren_data.tot_enst)
     ax2.set_xlabel(r"$t$")
     ax2.set_title(r"Total Enstrophy")
     ax2.set_yscale('symlog')
     ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
 
-    plt.savefig(cmdargs.out_dir + "Energy_Enstrophy_Tseries.png")
+    plt.savefig(snaps_output_dir + "Energy_Enstrophy_Tseries.png")
     plt.close()
 
 
-    ##---------- Spectra
-    fig = plt.figure(figsize = (32, 8))
-    gs  = GridSpec(1, 2)
-    ax1 = fig.add_subplot(gs[0, 0])
-    ax1.plot(spec_data.enrg_spectrum[-1, :], label = "$$")
-    ax1.set_xlabel(r"$k$")
-    ax1.set_title(r"Energy")
-    ax1.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
-    ax1.set_yscale('log')
-    ax1.set_xscale('log')
+    # ##---------- Spectra
+    # fig = plt.figure(figsize = (32, 8))
+    # gs  = GridSpec(1, 2)
+    # ax1 = fig.add_subplot(gs[0, 0])
+    # ax1.plot(bren_data.enrg_spectrum[-1, :], label = "$$")
+    # ax1.set_xlabel(r"$k$")
+    # ax1.set_title(r"Energy")
+    # ax1.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+    # ax1.set_yscale('log')
+    # ax1.set_xscale('log')
 
-    ax2 = fig.add_subplot(gs[0, 1])
-    ax2.plot(spec_data.enst_spectrum[-1, :], label = "$$")
-    ax2.set_xlabel(r"$k$")
-    ax2.set_title(r"Energy")
-    ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
-    ax2.set_yscale('log')
-    ax2.set_xscale('log')
+    # ax2 = fig.add_subplot(gs[0, 1])
+    # ax2.plot(bren_data.enst_spectrum[-1, :], label = "$$")
+    # ax2.set_xlabel(r"$k$")
+    # ax2.set_title(r"Energy")
+    # ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+    # ax2.set_yscale('log')
+    # ax2.set_xscale('log')
 
-    plt.savefig(cmdargs.out_dir + "Spectra.png")
-    plt.close()
-
-
-
-    ##---------- Flux Spectra
-    fig = plt.figure(figsize = (32, 8))
-    gs  = GridSpec(1, 2)
-    ax1 = fig.add_subplot(gs[0, 0])
-    ax1.plot(np.arange(1, int(sys_vars.Nx/3)), spec_data.enrg_spectrum[-1, 1:int(sys_vars.Nx//3)], label = "$$")
-    ax1.set_xlabel(r"$k$")
-    ax1.set_title(r"Energy")
-    ax1.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
-    ax1.set_yscale('log')
-    ax1.set_xscale('log')
-
-    ax2 = fig.add_subplot(gs[0, 1])
-    ax2.plot(np.arange(1, int(sys_vars.Nx/3)), spec_data.enst_spectrum[-1, 1:int(sys_vars.Nx//3)], label = "$$")
-    ax2.set_xlabel(r"$k$")
-    ax2.set_title(r"Energy")
-    ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
-    ax2.set_yscale('log')
-    ax2.set_xscale('log')
-
-    plt.savefig(cmdargs.out_dir + "Spectra.png")
-    plt.close()
+    # plt.savefig(snaps_output_dir + "Spectra.png")
+    # plt.close()
 
 
-    ##------------------------ Time Averaged Enstorphy Spectra and Flux Spectra
-    fig = plt.figure(figsize = (21, 8))
-    gs  = GridSpec(1, 2)
-    ax2 = fig.add_subplot(gs[0, 0])
-    for i in range(spec_data.enst_spectrum.shape[0]):
-        ax2.plot(np.arange(1, int(sys_vars.Nx/3)), spec_data.enst_spectrum[i, 1:int(sys_vars.Nx/3)], 'r', alpha = 0.15)
-    ax2.plot(np.arange(1, int(sys_vars.Nx/3)), np.mean(spec_data.enst_spectrum[:, 1:int(sys_vars.Nx/3)], axis = 0), 'k')
-    ax2.set_xlabel(r"$k$")
-    ax2.set_xscale('log')
-    ax2.set_yscale('log')
-    ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
-    ax2.set_title(r"$\mathcal{E}(|\mathbf{k}|)$: Enstrophy Spectrum")
 
-    ax2 = fig.add_subplot(gs[0, 1])
-    for i in range(spec_data.enst_flux_spectrum.shape[0]):
-        ax2.plot(np.arange(1, int(sys_vars.Nx/3)), spec_data.enst_flux_spectrum[i, 1:int(sys_vars.Nx/3)], 'r', alpha = 0.15)
-    ax2.plot(np.arange(1, int(sys_vars.Nx/3)), np.mean(spec_data.enst_flux_spectrum[:, 1:int(sys_vars.Nx/3)], axis = 0), 'k')
-    ax2.set_xlabel(r"$k$")
-    ax2.set_xscale('log')
-    ax2.set_yscale('symlog')
-    ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
-    ax2.set_title(r"$\Pi(|\mathbf{k}|)$: Enstrophy Flux Spectrum")
+    # ##---------- Flux Spectra
+    # fig = plt.figure(figsize = (32, 8))
+    # gs  = GridSpec(1, 2)
+    # ax1 = fig.add_subplot(gs[0, 0])
+    # ax1.plot(np.arange(1, int(sys_vars.Nx/3)), bren_data.enrg_spectrum[-1, 1:int(sys_vars.Nx//3)], label = "$$")
+    # ax1.set_xlabel(r"$k$")
+    # ax1.set_title(r"Energy")
+    # ax1.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+    # ax1.set_yscale('log')
+    # ax1.set_xscale('log')
+
+    # ax2 = fig.add_subplot(gs[0, 1])
+    # ax2.plot(np.arange(1, int(sys_vars.Nx/3)), bren_data.enst_spectrum[-1, 1:int(sys_vars.Nx//3)], label = "$$")
+    # ax2.set_xlabel(r"$k$")
+    # ax2.set_title(r"Energy")
+    # ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+    # ax2.set_yscale('log')
+    # ax2.set_xscale('log')
+
+    # plt.savefig(snaps_output_dir + "Spectra.png")
+    # plt.close()
+
+
+    # ##------------------------ Time Averaged Enstorphy Spectra and Flux Spectra
+    # fig = plt.figure(figsize = (21, 8))
+    # gs  = GridSpec(1, 2)
+    # ax2 = fig.add_subplot(gs[0, 0])
+    # for i in range(bren_data.enst_spectrum.shape[0]):
+    #     ax2.plot(np.arange(1, int(sys_vars.Nx/3)), bren_data.enst_spectrum[i, 1:int(sys_vars.Nx/3)], 'r', alpha = 0.15)
+    # ax2.plot(np.arange(1, int(sys_vars.Nx/3)), np.mean(bren_data.enst_spectrum[:, 1:int(sys_vars.Nx/3)], axis = 0), 'k')
+    # ax2.set_xlabel(r"$k$")
+    # ax2.set_xscale('log')
+    # ax2.set_yscale('log')
+    # ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+    # ax2.set_title(r"$\mathcal{E}(|\mathbf{k}|)$: Enstrophy Spectrum")
+
+    # ax2 = fig.add_subplot(gs[0, 1])
+    # for i in range(bren_data.enst_flux_spectrum.shape[0]):
+    #     ax2.plot(np.arange(1, int(sys_vars.Nx/3)), bren_data.enst_flux_spectrum[i, 1:int(sys_vars.Nx/3)], 'r', alpha = 0.15)
+    # ax2.plot(np.arange(1, int(sys_vars.Nx/3)), np.mean(bren_data.enst_flux_spectrum[:, 1:int(sys_vars.Nx/3)], axis = 0), 'k')
+    # ax2.set_xlabel(r"$k$")
+    # ax2.set_xscale('log')
+    # ax2.set_yscale('symlog')
+    # ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+    # ax2.set_title(r"$\Pi(|\mathbf{k}|)$: Enstrophy Flux Spectrum")
     
-    plt.savefig(cmdargs.out_dir + "TimeAveragedEnstrophySpectra.png")
-    plt.close()
-
-
-
-
+    # plt.savefig(snaps_output_dir + "TimeAveragedEnstrophySpectra.png")
+    # plt.close()

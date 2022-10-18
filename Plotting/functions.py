@@ -69,7 +69,6 @@ def run_commands_parallel(cmd_lsit, proc_limit):
 
     """
     Runs commands in parallel.
-
     Input Parameters:
         cmd_list    : list
                      - List of commands to run
@@ -103,7 +102,6 @@ def import_data(input_dir, post_file):
 
     """
     Calls all import functions to import solver and post processing data
-
     Input Parameters:
         input_dir : string
                     - Path to the input folder
@@ -140,7 +138,6 @@ def sim_data(input_dir, method = "default"):
 
     """
     Reads in the system parameters from the simulation provided in SimulationDetails.txt.
-
     Input Parameters:
         input_dir : string
                     - If method == "defualt" is True then this will be the path to
@@ -268,7 +265,6 @@ def import_data(input_file, sim_data, method = "default"):
 
     """
     Reads in run data from main HDF5 file.
-
     input_dir : string
                 - If method == "defualt" is True then this will be the path to
                the input folder. if not then this will be the input folder
@@ -410,7 +406,6 @@ def import_spectra_data(input_file, sim_data, method = "default"):
 
     """
     Reads in run data from main HDF5 file.
-
     input_dir : string
                 - If method == "defualt" is True then this will be the path to
                the input folder. if not then this will be the input folder
@@ -485,7 +480,6 @@ def import_sync_data(input_file, sim_data, method = "default"):
 
     """
     Reads in phase sync data from sync HDF5 file.
-
     input_dir : string
                 - If method == "defualt" is True then this will be the path to
                the input folder. if not then this will be the input folder
@@ -547,7 +541,6 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
 
     """
     Reads in post processing data from HDF5 file.
-
     input_dir : string
                 - If method == "defualt" is True then this will be the path to
                the input folder. if not then this will be the input folder
@@ -895,7 +888,6 @@ def fft_ishift_freq(w_h, axes = None):
 
  """
  My version of numpy.fft.ifftshift - adjusted for FFTW wavenumber ordering
-
  w_h   : ndarray, complex128
         - Array containing the Fourier variables of a given field e.g. Fourier vorticity or velocity
  axes  : int or tuple
@@ -926,7 +918,6 @@ def ZeroCentredField(w_h):
 
     """
     Returns the zero centred full field in Fourier space.
-
     Input Parameters:
     w_h : ndarray, complex128
          - Array containing the Fourier variables of a given field e.g. Fourier vorticity or velocity
@@ -940,7 +931,6 @@ def FullField(w_h):
 
     """
     Returns the full field of an containing the Fourier variables e.g. Fourier vorticity or velocity.
-
     w_h : ndarray, complex128
          - Array containing the Fourier variables of a given field e.g. Fourier vorticity or velocity
          ordered according to FFTW library
@@ -1064,7 +1054,6 @@ def energy_spectrum(w_h, kx, ky, Nx, Ny):
 
     """
     Computes the energy spectrum from the Fourier vorticity
-
     w_h : 2d complex array
           - Contains the Fourier vorticity
     kx  : int array
@@ -1109,7 +1098,6 @@ def energy_spectrum_vel(w_h, kx, ky, Nx, Ny):
 
     """
     Computes the energy spectrum from the Fourier vorticity in terms of the Fourier velocities
-
     w_h : 2d complex array
           - Contains the Fourier vorticity
     kx  : int array
@@ -1231,7 +1219,6 @@ def total_energy(w_h, kx, ky, Nx, Ny):
 
     """
     Computes the total energy from the Fourier vorticity
-
     w_h : 2d complex array
           - Contains the Fourier vorticity
     kx  : int array
@@ -1267,7 +1254,6 @@ def total_enstrophy(w_h, Nx, Ny):
 
     """
     Computes the total enstrophy from the Fourier vorticity
-
     w_h : 2d complex array
           - Contains the Fourier vorticity
     Nx  : int
@@ -1297,7 +1283,6 @@ def total_palinstrophy(w_h, kx, ky, Nx, Ny):
 
     """
     Computes the total palinstrophy from the Fourier vorticity
-
     w_h : 2d complex array
           - Contains the Fourier vorticity
     kx  : int array
@@ -1327,6 +1312,3 @@ def total_palinstrophy(w_h, kx, ky, Nx, Ny):
                     tot_palin += 2. * np.absolute(w_h[i, j] * np.conjugate(w_h[i, j])) * k_sqr
 
     return 4. * np.pi * np.pi * tot_palin * (0.5 / (Nx * Ny)**2)
-
-
-

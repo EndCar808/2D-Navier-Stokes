@@ -172,7 +172,7 @@ if __name__ == '__main__':
             if 'forcing_wavenumber' in parser[section]:
                 force_k = int(float(parser[section]['forcing_wavenumber']))
             if 'forcing_scale' in parser[section]:
-                force_scale = int(float(parser[section]['forcing_scale']))
+                force_scale = float(parser[section]['forcing_scale'])
             if 'save_data_every' in parser[section]:
                 save_every = int(parser[section]['save_data_every'])
         if section in ['TIME']:
@@ -214,13 +214,10 @@ if __name__ == '__main__':
                 executable = str(parser[section]['executable'])
             if 'plotting' in parser[section]:
                 plotting = str(parser[section]['plotting'])
-                print("Here", plotting)
             if 'plot_script' in parser[section]:
                 plot_script = str(parser[section]['plot_script'])
             if 'plot_options' in parser[section]:
                 plot_options = str(parser[section]['plot_options'])
-            if 'post_options' in parser[section]:
-                post_options = str(parser[section]['post_options'])
             if 'call_solver' in parser[section]:
                 solver = bool(utils.strtobool(parser[section]['call_solver']))
             if 'call_postprocessing' in parser[section]:
@@ -241,6 +238,11 @@ if __name__ == '__main__':
     ## Get the path to the runs output directory
     par_runs_output_dir = os.path.split(output_dir)[0]
     par_runs_output_dir += '/ParallelRunsDump/'
+    if os.path.isdir(par_runs_output_dir) != True:
+        print("Making folder:" + tc.C + " ParallelRunsDump/" + tc.Rst)
+        os.mkdir(par_runs_output_dir)
+        print()
+
     #########################
     ##      RUN SOLVER     ##
     #########################
@@ -256,7 +258,7 @@ if __name__ == '__main__':
             solver_error  = []
 
         ## Generate command list 
-        cmd_list = [["mpirun -n {} {} -o {} -n {} -n {} -s {:3.5f} -e {:3.5f} -T {} -c {} -c {:1.6f} -h {:1.6f} -h {} -v {:1.10f} -v {} -v {:1.1f} -d {:1.6f} -d {} -d {:1.1f} -i {} -t {} -f {} -f {} -f {} -p {}".format(
+        cmd_list = [["mpirun -n {} {} -o {} -n {} -n {} -s {:3.5f} -e {:3.5f} -T {} -c {} -c {:1.6f} -h {:1.6f} -h {} -v {:1.10f} -v {} -v {:1.1f} -d {:1.6f} -d {} -d {:1.1f} -i {} -t {} -f {} -f {} -f {:1.3f} -p {}".format(
                                                                                                                                                                                     solver_procs, 
                                                                                                                                                                                     executable, 
                                                                                                                                                                                     output_dir, 
@@ -311,12 +313,12 @@ if __name__ == '__main__':
                 d_t = now.strftime("%d%b%Y_%H:%M:%S")
 
                 # Write output to file
-                with open(par_runs_output_dir + "par_run_solver_output_{}_{}.txt".format(cmdargs.init_file.lstrip('InitFiles/').rstrip(".ini"), d_t), "w") as file:
+                with open(par_runs_output_dir + "par_run_solver_output_{}_{}.txt".format(os.path.split(cmdargs.init_file)[1], d_t), "w") as file:
                     for item in solver_output:
                         file.write("%s\n" % item)
 
                 # Write error to file
-                with open(par_runs_output_dir + "par_run_solver_error_{}_{}.txt".format(cmdargs.init_file.lstrip('InitFiles/').rstrip(".ini"), d_t), "w") as file:
+                with open(par_runs_output_dir + "par_run_solver_error_{}_{}.txt".format(os.path.split(cmdargs.init_file)[1], d_t), "w") as file:
                     for i, item in enumerate(solver_error):
                         file.write("%s\n" % cmd_list[i])
                         file.write("%s\n" % item)
@@ -385,12 +387,12 @@ if __name__ == '__main__':
                 d_t = now.strftime("%d%b%Y_%H:%M:%S")
 
                 # Write output to file
-                with open(par_runs_output_dir + "par_run_post_output_{}_{}.txt".format(cmdargs.init_file.lstrip('InitFiles/').rstrip(".ini"), d_t), "w") as file:
+                with open(par_runs_output_dir + "par_run_post_output_{}_{}.txt".format(os.path.split(cmdargs.init_file)[1], d_t), "w") as file:
                     for item in post_output:
                         file.write("%s\n" % item)
 
                 # Write error to file
-                with open(par_runs_output_dir + "par_run_post_error_{}_{}.txt".format(cmdargs.init_file.lstrip('InitFiles/').rstrip(".ini"), d_t), "w") as file:
+                with open(par_runs_output_dir + "par_run_post_error_{}_{}.txt".format(os.path.split(cmdargs.init_file)[1], d_t), "w") as file:
                     for i, item in enumerate(post_error):
                         file.write("%s\n" % cmd_list[i])
                         file.write("%s\n" % item)
@@ -409,7 +411,7 @@ if __name__ == '__main__':
         if collect_data:
             plot_output = []
             plot_error  = []
-        print(nu)
+
         ## Generate command list 
         cmd_list = [["python3 {} -i {} {}".format(
                                             plot_script, 
@@ -456,12 +458,12 @@ if __name__ == '__main__':
                 d_t = now.strftime("%d%b%Y_%H:%M:%S")
 
                 # Write output to file
-                with open(par_runs_output_dir + "par_run_plot_output_{}_{}.txt".format(cmdargs.init_file.lstrip('InitFiles/').rstrip(".ini"), d_t), "w") as file:
+                with open(par_runs_output_dir + "par_run_plot_output_{}_{}.txt".format(os.path.split(cmdargs.init_file)[1], d_t), "w") as file:
                     for item in plot_output:
                         file.write("%s\n" % item)
 
                 # Write error to file
-                with open(par_runs_output_dir + "par_run_plot_error_{}_{}.txt".format(cmdargs.init_file.lstrip('InitFiles/').rstrip(".ini"), d_t), "w") as file:
+                with open(par_runs_output_dir + "par_run_plot_error_{}_{}.txt".format(os.path.split(cmdargs.init_file)[1], d_t), "w") as file:
                     for i, item in enumerate(plot_error):
                         file.write("%s\n" % cmd_list[i])
                         file.write("%s\n" % item)
