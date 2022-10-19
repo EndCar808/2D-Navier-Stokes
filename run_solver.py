@@ -172,7 +172,7 @@ if __name__ == '__main__':
             if 'forcing_wavenumber' in parser[section]:
                 force_k = int(float(parser[section]['forcing_wavenumber']))
             if 'forcing_scale' in parser[section]:
-                force_scale = int(float(parser[section]['forcing_scale']))
+                force_scale = float(parser[section]['forcing_scale'])
             if 'save_data_every' in parser[section]:
                 save_every = int(parser[section]['save_data_every'])
         if section in ['TIME']:
@@ -241,6 +241,10 @@ if __name__ == '__main__':
     ## Get the path to the runs output directory
     par_runs_output_dir = os.path.split(output_dir)[0]
     par_runs_output_dir += '/ParallelRunsDump/'
+    if os.path.isdir(par_runs_output_dir) != True:
+        print("Making folder:" + tc.C + " ParallelRunsDump/" + tc.Rst)
+        os.mkdir(par_runs_output_dir)
+
     #########################
     ##      RUN SOLVER     ##
     #########################
@@ -311,12 +315,12 @@ if __name__ == '__main__':
                 d_t = now.strftime("%d%b%Y_%H:%M:%S")
 
                 # Write output to file
-                with open(par_runs_output_dir + "par_run_solver_output_{}_{}.txt".format(cmdargs.init_file.lstrip('InitFiles/').rstrip(".ini"), d_t), "w") as file:
+                with open(par_runs_output_dir + "par_run_solver_output_{}_{}.txt".format(os.path.split(cmdargs.init_file)[-1], d_t), "w") as file:
                     for item in solver_output:
                         file.write("%s\n" % item)
 
                 # Write error to file
-                with open(par_runs_output_dir + "par_run_solver_error_{}_{}.txt".format(cmdargs.init_file.lstrip('InitFiles/').rstrip(".ini"), d_t), "w") as file:
+                with open(par_runs_output_dir + "par_run_solver_error_{}_{}.txt".format(os.path.split(cmdargs.init_file)[-1], d_t), "w") as file:
                     for i, item in enumerate(solver_error):
                         file.write("%s\n" % cmd_list[i])
                         file.write("%s\n" % item)
@@ -338,12 +342,12 @@ if __name__ == '__main__':
 
         ## Generate command list 
         cmd_list = [["PostProcessing/bin/main -i {} -o {} -v {:1.10f} -v {} -v {:1.1f} -d {:1.6f} -d {} -d {:1.1f} -f {} -f {} -f {} {}".format(
-                                                        post_input_dir + "N[{},{}]_T[{}-{}]_NU[{:1.6f}]_CFL[{:1.2f}]_u0[{}]_TAG[{}]/".format(nx, ny, int(t0), int(t), v, c, u0, s_tag), 
-                                                        post_output_dir + "N[{},{}]_T[{}-{}]_NU[{:1.6f}]_CFL[{:1.2f}]_u0[{}]_TAG[{}]/".format(nx, ny, int(t0), int(t), v, c, u0, s_tag),
+                                                        post_input_dir + "N[{},{}]_T[{:1.1f},{},{:1.3f}]_NU[{:1.6f}]_CFL[{:1.2f}]_FORC[{},{},{:1.3f}]_u0[{}]_TAG[{}]/".format(nx, ny, t0, h, t, v, c, forcing, force_k, force_scale, u0, s_tag), 
+                                                        post_output_dir + "N[{},{}]_T[{:1.1f},{},{:1.3f}]_NU[{:1.6f}]_CFL[{:1.2f}]_FORC[{},{},{:1.3f}]_u0[{}]_TAG[{}]/".format(nx, ny, t0, h, t, v, c, forcing, force_k, force_scale, u0, s_tag),
                                                         v, hypervisc, hypervisc_pow, 
                                                         ekmn_alpha, ekmn_hypo_diff, ekmn_hypo_pow,
                                                         forcing, force_k, force_scale,
-                                                        post_options)] for nx, ny in zip(Nx, Ny) for t in T for v in nu for c in cfl for u0 in ic for s_tag in solver_tag]
+                                                        post_options)] for nx, ny in zip(Nx, Ny) for h in dt for t in T for v in nu for c in cfl for u0 in ic for s_tag in solver_tag]
 
         if cmdargs.cmd_only:
             print(tc.C + "\nPost Processing Commands:\n" + tc.Rst)
@@ -385,12 +389,12 @@ if __name__ == '__main__':
                 d_t = now.strftime("%d%b%Y_%H:%M:%S")
 
                 # Write output to file
-                with open(par_runs_output_dir + "par_run_post_output_{}_{}.txt".format(cmdargs.init_file.lstrip('InitFiles/').rstrip(".ini"), d_t), "w") as file:
+                with open(par_runs_output_dir + "par_run_post_output_{}_{}.txt".format(os.path.split(cmdargs.init_file)[-1], d_t), "w") as file:
                     for item in post_output:
                         file.write("%s\n" % item)
 
                 # Write error to file
-                with open(par_runs_output_dir + "par_run_post_error_{}_{}.txt".format(cmdargs.init_file.lstrip('InitFiles/').rstrip(".ini"), d_t), "w") as file:
+                with open(par_runs_output_dir + "par_run_post_error_{}_{}.txt".format(os.path.split(cmdargs.init_file)[-1], d_t), "w") as file:
                     for i, item in enumerate(post_error):
                         file.write("%s\n" % cmd_list[i])
                         file.write("%s\n" % item)
@@ -413,8 +417,8 @@ if __name__ == '__main__':
         ## Generate command list 
         cmd_list = [["python3 {} -i {} {}".format(
                                             plot_script, 
-                                            post_input_dir + "N[{},{}]_T[{}-{}]_NU[{:1.6f}]_CFL[{:1.2f}]_u0[{}]_TAG[{}]/".format(nx, ny, int(t0), int(t), v, c, u0, s_tag), 
-                                            plot_options)] for nx, ny in zip(Nx, Ny) for t in T for v in nu for c in cfl for u0 in ic for s_tag in solver_tag]
+                                            post_input_dir + "N[{},{}]_T[{:1.1f},{},{:1.3f}]_NU[{:1.6f}]_CFL[{:1.2f}]_FORC[{},{},{:1.3f}]_u0[{}]_TAG[{}]/".format(nx, ny, t0, h, t, v, c, forcing, force_k, force_scale, u0, s_tag), 
+                                            plot_options)] for nx, ny in zip(Nx, Ny) for h in dt for t in T for v in nu for c in cfl for u0 in ic for s_tag in solver_tag]
 
         if cmdargs.cmd_only:
             print(tc.C + "\nPlotting Commands:\n" + tc.Rst)
@@ -456,12 +460,12 @@ if __name__ == '__main__':
                 d_t = now.strftime("%d%b%Y_%H:%M:%S")
 
                 # Write output to file
-                with open(par_runs_output_dir + "par_run_plot_output_{}_{}.txt".format(cmdargs.init_file.lstrip('InitFiles/').rstrip(".ini"), d_t), "w") as file:
+                with open(par_runs_output_dir + "par_run_plot_output_{}_{}.txt".format(os.path.split(cmdargs.init_file)[-1], d_t), "w") as file:
                     for item in plot_output:
                         file.write("%s\n" % item)
 
                 # Write error to file
-                with open(par_runs_output_dir + "par_run_plot_error_{}_{}.txt".format(cmdargs.init_file.lstrip('InitFiles/').rstrip(".ini"), d_t), "w") as file:
+                with open(par_runs_output_dir + "par_run_plot_error_{}_{}.txt".format(os.path.split(cmdargs.init_file)[-1], d_t), "w") as file:
                     for i, item in enumerate(plot_error):
                         file.write("%s\n" % cmd_list[i])
                         file.write("%s\n" % item)
