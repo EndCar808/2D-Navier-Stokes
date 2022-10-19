@@ -40,6 +40,177 @@ class tc:
 #################################
 ##          MISC               ##
 #################################
+def import_bren_data(input_dir):
+
+    ## Define a data class for the solver data
+    class BrenData:
+
+        """
+        Class for the run data.
+        """
+
+        def __init__(self):
+            self.ndata = 0
+            self.kx = None
+
+    data = BrenData()
+
+
+    Global_f_file = input_dir + "HDF_Global_FOURIER.h5"
+
+    ## Open file and read in the data
+    with h5py.File(Global_f_file, 'r') as f:
+
+        ## Get the number of timesteps
+        data.ndata = len([g for g in f.keys() if 'Timestep' in g])
+
+        ## Get wavenumbers and dimension
+        data.kx = f["Timestep_0000"]['kx'][:]
+        data.ky = f["Timestep_0000"]['ky'][:]   
+        data.Nx = len(data.kx)
+        data.Ny = len(data.kx)
+        data.Nf = len(data.ky)
+
+        ## Allocate memory for w_hat
+        data.w_hat = np.ones((data.ndata, data.Nx, data.Nf)) * np.complex(0.0, 0.0)
+
+        nn = 0
+
+        # Read in the vorticity
+        for group in f.keys():
+            if "Timestep" in group:
+                if 'W_hat' in list(f[group].keys()):
+                    data.w_hat[nn, :, :] = f[group]["W_hat"][:, :]
+                nn += 1
+
+
+    Global_r_file = input_dir + "HDF_Global_REAL.h5"
+    ## Open file and read in the data
+    with h5py.File(Global_r_file, 'r') as f:
+
+        ## Get the number of timesteps
+        data.ndata = len([g for g in f.keys() if 'Timestep' in g])
+
+        ## Get colocation points
+        data.x = f["Timestep_0000"]['x'][:]
+        data.y = f["Timestep_0000"]['y'][:]
+
+        ## Allocate memory for W and U
+        data.w = np.zeros((data.ndata, data.Nx, data.Ny)) 
+        data.u = np.zeros((data.ndata, data.Nx, data.Ny, 2)) 
+
+        nn = 0
+
+        # Read in the vorticity
+        for group in f.keys():
+            if "Timestep" in group:
+                if 'W' in list(f[group].keys()):
+                    data.w[nn, :, :] = f[group]["W"][:, :]
+                if 'U' in list(f[group].keys()):
+                    data.u[nn, :, :] = f[group]["U"][:, :]
+                nn += 1
+
+
+    Local_file = input_dir + "HDF_Local_N[{}][{}].h5".format(data.Nx, data.Ny)
+    ## Open file and read in the data
+    with h5py.File(Local_file, 'r') as f:
+
+        if 'MaxVorticity' in list(f.keys()):
+            data.max_vort = f["MaxVorticity"][:]
+        if 'TimeValues' in list(f.keys()):
+            data.time = f["TimeValues"][:]
+
+        if 'TotEnergy' in list(f.keys()):
+            data.tot_enrg = f["TotEnergy"][:]
+        if 'TotEnergyDissipation' in list(f.keys()):
+            data.tot_enrg_diss = f["TotEnergyDissipation"][:]
+        if 'TotEnstrophy' in list(f.keys()):
+            data.tot_enst = f["TotEnstrophy"][:]
+        if 'TotEnstrophyDissipation' in list(f.keys()):
+            data.tot_enst_diss = f["TotEnstrophyDissipation"][:]
+        if 'TotHelicity' in list(f.keys()):
+            data.tot_hel = f["TotHelicity"][:]
+        if 'TotVelDivergence' in list(f.keys()):
+            data.tot_div = f["TotVelDivergence"][:]
+        if 'TotVelForcing' in list(f.keys()):
+            data.tot_vel_forc = f["TotVelForcing"][:]
+        if 'TotVorForcing' in list(f.keys()):
+            data.tot_vort_forc = f["TotVorForcing"][:]
+
+
+    Spect_file = input_dir + "HDF_Energy_Spect.h5"
+    ## Open file and read in the data
+    with h5py.File(Spect_file, 'r') as f:
+
+        ## Get the number of timesteps
+        data.ndata_spec = len([g for g in f.keys() if 'Timestep' in g])
+
+        ## Get the number of timesteps
+        data.k_bins       = f["Timestep_0000"]['k_bins'][:]
+        data.k_bins_3d    = f["Timestep_0000"]['k_bins_3D_x'][:]
+        data.spec_size    = len(data.k_bins)
+        data.spec_size_3d = len(data.k_bins_3d)
+
+        ## Allocate memory for spec data
+        data.spec_time      = np.zeros((data.ndata_spec, ))
+        data.enrg_spec      = np.zeros((data.ndata_spec, data.spec_size)) 
+        data.enrg_spec_3d_x = np.zeros((data.ndata_spec, data.spec_size_3d)) 
+        data.enrg_spec_3d_y = np.zeros((data.ndata_spec, data.spec_size_3d))
+        data.enst_spec      = np.zeros((data.ndata_spec, data.spec_size)) 
+        data.enst_spec_3d_x = np.zeros((data.ndata_spec, data.spec_size_3d)) 
+        data.enst_spec_3d_y = np.zeros((data.ndata_spec, data.spec_size_3d))
+
+        nn = 0
+
+        for group in f.keys():
+            if "Timestep" in group:
+                if 'EnstrophySpectrum' in list(f[group].keys()):
+                    data.enst_spec[nn, :] = f[group]["EnstrophySpectrum"][:]
+                if 'EnstrophySpectrum_3D_x' in list(f[group].keys()):
+                    data.enst_spec_3d_x[nn, :] = f[group]["EnstrophySpectrum_3D_x"][:]
+                if 'EnstrophySpectrum_3D_y' in list(f[group].keys()):
+                    data.enst_spec_3d_y[nn, :] = f[group]["EnstrophySpectrum_3D_y"][:]
+                if 'EnergySpectrum' in list(f[group].keys()):
+                    data.enrg_spec[nn, :] = f[group]["EnergySpectrum"][:]
+                if 'EnergySpectrum_3D_x' in list(f[group].keys()):
+                    data.enrg_spec_3d_x[nn, :] = f[group]["EnergySpectrum_3D_x"][:]
+                if 'EnergySpectrum_3D_y' in list(f[group].keys()):
+                    data.enrg_spec_3d_y[nn, :] = f[group]["EnergySpectrum_3D_y"][:]
+                data.spec_time[nn] = f[group].attrs["TimeValue"]
+
+                nn +=1
+
+
+    Flux_Spec_file = input_dir + "HDF_Flux_Spect.h5"
+    ## Open file and read in the data
+    with h5py.File(Flux_Spec_file, 'r') as f:
+
+        ## Get the number of timesteps
+        data.ndata_spec = len([g for g in f.keys() if 'Timestep' in g])
+
+        ## Get the number of timesteps
+        data.k_bins       = f["Timestep_0000"]['k_bins'][:]
+        data.spec_size    = len(data.k_bins)
+
+        ## Allocate memory for spec data
+        data.spec_time      = np.zeros((data.ndata_spec, ))
+        data.flux_u_spec      = np.zeros((data.ndata_spec, data.spec_size)) 
+        data.flux_w_spec      = np.zeros((data.ndata_spec, data.spec_size)) 
+
+        nn = 0
+
+        for group in f.keys():
+            if "Timestep" in group:
+                if 'Flux_U_Spectrum' in list(f[group].keys()):
+                    data.flux_u_spec[nn, :] = f[group]["Flux_U_Spectrum"][:]
+                if 'Flux_W_Spectrum' in list(f[group].keys()):
+                    data.flux_w_spec[nn, :] = f[group]["Flux_W_Spectrum"][:]
+                data.spec_time[nn] = f[group].attrs["TimeValue"]
+
+                nn +=1
+    return data
+
+
 def fft_ishift_freq(w_h, axes = None):
 
     """
