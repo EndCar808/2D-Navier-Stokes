@@ -24,9 +24,9 @@ else ifeq ($(OS), RedHatEnterpriseServer)
 	# SONIC
 	GCC := mpicc
 	CCFLAG := -O3 -W -Wall -g
-	LIBFLAG := -lfftw3_mpi -lfftw3 -lm -lhdf5 -lhdf5_hl #-fopenmp -lpthread -lfftw3_omp
-	INCDIR = -I/usr/include/hdf5/openmpi/ 
-	LIBDIR = -L/usr/lib/x86_64-linux-gnu/hdf5/openmpi 
+	LIBFLAG := -lfftw3_mpi -lfftw3 -lm -lhdf5 -lhdf5_hl
+	INCDIR = -I/opt/software/hdf5/1.10.5/include -I/opt/software/fftw/3.3.8/include -I/opt/software/openmpi/openmpi-4.0.1/include
+	LIBDIR = -L/opt/software/hdf5/1.10.5/lib -L/opt/software/fftw/3.3.8/lib -L/opt/software/openmpi/openmpi-4.0.1/lib
 else ifeq ($(OS), CentOS)
 	# KAY
 	GCC := mpicc

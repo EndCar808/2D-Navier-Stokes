@@ -23,6 +23,9 @@ dist/
 target/
 dist/
 
+# Output files
+*.out
+
 # JetBrains IDE
 .idea/
 
