@@ -16,9 +16,9 @@ from numba import njit
 import matplotlib as mpl
 # mpl.use('TkAgg') # Use this backend for displaying plots in window
 mpl.use('Agg') # Use this backend for writing plots to file
-mpl.rcParams['text.usetex'] = True
-mpl.rcParams['font.family'] = 'serif'
-mpl.rcParams['font.serif']  = 'Computer Modern Roman'
+# mpl.rcParams['text.usetex'] = True
+# mpl.rcParams['font.family'] = 'serif'
+# mpl.rcParams['font.serif']  = 'Computer Modern Roman'
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -110,7 +110,10 @@ if __name__ == '__main__':
     ## Read in spectra data
     spec_data = import_spectra_data(cmdargs.in_dir, sys_vars)
 
-
+    snaps_output_dir = cmdargs.out_dir + "/RUN_SNAPS/"
+    if os.path.isdir(snaps_output_dir) != True:
+        print("Making folder:" + tc.C + " RUN_SNAPS/" + tc.Rst)
+        os.mkdir(snaps_output_dir)
     # -----------------------------------------
     # # --------  Plot Data
     # -----------------------------------------
@@ -144,82 +147,82 @@ if __name__ == '__main__':
     ax2.set_yscale('symlog')
     ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
 
-    plt.savefig(cmdargs.out_dir + "Energy_Enstrophy_Tseries.png")
+    plt.savefig(snaps_output_dir + "Energy_Enstrophy_Tseries.png")
     plt.close()
 
 
-    ##---------- Spectra
-    fig = plt.figure(figsize = (32, 8))
-    gs  = GridSpec(1, 2)
-    ax1 = fig.add_subplot(gs[0, 0])
-    ax1.plot(spec_data.enrg_spectrum[-1, :], label = "$$")
-    ax1.set_xlabel(r"$k$")
-    ax1.set_title(r"Energy")
-    ax1.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
-    ax1.set_yscale('log')
-    ax1.set_xscale('log')
+    # ##---------- Spectra
+    # fig = plt.figure(figsize = (32, 8))
+    # gs  = GridSpec(1, 2)
+    # ax1 = fig.add_subplot(gs[0, 0])
+    # ax1.plot(spec_data.enrg_spectrum[-1, :], label = "$$")
+    # ax1.set_xlabel(r"$k$")
+    # ax1.set_title(r"Energy")
+    # ax1.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+    # ax1.set_yscale('log')
+    # ax1.set_xscale('log')
 
-    ax2 = fig.add_subplot(gs[0, 1])
-    ax2.plot(spec_data.enst_spectrum[-1, :], label = "$$")
-    ax2.set_xlabel(r"$k$")
-    ax2.set_title(r"Energy")
-    ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
-    ax2.set_yscale('log')
-    ax2.set_xscale('log')
+    # ax2 = fig.add_subplot(gs[0, 1])
+    # ax2.plot(spec_data.enst_spectrum[-1, :], label = "$$")
+    # ax2.set_xlabel(r"$k$")
+    # ax2.set_title(r"Energy")
+    # ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+    # ax2.set_yscale('log')
+    # ax2.set_xscale('log')
 
-    plt.savefig(cmdargs.out_dir + "Spectra.png")
-    plt.close()
-
-
-
-    ##---------- Flux Spectra
-    fig = plt.figure(figsize = (32, 8))
-    gs  = GridSpec(1, 2)
-    ax1 = fig.add_subplot(gs[0, 0])
-    ax1.plot(np.arange(1, int(sys_vars.Nx/3)), spec_data.enrg_spectrum[-1, 1:int(sys_vars.Nx//3)], label = "$$")
-    ax1.set_xlabel(r"$k$")
-    ax1.set_title(r"Energy")
-    ax1.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
-    ax1.set_yscale('log')
-    ax1.set_xscale('log')
-
-    ax2 = fig.add_subplot(gs[0, 1])
-    ax2.plot(np.arange(1, int(sys_vars.Nx/3)), spec_data.enst_spectrum[-1, 1:int(sys_vars.Nx//3)], label = "$$")
-    ax2.set_xlabel(r"$k$")
-    ax2.set_title(r"Energy")
-    ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
-    ax2.set_yscale('log')
-    ax2.set_xscale('log')
-
-    plt.savefig(cmdargs.out_dir + "Spectra.png")
-    plt.close()
+    # plt.savefig(snaps_output_dir + "Spectra.png")
+    # plt.close()
 
 
-    ##------------------------ Time Averaged Enstorphy Spectra and Flux Spectra
-    fig = plt.figure(figsize = (21, 8))
-    gs  = GridSpec(1, 2)
-    ax2 = fig.add_subplot(gs[0, 0])
-    for i in range(spec_data.enst_spectrum.shape[0]):
-        ax2.plot(np.arange(1, int(sys_vars.Nx/3)), spec_data.enst_spectrum[i, 1:int(sys_vars.Nx/3)], 'r', alpha = 0.15)
-    ax2.plot(np.arange(1, int(sys_vars.Nx/3)), np.mean(spec_data.enst_spectrum[:, 1:int(sys_vars.Nx/3)], axis = 0), 'k')
-    ax2.set_xlabel(r"$k$")
-    ax2.set_xscale('log')
-    ax2.set_yscale('log')
-    ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
-    ax2.set_title(r"$\mathcal{E}(|\mathbf{k}|)$: Enstrophy Spectrum")
 
-    ax2 = fig.add_subplot(gs[0, 1])
-    for i in range(spec_data.enst_flux_spectrum.shape[0]):
-        ax2.plot(np.arange(1, int(sys_vars.Nx/3)), spec_data.enst_flux_spectrum[i, 1:int(sys_vars.Nx/3)], 'r', alpha = 0.15)
-    ax2.plot(np.arange(1, int(sys_vars.Nx/3)), np.mean(spec_data.enst_flux_spectrum[:, 1:int(sys_vars.Nx/3)], axis = 0), 'k')
-    ax2.set_xlabel(r"$k$")
-    ax2.set_xscale('log')
-    ax2.set_yscale('symlog')
-    ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
-    ax2.set_title(r"$\Pi(|\mathbf{k}|)$: Enstrophy Flux Spectrum")
+    # ##---------- Flux Spectra
+    # fig = plt.figure(figsize = (32, 8))
+    # gs  = GridSpec(1, 2)
+    # ax1 = fig.add_subplot(gs[0, 0])
+    # ax1.plot(np.arange(1, int(sys_vars.Nx/3)), spec_data.enrg_spectrum[-1, 1:int(sys_vars.Nx//3)], label = "$$")
+    # ax1.set_xlabel(r"$k$")
+    # ax1.set_title(r"Energy")
+    # ax1.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+    # ax1.set_yscale('log')
+    # ax1.set_xscale('log')
+
+    # ax2 = fig.add_subplot(gs[0, 1])
+    # ax2.plot(np.arange(1, int(sys_vars.Nx/3)), spec_data.enst_spectrum[-1, 1:int(sys_vars.Nx//3)], label = "$$")
+    # ax2.set_xlabel(r"$k$")
+    # ax2.set_title(r"Energy")
+    # ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+    # ax2.set_yscale('log')
+    # ax2.set_xscale('log')
+
+    # plt.savefig(snaps_output_dir + "Spectra.png")
+    # plt.close()
+
+
+    # ##------------------------ Time Averaged Enstorphy Spectra and Flux Spectra
+    # fig = plt.figure(figsize = (21, 8))
+    # gs  = GridSpec(1, 2)
+    # ax2 = fig.add_subplot(gs[0, 0])
+    # for i in range(spec_data.enst_spectrum.shape[0]):
+    #     ax2.plot(np.arange(1, int(sys_vars.Nx/3)), spec_data.enst_spectrum[i, 1:int(sys_vars.Nx/3)], 'r', alpha = 0.15)
+    # ax2.plot(np.arange(1, int(sys_vars.Nx/3)), np.mean(spec_data.enst_spectrum[:, 1:int(sys_vars.Nx/3)], axis = 0), 'k')
+    # ax2.set_xlabel(r"$k$")
+    # ax2.set_xscale('log')
+    # ax2.set_yscale('log')
+    # ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+    # ax2.set_title(r"$\mathcal{E}(|\mathbf{k}|)$: Enstrophy Spectrum")
+
+    # ax2 = fig.add_subplot(gs[0, 1])
+    # for i in range(spec_data.enst_flux_spectrum.shape[0]):
+    #     ax2.plot(np.arange(1, int(sys_vars.Nx/3)), spec_data.enst_flux_spectrum[i, 1:int(sys_vars.Nx/3)], 'r', alpha = 0.15)
+    # ax2.plot(np.arange(1, int(sys_vars.Nx/3)), np.mean(spec_data.enst_flux_spectrum[:, 1:int(sys_vars.Nx/3)], axis = 0), 'k')
+    # ax2.set_xlabel(r"$k$")
+    # ax2.set_xscale('log')
+    # ax2.set_yscale('symlog')
+    # ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+    # ax2.set_title(r"$\Pi(|\mathbf{k}|)$: Enstrophy Flux Spectrum")
     
-    plt.savefig(cmdargs.out_dir + "TimeAveragedEnstrophySpectra.png")
-    plt.close()
+    # plt.savefig(snaps_output_dir + "TimeAveragedEnstrophySpectra.png")
+    # plt.close()
 
 
 

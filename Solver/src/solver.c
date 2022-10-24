@@ -62,8 +62,6 @@ void SpectralSolve(void) {
 	struct Int_data_struct Int_data_tmp; 	// Initialize a Int_data_struct
 	Int_data = &Int_data_tmp;		        // Point the ptr to this new Int_data_struct
 
-	printf("HERERER\n");
-
 	// -------------------------------
 	// Allocate memory
 	// -------------------------------

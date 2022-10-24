@@ -246,8 +246,8 @@ int GetCMLArgs(int argc, char** argv) {
 				else if (drag_flag == 2) {
 					// Read in the hypodiffusivity power
 					sys_vars->EKMN_DRAG_POW = atof(optarg);
-					if (sys_vars->EKMN_DRAG_POW >= 0.0) {
-						fprintf(stderr, "\n["RED"ERROR"RESET"] Parsing of Command Line Arguements Failed: The provided Hypodiffusibity power: [%lf] must be strictly negative\n-->> Exiting!\n\n", sys_vars->EKMN_DRAG_POW);		
+					if (sys_vars->EKMN_DRAG_POW > 0.0) {
+						fprintf(stderr, "\n["RED"ERROR"RESET"] Parsing of Command Line Arguements Failed: The provided Hypodiffusivity power: [%lf] must be negative or zero\n-->> Exiting!\n\n", sys_vars->EKMN_DRAG_POW);		
 						exit(1);
 					}
 					// drag_flag = 3;

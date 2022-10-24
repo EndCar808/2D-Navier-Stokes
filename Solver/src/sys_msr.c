@@ -43,7 +43,7 @@ void ComputeSystemMeasurables(double t, int iter, Int_data_struct* Int_data) {
 	fftw_complex u_z, v_z, div_u_z;
 	double norm_fac  = 0.5 / pow(Nx * Ny, 2.0);
     double const_fac = 4.0 * pow(M_PI, 2.0);
-    #if defined(__ENRG_FLUX_SPECT) || defined(__ENST_FLUX_SPECT)
+    #if defined(__ENRG_FLUX_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__ENRG_FLUX) || defined(__ENST_FLUX)
     double lwr_sbst_lim_sqr = pow(LWR_SBST_LIM, 2.0);
     double upr_sbst_lim_sqr = pow(UPR_SBST_LIM, 2.0);
     #endif

@@ -9,17 +9,29 @@
 # Get the operating system:
 # Need to strip leading and/or trailing whitespaces otherwise if statement wont work
 OS = $(strip $(shell lsb_release -si))
+MACH_NAME = $(strip $(shell hostname))
 
 # Set the operating system dependent compiler variables
 ifeq ($(OS), Ubuntu)
-	# CHIRP
-	GCC := mpicc
-	CCFLAG := -O3 -W -Wall -g
-	LIBFLAG := -lfftw3_mpi -lfftw3 -lm -lhdf5 -lhdf5_hl #-fopenmp -lpthread -lfftw3_omp
-	# GSLFLAG := -lgsl -lgslcblas
-	# LAPACKFLAG := -llapacke -llapack -lblas -lgfortran
-	INCDIR = -I/usr/include/hdf5/openmpi/  #-I/usr/include/gsl/
-	LIBDIR = -L/usr/lib/x86_64-linux-gnu/hdf5/openmpi 
+	ifeq ($(MACH_NAME), DESKTOP-SS58OJO)
+		# Laptop
+		GCC := mpicc
+		CCFLAG := -O3 -W -Wall -g
+		LIBFLAG := -lfftw3_mpi -lfftw3 -lm -lhdf5 -lhdf5_hl
+		GSLFLAG := -lgsl -lgslcblas
+# 		LAPACKFLAG := -llapacke -llapack -lblas -lgfortran
+		INCDIR = -I/home/endacarroll/Downloads/hdf5-1.12.2/hdf5/include -I/usr/include/gsl/
+		LIBDIR = -L/home/endacarroll/Downloads/hdf5-1.12.2/hdf5/lib
+	else
+		# CHIRP
+		GCC := mpicc
+		CCFLAG := -O3 -W -Wall -g
+		LIBFLAG := -lfftw3_mpi -lfftw3 -lm -lhdf5 -lhdf5_hl #-fopenmp -lpthread -lfftw3_omp
+		# GSLFLAG := -lgsl -lgslcblas
+		# LAPACKFLAG := -llapacke -llapack -lblas -lgfortran
+		INCDIR = -I/usr/include/hdf5/openmpi/  #-I/usr/include/gsl/
+		LIBDIR = -L/usr/lib/x86_64-linux-gnu/hdf5/openmpi 
+	endif
 else ifeq ($(OS), RedHatEnterpriseServer)
 	# SONIC
 	GCC := mpicc
@@ -48,7 +60,7 @@ SOLVER_FLAGS := -D__NAVIER #-D__HYPER -D__ADAPTIVE_STEP -D__CFL_STEP #-D__TRANSI
 PHASE_ONLY_FLAGS := -D__NAVIER -D__PHASE_ONLY #-D__HYPER -D__TRANSIENTS
 
 # Dataset Flags to be passed to the solver
-DSET_FLAGS := -D__VORT_FOUR -D__SYS_MEASURES -D__ENST_FLUX -D__ENRG_FLUX -D__ENST_SPECT -D__ENRG_SPECT -D__ENST_FLUX_SPECT -D__ENRG_FLUX_SPECT #-D__PHASE_SYNC  # -D__VORT_REAL #-D__REALSPACE # -D__MODES  
+DSET_FLAGS := -D__SYS_MEASURES -D__ENST_FLUX -D__ENRG_FLUX #-D__ENST_SPECT -D__ENRG_SPECT -D__ENST_FLUX_SPECT -D__ENRG_FLUX_SPECT #-D__PHASE_SYNC  # -D__VORT_REAL #-D__REALSPACE # -D__MODES -D__VORT_FOUR  
  
 # Flags to be passed to the solver for testing
 TG_TEST_FLAGS    := -D__NAVIER -D__TESTING -D__DEBUG #-D__ADAPTIVE_STEP -D__CFL_STEP -D__TRANSIENTS
