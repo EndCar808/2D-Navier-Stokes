@@ -557,6 +557,10 @@ def import_data(input_file, sim_data, method = "default"):
             data.tot_enst = f['TotalEnstrophy'][:]
         if 'TotalPalinstrophy' in list(f.keys()):
             data.tot_palin = f['TotalPalinstrophy'][:]
+        if 'TotalDivergence' in list(f.keys()):
+            data.tot_div = f['TotalDivergence'][:]
+        if 'TotalForcing' in list(f.keys()):
+            data.tot_forc = f['TotalForcing'][:]
         if 'EnergyDissipation' in list(f.keys()):
             data.enrg_diss = f['EnergyDissipation'][:]
         if 'EnstrophyDissipation' in list(f.keys()):
@@ -569,6 +573,11 @@ def import_data(input_file, sim_data, method = "default"):
             data.enrg_flux_sbst = f['EnergyFluxSubset'][:]
         if 'EnstrophyFluxSubset' in list(f.keys()):
             data.enst_flux_sbst = f['EnstrophyFluxSubset'][:]
+        if 'MeanFlow_x' in list(f.keys()):
+            data.mean_flow_x = f['MeanFlow_x'][:]
+        if 'MeanFlow_y' in list(f.keys()):
+            data.mean_flow_y = f['MeanFlow_y'][:]
+        
 
     ## Get inv wavenumbers
     data.k2 = data.ky**2 + data.kx[:, np.newaxis]**2

@@ -97,7 +97,7 @@ void InitializeForcing(void) {
 			run_data->forcing_k[1][0] = run_data->k[1][sys_vars->force_k];
 
 			// Get the forcing scaling 
-			run_data->forcing_scaling[0] = 1.0;
+			run_data->forcing_scaling[0] = sys_vars->force_scale_var;
 		}
 	}
 	//--------------------------------- Apply Stochastic forcing

@@ -190,8 +190,8 @@ int GetCMLArgs(int argc, char** argv) {
 				if (visc_flag == 0) {
 					// Read in the viscosity
 					sys_vars->NU = atof(optarg);
-					if (sys_vars->NU <= 0) {
-						fprintf(stderr, "\n["RED"ERROR"RESET"] Parsing of Command Line Arguements Failed: The provided viscosity: [%lf] must be strictly positive\n-->> Exiting!\n\n", sys_vars->NU);		
+					if (sys_vars->NU < 0) {
+						fprintf(stderr, "\n["RED"ERROR"RESET"] Parsing of Command Line Arguements Failed: The provided viscosity: [%lf] must be positive\n-->> Exiting!\n\n", sys_vars->NU);		
 						exit(1);
 					}
 					visc_flag = 1;
@@ -389,15 +389,15 @@ int GetCMLArgs(int argc, char** argv) {
 					force_flag = 1;
 					break;
 				}
-				else if (!(strcmp(optarg,"NONE"))  && (force_flag == 0)) {
-					// No forcing
-					strncpy(sys_vars->forcing, "NONE", 64);
-					force_flag = 1;
-					break;
-				}
 				else if (!(strcmp(optarg,"STOC"))  && (force_flag == 0)) {
 					// Stochastic forcing
 					strncpy(sys_vars->forcing, "STOC", 64);
+					force_flag = 1;
+					break;
+				}
+				else if (!(strcmp(optarg,"NONE"))  && (force_flag == 0)) {
+					// No forcing
+					strncpy(sys_vars->forcing, "NONE", 64);
 					force_flag = 1;
 					break;
 				}

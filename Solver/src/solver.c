@@ -72,6 +72,7 @@ void SpectralSolve(void) {
 	// -------------------------------
 	InitializeFFTWPlans(N);
 
+
 	// -------------------------------
 	// Initialize the System
 	// -------------------------------
@@ -876,7 +877,7 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* non
  	// Add the forcing
 	if (sys_vars->local_forcing_proc) {
 		for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
-	 		// printf("scale: %lf\t-\tk[%d, %d]: %1.16lf\t%1.16lfi\t\t%1.16lf\t%1.16lfi\n", sys_vars->force_scale_var, run_data->forcing_k[0][i], run_data->forcing_k[1][i], creal(dw_hat_dt[run_data->forcing_indx[i]]), cimag(dw_hat_dt[run_data->forcing_indx[i]]), creal(run_data->forcing[i]), cimag(run_data->forcing[i]));
+	 		// printf("scale: %lf\t-\tk[%d, %d]: %1.16lf\t%1.16lfi\t\t%1.16lf\t%1.16lfi--\t%1.16lf %1.16lfi\n", sys_vars->force_scale_var, run_data->forcing_k[0][i], run_data->forcing_k[1][i], creal(dw_hat_dt[run_data->forcing_indx[i]]), cimag(dw_hat_dt[run_data->forcing_indx[i]]), creal(run_data->forcing[i]), cimag(run_data->forcing[i]), creal(run_data->forcing[i]) / creal(dw_hat_dt[run_data->forcing_indx[i]]), cimag(run_data->forcing[i]) / cimag(dw_hat_dt[run_data->forcing_indx[i]]));
 			dw_hat_dt[run_data->forcing_indx[i]] += run_data->forcing[i]; 
 		}
 	}
@@ -1687,6 +1688,53 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 		// ---------------------------------------
 		// Random Initial Conditions
 		// ---------------------------------------
+		// Initialize variables
+		double enrg_k, enst_k;
+		double sqrt_k;
+		double enst_norm;
+		double r1;
+
+		for (int i = 0; i < local_Nx; ++i) {	
+			tmp = i * (Ny_Fourier);
+			for (int j = 0; j < Ny_Fourier; ++j) {
+				indx = tmp + j;
+
+				// Get the |k|^2
+				sqrt_k = sqrt(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
+
+				// Get the energy for this mode
+				if (sqrt_k > UNIF_MIN_K && sqrt_k < UNIF_MAX_K) {
+					enrg_k = 1.0 / sqrt_k;
+					
+					// Get the enstrophy for this mode
+					enst_k = pow(sqrt_k, 2.0) * enrg_k;
+
+					// Get random uniform number
+					r1 = (double)rand() / (double) RAND_MAX;
+
+					// Fill vorticity
+					w_hat[indx] = sqrt(enst_k / enrg_k) * cexp(r1 * 2.0 * M_PI * I);
+				}
+				else {
+					// Set Vorticity to 0
+					w_hat[indx] = 0.0 + 0.0 * I;
+				}
+
+				// Compute the enstrophy norm
+				enst_norm += pow(cabs(w_hat[indx]), 2.0);
+			}
+		}
+
+		// ---------------------------------------
+		// Sync Norm Factor
+		// ---------------------------------------
+		// Synchronize normalization factor amongst the processes
+		MPI_Allreduce(MPI_IN_PLACE, &enst_norm, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+		enst_norm *= 2.0;
+
+		// ---------------------------------------
+		// Normalize
+		// ---------------------------------------
 		for (int i = 0; i < local_Nx; ++i) {	
 			tmp = i * (Ny_Fourier);
 			for (int j = 0; j < Ny_Fourier; ++j) {
@@ -1694,22 +1742,22 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 
 				// Fill vorticity
 				if ((run_data->k[0][i] != 0) || (run_data->k[1][j] != 0)){
-					w_hat[indx] = ((double)rand() / (double) RAND_MAX) * cexp(((double)rand() / (double) RAND_MAX)* 2.0 * M_PI * I);
+					w_hat[indx] *= sqrt(RAND_ENST0 / enst_norm) ;
 				}
 				else {
 					// Zero mode is always 0 + 0 * I
 					w_hat[indx] = 0.0 + 0.0 * I;
-				}
+				}			
 			}
 		}		
 	}
 	else if (!(strcmp(sys_vars->u0, "TESTING"))) {
-		// Initialize temp variables
-		double inv_k_sqr;
-
 		// ---------------------------------------
 		// Powerlaw Amplitude & Fixed Phase
 		// ---------------------------------------
+		// Initialize temp variables
+		double inv_k_sqr;
+
 		for (int i = 0; i < local_Nx; ++i) {	
 			tmp = i * (Ny_Fourier);
 			for (int j = 0; j < Ny_Fourier; ++j) {
@@ -2129,7 +2177,7 @@ void PrintUpdateToTerminal(int iters, double t, double dt, double T, int save_da
 
 	// Print to screen
 	if( !(sys_vars->rank) ) {	
-		printf("Iter: %d/%ld\tt: %1.6lf/%1.3lf\tdt: %1.6g \tMax Vort: %1.5g \tKE: %1.5g\tENS: %1.5g\tPAL: %1.5g\n", iters, sys_vars->num_t_steps, t, T, dt, max_vort, run_data->tot_energy[save_data_indx], run_data->tot_enstr[save_data_indx], run_data->tot_palin[save_data_indx]);
+		printf("Iter: %d/%ld\tt: %1.6lf/%1.3lf\tdt: %1.6g \tMax Vort: %1.5g \tKE: %1.5g\tENS: %1.5g\t PAL: %1.5g\t E_Diss: %1.5g\tEns_Diss: %1.5g\n", iters, sys_vars->num_t_steps, t, T, dt, max_vort, run_data->tot_energy[save_data_indx], run_data->tot_enstr[save_data_indx], run_data->tot_palin[save_data_indx], run_data->enrg_diss[save_data_indx], run_data->enst_diss[save_data_indx]);
 	}
 	#endif	
 }
@@ -2447,7 +2495,7 @@ void AllocateMemory(const long int* NBatch, Int_data_struct* Int_data) {
 	#endif
 	#if defined(TESTING)
 	// Allocate array for the taylor green solution
-	run_data->tg_soln = (double* )fftw_malloc(sizeof(double) * sys_vars->alloc_local);
+	run_data->tg_soln = (double* )fftw_malloc(sizeof(double) * 2 * sys_vars->alloc_local);
 	if (run_data->tg_soln == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Taylor Green vortex solution");
 		exit(1);
@@ -2566,11 +2614,11 @@ void AllocateMemory(const long int* NBatch, Int_data_struct* Int_data) {
 			indx_real = tmp_real + j;
 			indx_four = tmp_four + j;
 			
-			Int_data->nonlin[indx_real]					= 0.0;
-			run_data->u[SYS_DIM * indx_real + 0]        = 0.0;
-			run_data->u[SYS_DIM * indx_real + 1] 	  	= 0.0;
-			Int_data->nabla_w[SYS_DIM * indx_real + 0] 	= 0.0;
-			Int_data->nabla_w[SYS_DIM * indx_real + 1] 	= 0.0;
+			Int_data->nonlin[indx_real]                  = 0.0;
+			run_data->u[SYS_DIM * indx_real + 0]         = 0.0;
+			run_data->u[SYS_DIM * indx_real + 1]         = 0.0;
+			Int_data->nabla_w[SYS_DIM * indx_real + 0]   = 0.0;
+			Int_data->nabla_w[SYS_DIM * indx_real + 1]   = 0.0;
 			Int_data->nabla_psi[SYS_DIM * indx_real + 0] = 0.0;
 			Int_data->nabla_psi[SYS_DIM * indx_real + 1] = 0.0;
 			#if defined(TESTING)
@@ -2661,6 +2709,7 @@ void InitializeFFTWPlans(const long int* N) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to initialize batch FFTW Plans \n-->> Exiting!!!\n");
 		exit(1);
 	}
+
 }
 /**
  * Wrapper function that frees any memory dynamcially allocated in the programme

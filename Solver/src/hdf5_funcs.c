@@ -1423,7 +1423,7 @@ void FinalWriteAndCloseOutputFile(const long int* N, int iters, int save_data_in
 	// -------------------------------
 	// Write System Measures
 	// -------------------------------
-	// Time
+	//------------- Time
 	#if defined(__TIME)
 	// Time array only on rank 0
 	if (!(sys_vars->rank)) {
@@ -1434,8 +1434,35 @@ void FinalWriteAndCloseOutputFile(const long int* N, int iters, int save_data_in
 	}
 	#endif
 
+	#if defined(__SYS_MEASURES)
+	//-------------- Write mean flows
+	// Mean flow in the y direction -> \bar{v}(x)
+	double* tmp = (double* )fftw_malloc(sizeof(double) * Nx);
+	MPI_Gather(run_data->mean_flow_y, sys_vars->local_Nx, MPI_DOUBLE, tmp, sys_vars->local_Nx, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+	for (int i = 0; i < Nx; ++i) {
+		tmp[i] /= sys_vars->num_sys_msr_counts;
+	}
+	dims1D[0] = Nx;
+	if (!sys_vars->rank) {
+		if ( (H5LTmake_dataset(file_info->output_file_handle, "MeanFlow_y", D1, dims1D, H5T_NATIVE_DOUBLE, tmp)) < 0) {
+			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "MeanFlow_y");
+		}
+	}
+	fftw_free(tmp);
+
+	// Mean flow in the x direction -> \bar{u}(y)	
+	for (int i = 0; i < Ny_Fourier; ++i) {
+		run_data->mean_flow_x[i] /= sys_vars->num_sys_msr_counts;
+	}
+	dims1D[0] = Ny_Fourier;
+	if (!sys_vars->rank) {
+		if ( (H5LTmake_dataset(file_info->output_file_handle, "MeanFlow_x", D1, dims1D, H5T_NATIVE_DOUBLE, run_data->mean_flow_x)) < 0) {
+			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "MeanFlow_x");
+		}
+	}
+	#endif
 	
-	// System measures -> need to reduce (in place on rank 0) all arrays across the processess
+	//--------------- System measures -> need to reduce (in place on rank 0) all arrays across the processess
 	if (!(sys_vars->rank)) {
 		// Reduce on to rank 0
 		#if defined(__SYS_MEASURES)
@@ -1446,6 +1473,7 @@ void FinalWriteAndCloseOutputFile(const long int* N, int iters, int save_data_in
 		MPI_Reduce(MPI_IN_PLACE, run_data->tot_div, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		MPI_Reduce(MPI_IN_PLACE, run_data->enrg_diss, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		MPI_Reduce(MPI_IN_PLACE, run_data->enst_diss, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		
 		#endif
 		#if defined(__ENST_FLUX)
 		MPI_Reduce(MPI_IN_PLACE, run_data->d_enst_dt_sbst, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);

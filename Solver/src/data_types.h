@@ -141,8 +141,9 @@
 #define RING_MAX_K 10.0			// The maximum absolute wavevector value to set the ring initial condition
 #define EXTRM_ENS_MIN_K 1.5 	// The minimum absolute wavevector value for the Exponential Enstrophy initial condition
 #define EXTRM_ENS_POW 1.5 		// The power for wavevectors for the Exponential enstrophy distribution
-#define UNIF_MIN_K 2.5
-#define UNIF_MAX_K 9.5
+#define UNIF_MIN_K 2.5 			// The lower bound of sqrt(k) for initializing the vorticity with random phases
+#define UNIF_MAX_K 9.5 			// The upper bound of sqrt(k) for initializing the vorticity with random phases
+#define RAND_ENST0 1.0 			// The initial enstrophy for the random initial condition
 // Forcing parameters
 #define STOC_FORC_K_MIN	0.5		// The minimum value of the modulus forced wavevectors for the stochasitc (Gaussian) forcing
 #define STOC_FORC_K_MAX 2.5     // The maximum value of the modulus forced wavevectors for the stochastic (Gaussian) forcing
@@ -205,6 +206,7 @@ typedef struct system_vars_struct {
 	double EKMN_ALPHA; 					// The value of the Ekman drag coefficient
 	int EKMN_DRAG_FLAG;					// Flag for indicating if ekman drag is to be used
 	double EKMN_DRAG_POW;				// The power of the hyper drag to be used
+	int num_sys_msr_counts; 			// Counter for counting the number of system measures is called for averaging
 } system_vars_struct;
 
 // Runtime data struct
@@ -242,6 +244,8 @@ typedef struct runtime_data_struct {
 	double* d_enrg_dt_spect;  			// Array to hold the spectrum of the time derivative  of energy
 	double* enrg_flux_spect;  			// Array to hold the energy flux spectrum
 	double* enrg_diss_spect;  			// Array to hold the energy dissiaption spectrum
+	double* mean_flow_x;				// Array to hold the mean flow of the velocity field in the x direction
+	double* mean_flow_y;				// Array to hold the mean flow of the velocity field in the x direction
 	fftw_complex* phase_order_k;		// Array to hold the scale dependent collective phase
 	fftw_complex* normed_phase_order_k;	// Array to hold the scale dependent collective phase
 	double* tg_soln;	  	  			// Array for computing the Taylor Green vortex solution

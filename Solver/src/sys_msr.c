@@ -54,6 +54,9 @@ void ComputeSystemMeasurables(double t, int iter, Int_data_struct* Int_data) {
     double tmp_order;
     #endif
 
+    // Update counter
+    sys_vars->num_sys_msr_counts++;
+
 
     // Record the initial time
     #if defined(__TIME)
@@ -129,9 +132,11 @@ void ComputeSystemMeasurables(double t, int iter, Int_data_struct* Int_data) {
 	}
 	#endif
 
-	// Compute the total forcing
-	for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
-		run_data->tot_forc[iter] += cabs(run_data->forcing[i] * run_data->w_hat[run_data->forcing_indx[i]]);
+	// Compute the total forcing input
+	if (sys_vars->local_forcing_proc) {
+		for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
+			run_data->tot_forc[iter] += cabs(run_data->forcing[i] * run_data->w_hat[run_data->forcing_indx[i]]);
+		}
 	}
 
 	// -------------------------------------
@@ -181,6 +186,7 @@ void ComputeSystemMeasurables(double t, int iter, Int_data_struct* Int_data) {
 					// Get the diverence of the Fourier velocity
 					div_u_z = I * ((double )run_data->k[0][i] * u_z + (double )run_data->k[1][j] * v_z);
 
+
 					// Update the sums
 					if ((j == 0) || (j == Ny_Fourier - 1)) { // only count the 0 and N/2 modes once as they have no conjugate
 						run_data->tot_energy[iter] += cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * (1.0 / k_sqr);
@@ -189,6 +195,8 @@ void ComputeSystemMeasurables(double t, int iter, Int_data_struct* Int_data) {
 						run_data->tot_palin[iter]  += k_sqr * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
 						run_data->enrg_diss[iter]  += pre_fac * cabs(u_z * conj(u_z) + v_z * conj(v_z));
 						run_data->enst_diss[iter]  += pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+						// Get mean flow in the y direction -> \bar{v}(x)
+						run_data->mean_flow_y[i] += cabs(v_z);
 						if ((k_sqr >= lwr_sbst_lim_sqr) && (k_sqr < upr_sbst_lim_sqr)) { // define the subset to consider for the flux and dissipation
 							#if defined(__ENRG_FLUX) || defined(__ENST_FLUX)
 							// Get the derivative and dissipation terms
@@ -215,6 +223,8 @@ void ComputeSystemMeasurables(double t, int iter, Int_data_struct* Int_data) {
 						run_data->tot_palin[iter]  += 2.0 * k_sqr * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
 						run_data->enrg_diss[iter]  += 2.0 * pre_fac * cabs(u_z * conj(u_z) + v_z * conj(v_z));
 						run_data->enst_diss[iter]  += 2.0 * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+						// Get mean flow in the y direction -> \bar{v}(x)
+						run_data->mean_flow_y[i] += 2.0 * cabs(v_z);
 						if ((k_sqr >= lwr_sbst_lim_sqr) && (k_sqr < upr_sbst_lim_sqr)) { // define the subset to consider for the flux and dissipation
 							#if defined(__ENRG_FLUX) || defined(__ENST_FLUX)
 							// Get the derivative and dissipation terms
@@ -321,6 +331,19 @@ void ComputeSystemMeasurables(double t, int iter, Int_data_struct* Int_data) {
 				}
 			}
 			#endif
+		}
+	}
+
+	// Get mean flow in the x direction
+	for (int i = 0; i < Ny_Fourier; ++i) {
+		for (int j = 0; j < local_Nx; ++j) {
+			u_z = I * ((double )run_data->k[1][j]) * run_data->w_hat[j * Ny_Fourier + i] / k_sqr;
+			if (i == 0 || i == Ny_Fourier - 1) {
+				run_data->mean_flow_x[i] += cabs(u_z);
+			}
+			else {
+				run_data->mean_flow_x[i] += 2.0 * cabs(u_z);				
+			}
 		}
 	}
 
@@ -444,6 +467,20 @@ void InitializeSystemMeasurables(Int_data_struct* Int_data) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Enstrophy Dissipation Rate");
 		exit(1);
 	}	
+
+	// Mean flow x Direction
+	run_data->mean_flow_x = (double* )fftw_malloc(sizeof(double) * (sys_vars->N[1] / 2 + 1));
+	if (run_data->mean_flow_x == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Mean Flow x Direction");
+		exit(1);
+	}
+
+	// Mean flow y Direction
+	run_data->mean_flow_y = (double* )fftw_malloc(sizeof(double) * sys_vars->local_Nx);
+	if (run_data->mean_flow_y == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Mean Flow y Direction");
+		exit(1);
+	}
 	#endif
 
 	// --------------------------------
