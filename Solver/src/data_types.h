@@ -49,6 +49,7 @@
 // #define __NAVIER
 // Choose which integrator to use
 // #define __RK4
+// #define __RK4CN
 #define __AB4
 // #define __RK5
 // #define __DPRK5
@@ -145,8 +146,10 @@
 #define UNIF_MAX_K 9.5 			// The upper bound of sqrt(k) for initializing the vorticity with random phases
 #define RAND_ENST0 1.0 			// The initial enstrophy for the random initial condition
 // Forcing parameters
-#define STOC_FORC_K_MIN	0.5		// The minimum value of the modulus forced wavevectors for the stochasitc (Gaussian) forcing
-#define STOC_FORC_K_MAX 2.5     // The maximum value of the modulus forced wavevectors for the stochastic (Gaussian) forcing
+#define STOC_FORC_K_MIN	12.5	// The minimum value of the modulus forced wavevectors for the stochasitc (Gaussian) forcing
+#define STOC_FORC_K_MAX 15.5    // The maximum value of the modulus forced wavevectors for the stochastic (Gaussian) forcing
+#define STOC_FORC_K 14.0
+#define STOC_FORC_DELTA_K 1.5
 #define CONST_GAUSS_K_MIN 10    // The minimum value of the mod of forced wavevectors for the Constant Gaussian Ring forcing
 #define CONST_GAUSS_K_MAX 12    // The minimum value of the mod of forced wavevectors for the Constant Gaussian Ring forcing
 // System checking parameters

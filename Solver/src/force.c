@@ -102,16 +102,23 @@ void InitializeForcing(void) {
 	}
 	//--------------------------------- Apply Stochastic forcing
 	else if(!(strcmp(sys_vars->forcing, "STOC"))) {
-		// Loop through modes to identify local process(es) containing the modes to be forced
+		// Loop through modes to identify local process(es) containing the modes to be forced		
+		double forc_spect = 0.0;
 		for (int i = 0; i < sys_vars->local_Nx; ++i) {
 			for (int j = 0; j < Ny_Fourier; ++j) {
 				// Compute |k|
 				k_abs = sqrt((double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]));
 
-				// Count the forced modes
-				if ((k_abs > STOC_FORC_K_MIN && k_abs < STOC_FORC_K_MAX) && (run_data->k[1][j] != 0 || run_data->k[0][i] > 0)) {
+				if (run_data->k[0][i] != 0 && run_data->k[1][j] != 0) {
+					if (j == 0 || j == Ny_Fourier - 1) {
+						forc_spect += exp(- pow(k_abs - STOC_FORC_K, 2.0) / (2.0 * STOC_FORC_DELTA_K * STOC_FORC_DELTA_K)) / (2.0 * pow(k_abs, 2.0));
+					}
+					else {
+						forc_spect += 2.0 * exp(- pow(k_abs - STOC_FORC_K, 2.0) / (2.0 * STOC_FORC_DELTA_K * STOC_FORC_DELTA_K)) / (2.0 * pow(k_abs, 2.0));						
+					}
+					
+					// Count the forced modes
 					sys_vars->local_forcing_proc = 1;
-					sum_k_pow += pow(k_abs, 2.0 * scaling_exp);
 					num_forced_modes++;
 				}
 			}
@@ -121,7 +128,8 @@ void InitializeForcing(void) {
 		sys_vars->num_forced_modes = num_forced_modes;
 
 		// Sync sum of forced wavenumbers
-		MPI_Allreduce(MPI_IN_PLACE, &sum_k_pow, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+		MPI_Allreduce(MPI_IN_PLACE, &forc_spect, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+		forc_spect *= 0.5 / pow(sys_vars->N[0] * sys_vars->N[1], 2.0);
 
 		// Allocate forcing data on the local forcing process only
 		if (sys_vars->local_forcing_proc) {
@@ -155,12 +163,11 @@ void InitializeForcing(void) {
 				}
 			}
 
-
 			// -----------------------------------
 			// Fill Forcing Info
 			// -----------------------------------
 			// Initialize variables
-			scale_fac_f0       = sqrt(sys_vars->force_scale_var / (2.0 * sum_k_pow));
+			scale_fac_f0       = sys_vars->force_scale_var / forc_spect;
 			force_mode_counter = 0;
 			for (int i = 0; i < sys_vars->local_Nx; ++i) {
 				tmp = i * Ny_Fourier;
@@ -171,8 +178,8 @@ void InitializeForcing(void) {
 					k_abs = sqrt((double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]));
 
 					// Record the data for the forced modes
-					if ((k_abs > STOC_FORC_K_MIN && k_abs < STOC_FORC_K_MAX) && (run_data->k[1][j] != 0 || run_data->k[0][i] > 0)) {
-						run_data->forcing_scaling[force_mode_counter] = scale_fac_f0 * pow(k_abs, scaling_exp);
+					if (run_data->k[0][i] != 0 && run_data->k[1][j] != 0) {
+						run_data->forcing_scaling[force_mode_counter] = scale_fac_f0 * exp(- pow(k_abs - STOC_FORC_K, 2.0) / (2.0 * STOC_FORC_DELTA_K * STOC_FORC_DELTA_K));
 						run_data->forcing_indx[force_mode_counter]    = indx;
 						run_data->forcing_k[0][force_mode_counter]    = run_data->k[0][i];
 						run_data->forcing_k[1][force_mode_counter]    = run_data->k[1][j];
@@ -393,7 +400,7 @@ void InitializeForcing(void) {
 /**
  * Function that comutes the forcing for the current timestep
  */
-void ComputeForcing(void) {
+void ComputeForcing(double dt) {
 
 	// Initialize variables
 	double r1, r2;
@@ -420,16 +427,21 @@ void ComputeForcing(void) {
 		else if(!(strcmp(sys_vars->forcing, "STOC"))) {
 			// Loop over the forced modes
 			for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
-				// Generate two uniform random numbers
+				// // Generate two uniform random numbers
+				// r1 = (double) rand() / (double) RAND_MAX;
+				// r2 = (double) rand() / (double) RAND_MAX;
+
+				// // Convert to Gaussian using Box-Muller transform
+				// re_f = sqrt(-2.0 * log(r1)) * cos(r2 * 2.0 * M_PI);
+				// im_f = sqrt(-2.0 * log(r1)) * sin(r2 * 2.0 * M_PI);
+
+				// // Now compute the forcing 
+				// run_data->forcing[i] = run_data->forcing_scaling[i] * (re_f + im_f * I);
+				
 				r1 = (double) rand() / (double) RAND_MAX;
-				r2 = (double) rand() / (double) RAND_MAX;
 
-				// Convert to Gaussian using Box-Muller transform
-				re_f = sqrt(-2.0 * log(r1)) * cos(r2 * 2.0 * M_PI);
-				im_f = sqrt(-2.0 * log(r1)) * sin(r2 * 2.0 * M_PI);
-
-				// Now compute the forcing 
-				run_data->forcing[i] = run_data->forcing_scaling[i] * (re_f + im_f * I);
+				// // Now compute the forcing 
+				run_data->forcing[i] = sqrt(run_data->forcing_scaling[i]) * cexp(2.0 * M_PI * I * r1) / sqrt(dt);				
 			}		
 		}
 		//---------------------------- Compute Constant (in time) Gaussian ring forcing -> f_k = n1 + n2 * I, n1, n2 ~ N(0, 1)

@@ -29,6 +29,7 @@ import time as TIME
 from subprocess import Popen, PIPE
 from matplotlib.pyplot import cm
 from functions import tc, sim_data, import_data, import_spectra_data, import_post_processing_data
+from plot_functions import plot_flow_summary
 ###############################
 ##       FUNCTION DEFS       ##
 ###############################
@@ -45,10 +46,13 @@ def parse_cml(argv):
         Class for command line arguments
         """
 
-        def __init__(self, in_dir = None, out_dir = None, in_file = None, plotting = False):
+        def __init__(self, in_dir = None, out_dir = None, in_file = None, plotting = False, video = False, par = False):
             self.in_dir         = in_dir
             self.in_file        = out_dir
             self.plotting       = plotting
+            self.video          = video
+            self.parallel       = par
+            self.num_threads    = 5
 
 
     ## Initialize class
@@ -56,7 +60,7 @@ def parse_cml(argv):
 
     try:
         ## Gather command line arguments
-        opts, args = getopt.getopt(argv, "i:o:f:", ["plot", "phase", "triads="])
+        opts, args = getopt.getopt(argv, "i:o:f:p:", ["video", "par", "plot"])
     except:
         print("[" + tc.R + "ERROR" + tc.Rst + "] ---> Incorrect Command Line Arguements.")
         sys.exit()
@@ -77,9 +81,21 @@ def parse_cml(argv):
             cargs.in_file = str(arg)
             print("Input Post Processing File: " + tc.C + "{}".format(cargs.in_file) + tc.Rst)
 
+        if opt in ['-p']:
+            ## Read input directory
+            cargs.num_threads = int(arg)
+
         elif opt in ['--plot']:
             ## Read in plotting indicator
             cargs.plotting = True
+
+        elif opt in ['--video']:
+            ## Read in plotting indicator
+            cargs.video = True
+
+        elif opt in ['--par']:
+            ## Read in plotting indicator
+            cargs.parallel = True
 
 
     return cargs
@@ -114,6 +130,10 @@ if __name__ == '__main__':
     if os.path.isdir(snaps_output_dir) != True:
         print("Making folder:" + tc.C + " RUN_SNAPS/" + tc.Rst)
         os.mkdir(snaps_output_dir)
+    vid_snaps_output_dir = cmdargs.out_dir + "/VID_SNAPS/"
+    if os.path.isdir(vid_snaps_output_dir) != True:
+        print("Making folder:" + tc.C + " VID_SNAPS/" + tc.Rst)
+        os.mkdir(vid_snaps_output_dir)
     # -----------------------------------------
     # # --------  Plot Data
     # -----------------------------------------
@@ -287,3 +307,65 @@ if __name__ == '__main__':
 
 
 
+    if cmdargs.video:
+
+        wmin = -10
+        wmax = 10
+
+        ## Get max and min system measures 
+        emax  = np.amax(run_data.tot_enrg[:] )
+        enmax = np.amax(run_data.tot_enst[:] )
+        pmax  = np.amax(run_data.tot_palin[:])
+        # print(emax, enmax, pmax)
+        m_max = np.amax([emax, enmax, pmax])
+        emin  = np.amin(run_data.tot_enrg[:] )
+        enmin = np.amin(run_data.tot_enst[:] )
+        pmin  = np.amin(run_data.tot_palin[:] )
+        m_min = np.amin([emin, enmin, pmin])
+
+        ## Start timer
+        start = TIME.perf_counter()
+        print("\n" + tc.Y + "Printing Snaps..." + tc.Rst)
+        
+        ## Print full summary snaps = base + spectra
+        print("\n" + tc.Y + "Number of SNAPS:" + tc.C + " {}\n".format(sys_vars.ndata) + tc.Rst)
+        if cmdargs.parallel:
+            ## No. of processes
+            proc_lim = cmdargs.num_threads
+
+            ## Create tasks for the process pool
+            groups_args = [(mprocs.Process(target = plot_flow_summary, args = (vid_snaps_output_dir, i, run_data.w[i, :, :], wmin, wmax, m_min, m_max, run_data.x, run_data.y, run_data.time, sys_vars.Nx, sys_vars.Ny, run_data.kx, run_data.ky, spec_data.enrg_spectrum[i, :], spec_data.enst_spectrum[i, :], run_data.tot_enrg, run_data.tot_enst, run_data.tot_palin)) for i in range(run_data.w.shape[0]))] * proc_lim
+
+            ## Loop of grouped iterable
+            for procs in zip_longest(*groups_args): 
+                pipes     = []
+                processes = []
+                for p in filter(None, procs):
+                    recv, send = mprocs.Pipe(False)
+                    processes.append(p)
+                    pipes.append(recv)
+                    p.start()
+
+                for process in processes:
+                    process.join()
+        else:
+            # Loop over snapshots
+            for i in range(sys_vars.ndata):
+                plot_flow_summary(vid_snaps_output_dir, i, run_data.w[i, :, :], wmin, wmax, m_min, m_max, run_data.x, run_data.y, run_data.time, sys_vars.Nx, sys_vars.Ny, run_data.kx, run_data.ky, spec_data.enrg_spectrum[i, :], spec_data.enst_spectrum[i, :], run_data.tot_enrg, run_data.tot_enst, run_data.tot_palin)
+        
+
+        framesPerSec = 30
+        inputFile    = vid_snaps_output_dir + "SNAP_%05d.png"
+        videoName    = vid_snaps_output_dir + "2D_FULL_NavierStokes_N[{},{}]_u0[{}].mp4".format(sys_vars.Nx, sys_vars.Ny, sys_vars.u0)
+        cmd = "ffmpeg -y -r {} -f image2 -s 1920x1080 -i {} -vf 'pad=ceil(iw/2)*2:ceil(ih/2)*2' -vcodec libx264 -crf 25 -pix_fmt yuv420p {}".format(framesPerSec, inputFile, videoName)
+        # cmd = "ffmpeg -r {} -f image2 -s 1280×720 -i {} -vcodec libx264 -preset ultrafast -crf 35 -pix_fmt yuv420p {}".format(framesPerSec, inputFile, videoName)
+
+        process = Popen(cmd, shell = True, stdout = PIPE, stdin = PIPE, universal_newlines = True)
+        [runCodeOutput, runCodeErr] = process.communicate()
+        print(runCodeOutput)
+        print(runCodeErr)
+        process.wait()
+
+        ## Prin summary of timmings to screen
+        print("\n" + tc.Y + "Finished making video..." + tc.Rst)
+        print("Video Location: " + tc.C + videoName + tc.Rst + "\n")

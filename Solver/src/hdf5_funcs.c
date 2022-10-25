@@ -470,6 +470,8 @@ void GetOutputDirPath(void) {
 		#endif
 		#if defined(__RK4)
 		sprintf(solv_type, "%s", "RK4");
+		#elif defined(__RK4CN)
+		sprintf(solv_type, "%s", "RK4CN");
 		#elif defined(__RK5)
 		sprintf(solv_type, "%s", "RK5");
 		#elif defined(__DPRK5)
@@ -546,6 +548,8 @@ void GetOutputDirPath(void) {
 		#endif
 		#if defined(__RK4)
 		sprintf(solv_type, "%s", "RK4");
+		#elif defined(__RK4CN)
+		sprintf(solv_type, "%s", "RK4CN");
 		#elif defined(__RK5)
 		sprintf(solv_type, "%s", "RK5");
 		#elif defined(__AB4)

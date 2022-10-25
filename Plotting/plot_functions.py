@@ -12,9 +12,9 @@ import numpy as np
 import sys
 import os
 import matplotlib as mpl
-mpl.rcParams['text.usetex'] = True
-mpl.rcParams['font.family'] = 'serif'
-mpl.rcParams['font.serif']  = 'Computer Modern Roman'
+# mpl.rcParams['text.usetex'] = True
+# mpl.rcParams['font.family'] = 'serif'
+# mpl.rcParams['font.serif']  = 'Computer Modern Roman'
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 from matplotlib.pyplot import cm
@@ -267,7 +267,7 @@ def plot_phase_snaps(out_dir, i, w, phases, enrg_spec, enst_spec, spec_lims, w_m
     plt.savefig(out_dir + "Phase_SNAP_{:05d}.png".format(i), bbox_inches='tight') 
     plt.close()
 
-def plot_flow_summary(out_dir, i, w, w_min, w_max, measure_min, measure_max, x, y, time, Nx, Ny, kx, ky, tot_en, tot_ens, tot_pal):
+def plot_flow_summary(out_dir, i, w, w_min, w_max, measure_min, measure_max, x, y, time, Nx, Ny, kx, ky, enrg_spec, enst_spec, tot_en, tot_ens, tot_pal):
 
     """
     Plots summary snap of the solver data for the current iteration. Plots vorticity, full zero centre phases and spectra.
@@ -297,7 +297,7 @@ def plot_flow_summary(out_dir, i, w, w_min, w_max, measure_min, measure_max, x, 
 
     ## Create Figure
     fig = plt.figure(figsize = (16, 8))
-    gs  = GridSpec(1, 2) 
+    gs  = GridSpec(2, 2) 
 
     ##-------------------------
     ## Plot vorticity   
@@ -324,9 +324,9 @@ def plot_flow_summary(out_dir, i, w, w_min, w_max, measure_min, measure_max, x, 
     # Plot System Measures   
     #-------------------------- 
     ax2 = fig.add_subplot(gs[0, 1])
-    ax2.plot(time[:i], tot_en[:i] / tot_en[0])
-    ax2.plot(time[:i], tot_ens[:i] / tot_ens[0])
-    ax2.plot(time[:i], tot_pal[:i] / tot_pal[0])
+    ax2.plot(time[:i], tot_en[:i] )
+    ax2.plot(time[:i], tot_ens[:i] )
+    ax2.plot(time[:i], tot_pal[:i])
     ax2.set_xlabel(r"$t$")
     ax2.set_xlim(time[0], time[-1])
     ax2.set_ylim(measure_min, measure_max)
@@ -334,8 +334,31 @@ def plot_flow_summary(out_dir, i, w, w_min, w_max, measure_min, measure_max, x, 
     ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
     ax2.legend([r"$\mathcal{K}(t) / \mathcal{K}(0)$", r"$\mathcal{E}(t) / \mathcal{E}(0)$", r"$\mathcal{P}(t) / \mathcal{P}(0)$"])
 
+    ax3 = fig.add_subplot(gs[1, 0])
+    kindx = int(Nx / 3 + 1)
+    kk = np.arange(1, kindx)
+    spec_enrg = enrg_spec[1:kindx]
+    ax3.plot(kk, spec_enrg, color = 'y')
+    ax3.set_xlabel(r"$|k|$")
+    ax3.set_ylabel(r"$\mathcal{K}(|\mathbf{k}|)$") 
+    ax3.set_title(r"Energy Spectrum")
+    ax3.set_yscale('log')
+    ax3.set_xscale('log')
+
+
+    ax4 = fig.add_subplot(gs[1, 1])
+    kindx = int(Nx / 3 + 1)
+    kk = np.arange(1, kindx)
+    spec_enst = enst_spec[1:kindx]
+    ax4.plot(kk, spec_enst, color = 'y')
+    ax4.set_xlabel(r"$|k|$")
+    ax4.set_ylabel(r"$\mathcal{E}(|\mathbf{k}|)$")  
+    ax4.set_title(r"Enstrophy Spectrum")
+    ax4.set_yscale('log')
+    ax4.set_xscale('log')
+
     ## Save figure
-    plt.savefig(out_dir + "Decay_SNAP_{:05d}.png".format(i), bbox_inches='tight') 
+    plt.savefig(out_dir + "SNAP_{:05d}.png".format(i), bbox_inches='tight') 
     plt.close()
 
 

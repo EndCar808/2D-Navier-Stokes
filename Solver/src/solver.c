@@ -26,7 +26,7 @@
 //  Global Variables
 // ---------------------------------------------------------------------
 // Define RK4 variables - Butcher Tableau
-#if defined(__RK4) || defined(__AB4)
+#if defined(__RK4) || defined(__AB4) || defined(__RK4CN)
 static const double RK4_C2 = 0.5, 	  RK4_A21 = 0.5, \
 				  	RK4_C3 = 0.5,	           					RK4_A32 = 0.5, \
 				  	RK4_C4 = 1.0,                      									   RK4_A43 = 1.0, \
@@ -112,10 +112,9 @@ void SpectralSolve(void) {
 	// -------------------------------
 	// Inialize system measurables
 	InitializeSystemMeasurables(Int_data);
-    
+
 	// Create and open the output file - also write initial conditions to file
 	CreateOutputFilesWriteICs(N, dt);
-
 
 	// -------------------------------------------------
 	// Print IC to Screen 
@@ -124,9 +123,9 @@ void SpectralSolve(void) {
 	PrintUpdateToTerminal(0, t0, dt, T, 0);
 	#endif	
 	
-	//////////////////////////////
-	// Begin Integration
-	//////////////////////////////
+	// //////////////////////////////
+	// // Begin Integration
+	// //////////////////////////////
 	t         += dt;
 	int iters = 1;
 	int save_data_indx;
@@ -141,7 +140,7 @@ void SpectralSolve(void) {
 		// -------------------------------	
 		// Integration Step
 		// -------------------------------
-		#if defined(__RK4)
+		#if defined(__RK4) || defined(__RK4CN)
 		RK4Step(dt, N, sys_vars->local_Nx, Int_data);
 		#elif defined(__AB4)
 		AB4Step(dt, N, iters, sys_vars->local_Nx, Int_data);
@@ -231,11 +230,10 @@ void SpectralSolve(void) {
 		// Check System: Determine if system has blown up or integration limits reached
 		SystemCheck(dt, iters);
 	}
-	//////////////////////////////
+	// ////////////////////////////
 	// End Integration
-	//////////////////////////////
-	
-
+	// ////////////////////////////
+		
 	// ------------------------------- 
 	// Final Writes to Output File
 	// -------------------------------
@@ -285,7 +283,7 @@ void AB4Step(const double dt, const long int* N, const int iters, const ptrdiff_
 		// Compute Forcing
 		// -----------------------------------
 		// Compute the forcing for the current iteration
-		ComputeForcing();
+		ComputeForcing(dt);
 
 		// -----------------------------------
 		// Compute Nonlinear Term
@@ -389,7 +387,7 @@ void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdif
 	#endif
 
 	//------------------- Get the forcing
-	ComputeForcing();
+	ComputeForcing(dt);
 	
 	/////////////////////
 	/// RK STAGES
@@ -619,16 +617,14 @@ double DPMin(double a, double b) {
  * @param local_Nx Int indicating the local size of the first dimension of the arrays	
  * @param Int_data  Struct pointing the Integration variables: stages, tmp arrays, rhs and arrays needed for NonlinearRHS function
  */
-#if defined(__RK4) || defined(__AB4)
+#if defined(__RK4) || defined(__RK4CN) || defined(__AB4)
 void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Nx, Int_data_struct* Int_data) {
 
 	// Initialize vairables
 	int tmp;
 	int indx;
-	#if defined(__NAVIER)
 	double k_sqr;
 	double D_fac;
-	#endif
 	const long int Ny_Fourier = N[1] / 2 + 1;
 
 	//------------------- Pre-record the amplitudes so they can be reset after update step
@@ -647,7 +643,7 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Nx, Int_d
 	#endif
 
 	//------------------- Get the forcing
-	ComputeForcing();
+	ComputeForcing(dt);
 
 
 	/////////////////////
@@ -660,6 +656,30 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Nx, Int_d
 		for (int j = 0; j < Ny_Fourier; ++j) {
 			indx = tmp + j;
 
+			// Add linear term to RHS
+			#if defined(__RK4)
+			k_sqr = (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
+			
+			if((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
+				// Both Hyperviscosity and Ekman drag
+				D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW) + sys_vars->EKMN_ALPHA * pow(k_sqr, sys_vars->EKMN_DRAG_POW)); 
+			}
+			else if((sys_vars->HYPER_VISC_FLAG != HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
+				// No hyperviscosity but we have Ekman drag
+				D_fac = dt * (sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA * pow(k_sqr, sys_vars->EKMN_DRAG_POW));
+			}
+			else if((sys_vars->HYPER_VISC_FLAG = HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG != EKMN_DRAG)) {
+				// Hyperviscosity only
+				D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW));
+			}
+			else {
+				// No hyper viscosity or no ekman drag -> just normal viscosity
+				D_fac = dt * (sys_vars->NU * k_sqr);
+			}
+
+			Int_data->RK1[indx] += D_fac * run_data->w_hat[indx];
+			#endif
+
 			// Update temporary input for nonlinear term
 			Int_data->RK_tmp[indx] = run_data->w_hat[indx] + dt * RK4_A21 * Int_data->RK1[indx];
 		}
@@ -670,6 +690,30 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Nx, Int_d
 		tmp = i * Ny_Fourier;
 		for (int j = 0; j < Ny_Fourier; ++j) {
 			indx = tmp + j;
+
+			// Add linear term to RHS
+			#if defined(__RK4)
+			k_sqr = (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
+			
+			if((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
+				// Both Hyperviscosity and Ekman drag
+				D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW) + sys_vars->EKMN_ALPHA * pow(k_sqr, sys_vars->EKMN_DRAG_POW)); 
+			}
+			else if((sys_vars->HYPER_VISC_FLAG != HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
+				// No hyperviscosity but we have Ekman drag
+				D_fac = dt * (sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA * pow(k_sqr, sys_vars->EKMN_DRAG_POW));
+			}
+			else if((sys_vars->HYPER_VISC_FLAG = HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG != EKMN_DRAG)) {
+				// Hyperviscosity only
+				D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW));
+			}
+			else {
+				// No hyper viscosity or no ekman drag -> just normal viscosity
+				D_fac = dt * (sys_vars->NU * k_sqr);
+			}
+
+			Int_data->RK2[indx] += D_fac * Int_data->RK_tmp[indx];
+			#endif
 
 			// Update temporary input for nonlinear term
 			Int_data->RK_tmp[indx] = run_data->w_hat[indx] + dt * RK4_A32 * Int_data->RK2[indx];
@@ -682,12 +726,66 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Nx, Int_d
 		for (int j = 0; j < Ny_Fourier; ++j) {
 			indx = tmp + j;
 
+			// Add linear term to RHS
+			#if defined(__RK4)
+			k_sqr = (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
+			
+			if((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
+				// Both Hyperviscosity and Ekman drag
+				D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW) + sys_vars->EKMN_ALPHA * pow(k_sqr, sys_vars->EKMN_DRAG_POW)); 
+			}
+			else if((sys_vars->HYPER_VISC_FLAG != HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
+				// No hyperviscosity but we have Ekman drag
+				D_fac = dt * (sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA * pow(k_sqr, sys_vars->EKMN_DRAG_POW));
+			}
+			else if((sys_vars->HYPER_VISC_FLAG = HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG != EKMN_DRAG)) {
+				// Hyperviscosity only
+				D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW));
+			}
+			else {
+				// No hyper viscosity or no ekman drag -> just normal viscosity
+				D_fac = dt * (sys_vars->NU * k_sqr);
+			}
+
+			Int_data->RK3[indx] += D_fac * Int_data->RK_tmp[indx];
+			#endif
+
 			// Update temporary input for nonlinear term
 			Int_data->RK_tmp[indx] = run_data->w_hat[indx] + dt * RK4_A43 * Int_data->RK3[indx];
 		}
 	}
 	// ----------------------- Stage 4
 	NonlinearRHSBatch(Int_data->RK_tmp, Int_data->RK4, Int_data->nonlin, Int_data->nabla_psi, Int_data->nabla_w);
+	#if defined(__RK4)
+	for (int i = 0; i < local_Nx; ++i) {
+		tmp = i * Ny_Fourier;
+		for (int j = 0; j < Ny_Fourier; ++j) {
+			indx = tmp + j;
+
+			// Add linear term to RHS
+			k_sqr = (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
+			
+			if((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
+				// Both Hyperviscosity and Ekman drag
+				D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW) + sys_vars->EKMN_ALPHA * pow(k_sqr, sys_vars->EKMN_DRAG_POW)); 
+			}
+			else if((sys_vars->HYPER_VISC_FLAG != HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
+				// No hyperviscosity but we have Ekman drag
+				D_fac = dt * (sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA * pow(k_sqr, sys_vars->EKMN_DRAG_POW));
+			}
+			else if((sys_vars->HYPER_VISC_FLAG = HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG != EKMN_DRAG)) {
+				// Hyperviscosity only
+				D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW));
+			}
+			else {
+				// No hyper viscosity or no ekman drag -> just normal viscosity
+				D_fac = dt * (sys_vars->NU * k_sqr);
+			}
+
+			Int_data->RK4[indx] += D_fac * Int_data->RK_tmp[indx];
+		}
+	}
+	#endif
 	
 	
 	/////////////////////
@@ -704,10 +802,10 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Nx, Int_d
 				tmp_a_k_norm = cabs(run_data->w_hat[indx]);
 				#endif
 
-				#if defined(__EULER)
+				#if defined(__EULER) || (defined(__NAVIER) && defined(__RK4))
 				// Update Fourier vorticity with the RHS
 				run_data->w_hat[indx] = run_data->w_hat[indx] + (dt * (RK4_B1 * Int_data->RK1[indx]) + dt * (RK4_B2 * Int_data->RK2[indx]) + dt * (RK4_B3 * Int_data->RK3[indx]) + dt * (RK4_B4 * Int_data->RK4[indx]));
-				#elif defined(__NAVIER)
+				#elif defined(__NAVIER) && defined(__RK4CN)
 				// Compute the pre factors for the RK4CN update step
 				k_sqr = (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 				
@@ -1042,6 +1140,20 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 		// Transform to Fourier Space
 		// ---------------------------------------
 		fftw_mpi_execute_dft_r2c((sys_vars->fftw_2d_dft_r2c), run_data->w, w_hat);
+	}
+	else if(!(strcmp(sys_vars->u0, "ZERO"))) {
+		// ------------------------------------------------
+		// Zero - A Zero vorticity field initial condition
+		// ------------------------------------------------
+		for (int i = 0; i < local_Nx; ++i) {
+			tmp = i * Ny_Fourier;
+			for (int j = 0; j < Ny_Fourier; ++j) {
+				indx = (tmp + j);
+
+				// Zero field
+				w_hat[indx] = 0.0 + 0.0 * I; 
+			}
+		}
 	}
 	else if (!(strcmp(sys_vars->u0, "DECAY_TURB_BB")) || !(strcmp(sys_vars->u0, "DECAY_TURB_NB")) || !(strcmp(sys_vars->u0, "DECAY_TURB_EXP")) || !(strcmp(sys_vars->u0, "DECAY_TURB_EXP_II"))) {
 		// --------------------------------------------------------
@@ -2755,6 +2867,8 @@ void FreeMemory(Int_data_struct* Int_data) {
 	fftw_free(run_data->tot_palin);
 	fftw_free(run_data->enrg_diss);
 	fftw_free(run_data->enst_diss);
+	fftw_free(run_data->mean_flow_x);
+	fftw_free(run_data->mean_flow_y);
 	#endif
 	#if defined(__PHASE_SYNC)
 	fftw_free(run_data->phase_order_k);
@@ -2794,6 +2908,7 @@ void FreeMemory(Int_data_struct* Int_data) {
 		fftw_free(run_data->time);
 	}
 	#endif
+
 
 	// Free integration variables
 	fftw_free(Int_data->RK1);
