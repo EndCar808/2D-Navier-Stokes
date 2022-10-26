@@ -309,19 +309,21 @@ if __name__ == '__main__':
 
     if cmdargs.video:
 
-        wmin = -10
-        wmax = 10
+        wmin = np.amin(run_data.w)
+        wmax = np.amax(run_data.w)
 
         ## Get max and min system measures 
         emax  = np.amax(run_data.tot_enrg[:] )
-        enmax = np.amax(run_data.tot_enst[:] )
+        enmax = np.amax(run_data.tot_enst[:] / 15.5**2 )
         pmax  = np.amax(run_data.tot_palin[:])
         # print(emax, enmax, pmax)
-        m_max = np.amax([emax, enmax, pmax])
         emin  = np.amin(run_data.tot_enrg[:] )
-        enmin = np.amin(run_data.tot_enst[:] )
+        enmin = np.amin(run_data.tot_enst[:] / 15.5**2 )
         pmin  = np.amin(run_data.tot_palin[:] )
-        m_min = np.amin([emin, enmin, pmin])
+        # m_max = np.amax([emax, enmax, pmax])
+        # m_min = np.amin([emin, enmin, pmin])
+        m_max = np.amax([emax, enmax])
+        m_min = np.amin([emin, enmin])
 
         ## Start timer
         start = TIME.perf_counter()
@@ -334,7 +336,7 @@ if __name__ == '__main__':
             proc_lim = cmdargs.num_threads
 
             ## Create tasks for the process pool
-            groups_args = [(mprocs.Process(target = plot_flow_summary, args = (vid_snaps_output_dir, i, run_data.w[i, :, :], wmin, wmax, m_min, m_max, run_data.x, run_data.y, run_data.time, sys_vars.Nx, sys_vars.Ny, run_data.kx, run_data.ky, spec_data.enrg_spectrum[i, :], spec_data.enst_spectrum[i, :], run_data.tot_enrg, run_data.tot_enst, run_data.tot_palin)) for i in range(run_data.w.shape[0]))] * proc_lim
+            groups_args = [(mprocs.Process(target = plot_flow_summary, args = (vid_snaps_output_dir, i, run_data.w[i, :, :], wmin, wmax, m_min, m_max, run_data.x, run_data.y, run_data.time, sys_vars.Nx, sys_vars.Ny, run_data.kx, run_data.ky, spec_data.enrg_spectrum[i, :], spec_data.enst_spectrum[i, :], run_data.tot_enrg, run_data.tot_enst[:] / (15.5**2), run_data.tot_palin)) for i in range(run_data.w.shape[0]))] * proc_lim
 
             ## Loop of grouped iterable
             for procs in zip_longest(*groups_args): 
@@ -351,7 +353,7 @@ if __name__ == '__main__':
         else:
             # Loop over snapshots
             for i in range(sys_vars.ndata):
-                plot_flow_summary(vid_snaps_output_dir, i, run_data.w[i, :, :], wmin, wmax, m_min, m_max, run_data.x, run_data.y, run_data.time, sys_vars.Nx, sys_vars.Ny, run_data.kx, run_data.ky, spec_data.enrg_spectrum[i, :], spec_data.enst_spectrum[i, :], run_data.tot_enrg, run_data.tot_enst, run_data.tot_palin)
+                plot_flow_summary(vid_snaps_output_dir, i, run_data.w[i, :, :], wmin, wmax, m_min, m_max, run_data.x, run_data.y, run_data.time, sys_vars.Nx, sys_vars.Ny, run_data.kx, run_data.ky, spec_data.enrg_spectrum[i, :], spec_data.enst_spectrum[i, :], run_data.tot_enrg, run_data.tot_enst[:] / (15.5**2), run_data.tot_palin)
         
 
         framesPerSec = 30

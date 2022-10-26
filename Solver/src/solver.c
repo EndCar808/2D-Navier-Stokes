@@ -680,10 +680,14 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Nx, Int_d
 			Int_data->RK1[indx] += D_fac * run_data->w_hat[indx];
 			#endif
 
+			// printf("RHS1[%d, %d]: %1.16lf %1.16lf -- (%d, %d)\n", i, j, creal(Int_data->RK1[indx]), cimag(Int_data->RK1[indx]), run_data->k[0][i], run_data->k[1][j]);
+
 			// Update temporary input for nonlinear term
 			Int_data->RK_tmp[indx] = run_data->w_hat[indx] + dt * RK4_A21 * Int_data->RK1[indx];
 		}
+		// printf("\n");
 	}
+	// printf("\n");
 	// ----------------------- Stage 2
 	NonlinearRHSBatch(Int_data->RK_tmp, Int_data->RK2, Int_data->nonlin, Int_data->nabla_psi, Int_data->nabla_w);
 	for (int i = 0; i < local_Nx; ++i) {
@@ -715,10 +719,14 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Nx, Int_d
 			Int_data->RK2[indx] += D_fac * Int_data->RK_tmp[indx];
 			#endif
 
+			// printf("RHS2[%d, %d]: %1.16lf %1.16lf -- (%d, %d)\n", i, j, creal(Int_data->RK2[indx]), cimag(Int_data->RK2[indx]), run_data->k[0][i], run_data->k[1][j]);
+
 			// Update temporary input for nonlinear term
 			Int_data->RK_tmp[indx] = run_data->w_hat[indx] + dt * RK4_A32 * Int_data->RK2[indx];
 		}
+		// printf("\n");
 	}
+	// printf("\n");
 	// ----------------------- Stage 3
 	NonlinearRHSBatch(Int_data->RK_tmp, Int_data->RK3, Int_data->nonlin, Int_data->nabla_psi, Int_data->nabla_w);
 	for (int i = 0; i < local_Nx; ++i) {
@@ -750,10 +758,14 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Nx, Int_d
 			Int_data->RK3[indx] += D_fac * Int_data->RK_tmp[indx];
 			#endif
 
+			// printf("RHS3[%d, %d]: %1.16lf %1.16lf -- (%d, %d)\n", i, j, creal(Int_data->RK3[indx]), cimag(Int_data->RK3[indx]), run_data->k[0][i], run_data->k[1][j]);
+
 			// Update temporary input for nonlinear term
 			Int_data->RK_tmp[indx] = run_data->w_hat[indx] + dt * RK4_A43 * Int_data->RK3[indx];
 		}
+		// printf("\n");
 	}
+	// printf("\n");
 	// ----------------------- Stage 4
 	NonlinearRHSBatch(Int_data->RK_tmp, Int_data->RK4, Int_data->nonlin, Int_data->nabla_psi, Int_data->nabla_w);
 	#if defined(__RK4)
@@ -783,10 +795,16 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Nx, Int_d
 			}
 
 			Int_data->RK4[indx] += D_fac * Int_data->RK_tmp[indx];
+
+			// printf("RHS4[%d, %d]: %1.16lf %1.16lf -- (%d, %d)\n", i, j, creal(Int_data->RK4[indx]), cimag(Int_data->RK4[indx]), run_data->k[0][i], run_data->k[1][j]);
+
 		}
+		// printf("\n");
 	}
+	// printf("\n");
 	#endif
 	
+	// printf("\n\n\n\n\n");
 	
 	/////////////////////
 	/// UPDATE STEP
@@ -804,7 +822,8 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Nx, Int_d
 
 				#if defined(__EULER) || (defined(__NAVIER) && defined(__RK4))
 				// Update Fourier vorticity with the RHS
-				run_data->w_hat[indx] = run_data->w_hat[indx] + (dt * (RK4_B1 * Int_data->RK1[indx]) + dt * (RK4_B2 * Int_data->RK2[indx]) + dt * (RK4_B3 * Int_data->RK3[indx]) + dt * (RK4_B4 * Int_data->RK4[indx]));
+				run_data->w_hat[indx] = run_data->w_hat[indx] + (dt / 6.0) * (Int_data->RK1[indx] + 2.0 * Int_data->RK2[indx] + 2.0 * Int_data->RK3[indx] + Int_data->RK4[indx]);
+				// run_data->w_hat[indx] = run_data->w_hat[indx] + (dt * (RK4_B1 * Int_data->RK1[indx]) + dt * (RK4_B2 * Int_data->RK2[indx]) + dt * (RK4_B3 * Int_data->RK3[indx]) + dt * (RK4_B4 * Int_data->RK4[indx]));
 				#elif defined(__NAVIER) && defined(__RK4CN)
 				// Compute the pre factors for the RK4CN update step
 				k_sqr = (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
@@ -866,9 +885,13 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* non
 	const long int Nx         = sys_vars->N[0];
 	const long int Ny         = sys_vars->N[1];
 	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
-	fftw_complex k_sqr;
+	double k_sqr;
 	double vel1;
 	double vel2;
+	double norm_fac = 1.0 / (Nx * Ny);
+
+	// Apply dealiasing 
+ 	// ApplyDealiasing(w_hat, 1, sys_vars->N);
 
 	// -----------------------------------
 	// Compute Fourier Space Velocities
@@ -881,25 +904,30 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* non
 
 			if ((run_data->k[0][i] != 0) || (run_data->k[1][j]  != 0)) {
 				// denominator
-				k_sqr = I / (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
+				k_sqr = 1.0 / (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 
 				// Fill fill fourier velocities array
-				dw_hat_dt[SYS_DIM * indx + 0] = k_sqr * ((double) run_data->k[1][j]) * w_hat[indx];
-				dw_hat_dt[SYS_DIM * indx + 1] = -1.0 * k_sqr * ((double) run_data->k[0][i]) * w_hat[indx];
+				dw_hat_dt[SYS_DIM * indx + 0] = I * ((double) run_data->k[1][j]) * k_sqr * w_hat[indx];
+				dw_hat_dt[SYS_DIM * indx + 1] = -1.0 * I * ((double) run_data->k[0][i]) * k_sqr * w_hat[indx];
 			}
 			else {
 				dw_hat_dt[SYS_DIM * indx + 0] = 0.0 + 0.0 * I;
 				dw_hat_dt[SYS_DIM * indx + 1] = 0.0 + 0.0 * I;
 			}
+			// printf("uh[%d, %d]: %1.16lf %1.16lf -- vh[%d, %d]: %1.16lf %1.16lf -- vh[%d, %d]: %1.16lf %1.16lf  -- (%d, %d)\n", i, j, creal(dw_hat_dt[SYS_DIM * indx + 0]), cimag(dw_hat_dt[SYS_DIM * indx + 0]), i, j, creal(dw_hat_dt[SYS_DIM * indx + 1]), cimag(dw_hat_dt[SYS_DIM * indx + 1]), i, j, creal(w_hat[indx]), cimag(w_hat[indx]), run_data->k[0][i], run_data->k[1][j]);
+
 		}
+		// printf("\n");
 	}
+	// printf("\n");
 
 	// ----------------------------------
 	// Transform to Real Space
 	// ----------------------------------
 	// Batch transform both fourier velocites to real space
 	fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_batch_c2r), dw_hat_dt, u);
-
+	
+	
 	// ---------------------------------------------
 	// Compute Fourier Space Vorticity Derivatives
 	// ---------------------------------------------
@@ -918,14 +946,19 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* non
 				dw_hat_dt[SYS_DIM * indx + 0] = 0.0 + 0.0 * I;
 				dw_hat_dt[SYS_DIM * indx + 1] = 0.0 + 0.0 * I;
 			}
+			// printf("dwdx[%d, %d]: %1.16lf %1.16lf -- dwdy[%d, %d]: %1.16lf %1.16lf -- (%d, %d)\n", i, j, creal(dw_hat_dt[SYS_DIM * indx + 0]), cimag(dw_hat_dt[SYS_DIM * indx + 0]), i, j, creal(dw_hat_dt[SYS_DIM * indx + 1]), cimag(dw_hat_dt[SYS_DIM * indx + 1]), run_data->k[0][i], run_data->k[1][j]);
+
 		}
+		// printf("\n");
 	}
+	// printf("\n");
 
 	// ----------------------------------
 	// Transform to Real Space
 	// ----------------------------------
 	// Batch transform both fourier vorticity derivatives to real space
 	fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_batch_c2r), dw_hat_dt, nabla_w);
+	// fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_c2r), w_hat, run_data->w);
 	
 
 	// -----------------------------------
@@ -936,19 +969,26 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* non
 		tmp = i * (Ny + 2);
 		for (int j = 0; j < Ny; ++j) {
 			indx = tmp + j; 
- 			
- 			// Perform multiplication of the nonlinear term 
+			// printf("u[%d, %d]: %1.16lf -- v[%d, %d]: %1.16lf -- w[%d, %d]: %1.16lf -- (%d, %d)\n", i, j, u[SYS_DIM * indx + 0] * norm_fac, i, j, u[SYS_DIM * indx + 1] * norm_fac, i, j, run_data->w[indx] * norm_fac, run_data->k[0][i], run_data->k[1][j]);
+
+ 			// // Perform multiplication of the nonlinear term 
  			vel1 = u[SYS_DIM * indx + 0];
  			vel2 = u[SYS_DIM * indx + 1];
  			nonlinear[indx] = 1.0 * (vel1 * nabla_w[SYS_DIM * indx + 0] + vel2 * nabla_w[SYS_DIM * indx + 1]);
+			// // Perform multiplication of the nonlinear term 
+			// u[SYS_DIM * indx + 0] *= run_data->w[indx];
+			// u[SYS_DIM * indx + 1] *= run_data->w[indx];
  		}
+ 		// printf("\n");
  	}
+ 	// printf("\n");
 
  	// -------------------------------------
  	// Transform Nonlinear Term To Fourier
  	// -------------------------------------
  	// Transform Fourier nonlinear term back to Fourier space
  	fftw_mpi_execute_dft_r2c((sys_vars->fftw_2d_dft_r2c), nonlinear, dw_hat_dt);
+ 	// fftw_mpi_execute_dft_r2c((sys_vars->fftw_2d_dft_batch_r2c), u, dw_hat_dt);
 
 
  	for (int i = 0; i < local_Nx; ++i) {
@@ -957,7 +997,8 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* non
  			indx = tmp + j;
 
  			if ((run_data->k[0][i] != 0) || (run_data->k[1][j]  != 0)) {
- 				dw_hat_dt[indx] *= 1.0 / pow((Nx * Ny), 2.0);
+ 				// dw_hat_dt[indx] = (-I * run_data->k[0][i] * dw_hat_dt[SYS_DIM * indx + 0] -I * run_data->k[1][j] * dw_hat_dt[SYS_DIM * indx + 1]) * pow(norm_fac, 2.0);
+ 				dw_hat_dt[indx] *= pow(norm_fac, 2.0);
  			}
  			else {
  				dw_hat_dt[indx] = 0.0 + 0.0 * I;
@@ -966,6 +1007,7 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* non
  		}
 
  	}
+
  	// ----------------------------------------
  	// Apply Dealiasing & Forcing & Conjugacy
  	// ----------------------------------------
@@ -979,6 +1021,7 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* non
 			dw_hat_dt[run_data->forcing_indx[i]] += run_data->forcing[i]; 
 		}
 	}
+
 
 	// Ensure conjugacy in the ky = 0 modes of the intial condition
     ForceConjugacy(w_hat, sys_vars->N);
@@ -1015,7 +1058,9 @@ void ApplyDealiasing(fftw_complex* array, int array_dim, const long int* N) {
 			k_sqr = (double) run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j];
 
 			#if defined(__DEALIAS_23)
-			if (k_sqr > kmax_sqr) {
+			if (k_sqr >= kmax_sqr) {
+			// if (fabs(run_data->k[0][i]) > Nx / 3.0 || run_data->k[1][j] > Ny / 3.0 ) {
+			// if (run_data->k[0][i] >= round(Nx / 3.0) || run_data->k[0][i] < -round(Nx / 3.0) || run_data->k[1][j] >= round(Ny / 3.0) ) {
 				for (int l = 0; l < array_dim; ++l) {
 					// Set dealised modes to 0
 					array[indx + l] = 0.0 + 0.0 * I;	

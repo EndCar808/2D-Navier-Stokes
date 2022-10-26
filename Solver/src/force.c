@@ -109,7 +109,10 @@ void InitializeForcing(void) {
 				// Compute |k|
 				k_abs = sqrt((double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]));
 
-				if (run_data->k[0][i] != 0 && run_data->k[1][j] != 0) {
+				if (run_data->k[0][i] == 0 && run_data->k[1][j] == 0) {
+					continue;
+				}
+				else {
 					if (j == 0 || j == Ny_Fourier - 1) {
 						forc_spect += exp(- pow(k_abs - STOC_FORC_K, 2.0) / (2.0 * STOC_FORC_DELTA_K * STOC_FORC_DELTA_K)) / (2.0 * pow(k_abs, 2.0));
 					}
@@ -129,7 +132,7 @@ void InitializeForcing(void) {
 
 		// Sync sum of forced wavenumbers
 		MPI_Allreduce(MPI_IN_PLACE, &forc_spect, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-		forc_spect *= 0.5 / pow(sys_vars->N[0] * sys_vars->N[1], 2.0);
+		forc_spect *= 1.0 / pow(sys_vars->N[0] * sys_vars->N[1], 2.0);
 
 		// Allocate forcing data on the local forcing process only
 		if (sys_vars->local_forcing_proc) {
@@ -163,6 +166,7 @@ void InitializeForcing(void) {
 				}
 			}
 
+
 			// -----------------------------------
 			// Fill Forcing Info
 			// -----------------------------------
@@ -178,7 +182,10 @@ void InitializeForcing(void) {
 					k_abs = sqrt((double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]));
 
 					// Record the data for the forced modes
-					if (run_data->k[0][i] != 0 && run_data->k[1][j] != 0) {
+					if (run_data->k[0][i] == 0 && run_data->k[1][j] == 0) {
+						continue;
+					}
+					else {
 						run_data->forcing_scaling[force_mode_counter] = scale_fac_f0 * exp(- pow(k_abs - STOC_FORC_K, 2.0) / (2.0 * STOC_FORC_DELTA_K * STOC_FORC_DELTA_K));
 						run_data->forcing_indx[force_mode_counter]    = indx;
 						run_data->forcing_k[0][force_mode_counter]    = run_data->k[0][i];
@@ -441,8 +448,18 @@ void ComputeForcing(double dt) {
 				r1 = (double) rand() / (double) RAND_MAX;
 
 				// // Now compute the forcing 
-				run_data->forcing[i] = sqrt(run_data->forcing_scaling[i]) * cexp(2.0 * M_PI * I * r1) / sqrt(dt);				
-			}		
+				run_data->forcing[i] = sqrt(run_data->forcing_scaling[i]) * cexp(2.0 * M_PI * I * r1) / sqrt(dt);
+				// printf("F[%d, %d]: %1.16lf %1.16lf -- (%d %d) -- dt: %1.16lf\n", run_data->forcing_k[0][i], run_data->forcing_k[1][i], creal(run_data->forcing[i]), cimag(run_data->forcing[i]), run_data->forcing_k[0][i], run_data->forcing_k[1][i], dt);
+			}	
+
+			// for (int i = 0; i < sys_varslocal_Nx; ++i) {
+			// 	int tmp = i * sys_vars->N[0] / 2 + 1;
+			// 	for (int j = 0; j < sys_vars->N[0] / 2 + 1; ++j) {
+			// 		int indx = tmp + j;
+			// 	}
+			// 	printf("\n");
+			// }
+			// printf("\n\n");	
 		}
 		//---------------------------- Compute Constant (in time) Gaussian ring forcing -> f_k = n1 + n2 * I, n1, n2 ~ N(0, 1)
 		else if(!(strcmp(sys_vars->forcing, "CONST_GAUSS"))) {

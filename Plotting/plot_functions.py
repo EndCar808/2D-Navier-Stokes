@@ -297,13 +297,13 @@ def plot_flow_summary(out_dir, i, w, w_min, w_max, measure_min, measure_max, x, 
 
     ## Create Figure
     fig = plt.figure(figsize = (16, 8))
-    gs  = GridSpec(2, 2) 
+    gs  = GridSpec(2, 2, hspace = 0.4) 
 
     ##-------------------------
     ## Plot vorticity   
     ##-------------------------
     ax1 = fig.add_subplot(gs[0, 0])
-    im1 = ax1.imshow(w, extent = (y[0], y[-1], x[-1], x[0]), cmap = "jet") # vmin = w_min, vmax = w_max 
+    im1 = ax1.imshow(w, extent = (y[0], y[-1], x[-1], x[0]), cmap = "jet") ##, vmin = w_min, vmax = w_max
     ax1.set_xlabel(r"$y$")
     ax1.set_ylabel(r"$x$")
     ax1.set_xlim(0.0, y[-1])
@@ -326,7 +326,7 @@ def plot_flow_summary(out_dir, i, w, w_min, w_max, measure_min, measure_max, x, 
     ax2 = fig.add_subplot(gs[0, 1])
     ax2.plot(time[:i], tot_en[:i] )
     ax2.plot(time[:i], tot_ens[:i] )
-    ax2.plot(time[:i], tot_pal[:i])
+    # ax2.plot(time[:i], tot_pal[:i])
     ax2.set_xlabel(r"$t$")
     ax2.set_xlim(time[0], time[-1])
     ax2.set_ylim(measure_min, measure_max)
