@@ -20,7 +20,9 @@
 #endif
 	
 #include <gsl/gsl_histogram.h> 
-#include <gsl/gsl_statistics.h>
+#include <gsl/gsl_statistics_double.h>
+#include <gsl/gsl_rstat.h>
+#include <gsl/gsl_math.h>
 
 // ---------------------------------------------------------------------
 //  Compile Time Macros and Definitions
@@ -81,6 +83,7 @@
 #if defined(__DEBUG)
 #define DEBUG
 #endif
+
 // ---------------------------------------------------------------------
 //  Datasets to Write to File
 // ---------------------------------------------------------------------
@@ -108,6 +111,15 @@
 // #define __ENRG_FLUX_SPECT
 // Choose whether to compute the phase sync data
 // #define __PHASE_SYNC
+// If Stats is called for at compile time
+#if defined(__STATS)
+#define __VEL_INC
+#define __VORT_INC
+#define __VEL_GRAD
+#define __VORT_GRAD
+#define __VEL_STR_FUNC
+#define __VEL_VORT_STR_FUNC
+#endif
 // Choose whether to save the time, collocation points and wavenumbers
 #define __TIME
 #define __COLLOC_PTS
@@ -148,8 +160,8 @@
 // Forcing parameters
 #define STOC_FORC_K_MIN	12.5	// The minimum value of the modulus forced wavevectors for the stochasitc (Gaussian) forcing
 #define STOC_FORC_K_MAX 15.5    // The maximum value of the modulus forced wavevectors for the stochastic (Gaussian) forcing
-#define STOC_FORC_K 14.0
-#define STOC_FORC_DELTA_K 1.5
+#define STOC_FORC_K 15	        // The peak of the power spectrum of the forcing field for the stochastic forcing
+#define STOC_FORC_DELTA_K 1.5   // The standard deviation of the power spectrum for the forcing field of the stochastic forcing 
 #define CONST_GAUSS_K_MIN 10    // The minimum value of the mod of forced wavevectors for the Constant Gaussian Ring forcing
 #define CONST_GAUSS_K_MAX 12    // The minimum value of the mod of forced wavevectors for the Constant Gaussian Ring forcing
 // System checking parameters
@@ -159,6 +171,13 @@
 // Dynamic Modes
 #define UPR_SBST_LIM 64         // The upper mode limit of the energy/enstrophy flux
 #define LWR_SBST_LIM 0  		// The lower mode limit of the energy/enstrophy flux
+// Stats parameters
+#define NUM_POW 6 				// The highest moment to compute for the structure function
+#define NUM_RUN_STATS 7 		// The number of running stats moments to record
+#define VEL_BIN_LIM	40			// The bin limits (in units of standard deviations) for the velocity histogram
+#define VEL_NUM_BINS 1000		// The number of bins to use for the velocity histograms
+#define NUM_INCR 2              // The number of increment length scales e.g. 2 = smallest and largest
+#define INCR_TYPES 2 			// The number of increment directions i.e., longitudinal and transverse
 // ---------------------------------------------------------------------
 //  Global Struct Definitions
 // ---------------------------------------------------------------------
@@ -279,6 +298,21 @@ typedef struct Int_data_struct {
 	int AB_pre_steps;				// The number of derivatives to perform for the AB4 scheme
 } Int_data_struct;
 
+// Stats data struct
+typedef struct stats_data_struct {
+	double* vel_str_func[INCR_TYPES + 1][NUM_POW];					// Array to hold the structure functions of the Velocity increments
+	double* vel_str_func_abs[INCR_TYPES + 1][NUM_POW];				// Array to hold the structure functions of the absolute value of flux Velocity increments
+	gsl_rstat_workspace* vel_inc_stats[INCR_TYPES + 1][NUM_INCR];   // Struct to hold the running stats for the velocity increments
+	gsl_rstat_workspace* vort_inc_stats[INCR_TYPES + 1][NUM_INCR];	// Struct to hold the running stats for the vorticity increments
+	gsl_rstat_workspace* vel_stats[INCR_TYPES + 1];					// Struct to hold the running stats for the velocity field
+	gsl_rstat_workspace* vort_stats[INCR_TYPES + 1];				// Struct to hold the running stats for the vorticity field
+	gsl_histogram* vel_inc_hist[INCR_TYPES + 1][NUM_INCR];			// Struct to hold the histogram info for the velocity increments
+	gsl_histogram* vort_inc_hist[INCR_TYPES + 1][NUM_INCR];			// Struct to hold the histogram info for the vorticity increments
+	long int num_stats_steps;										// Counter for the number of steps statistics have been computed
+	int set_stats_flag;												// Flag to indicate if the stats objects such as running stats and histogram limits need to be set
+} stats_data_struct;
+
+
 // HDF5 file info struct
 typedef struct HDF_file_info_struct {
 	char input_file_name[512];		// Array holding input file name
@@ -309,6 +343,7 @@ typedef struct complex_type_tmp {
 extern system_vars_struct *sys_vars; 		    // Global pointer to system parameters struct
 extern runtime_data_struct *run_data; 			// Global pointer to system runtime variables struct 
 extern HDF_file_info_struct *file_info; 		// Global pointer to system forcing variables struct 
+extern stats_data_struct *stats_data;           // Globale pointer to the statistics struct
 
 #define __DATA_TYPES
 #endif

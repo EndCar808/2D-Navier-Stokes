@@ -26,7 +26,7 @@
 runtime_data_struct*      run_data;
 system_vars_struct*       sys_vars;
 HDF_file_info_struct*    file_info;
-
+stats_data_struct*      stats_data;
 // ---------------------------------------------------------------------
 //  Main function
 // ---------------------------------------------------------------------
@@ -36,11 +36,13 @@ int main(int argc, char** argv) {
 	runtime_data_struct runtime_data;
 	system_vars_struct   system_vars;
 	HDF_file_info_struct   HDF_file_info;
+	stats_data_struct  statistics_data;
 	
 	// Point the global pointers to these structs
 	run_data  = &runtime_data;
 	sys_vars  = &system_vars;
 	file_info = &HDF_file_info;
+	stats_data = &statistics_data;
 
 	//////////////////////////////////
 	// Initialize MPI section

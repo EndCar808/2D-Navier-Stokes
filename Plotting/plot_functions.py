@@ -303,7 +303,7 @@ def plot_flow_summary(out_dir, i, w, w_min, w_max, measure_min, measure_max, x, 
     ## Plot vorticity   
     ##-------------------------
     ax1 = fig.add_subplot(gs[0, 0])
-    im1 = ax1.imshow(w, extent = (y[0], y[-1], x[-1], x[0]), cmap = "jet") ##, vmin = w_min, vmax = w_max
+    im1 = ax1.imshow(w, extent = (y[0], y[-1], x[-1], x[0]), cmap = "bwr") #,vmin = w_min, vmax = w_max
     ax1.set_xlabel(r"$y$")
     ax1.set_ylabel(r"$x$")
     ax1.set_xlim(0.0, y[-1])
@@ -326,36 +326,55 @@ def plot_flow_summary(out_dir, i, w, w_min, w_max, measure_min, measure_max, x, 
     ax2 = fig.add_subplot(gs[0, 1])
     ax2.plot(time[:i], tot_en[:i] )
     ax2.plot(time[:i], tot_ens[:i] )
-    # ax2.plot(time[:i], tot_pal[:i])
+    ax2.plot(time[:i], tot_pal[:i])
     ax2.set_xlabel(r"$t$")
     ax2.set_xlim(time[0], time[-1])
     ax2.set_ylim(measure_min, measure_max)
     # ax2.set_yscale("log")
     ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
-    ax2.legend([r"$\mathcal{K}(t) / \mathcal{K}(0)$", r"$\mathcal{E}(t) / \mathcal{E}(0)$", r"$\mathcal{P}(t) / \mathcal{P}(0)$"])
+    ax2.legend([r"$\mathcal{K}(t) $", r"$\mathcal{E}(t) $", r"$\epsilon(t) $"])
 
+    #--------------------------    
+    # Plot Energy Spectra   
+    #-------------------------- 
     ax3 = fig.add_subplot(gs[1, 0])
     kindx = int(Nx / 3 + 1)
     kk = np.arange(1, kindx)
+    kk_scale = np.arange(20, kindx - 10)
     spec_enrg = enrg_spec[1:kindx]
-    ax3.plot(kk, spec_enrg, color = 'y')
-    ax3.set_xlabel(r"$|k|$")
+    ax3.plot(kk, spec_enrg)
+    ax3.plot(kk_scale, 1.0 / kk_scale**(4) * 10**3, color = 'k', linestyle = ":", label = "$k^{-4}$")
+    ax3.set_xlabel(r"$|\mathbf{k}|$")
     ax3.set_ylabel(r"$\mathcal{K}(|\mathbf{k}|)$") 
     ax3.set_title(r"Energy Spectrum")
     ax3.set_yscale('log')
     ax3.set_xscale('log')
+    ax3.set_xlim(1, Nx)
+    ax3.set_ylim(1e-6, 1e0)
+    ax3.legend()
+    ax3.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
 
 
+    #--------------------------    
+    # Plot Enstrophy Spectra   
+    #-------------------------- 
     ax4 = fig.add_subplot(gs[1, 1])
     kindx = int(Nx / 3 + 1)
     kk = np.arange(1, kindx)
+    kk_scale = np.arange(20, kindx - 10)
     spec_enst = enst_spec[1:kindx]
-    ax4.plot(kk, spec_enst, color = 'y')
-    ax4.set_xlabel(r"$|k|$")
+    ax4.plot(kk, spec_enst)
+    ax4.plot(kk_scale, 1.0 / kk_scale**(5/3) * 10**3, color = 'k', linestyle = ":", label = "$k^{-5/3}$")
+    ax4.set_xlabel(r"$|\mathbf{k}|$")
     ax4.set_ylabel(r"$\mathcal{E}(|\mathbf{k}|)$")  
     ax4.set_title(r"Enstrophy Spectrum")
     ax4.set_yscale('log')
     ax4.set_xscale('log')
+    ax4.set_xlim(1, Nx)
+    ax4.set_ylim(1e-2, 3e1)
+    ax4.legend()
+    ax4.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+
 
     ## Save figure
     plt.savefig(out_dir + "SNAP_{:05d}.png".format(i), bbox_inches='tight') 

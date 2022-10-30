@@ -491,7 +491,7 @@ void GetOutputDirPath(void) {
 		// Get File Label from Simulation Data
 		// -------------------------------------
 		// Construct file label from simulation data
-		sprintf(file_data, "_SIM[%s-%s-%s]_N[%ld,%ld]_T[%1.1lf,%g,%1.3lf]_NU[%g,%d,%1.1lf]_DRAG[%g,%d,%1.1lf]_CFL[%1.2lf]_FORC[%s,%d,%1.3lf]_u0[%s].h5", 
+		sprintf(file_data, "_SIM[%s-%s-%s]_N[%ld,%ld]_T[%1.1lf,%g,%1.3lf]_NU[%g,%d,%1.1lf]_DRAG[%g,%d,%1.1lf]_CFL[%1.2lf]_FORC[%s,%d,%g]_u0[%s].h5", 
 											sys_type, solv_type, model_type, 
 											sys_vars->N[0], sys_vars->N[1], 
 											sys_vars->t0, sys_vars->dt, sys_vars->T, 
@@ -569,7 +569,7 @@ void GetOutputDirPath(void) {
 		// Construct Output folder
 		// ----------------------------------
 		// Construct file label from simulation data
-		sprintf(file_data, "SIM_DATA_%s_%s_%s_N[%ld,%ld]_T[%1.1lf,%g,%1.3lf]_NU[%g,%d,%1.1lf]_DRAG[%g,%d,%1.1lf]_CFL[%1.2lf]_FORC[%s,%d,%1.3lf]_u0[%s]_TAG[%s]/", 
+		sprintf(file_data, "SIM_DATA_%s_%s_%s_N[%ld,%ld]_T[%1.1lf,%g,%1.3lf]_NU[%g,%d,%1.1lf]_DRAG[%g,%d,%1.1lf]_CFL[%1.2lf]_FORC[%s,%d,%g]_u0[%s]_TAG[%s]/", 
 												sys_type, solv_type, model_type, 
 												sys_vars->N[0], sys_vars->N[1], 
 												sys_vars->t0, sys_vars->dt, sys_vars->T, 

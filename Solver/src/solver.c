@@ -1058,7 +1058,7 @@ void ApplyDealiasing(fftw_complex* array, int array_dim, const long int* N) {
 			k_sqr = (double) run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j];
 
 			#if defined(__DEALIAS_23)
-			if (k_sqr >= kmax_sqr) {
+			if (k_sqr > kmax_sqr) {
 			// if (fabs(run_data->k[0][i]) > Nx / 3.0 || run_data->k[1][j] > Ny / 3.0 ) {
 			// if (run_data->k[0][i] >= round(Nx / 3.0) || run_data->k[0][i] < -round(Nx / 3.0) || run_data->k[1][j] >= round(Ny / 3.0) ) {
 				for (int l = 0; l < array_dim; ++l) {
@@ -2954,7 +2954,6 @@ void FreeMemory(Int_data_struct* Int_data) {
 	}
 	#endif
 
-
 	// Free integration variables
 	fftw_free(Int_data->RK1);
 	fftw_free(Int_data->RK2);
@@ -2978,6 +2977,10 @@ void FreeMemory(Int_data_struct* Int_data) {
 	fftw_free(Int_data->nonlin);
 	fftw_free(Int_data->nabla_w);
 	fftw_free(Int_data->nabla_psi);
+
+	#if defined(__STATS)
+	FreeStatsObjects();
+	#endif
 
 	// ------------------------
 	// Destroy FFTW plans 

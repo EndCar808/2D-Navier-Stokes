@@ -114,10 +114,10 @@ void InitializeForcing(void) {
 				}
 				else {
 					if (j == 0 || j == Ny_Fourier - 1) {
-						forc_spect += exp(- pow(k_abs - STOC_FORC_K, 2.0) / (2.0 * STOC_FORC_DELTA_K * STOC_FORC_DELTA_K)) / (2.0 * pow(k_abs, 2.0));
+						forc_spect += exp(- pow(k_abs - sys_vars->force_k, 2.0) / (2.0 * STOC_FORC_DELTA_K * STOC_FORC_DELTA_K)) / (2.0 * pow(k_abs, 2.0));
 					}
 					else {
-						forc_spect += 2.0 * exp(- pow(k_abs - STOC_FORC_K, 2.0) / (2.0 * STOC_FORC_DELTA_K * STOC_FORC_DELTA_K)) / (2.0 * pow(k_abs, 2.0));						
+						forc_spect += 2.0 * exp(- pow(k_abs - sys_vars->force_k, 2.0) / (2.0 * STOC_FORC_DELTA_K * STOC_FORC_DELTA_K)) / (2.0 * pow(k_abs, 2.0));						
 					}
 					
 					// Count the forced modes
@@ -186,7 +186,7 @@ void InitializeForcing(void) {
 						continue;
 					}
 					else {
-						run_data->forcing_scaling[force_mode_counter] = scale_fac_f0 * exp(- pow(k_abs - STOC_FORC_K, 2.0) / (2.0 * STOC_FORC_DELTA_K * STOC_FORC_DELTA_K));
+						run_data->forcing_scaling[force_mode_counter] = scale_fac_f0 * exp(- pow(k_abs - sys_vars->force_k, 2.0) / (2.0 * STOC_FORC_DELTA_K * STOC_FORC_DELTA_K));
 						run_data->forcing_indx[force_mode_counter]    = indx;
 						run_data->forcing_k[0][force_mode_counter]    = run_data->k[0][i];
 						run_data->forcing_k[1][force_mode_counter]    = run_data->k[1][j];
@@ -425,7 +425,7 @@ void ComputeForcing(double dt) {
 				run_data->w_hat[run_data->forcing_indx[i]] = 0.0 + 0.0 * I;
 			}
 		}
-		//---------------------------- Compute Kolmogorov forcing -> f(u) = (sin(n y), 0); f(w) = -n cos(n y) -> f_k = -1/2 * n \delta(n)
+		//---------------------------- Compute Kolmogorov forcing -> f(u) = (a sin(n y), 0); f(w) = -n a cos(n y) -> f_k = -1/2 * n * a \delta(n)
 		else if(!(strcmp(sys_vars->forcing, "KOLM"))) {
 			// Compute the Kolmogorov forcing
 			run_data->forcing[0] = -0.5 * sys_vars->force_scale_var * (sys_vars->force_k + 0.0 * I);
