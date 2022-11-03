@@ -21,6 +21,14 @@ ifeq ($(OS), Ubuntu)
 		GSLFLAG := -lgsl -lgslcblas
 		INCDIR = -I/home/endacarroll/Downloads/hdf5-1.12.2/hdf5/include -I/usr/include/gsl/
 		LIBDIR = -L/home/endacarroll/Downloads/hdf5-1.12.2/hdf5/lib
+	else ifeq ($(MACH_NAME), turbo)
+		# TURBO
+		GCC := gcc
+		CCFLAG := -O3 -W -Wall -g
+		LIBFLAG := -lm -lhdf5 -lhdf5_hl
+		GSLFLAG := -lgsl -lgslcblas
+		INCDIR = -I/usr/include/x86_64-linux-gnu/mpich/ -I/opt/software/hdf5-1.12.2/include/ -I/opt/software/fftw-3.3.10/include/ -I/usr/include/gsl/ 
+		LIBDIR = -L/opt/software/hdf5-1.12.2/lib/ -L/opt/software/fftw-3.3.10/lib/
 	else
 		# CHIRP
 		GCC := mpicc

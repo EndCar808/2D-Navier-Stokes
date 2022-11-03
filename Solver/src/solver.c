@@ -514,7 +514,7 @@ void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdif
 				#if defined(__DPRK5)
 				if (iters > 1) {
 					// Get the higher order update step
-					dp_ho_step = run_data->w_hat[indx] + (dt * (RK5_Bs1 * Int_data->RK1[indx]) + dt * (RK5_Bs3 * Int_data->RK3[indx]) + dt * (RK5_Bs4 * Int_data->RK4[indx]) + dt * (RK5_Bs5 * Int_data->RK5[indx]) + dt * (RK5_Bs6 * Int_data->RK6[indx])) + dt * (RK5_Bs7 * Int_data->RK7[indx]));
+					dp_ho_step = run_data->w_hat[indx] + dt * (RK5_Bs1 * Int_data->RK1[indx]) + dt * (RK5_Bs3 * Int_data->RK3[indx]) + dt * (RK5_Bs4 * Int_data->RK4[indx]) + dt * (RK5_Bs5 * Int_data->RK5[indx]) + dt * (RK5_Bs6 * Int_data->RK6[indx]) + dt * (RK5_Bs7 * Int_data->RK7[indx]);
 					#if defined(PHASE_ONLY)
 					// Reset the amplitudes
 					dp_ho_step *= (tmp_a_k_norm / cabs(run_data->w_hat[indx]))
@@ -672,7 +672,7 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Nx, Int_d
 				// No hyperviscosity but we have Ekman drag
 				D_fac = dt * (sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA * pow(k_sqr, sys_vars->EKMN_DRAG_POW));
 			}
-			else if((sys_vars->HYPER_VISC_FLAG = HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG != EKMN_DRAG)) {
+			else if((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG != EKMN_DRAG)) {
 				// Hyperviscosity only
 				D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW));
 			}
@@ -684,14 +684,14 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Nx, Int_d
 			Int_data->RK1[indx] += D_fac * run_data->w_hat[indx];
 			#endif
 
-			// printf("RHS1[%d, %d]: %1.16lf %1.16lf -- (%d, %d)\n", i, j, creal(Int_data->RK1[indx]), cimag(Int_data->RK1[indx]), run_data->k[0][i], run_data->k[1][j]);
+			printf("RHS1[%d, %d]: %1.16lf %1.16lf -- (%d, %d)\n", i, j, creal(Int_data->RK1[indx]), cimag(Int_data->RK1[indx]), run_data->k[0][i], run_data->k[1][j]);
 
 			// Update temporary input for nonlinear term
 			Int_data->RK_tmp[indx] = run_data->w_hat[indx] + dt * RK4_A21 * Int_data->RK1[indx];
 		}
-		// printf("\n");
+		printf("\n");
 	}
-	// printf("\n");
+	printf("\n");
 	// ----------------------- Stage 2
 	NonlinearRHSBatch(Int_data->RK_tmp, Int_data->RK2, Int_data->nonlin, Int_data->nabla_psi, Int_data->nabla_w);
 	for (int i = 0; i < local_Nx; ++i) {
@@ -711,7 +711,7 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Nx, Int_d
 				// No hyperviscosity but we have Ekman drag
 				D_fac = dt * (sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA * pow(k_sqr, sys_vars->EKMN_DRAG_POW));
 			}
-			else if((sys_vars->HYPER_VISC_FLAG = HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG != EKMN_DRAG)) {
+			else if((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG != EKMN_DRAG)) {
 				// Hyperviscosity only
 				D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW));
 			}
@@ -750,7 +750,7 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Nx, Int_d
 				// No hyperviscosity but we have Ekman drag
 				D_fac = dt * (sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA * pow(k_sqr, sys_vars->EKMN_DRAG_POW));
 			}
-			else if((sys_vars->HYPER_VISC_FLAG = HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG != EKMN_DRAG)) {
+			else if((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG != EKMN_DRAG)) {
 				// Hyperviscosity only
 				D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW));
 			}
@@ -789,7 +789,7 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Nx, Int_d
 				// No hyperviscosity but we have Ekman drag
 				D_fac = dt * (sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA * pow(k_sqr, sys_vars->EKMN_DRAG_POW));
 			}
-			else if((sys_vars->HYPER_VISC_FLAG = HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG != EKMN_DRAG)) {
+			else if((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG != EKMN_DRAG)) {
 				// Hyperviscosity only
 				D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW));
 			}
@@ -809,6 +809,8 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Nx, Int_d
 	#endif
 	
 	// printf("\n\n\n\n\n");
+	// 
+	// printf("nu: %lf\tdt: %lf\ta: %lf\thyper_flag: %d\thyper_pow: %lf\thypo_flag: %d\thypo_pow: %lf\t\t--HYPER: %d\t\tHYPO: %d\n", sys_vars->NU, dt, sys_vars->EKMN_ALPHA, sys_vars->HYPER_VISC_FLAG, sys_vars->HYPER_VISC_POW, sys_vars->EKMN_DRAG_FLAG, sys_vars->EKMN_DRAG_POW, HYPER_VISC, EKMN_DRAG);
 	
 	/////////////////////
 	/// UPDATE STEP
@@ -840,13 +842,13 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Nx, Int_d
 					// No hyperviscosity but we have Ekman drag
 					D_fac = dt * (sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA * pow(k_sqr, sys_vars->EKMN_DRAG_POW));
 				}
-				else if((sys_vars->HYPER_VISC_FLAG = HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG != EKMN_DRAG)) {
+				else if((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG != EKMN_DRAG)) {
 					// Hyperviscosity only
 					D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW));
 				}
 				else {
 					// No hyper viscosity or no ekman drag -> just normal viscosity
-					D_fac = dt * (sys_vars->NU * k_sqr);
+					D_fac = dt * sys_vars->NU * k_sqr;
 				}
 				
 				// Update Fourier vorticity
@@ -859,7 +861,9 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Nx, Int_d
 			else {
 				run_data->w_hat[indx] = 0.0 + 0.0 * I;
 			}
+				// printf("d[%d,%d]: %1.6lf - %1.6lf ", run_data->k[0][i], run_data->k[1][j], 1.0/(1.0 + D_fac * 0.5), 1.0 - D_fac * 0.5);
 		}
+		// printf("\n");
 	}
 	#if defined(__NONLIN)
 	// Record the nonlinear term with the updated Fourier vorticity
