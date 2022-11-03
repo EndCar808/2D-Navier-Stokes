@@ -51,8 +51,8 @@
 // #define __NAVIER
 // Choose which integrator to use
 // #define __RK4
-// #define __RK4CN
-#define __AB4
+#define __RK4CN
+// #define __AB4
 // #define __RK5
 // #define __DPRK5
 // Choose which filter to use

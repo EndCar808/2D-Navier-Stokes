@@ -335,6 +335,11 @@ int GetCMLArgs(int argc, char** argv) {
 					// Zero Initial Condition
 					strncpy(sys_vars->u0, "ZERO", 64);
 					break;
+				}
+				else if (!(strcmp(optarg,"ZERO_KOLM"))) {
+					// Special Zero Initial Condition for Kolmogorov Flow
+					strncpy(sys_vars->u0, "ZERO_KOLM", 64);
+					break;
 				}				
 				else {
 					// No initial conditions specified -> this will default to random initial conditions

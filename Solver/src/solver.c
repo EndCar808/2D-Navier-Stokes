@@ -1062,19 +1062,26 @@ void ApplyDealiasing(fftw_complex* array, int array_dim, const long int* N) {
 			k_sqr = (double) run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j];
 
 			#if defined(__DEALIAS_23)
-			if (k_sqr > kmax_sqr) {
-			// if (fabs(run_data->k[0][i]) > Nx / 3.0 || run_data->k[1][j] > Ny / 3.0 ) {
-			// if (run_data->k[0][i] >= round(Nx / 3.0) || run_data->k[0][i] < -round(Nx / 3.0) || run_data->k[1][j] >= round(Ny / 3.0) ) {
+			if (k_sqr >= kmax_sqr) {
 				for (int l = 0; l < array_dim; ++l) {
 					// Set dealised modes to 0
 					array[indx + l] = 0.0 + 0.0 * I;	
 				}
+			// printf("f[%d,%d]: %d ", run_data->k[0][i], run_data->k[1][j], 0);
+			}
+			else if (!(strcmp(sys_vars->forcing, "KOLM")) && run_data->k[0][i] == 0) {
+					for (int l = 0; l < array_dim; ++l) {
+						// Set dealised modes to 0
+						array[indx + l] = 0.0 + 0.0 * I;	
+					}
+				// printf("f[%d,%d]: %d ", run_data->k[0][i], run_data->k[1][j], 0);
 			}
 			else {
 				for (int l = 0; l < array_dim; ++l) {
 					// Apply DFT normaliztin to undealiased modes
 					array[indx + l] = array[indx + l];	
 				}				
+			// printf("f[%d,%d]: %d ", run_data->k[0][i], run_data->k[1][j], 1);
 			}
 			#elif defined(__DEALIAS_HOU_LI)
 			// Compute Hou-Li filter
@@ -1086,7 +1093,9 @@ void ApplyDealiasing(fftw_complex* array, int array_dim, const long int* N) {
 			}
 			#endif
 		}
+		// printf("\n");
 	}
+	// printf("\n\n\n");
 }
 /**
  * Function to compute the initial condition for the integration
@@ -1190,7 +1199,7 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 		// ---------------------------------------
 		fftw_mpi_execute_dft_r2c((sys_vars->fftw_2d_dft_r2c), run_data->w, w_hat);
 	}
-	else if(!(strcmp(sys_vars->u0, "ZERO"))) {
+	else if(!(strcmp(sys_vars->u0, "ZERO")) || !(strcmp(sys_vars->u0, "ZERO_KOLM"))) {
 		// ------------------------------------------------
 		// Zero - A Zero vorticity field initial condition
 		// ------------------------------------------------
@@ -1201,7 +1210,25 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 
 				// Zero field
 				w_hat[indx] = 0.0 + 0.0 * I; 
+				
+				// Initialize the specific modes for the Kolmogorov zero initial condition
+				if (!(strcmp(sys_vars->u0, "ZERO_KOLM"))){
+					if (run_data->k[1][j] == 1 && (run_data->k[0][i] == 1 || run_data->k[0][i] == 1)) {
+						w_hat[indx] = -0.5 + 0.0 * I;
+					}
+					else if (run_data->k[1][j] == 2 && (run_data->k[0][i] == 3 || run_data->k[0][i] == 4)) {
+						w_hat[indx] = -4.0 + 1.0 * I;
+					}
+					else if (run_data->k[1][j] == 3 && (run_data->k[0][i] == 4 || run_data->k[0][i] == 5)) {
+						w_hat[indx] = -2.0 + 3.0 * I;
+					}
+					else if (run_data->k[1][j] == 4 && (run_data->k[0][i] == 5 || run_data->k[0][i] == 6)) {
+						w_hat[indx] = 8.0 - 6.0 * I;
+					} 
+				}
+				printf("w[%d,%d]: %1.1lf %1.1lfi  ", run_data->k[0][i], run_data->k[1][j], creal(w_hat[indx]), cimag(w_hat[indx]));
 			}
+			printf("\n");
 		}
 	}
 	else if (!(strcmp(sys_vars->u0, "DECAY_TURB_BB")) || !(strcmp(sys_vars->u0, "DECAY_TURB_NB")) || !(strcmp(sys_vars->u0, "DECAY_TURB_EXP")) || !(strcmp(sys_vars->u0, "DECAY_TURB_EXP_II"))) {
