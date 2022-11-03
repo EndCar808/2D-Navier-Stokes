@@ -73,6 +73,7 @@ void SpectralSolve(void) {
 	InitializeFFTWPlans(N);
 
 
+
 	// -------------------------------
 	// Initialize the System
 	// -------------------------------
@@ -87,7 +88,7 @@ void SpectralSolve(void) {
 	// Get initial conditions - seed for random number generator is set here
 	InitialConditions(run_data->w_hat, run_data->u, run_data->u_hat, N);
 
-	// Initialize the forcing 
+	// // Initialize the forcing 
 	InitializeForcing();
 		
 	// -------------------------------
@@ -113,8 +114,11 @@ void SpectralSolve(void) {
 	// Inialize system measurables
 	InitializeSystemMeasurables(Int_data);
 
+
 	// Create and open the output file - also write initial conditions to file
 	CreateOutputFilesWriteICs(N, dt);
+
+
 
 	// -------------------------------------------------
 	// Print IC to Screen 
@@ -237,7 +241,7 @@ void SpectralSolve(void) {
 	// ------------------------------- 
 	// Final Writes to Output File
 	// -------------------------------
-	FinalWriteAndCloseOutputFile(N, iters, save_data_indx);
+	FinalWriteAndCloseOutputFiles(N, iters, save_data_indx);
 	
 
 	// -------------------------------

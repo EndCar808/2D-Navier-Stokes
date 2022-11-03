@@ -343,14 +343,14 @@ def plot_flow_summary(out_dir, i, w, w_min, w_max, measure_min, measure_max, x, 
     kk_scale = np.arange(20, kindx - 10)
     spec_enrg = enrg_spec[1:kindx]
     ax3.plot(kk, spec_enrg)
-    ax3.plot(kk_scale, 1.0 / kk_scale**(4) * 10**3, color = 'k', linestyle = ":", label = "$k^{-4}$")
+    # ax3.plot(kk_scale, 1.0 / kk_scale**(4) * 10**3, color = 'k', linestyle = ":", label = "$k^{-4}$")
     ax3.set_xlabel(r"$|\mathbf{k}|$")
     ax3.set_ylabel(r"$\mathcal{K}(|\mathbf{k}|)$") 
     ax3.set_title(r"Energy Spectrum")
     ax3.set_yscale('log')
     ax3.set_xscale('log')
     ax3.set_xlim(1, Nx)
-    ax3.set_ylim(1e-6, 1e0)
+    # ax3.set_ylim(1e-6, 1e0)
     ax3.legend()
     ax3.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
 
@@ -364,14 +364,14 @@ def plot_flow_summary(out_dir, i, w, w_min, w_max, measure_min, measure_max, x, 
     kk_scale = np.arange(20, kindx - 10)
     spec_enst = enst_spec[1:kindx]
     ax4.plot(kk, spec_enst)
-    ax4.plot(kk_scale, 1.0 / kk_scale**(5/3) * 10**3, color = 'k', linestyle = ":", label = "$k^{-5/3}$")
+    # ax4.plot(kk_scale, 1.0 / kk_scale**(5/3) * 10**3, color = 'k', linestyle = ":", label = "$k^{-5/3}$")
     ax4.set_xlabel(r"$|\mathbf{k}|$")
     ax4.set_ylabel(r"$\mathcal{E}(|\mathbf{k}|)$")  
     ax4.set_title(r"Enstrophy Spectrum")
     ax4.set_yscale('log')
     ax4.set_xscale('log')
     ax4.set_xlim(1, Nx)
-    ax4.set_ylim(1e-2, 3e1)
+    # ax4.set_ylim(1e-2, 3e1)
     ax4.legend()
     ax4.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
 

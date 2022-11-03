@@ -8,7 +8,7 @@
 # ---------------------------------------------------------------------
 # Get the operating system:
 # Need to strip leading and/or trailing whitespaces otherwise if statement wont work
-OS = $(strip $(shell lsb_release -si))
+OS        = $(strip $(shell lsb_release -si))
 MACH_NAME = $(strip $(shell hostname))
 
 # Set the operating system dependent compiler variables
@@ -52,10 +52,10 @@ endif
 #  Executable flags
 # ---------------------------------------------------------------------
 # Flags to be passed to the solver for normal runs
-SOLVER_FLAGS := -D__NAVIER #-D__HYPER -D__ADAPTIVE_STEP -D__CFL_STEP #-D__TRANSIENTS  -D__EKMN_DRAG
+SOLVER_FLAGS := -D__NAVIER #-D__STATS  -D__HYPER -D__ADAPTIVE_STEP -D__CFL_STEP #-D__TRANSIENTS  -D__EKMN_DRAG
 
 # Phase only flags to be passed to solver
-PHASE_ONLY_FLAGS := -D__NAVIER -D__PHASE_ONLY #-D__HYPER -D__TRANSIENTS
+PHASE_ONLY_FLAGS := -D__NAVIER -D__PHASE_ONLY #-D__STATS -D__HYPER -D__TRANSIENTS
 
 # Dataset Flags to be passed to the solver
 DSET_FLAGS := -D__VORT_REAL -D__VORT_FOUR -D__SYS_MEASURES -D__ENST_FLUX -D__ENRG_FLUX -D__ENST_SPECT -D__ENRG_SPECT -D__ENST_FLUX_SPECT -D__ENRG_FLUX_SPECT #-D__PHASE_SYNC  #  #-D__REALSPACE # -D__MODES 

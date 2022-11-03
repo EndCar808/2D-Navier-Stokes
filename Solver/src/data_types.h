@@ -118,7 +118,10 @@
 #define __VEL_GRAD
 #define __VORT_GRAD
 #define __VEL_STR_FUNC
+#define __VORT_STR_FUNC
 #define __VEL_VORT_STR_FUNC
+#define __MIXED_VEL_STR_FUNC
+#define __MIXED_VORT_STR_FUNC
 #endif
 // Choose whether to save the time, collocation points and wavenumbers
 #define __TIME
@@ -158,12 +161,12 @@
 #define UNIF_MAX_K 9.5 			// The upper bound of sqrt(k) for initializing the vorticity with random phases
 #define RAND_ENST0 1.0 			// The initial enstrophy for the random initial condition
 // Forcing parameters
-#define STOC_FORC_K_MIN	12.5	// The minimum value of the modulus forced wavevectors for the stochasitc (Gaussian) forcing
-#define STOC_FORC_K_MAX 15.5    // The maximum value of the modulus forced wavevectors for the stochastic (Gaussian) forcing
-#define STOC_FORC_K 15	        // The peak of the power spectrum of the forcing field for the stochastic forcing
-#define STOC_FORC_DELTA_K 1.5   // The standard deviation of the power spectrum for the forcing field of the stochastic forcing 
-#define CONST_GAUSS_K_MIN 10    // The minimum value of the mod of forced wavevectors for the Constant Gaussian Ring forcing
-#define CONST_GAUSS_K_MAX 12    // The minimum value of the mod of forced wavevectors for the Constant Gaussian Ring forcing
+#define STOC_FORC_GAUSS_K_MIN 2.5		// The minimum value of the modulus forced wavevectors for the stochasitc (Gaussian) forcing
+#define STOC_FORC_GAUSS_K_MAX 6.5    	// The maximum value of the modulus forced wavevectors for the stochastic (Gaussian) forcing
+#define STOC_FORC_UNIF_K 15	        	// The peak of the power spectrum of the forcing field for the stochastic forcing
+#define STOC_FORC_UNIF_DELTA_K 1.5   	// The standard deviation of the power spectrum for the forcing field of the stochastic forcing 
+#define CONST_GAUSS_K_MIN 10    		// The minimum value of the mod of forced wavevectors for the Constant Gaussian Ring forcing
+#define CONST_GAUSS_K_MAX 12    		// The minimum value of the mod of forced wavevectors for the Constant Gaussian Ring forcing
 // System checking parameters
 #define MIN_STEP_SIZE 1e-10 	// The minimum allowed stepsize for the solver 
 #define MAX_ITERS 1e+12			// The maximum iterations to perform
@@ -176,6 +179,8 @@
 #define NUM_RUN_STATS 7 		// The number of running stats moments to record
 #define VEL_BIN_LIM	40			// The bin limits (in units of standard deviations) for the velocity histogram
 #define VEL_NUM_BINS 1000		// The number of bins to use for the velocity histograms
+#define VORT_BIN_LIM 40			// The bin limits (in units of standard deviations) for the velocity histogram
+#define VORT_NUM_BINS 1000		// The number of bins to use for the velocity histograms
 #define NUM_INCR 2              // The number of increment length scales e.g. 2 = smallest and largest
 #define INCR_TYPES 2 			// The number of increment directions i.e., longitudinal and transverse
 // ---------------------------------------------------------------------
@@ -300,16 +305,24 @@ typedef struct Int_data_struct {
 
 // Stats data struct
 typedef struct stats_data_struct {
-	double* vel_str_func[INCR_TYPES + 1][NUM_POW];					// Array to hold the structure functions of the Velocity increments
-	double* vel_str_func_abs[INCR_TYPES + 1][NUM_POW];				// Array to hold the structure functions of the absolute value of flux Velocity increments
-	gsl_rstat_workspace* vel_inc_stats[INCR_TYPES + 1][NUM_INCR];   // Struct to hold the running stats for the velocity increments
-	gsl_rstat_workspace* vort_inc_stats[INCR_TYPES + 1][NUM_INCR];	// Struct to hold the running stats for the vorticity increments
-	gsl_rstat_workspace* vel_stats[INCR_TYPES + 1];					// Struct to hold the running stats for the velocity field
-	gsl_rstat_workspace* vort_stats[INCR_TYPES + 1];				// Struct to hold the running stats for the vorticity field
-	gsl_histogram* vel_inc_hist[INCR_TYPES + 1][NUM_INCR];			// Struct to hold the histogram info for the velocity increments
-	gsl_histogram* vort_inc_hist[INCR_TYPES + 1][NUM_INCR];			// Struct to hold the histogram info for the vorticity increments
-	long int num_stats_steps;										// Counter for the number of steps statistics have been computed
-	int set_stats_flag;												// Flag to indicate if the stats objects such as running stats and histogram limits need to be set
+	double* vel_str_func[INCR_TYPES][NUM_POW];					// Array to hold the structure functions of the Velocity increments
+	double* vel_str_func_abs[INCR_TYPES][NUM_POW];				// Array to hold the structure functions of the absolute value of flux Velocity increments
+	double* vort_str_func[INCR_TYPES][NUM_POW];					// Array to hold the structure functions of the Vorticity increments
+	double* vort_str_func_abs[INCR_TYPES][NUM_POW];				// Array to hold the structure functions of the absolute value of flux Vorticity increments
+	double* vel_mixed_str_func;									// Array to hold the mixed velocity structure function, this should be the same as 1/3 of the third order velocity structre function
+	double* vort_mixed_str_func;								// Array to hold the mixed vorticity structure function, this should be the same as the third order vorticity structre function
+	gsl_rstat_workspace* vel_inc_stats[INCR_TYPES][NUM_INCR];   // Struct to hold the running stats for the velocity increments
+	gsl_rstat_workspace* vort_inc_stats[INCR_TYPES][NUM_INCR];	// Struct to hold the running stats for the vorticity increments
+	gsl_rstat_workspace* vel_stats[INCR_TYPES];					// Struct to hold the running stats for the velocity field
+	gsl_rstat_workspace* vort_stats[INCR_TYPES];				// Struct to hold the running stats for the vorticity field
+	gsl_histogram* vel_inc_hist[INCR_TYPES][NUM_INCR];			// Struct to hold the histogram info for the velocity increments
+	gsl_histogram* vort_inc_hist[INCR_TYPES][NUM_INCR];			// Struct to hold the histogram info for the vorticity increments
+	long int num_stats_steps;									// Counter for the number of steps statistics have been computed
+	int set_stats_flag;											// Flag to indicate if the stats objects such as running stats and histogram limits need to be set
+	double vel_inc_sqr[INCR_TYPES][NUM_POW];					// To hold the sqr value of the velocity increments, this is for setting of the bin limits
+	double vel_inc_num_data[INCR_TYPES][NUM_POW];				// To hold the number of velocity incrments, for the setting of bin limits
+	double vort_inc_sqr[INCR_TYPES][NUM_POW];					// To hold the sqr value of the vortcity increments, this is for setting of the bin limits
+	double vort_inc_num_data[INCR_TYPES][NUM_POW];				// To hold the number of vortcity incrments, for the setting of bin limits
 } stats_data_struct;
 
 
@@ -318,6 +331,8 @@ typedef struct HDF_file_info_struct {
 	char input_file_name[512];		// Array holding input file name
 	char output_file_name[512];     // Output file name array
 	char spectra_file_name[512];    // Spectra file name array
+	char stats_file_name[512];    	// Stats file name array
+	char sys_msr_file_name[512];    // System measures file name array
 	char sync_file_name[512]; 	    // Phase Sync file name array
 	char input_dir[512];			// Inputs directory
 	char output_dir[512];			// Output directory
@@ -325,6 +340,8 @@ typedef struct HDF_file_info_struct {
 	hid_t input_file_handle;		// File handle for the input file
 	hid_t output_file_handle;		// Main file handle for the output file 
 	hid_t spectra_file_handle;      // Spectra file handle
+	hid_t stats_file_handle;      	// Stats file handle
+	hid_t sys_msr_file_handle;     	// Stats file handle
 	hid_t sync_file_handle;		    // Phase sync file handle
 	hid_t COMPLEX_DTYPE;			// Complex datatype handle
 	int file_only;					// Indicates if output should be file only with no output folder created

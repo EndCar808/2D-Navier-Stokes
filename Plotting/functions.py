@@ -587,6 +587,86 @@ def import_data(input_file, sim_data, method = "default"):
     return data
 
 
+def import_sys_msr(input_file, sim_data, method = "default"):
+
+    """
+    Reads in run data from main HDF5 file.
+
+    input_dir : string
+                - If method == "defualt" is True then this will be the path to
+               the input folder. if not then this will be the input folder
+    method    : string
+                - Determines whether the data is to be read in from a file or
+               from an input folder
+    sim_data  : class
+                - object containing the simulation parameters
+    """
+
+
+    ## Define a data class for the solver data
+    class SolverData:
+
+        """
+        Class for the run data.
+        """
+
+        def __init__(self):
+            self.time = None
+
+    ## Create instance of data class
+    data = SolverData()
+
+    ## Depending on the output mmode of the solver the input files will be named differently
+    if method == "default":
+        in_file = input_file + "SystemMeasures_HDF_Data.h5"
+    else:
+        in_file = input_file
+
+    ## Open file and read in the data
+    with h5py.File(in_file, 'r') as f:
+
+        ## Read in the space arrays
+        if 'kx' in list(f.keys()):
+            data.kx = f["kx"][:]
+        if 'ky' in list(f.keys()):
+            data.ky = f["ky"][:]
+        if 'x' in list(f.keys()):
+            data.x  = f["x"][:]
+        if 'y' in list(f.keys()):
+            data.y  = f["y"][:]
+
+        ## Read system measures
+        if 'TotalEnergy' in list(f.keys()):
+            data.tot_enrg = f['TotalEnergy'][:]
+        if 'TotalEnstrophy' in list(f.keys()):
+            data.tot_enst = f['TotalEnstrophy'][:]
+        if 'TotalPalinstrophy' in list(f.keys()):
+            data.tot_palin = f['TotalPalinstrophy'][:]
+        if 'TotalDivergence' in list(f.keys()):
+            data.tot_div = f['TotalDivergence'][:]
+        if 'TotalForcing' in list(f.keys()):
+            data.tot_forc = f['TotalForcing'][:]
+        if 'EnergyDissipation' in list(f.keys()):
+            data.enrg_diss = f['EnergyDissipation'][:]
+        if 'EnstrophyDissipation' in list(f.keys()):
+            data.enst_diss = f['EnstrophyDissipation'][:]
+        if 'EnergyDissSubset' in list(f.keys()):
+            data.enrg_diss_sbst = f['EnergyDissSubset'][:]
+        if 'EnstrophyDissSubset' in list(f.keys()):
+            data.enst_diss_sbst = f['EnstrophyDissSubset'][:]
+        if 'EnergyFluxSubset' in list(f.keys()):
+            data.enrg_flux_sbst = f['EnergyFluxSubset'][:]
+        if 'EnstrophyFluxSubset' in list(f.keys()):
+            data.enst_flux_sbst = f['EnstrophyFluxSubset'][:]
+        if 'MeanFlow_x' in list(f.keys()):
+            data.mean_flow_x = f['MeanFlow_x'][:]
+        if 'MeanFlow_y' in list(f.keys()):
+            data.mean_flow_y = f['MeanFlow_y'][:]
+        if 'Time' in list(f.keys()):
+            data.time = f['Time'][:]
+    
+    return data
+
 def import_spectra_data(input_file, sim_data, method = "default"):
 
     """
