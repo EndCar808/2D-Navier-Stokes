@@ -119,7 +119,6 @@ void SpectralSolve(void) {
 	CreateOutputFilesWriteICs(N, dt);
 
 
-
 	// -------------------------------------------------
 	// Print IC to Screen 
 	// -------------------------------------------------
@@ -127,9 +126,9 @@ void SpectralSolve(void) {
 	PrintUpdateToTerminal(0, t0, dt, T, 0);
 	#endif	
 	
-	// //////////////////////////////
-	// // Begin Integration
-	// //////////////////////////////
+	//////////////////////////////
+	// Begin Integration
+	//////////////////////////////
 	t         += dt;
 	int iters = 1;
 	int save_data_indx;
@@ -145,15 +144,15 @@ void SpectralSolve(void) {
 		// Integration Step
 		// -------------------------------
 		#if defined(__RK4) || defined(__RK4CN)
-		RK4Step(dt, N, sys_vars->local_Nx, Int_data);
+		RK4Step(dt, N, sys_vars->local_Ny, Int_data);
 		#elif defined(__AB4)
-		AB4Step(dt, N, iters, sys_vars->local_Nx, Int_data);
+		AB4Step(dt, N, iters, sys_vars->local_Ny, Int_data);
 		#elif defined(__RK5)
-		RK5DPStep(dt, N, iters, sys_vars->local_Nx, Int_data);
+		RK5DPStep(dt, N, iters, sys_vars->local_Ny, Int_data);
 		#elif defined(__DPRK5)
 		while (try) {
 			// Try a Dormand Prince step and compute the local error
-			RK5DPStep(dt, N, iters, sys_vars->local_Nx, Int_data);
+			RK5DPStep(dt, N, iters, sys_vars->local_Ny, Int_data);
 
 			// Compute the new timestep
 			dt_new = dt * DPMin(DP_DELTA_MAX, DPMax(DP_DELTA_MIN, DP_DELTA * pow(1.0 / Int_data->DP_err, 0.2)));
@@ -234,9 +233,9 @@ void SpectralSolve(void) {
 		// Check System: Determine if system has blown up or integration limits reached
 		SystemCheck(dt, iters);
 	}
-	// ////////////////////////////
+	//////////////////////////////
 	// End Integration
-	// ////////////////////////////
+	//////////////////////////////
 		
 	// ------------------------------- 
 	// Final Writes to Output File
@@ -255,10 +254,10 @@ void SpectralSolve(void) {
  * @param dt       The current timestep of the system
  * @param N        Array containing the size of each dimension
  * @param iters    The current iteration of the system
- * @param local_Nx The size of the first dimension for the local (to each process) arrays
+ * @param local_Ny The size of the first dimension for the local (to each process) arrays
  * @param Int_data Struct containing the integration arrays
  */
-void AB4Step(const double dt, const long int* N, const int iters, const ptrdiff_t local_Nx, Int_data_struct* Int_data) {
+void AB4Step(const double dt, const long int* N, const int iters, const ptrdiff_t local_Ny, Int_data_struct* Int_data) {
 
 	// Initialize vairables
 	int tmp;
@@ -267,7 +266,7 @@ void AB4Step(const double dt, const long int* N, const int iters, const ptrdiff_
 	double k_sqr;
 	double D_fac;
 	#endif
-	const long int Ny_Fourier = N[1] / 2 + 1;
+	const long int Nx_Fourier = N[1] / 2 + 1;
 
 	/////////////////////
 	/// AB Pre Steps
@@ -277,10 +276,10 @@ void AB4Step(const double dt, const long int* N, const int iters, const ptrdiff_
 		// Perform RK4 Step
 		// -----------------------------------
 		// March the vorticity forward in time using RK4 step
-		RK4Step(dt, N, sys_vars->local_Nx, Int_data);
+		RK4Step(dt, N, sys_vars->local_Ny, Int_data);
 
 		// Save the nonlinear term for each pre step for use in the update step of the AB4 scheme
-		memcpy(&(Int_data->AB_tmp_nonlin[iters - 1][0]), Int_data->RK1, sizeof(fftw_complex) * (long int)local_Nx * Ny_Fourier);
+		memcpy(&(Int_data->AB_tmp_nonlin[iters - 1][0]), Int_data->RK1, sizeof(fftw_complex) * (long int)local_Ny * Nx_Fourier);
 	}
 	else {
 		// -----------------------------------
@@ -299,9 +298,9 @@ void AB4Step(const double dt, const long int* N, const int iters, const ptrdiff_
 		/////////////////////
 		/// AB Update Step
 		/////////////////////
-		for (int i = 0; i < local_Nx; ++i) {
-			tmp = i * Ny_Fourier;
-			for (int j = 0; j < Ny_Fourier; ++j) {
+		for (int i = 0; i < local_Ny; ++i) {
+			tmp = i * Nx_Fourier;
+			for (int j = 0; j < Nx_Fourier; ++j) {
 				indx = tmp + j;
 
 				if ((run_data->k[0][i] != 0) || (run_data->k[1][j]  != 0)) {
@@ -343,9 +342,9 @@ void AB4Step(const double dt, const long int* N, const int iters, const ptrdiff_
 		// Update Previous Nonlinear Terms
 		// -----------------------------------
 		// Update the previous Nonlinear term arrays for next iteration
-		memcpy(&(Int_data->AB_tmp_nonlin[0][0]), &(Int_data->AB_tmp_nonlin[1][0]), sizeof(fftw_complex) * (long int)local_Nx * Ny_Fourier);
-		memcpy(&(Int_data->AB_tmp_nonlin[1][0]), &(Int_data->AB_tmp_nonlin[2][0]), sizeof(fftw_complex) * (long int)local_Nx * Ny_Fourier);
-		memcpy(&(Int_data->AB_tmp_nonlin[2][0]), Int_data->AB_tmp, sizeof(fftw_complex) * (long int)local_Nx * Ny_Fourier);
+		memcpy(&(Int_data->AB_tmp_nonlin[0][0]), &(Int_data->AB_tmp_nonlin[1][0]), sizeof(fftw_complex) * (long int)local_Ny * Nx_Fourier);
+		memcpy(&(Int_data->AB_tmp_nonlin[1][0]), &(Int_data->AB_tmp_nonlin[2][0]), sizeof(fftw_complex) * (long int)local_Ny * Nx_Fourier);
+		memcpy(&(Int_data->AB_tmp_nonlin[2][0]), Int_data->AB_tmp, sizeof(fftw_complex) * (long int)local_Ny * Nx_Fourier);
 	}
 }
 #endif
@@ -353,11 +352,11 @@ void AB4Step(const double dt, const long int* N, const int iters, const ptrdiff_
  * Function to perform a single step of the RK5 or Dormand Prince scheme
  * @param dt       The current timestep of the system
  * @param N        Array containing the dimensions of the system
- * @param local_Nx Int indicating the local size of the first dimension of the arrays	
+ * @param local_Ny Int indicating the local size of the first dimension of the arrays	
  * @param Int_data  Struct pointing the Integration variables: stages, tmp arrays, rhs and arrays needed for NonlinearRHS function
  */
 #if defined(__RK5) || defined(__DPRK5)
-void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdiff_t local_Nx, Int_data_struct* Int_data) {
+void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdiff_t local_Ny, Int_data_struct* Int_data) {
 
 
 	// Initialize vairables
@@ -367,9 +366,9 @@ void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdif
 	double k_sqr;
 	double D_fac;
 	#endif
-	const long int Ny_Fourier = N[1] / 2 + 1;
+	const long int Nx_Fourier = N[1] / 2 + 1;
 	#if defined(__DPRK5)
-	const long int Nx = N[0];
+	const long int Ny = N[0];
 	double dp_ho_step;
 	double err_sum;
 	double err_denom;
@@ -379,9 +378,9 @@ void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdif
 	#if defined(PHASE_ONLY)
 	double tmp_a_k_norm;
 
-	for (int i = 0; i < local_Nx; ++i) {
-		tmp = i * Ny_Fourier;
-		for (int j = 0; j < Ny_Fourier; ++j) {
+	for (int i = 0; i < local_Ny; ++i) {
+		tmp = i * Nx_Fourier;
+		for (int j = 0; j < Nx_Fourier; ++j) {
 			indx = tmp + j;
 
 			// record amplitudes
@@ -398,9 +397,9 @@ void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdif
 	/////////////////////
 	// ----------------------- Stage 1
 	NonlinearRHSBatch(run_data->w_hat, Int_data->RK1, Int_data->nonlin, Int_data->nabla_psi, Int_data->nabla_w);
-	for (int i = 0; i < local_Nx; ++i) {
-		tmp = i * Ny_Fourier;
-		for (int j = 0; j < Ny_Fourier; ++j) {
+	for (int i = 0; i < local_Ny; ++i) {
+		tmp = i * Nx_Fourier;
+		for (int j = 0; j < Nx_Fourier; ++j) {
 			indx = tmp + j;
 
 			// Update temporary input for nonlinear term
@@ -409,9 +408,9 @@ void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdif
 	}
 	// ----------------------- Stage 2
 	NonlinearRHSBatch(Int_data->RK_tmp, Int_data->RK2, Int_data->nonlin, Int_data->nabla_psi, Int_data->nabla_w);
-	for (int i = 0; i < local_Nx; ++i) {
-		tmp = i * Ny_Fourier;
-		for (int j = 0; j < Ny_Fourier; ++j) {
+	for (int i = 0; i < local_Ny; ++i) {
+		tmp = i * Nx_Fourier;
+		for (int j = 0; j < Nx_Fourier; ++j) {
 			indx = tmp + j;
 
 			// Update temporary input for nonlinear term
@@ -420,9 +419,9 @@ void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdif
 	}
 	// ----------------------- Stage 3
 	NonlinearRHSBatch(Int_data->RK_tmp, Int_data->RK3, Int_data->nonlin, Int_data->nabla_psi, Int_data->nabla_w);
-	for (int i = 0; i < local_Nx; ++i) {
-		tmp = i * Ny_Fourier;
-		for (int j = 0; j < Ny_Fourier; ++j) {
+	for (int i = 0; i < local_Ny; ++i) {
+		tmp = i * Nx_Fourier;
+		for (int j = 0; j < Nx_Fourier; ++j) {
 			indx = tmp + j;
 
 			// Update temporary input for nonlinear term
@@ -431,9 +430,9 @@ void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdif
 	}
 	// ----------------------- Stage 4
 	NonlinearRHSBatch(Int_data->RK_tmp, Int_data->RK4, Int_data->nonlin, Int_data->nabla_psi, Int_data->nabla_w);
-	for (int i = 0; i < local_Nx; ++i) {
-		tmp = i * Ny_Fourier;
-		for (int j = 0; j < Ny_Fourier; ++j) {
+	for (int i = 0; i < local_Ny; ++i) {
+		tmp = i * Nx_Fourier;
+		for (int j = 0; j < Nx_Fourier; ++j) {
 			indx = tmp + j;
 
 			// Update temporary input for nonlinear term
@@ -442,9 +441,9 @@ void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdif
 	}
 	// ----------------------- Stage 5
 	NonlinearRHSBatch(Int_data->RK_tmp, Int_data->RK5, Int_data->nonlin, Int_data->nabla_psi, Int_data->nabla_w);
-	for (int i = 0; i < local_Nx; ++i) {
-		tmp = i * Ny_Fourier;
-		for (int j = 0; j < Ny_Fourier; ++j) {
+	for (int i = 0; i < local_Ny; ++i) {
+		tmp = i * Nx_Fourier;
+		for (int j = 0; j < Nx_Fourier; ++j) {
 			indx = tmp + j;
 
 			// Update temporary input for nonlinear term
@@ -454,9 +453,9 @@ void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdif
 	// ----------------------- Stage 6
 	NonlinearRHSBatch(Int_data->RK_tmp, Int_data->RK6, Int_data->nonlin, Int_data->nabla_psi, Int_data->nabla_w);
 	#if defined(__DPRK5)
-	for (int i = 0; i < local_Nx; ++i) {
-		tmp = i * Ny_Fourier;
-		for (int j = 0; j < Ny_Fourier; ++j) {
+	for (int i = 0; i < local_Ny; ++i) {
+		tmp = i * Nx_Fourier;
+		for (int j = 0; j < Nx_Fourier; ++j) {
 			indx = tmp + j;
 
 			// Update temporary input for nonlinear term
@@ -470,9 +469,9 @@ void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdif
 	/////////////////////
 	/// UPDATE STEP
 	/////////////////////
-	for (int i = 0; i < local_Nx; ++i) {
-		tmp = i * Ny_Fourier;
-		for (int j = 0; j < Ny_Fourier; ++j) {
+	for (int i = 0; i < local_Ny; ++i) {
+		tmp = i * Nx_Fourier;
+		for (int j = 0; j < Nx_Fourier; ++j) {
 			indx = tmp + j;
 
 			if ((run_data->k[0][i] != 0) || (run_data->k[1][j]  != 0)) {
@@ -548,12 +547,12 @@ void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdif
 		MPI_Allreduce(MPI_IN_PLACE, &err_sum, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
 		// Compute the error
-		Int_data->DP_err = sqrt(1.0/ (Nx * Ny_Fourier) * err_sum);
+		Int_data->DP_err = sqrt(1.0/ (Ny * Nx_Fourier) * err_sum);
 
 		// Record the Fourier vorticity for the next step
-		for (int i = 0; i < local_Nx; ++i) {
-			tmp = i * Ny_Fourier;
-			for (int j = 0; j < Ny_Fourier; ++j) {
+		for (int i = 0; i < local_Ny; ++i) {
+			tmp = i * Nx_Fourier;
+			for (int j = 0; j < Nx_Fourier; ++j) {
 				indx = tmp + j;
 
 				if ((run_data->k[0][i] != 0) || (run_data->k[1][j]  != 0)) {
@@ -618,26 +617,26 @@ double DPMin(double a, double b) {
  * Function to perform one step using the 4th order Runge-Kutta method
  * @param dt       The current timestep of the system
  * @param N        Array containing the dimensions of the system
- * @param local_Nx Int indicating the local size of the first dimension of the arrays	
+ * @param local_Ny Int indicating the local size of the first dimension of the arrays	
  * @param Int_data  Struct pointing the Integration variables: stages, tmp arrays, rhs and arrays needed for NonlinearRHS function
  */
 #if defined(__RK4) || defined(__RK4CN) || defined(__AB4)
-void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Nx, Int_data_struct* Int_data) {
+void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Ny, Int_data_struct* Int_data) {
 
 	// Initialize vairables
 	int tmp;
 	int indx;
 	double k_sqr;
 	double D_fac;
-	const long int Ny_Fourier = N[1] / 2 + 1;
+	const long int Nx_Fourier = N[1] / 2 + 1;
 
 	//------------------- Pre-record the amplitudes so they can be reset after update step
 	#if defined(PHASE_ONLY)
 	double tmp_a_k_norm;
 
-	for (int i = 0; i < local_Nx; ++i) {
-		tmp = i * Ny_Fourier;
-		for (int j = 0; j < Ny_Fourier; ++j) {
+	for (int i = 0; i < local_Ny; ++i) {
+		tmp = i * Nx_Fourier;
+		for (int j = 0; j < Nx_Fourier; ++j) {
 			indx = tmp + j;
 
 			// record amplitudes
@@ -655,9 +654,9 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Nx, Int_d
 	/////////////////////
 	// ----------------------- Stage 1
 	NonlinearRHSBatch(run_data->w_hat, Int_data->RK1, Int_data->nonlin, Int_data->nabla_psi, Int_data->nabla_w);
-	for (int i = 0; i < local_Nx; ++i) {
-		tmp = i * Ny_Fourier;
-		for (int j = 0; j < Ny_Fourier; ++j) {
+	for (int i = 0; i < local_Ny; ++i) {
+		tmp = i * Nx_Fourier;
+		for (int j = 0; j < Nx_Fourier; ++j) {
 			indx = tmp + j;
 
 			// Add linear term to RHS
@@ -684,19 +683,22 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Nx, Int_d
 			Int_data->RK1[indx] += D_fac * run_data->w_hat[indx];
 			#endif
 
-			printf("RHS1[%d, %d]: %1.16lf %1.16lf -- (%d, %d)\n", i, j, creal(Int_data->RK1[indx]), cimag(Int_data->RK1[indx]), run_data->k[0][i], run_data->k[1][j]);
 
 			// Update temporary input for nonlinear term
-			Int_data->RK_tmp[indx] = run_data->w_hat[indx] + dt * RK4_A21 * Int_data->RK1[indx];
+			Int_data->RK_tmp[indx] = run_data->w_hat[indx] + RK4_A21 * (dt * Int_data->RK1[indx]);
+			// printf("RHS1[%d, %d]: %1.16lf %1.16lf -- (%d, %d) -- wh[%d, %d]: %1.16lf %1.16lf \n", run_data->k[0][i], run_data->k[1][j], creal(Int_data->RK1[indx] * dt), cimag(Int_data->RK1[indx] * dt), run_data->k[0][i], run_data->k[1][j], run_data->k[0][i], run_data->k[1][j], creal(Int_data->RK_tmp[indx]), cimag(Int_data->RK_tmp[indx]));
 		}
-		printf("\n");
+		// printf("\n");
 	}
-	printf("\n");
+	// printf("\n");
+	// PrintScalarFourier(Int_data->RK1, N, "RK1");
+	// PrintScalarFourier(Int_data->RK_tmp, N, "wh");
+
 	// ----------------------- Stage 2
 	NonlinearRHSBatch(Int_data->RK_tmp, Int_data->RK2, Int_data->nonlin, Int_data->nabla_psi, Int_data->nabla_w);
-	for (int i = 0; i < local_Nx; ++i) {
-		tmp = i * Ny_Fourier;
-		for (int j = 0; j < Ny_Fourier; ++j) {
+	for (int i = 0; i < local_Ny; ++i) {
+		tmp = i * Nx_Fourier;
+		for (int j = 0; j < Nx_Fourier; ++j) {
 			indx = tmp + j;
 
 			// Add linear term to RHS
@@ -723,19 +725,22 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Nx, Int_d
 			Int_data->RK2[indx] += D_fac * Int_data->RK_tmp[indx];
 			#endif
 
-			// printf("RHS2[%d, %d]: %1.16lf %1.16lf -- (%d, %d)\n", i, j, creal(Int_data->RK2[indx]), cimag(Int_data->RK2[indx]), run_data->k[0][i], run_data->k[1][j]);
 
 			// Update temporary input for nonlinear term
-			Int_data->RK_tmp[indx] = run_data->w_hat[indx] + dt * RK4_A32 * Int_data->RK2[indx];
+			Int_data->RK_tmp[indx] = run_data->w_hat[indx] + RK4_A32 * (dt * Int_data->RK2[indx]);
+			// printf("RHS2[%d, %d]: %1.16lf %1.16lf -- (%d, %d)\n", run_data->k[0][i], run_data->k[1][j], creal(Int_data->RK2[indx] * dt), cimag(Int_data->RK2[indx] * dt), run_data->k[0][i], run_data->k[1][j]);
 		}
 		// printf("\n");
 	}
 	// printf("\n");
+	// PrintScalarFourier(Int_data->RK2, N, "RK2");
+	// PrintScalarFourier(Int_data->RK_tmp, N, "wh");
+
 	// ----------------------- Stage 3
 	NonlinearRHSBatch(Int_data->RK_tmp, Int_data->RK3, Int_data->nonlin, Int_data->nabla_psi, Int_data->nabla_w);
-	for (int i = 0; i < local_Nx; ++i) {
-		tmp = i * Ny_Fourier;
-		for (int j = 0; j < Ny_Fourier; ++j) {
+	for (int i = 0; i < local_Ny; ++i) {
+		tmp = i * Nx_Fourier;
+		for (int j = 0; j < Nx_Fourier; ++j) {
 			indx = tmp + j;
 
 			// Add linear term to RHS
@@ -762,10 +767,10 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Nx, Int_d
 			Int_data->RK3[indx] += D_fac * Int_data->RK_tmp[indx];
 			#endif
 
-			// printf("RHS3[%d, %d]: %1.16lf %1.16lf -- (%d, %d)\n", i, j, creal(Int_data->RK3[indx]), cimag(Int_data->RK3[indx]), run_data->k[0][i], run_data->k[1][j]);
 
 			// Update temporary input for nonlinear term
-			Int_data->RK_tmp[indx] = run_data->w_hat[indx] + dt * RK4_A43 * Int_data->RK3[indx];
+			Int_data->RK_tmp[indx] = run_data->w_hat[indx] + RK4_A43 * (dt * Int_data->RK3[indx]);
+			// printf("RHS3[%d, %d]: %1.16lf %1.16lf -- (%d, %d)\n", run_data->k[0][i], run_data->k[1][j], creal(Int_data->RK3[indx] * dt), cimag(Int_data->RK3[indx] * dt), run_data->k[0][i], run_data->k[1][j]);
 		}
 		// printf("\n");
 	}
@@ -773,9 +778,9 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Nx, Int_d
 	// ----------------------- Stage 4
 	NonlinearRHSBatch(Int_data->RK_tmp, Int_data->RK4, Int_data->nonlin, Int_data->nabla_psi, Int_data->nabla_w);
 	#if defined(__RK4)
-	for (int i = 0; i < local_Nx; ++i) {
-		tmp = i * Ny_Fourier;
-		for (int j = 0; j < Ny_Fourier; ++j) {
+	for (int i = 0; i < local_Ny; ++i) {
+		tmp = i * Nx_Fourier;
+		for (int j = 0; j < Nx_Fourier; ++j) {
 			indx = tmp + j;
 
 			// Add linear term to RHS
@@ -800,24 +805,32 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Nx, Int_d
 
 			Int_data->RK4[indx] += D_fac * Int_data->RK_tmp[indx];
 
-			// printf("RHS4[%d, %d]: %1.16lf %1.16lf -- (%d, %d)\n", i, j, creal(Int_data->RK4[indx]), cimag(Int_data->RK4[indx]), run_data->k[0][i], run_data->k[1][j]);
+			// printf("RHS4[%d, %d]: %1.16lf %1.16lf -- (%d, %d)\n", run_data->k[0][i], run_data->k[1][j], creal(Int_data->RK4[indx] * dt), cimag(Int_data->RK4[indx] * dt), run_data->k[0][i], run_data->k[1][j]);
 
 		}
 		// printf("\n");
 	}
-	// printf("\n");
 	#endif
 	
+	// for (int i = 0; i < local_Ny; ++i) {
+	// 	tmp = i * Nx_Fourier;
+	// 	for (int j = 0; j < Nx_Fourier; ++j) {
+	// 		indx = tmp + j;
+	// 		printf("RHS4[%d, %d]: %1.16lf %1.16lf -- (%d, %d)\n", run_data->k[0][i], run_data->k[1][j], creal(Int_data->RK4[indx] * dt), cimag(Int_data->RK4[indx] * dt), run_data->k[0][i], run_data->k[1][j]);
+	// 	}
+	// 	printf("\n");
+	// }
+	// printf("\n");
 	// printf("\n\n\n\n\n");
-	// 
+	
 	// printf("nu: %lf\tdt: %lf\ta: %lf\thyper_flag: %d\thyper_pow: %lf\thypo_flag: %d\thypo_pow: %lf\t\t--HYPER: %d\t\tHYPO: %d\n", sys_vars->NU, dt, sys_vars->EKMN_ALPHA, sys_vars->HYPER_VISC_FLAG, sys_vars->HYPER_VISC_POW, sys_vars->EKMN_DRAG_FLAG, sys_vars->EKMN_DRAG_POW, HYPER_VISC, EKMN_DRAG);
 	
 	/////////////////////
 	/// UPDATE STEP
 	/////////////////////
-	for (int i = 0; i < local_Nx; ++i) {
-		tmp = i * Ny_Fourier;
-		for (int j = 0; j < Ny_Fourier; ++j) {
+	for (int i = 0; i < local_Ny; ++i) {
+		tmp = i * Nx_Fourier;
+		for (int j = 0; j < Nx_Fourier; ++j) {
 			indx = tmp + j;
 
 			if ((run_data->k[0][i] != 0) || (run_data->k[1][j]  != 0)) {
@@ -852,7 +865,8 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Nx, Int_d
 				}
 				
 				// Update Fourier vorticity
-				run_data->w_hat[indx] = run_data->w_hat[indx] * ((2.0 - D_fac) / (2.0 + D_fac)) + (2.0 * dt / (2.0 + D_fac)) * (RK4_B1 * Int_data->RK1[indx] + RK4_B2 * Int_data->RK2[indx] + RK4_B3 * Int_data->RK3[indx] + RK4_B4 * Int_data->RK4[indx]);
+				run_data->w_hat[indx] = (1.0 / (1.0 + 0.5 * D_fac)) * ((1.0 - 0.5 * D_fac) * run_data->w_hat[indx] + (RK4_B1 * (Int_data->RK1[indx] * dt) + RK4_B2 * (Int_data->RK2[indx] * dt) + RK4_B3 * (Int_data->RK3[indx] * dt) + RK4_B4 * (Int_data->RK4[indx] * dt)));
+				// run_data->w_hat[indx] = run_data->w_hat[indx] * ((2.0 - D_fac) / (2.0 + D_fac)) + (2.0 * dt / (2.0 + D_fac)) * (RK4_B1 * Int_data->RK1[indx] + RK4_B2 * Int_data->RK2[indx] + RK4_B3 * Int_data->RK3[indx] + RK4_B4 * Int_data->RK4[indx]);
 				#endif
 				#if defined(PHASE_ONLY)
 				run_data->w_hat[indx] *= (tmp_a_k_norm / cabs(run_data->w_hat[indx]));
@@ -861,10 +875,12 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Nx, Int_d
 			else {
 				run_data->w_hat[indx] = 0.0 + 0.0 * I;
 			}
-				// printf("d[%d,%d]: %1.6lf - %1.6lf ", run_data->k[0][i], run_data->k[1][j], 1.0/(1.0 + D_fac * 0.5), 1.0 - D_fac * 0.5);
+			// printf("d[%d,%d]: %1.6lf - %1.6lf ", run_data->k[0][i], run_data->k[1][j], 1.0/(1.0 + D_fac * 0.5), 1.0 - D_fac * 0.5);
+			// printf("wh[%d,%d]: %1.16lf %1.16lfi\n", run_data->k[0][i], run_data->k[1][j], creal(run_data->w_hat[indx]), cimag(run_data->w_hat[indx]));
 		}
 		// printf("\n");
 	}
+	// PrintScalarFourier(run_data->w_hat, N, "wnew");
 	#if defined(__NONLIN)
 	// Record the nonlinear term with the updated Fourier vorticity
 	NonlinearRHSBatch(run_data->w_hat, run_data->nonlinterm, Int_data->nonlin, Int_data->nabla_psi, Int_data->nabla_w);
@@ -889,45 +905,53 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* non
 
 	// Initialize variables
 	int tmp, indx;
-	const ptrdiff_t local_Nx  = sys_vars->local_Nx;
-	const long int Nx         = sys_vars->N[0];
-	const long int Ny         = sys_vars->N[1];
-	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
+	const ptrdiff_t local_Ny  = sys_vars->local_Ny;
+	const long int Ny         = sys_vars->N[0];
+	const long int Nx         = sys_vars->N[1];
+	const long int Nx_Fourier = sys_vars->N[1] / 2 + 1;
 	double k_sqr;
 	double vel1;
 	double vel2;
-	double norm_fac = 1.0 / (Nx * Ny);
+	double norm_fac = 1.0 / (Ny * Nx);
 
-	// Apply dealiasing 
- 	// ApplyDealiasing(w_hat, 1, sys_vars->N);
+	// Ensure conjugacy in the ky = 0 modes of the intial condition
+    ForceConjugacy(w_hat, sys_vars->N, 1);
 
 	// -----------------------------------
 	// Compute Fourier Space Velocities
 	// -----------------------------------
-	// Compute (-\Delta)^-1 \omega - i.e., u_hat = d\psi_dy = -I kx/|k|^2 \omegahat_k, v_hat = -d\psi_dx = I ky/|k|^2 \omegahat_k
-	for (int i = 0; i < local_Nx; ++i) {
-		tmp = i * (Ny_Fourier);
-		for (int j = 0; j < Ny_Fourier; ++j) {
+	// Compute (-\Delta)^-1 \omega - i.e., u_hat = d\psi_dy = I ky/|k|^2 \omegahat_k, v_hat = -d\psi_dx = I kx/|k|^2 \omegahat_k
+	for (int i = 0; i < local_Ny; ++i) {
+		tmp = i * (Nx_Fourier);
+		for (int j = 0; j < Nx_Fourier; ++j) {
 			indx = tmp + j;
+
+			// Write w_hat to temporary array for transform back to real space
+			run_data->w_hat_tmp[indx] = w_hat[indx];
 
 			if ((run_data->k[0][i] != 0) || (run_data->k[1][j]  != 0)) {
 				// denominator
 				k_sqr = 1.0 / (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 
 				// Fill fill fourier velocities array
-				dw_hat_dt[SYS_DIM * indx + 0] = I * ((double) run_data->k[1][j]) * k_sqr * w_hat[indx];
-				dw_hat_dt[SYS_DIM * indx + 1] = -1.0 * I * ((double) run_data->k[0][i]) * k_sqr * w_hat[indx];
+				dw_hat_dt[SYS_DIM * indx + 0] = I * ((double) run_data->k[0][i]) * k_sqr * w_hat[indx];
+				dw_hat_dt[SYS_DIM * indx + 1] = -1.0 * I * ((double) run_data->k[1][j]) * k_sqr * w_hat[indx];
 			}
 			else {
 				dw_hat_dt[SYS_DIM * indx + 0] = 0.0 + 0.0 * I;
 				dw_hat_dt[SYS_DIM * indx + 1] = 0.0 + 0.0 * I;
 			}
-			// printf("uh[%d, %d]: %1.16lf %1.16lf -- vh[%d, %d]: %1.16lf %1.16lf -- vh[%d, %d]: %1.16lf %1.16lf  -- (%d, %d)\n", i, j, creal(dw_hat_dt[SYS_DIM * indx + 0]), cimag(dw_hat_dt[SYS_DIM * indx + 0]), i, j, creal(dw_hat_dt[SYS_DIM * indx + 1]), cimag(dw_hat_dt[SYS_DIM * indx + 1]), i, j, creal(w_hat[indx]), cimag(w_hat[indx]), run_data->k[0][i], run_data->k[1][j]);
-
+			// printf("uh[%d, %d]: %1.16lf %1.16lf -- vh[%d, %d]: %1.16lf %1.16lf -- wh[%d, %d]: %1.16lf %1.16lf  -- (%d, %d)\n", run_data->k[0][i], run_data->k[1][j], creal(dw_hat_dt[SYS_DIM * indx + 0]), cimag(dw_hat_dt[SYS_DIM * indx + 0]), run_data->k[0][i], run_data->k[1][j], creal(dw_hat_dt[SYS_DIM * indx + 1]), cimag(dw_hat_dt[SYS_DIM * indx + 1]), run_data->k[0][i], run_data->k[1][j], creal(w_hat[indx]), cimag(w_hat[indx]), run_data->k[0][i], run_data->k[1][j]);
 		}
 		// printf("\n");
 	}
 	// printf("\n");
+
+	// PrintVectorFourier(dw_hat_dt, sys_vars->N, "uh", "vh");
+	// PrintScalarFourier(run_data->w_hat_tmp, sys_vars->N, "wh");
+
+	// // Ensure conjugacy in the ky = 0 modes of the intial condition
+    ForceConjugacy(dw_hat_dt, sys_vars->N, 2);
 
 	// ----------------------------------
 	// Transform to Real Space
@@ -939,53 +963,54 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* non
 	// ---------------------------------------------
 	// Compute Fourier Space Vorticity Derivatives
 	// ---------------------------------------------
-	// Compute \nabla\omega - i.e., d\omegahat_dx = -I kx \omegahat_k, d\omegahat_dy = -I ky \omegahat_k
-	for (int i = 0; i < local_Nx; ++i) {
-		tmp = i * (Ny_Fourier);
-		for (int j = 0; j < Ny_Fourier; ++j) {
-			indx = tmp + j;
+	// // Compute \nabla\omega - i.e., d\omegahat_dx = -I kx \omegahat_k, d\omegahat_dy = -I ky \omegahat_k
+	// for (int i = 0; i < local_Ny; ++i) {
+	// 	tmp = i * (Nx_Fourier);
+	// 	for (int j = 0; j < Nx_Fourier; ++j) {
+	// 		indx = tmp + j;
 
-			// Fill vorticity derivatives array
-			if ((run_data->k[0][i] != 0) || (run_data->k[1][j]  != 0)) {
-				dw_hat_dt[SYS_DIM * indx + 0] = I * ((double) run_data->k[0][i]) * w_hat[indx];
-				dw_hat_dt[SYS_DIM * indx + 1] = I * ((double) run_data->k[1][j]) * w_hat[indx]; 
-			}
-			else {
-				dw_hat_dt[SYS_DIM * indx + 0] = 0.0 + 0.0 * I;
-				dw_hat_dt[SYS_DIM * indx + 1] = 0.0 + 0.0 * I;
-			}
-			// printf("dwdx[%d, %d]: %1.16lf %1.16lf -- dwdy[%d, %d]: %1.16lf %1.16lf -- (%d, %d)\n", i, j, creal(dw_hat_dt[SYS_DIM * indx + 0]), cimag(dw_hat_dt[SYS_DIM * indx + 0]), i, j, creal(dw_hat_dt[SYS_DIM * indx + 1]), cimag(dw_hat_dt[SYS_DIM * indx + 1]), run_data->k[0][i], run_data->k[1][j]);
+	// 		// Fill vorticity derivatives array
+	// 		if ((run_data->k[0][i] != 0) || (run_data->k[1][j]  != 0)) {
+	// 			dw_hat_dt[SYS_DIM * indx + 0] = I * ((double) run_data->k[1][j]) * w_hat[indx];
+	// 			dw_hat_dt[SYS_DIM * indx + 1] = I * ((double) run_data->k[0][i]) * w_hat[indx]; 
+	// 		}
+	// 		else {
+	// 			dw_hat_dt[SYS_DIM * indx + 0] = 0.0 + 0.0 * I;
+	// 			dw_hat_dt[SYS_DIM * indx + 1] = 0.0 + 0.0 * I;
+	// 		}
+	// 		// printf("dwdx[%d, %d]: %1.16lf %1.16lf -- dwdy[%d, %d]: %1.16lf %1.16lf -- (%d, %d)\n", i, j, creal(dw_hat_dt[SYS_DIM * indx + 0]), cimag(dw_hat_dt[SYS_DIM * indx + 0]), i, j, creal(dw_hat_dt[SYS_DIM * indx + 1]), cimag(dw_hat_dt[SYS_DIM * indx + 1]), run_data->k[0][i], run_data->k[1][j]);
 
-		}
-		// printf("\n");
-	}
-	// printf("\n");
+	// 	}
+	// 	// printf("\n");
+	// }
+	// // printf("\n");
 
 	// ----------------------------------
 	// Transform to Real Space
 	// ----------------------------------
 	// Batch transform both fourier vorticity derivatives to real space
-	fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_batch_c2r), dw_hat_dt, nabla_w);
-	// fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_c2r), w_hat, run_data->w);
+	// fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_batch_c2r), dw_hat_dt, nabla_w);
+	fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_c2r), run_data->w_hat_tmp, run_data->w);
 	
-
+	// PrintVectorReal(u, sys_vars->N, "u", "v");
+	// PrintScalarReal(run_data->w, sys_vars->N, "w");
 	// -----------------------------------
 	// Perform Convolution in Real Space
 	// -----------------------------------
 	// Perform the multiplication in real space
-	for (int i = 0; i < local_Nx; ++i) {
-		tmp = i * (Ny + 2);
-		for (int j = 0; j < Ny; ++j) {
+	for (int i = 0; i < local_Ny; ++i) {
+		tmp = i * (Nx + 2);
+		for (int j = 0; j < Nx; ++j) {
 			indx = tmp + j; 
-			// printf("u[%d, %d]: %1.16lf -- v[%d, %d]: %1.16lf -- w[%d, %d]: %1.16lf -- (%d, %d)\n", i, j, u[SYS_DIM * indx + 0] * norm_fac, i, j, u[SYS_DIM * indx + 1] * norm_fac, i, j, run_data->w[indx] * norm_fac, run_data->k[0][i], run_data->k[1][j]);
+			// printf("u[%d, %d]: %1.16lf -- v[%d, %d]: %1.16lf -- w[%d, %d]: %1.16lf\n", i, j, u[SYS_DIM * indx + 0], i, j, u[SYS_DIM * indx + 1], i, j, run_data->w[indx]);
 
  			// // Perform multiplication of the nonlinear term 
- 			vel1 = u[SYS_DIM * indx + 0];
- 			vel2 = u[SYS_DIM * indx + 1];
- 			nonlinear[indx] = 1.0 * (vel1 * nabla_w[SYS_DIM * indx + 0] + vel2 * nabla_w[SYS_DIM * indx + 1]);
-			// // Perform multiplication of the nonlinear term 
-			// u[SYS_DIM * indx + 0] *= run_data->w[indx];
-			// u[SYS_DIM * indx + 1] *= run_data->w[indx];
+ 			// vel1 = u[SYS_DIM * indx + 0];
+ 			// vel2 = u[SYS_DIM * indx + 1];
+ 			// nonlinear[indx] = (vel1 * nabla_w[SYS_DIM * indx + 0] + vel2 * nabla_w[SYS_DIM * indx + 1]);
+			// Perform multiplication of the nonlinear term 
+			u[SYS_DIM * indx + 0] *= run_data->w[indx];
+			u[SYS_DIM * indx + 1] *= run_data->w[indx];
  		}
  		// printf("\n");
  	}
@@ -995,44 +1020,48 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* non
  	// Transform Nonlinear Term To Fourier
  	// -------------------------------------
  	// Transform Fourier nonlinear term back to Fourier space
- 	fftw_mpi_execute_dft_r2c((sys_vars->fftw_2d_dft_r2c), nonlinear, dw_hat_dt);
- 	// fftw_mpi_execute_dft_r2c((sys_vars->fftw_2d_dft_batch_r2c), u, dw_hat_dt);
+ 	// fftw_mpi_execute_dft_r2c((sys_vars->fftw_2d_dft_r2c), nonlinear, dw_hat_dt);
+ 	fftw_mpi_execute_dft_r2c((sys_vars->fftw_2d_dft_batch_r2c), u, dw_hat_dt);
 
+	// // Ensure conjugacy in the ky = 0 modes of the intial condition
+    ForceConjugacy(dw_hat_dt, sys_vars->N, 2);
 
- 	for (int i = 0; i < local_Nx; ++i) {
- 		tmp = i * (Ny_Fourier);
- 		for (int j = 0; j < Ny_Fourier; ++j) {
+ 	for (int i = 0; i < local_Ny; ++i) {
+ 		tmp = i * (Nx_Fourier);
+ 		for (int j = 0; j < Nx_Fourier; ++j) {
  			indx = tmp + j;
 
  			if ((run_data->k[0][i] != 0) || (run_data->k[1][j]  != 0)) {
- 				// dw_hat_dt[indx] = (-I * run_data->k[0][i] * dw_hat_dt[SYS_DIM * indx + 0] -I * run_data->k[1][j] * dw_hat_dt[SYS_DIM * indx + 1]) * pow(norm_fac, 2.0);
- 				dw_hat_dt[indx] *= pow(norm_fac, 2.0);
+ 				dw_hat_dt[indx] = (-I * run_data->k[1][j] * dw_hat_dt[SYS_DIM * indx + 0] -I * run_data->k[0][i] * dw_hat_dt[SYS_DIM * indx + 1]) * pow(norm_fac, 1.0);
+ 				// dw_hat_dt[indx] *= pow(norm_fac, 2.0);
  			}
  			else {
  				dw_hat_dt[indx] = 0.0 + 0.0 * I;
  				dw_hat_dt[indx] = 0.0 + 0.0 * I;
  			}
- 		}
-
- 	}
+		}
+	}
 
  	// ----------------------------------------
- 	// Apply Dealiasing & Forcing & Conjugacy
+ 	// Add Forcing Apply Dealiasing & Conjugacy
  	// ----------------------------------------
- 	// Apply dealiasing 
- 	ApplyDealiasing(dw_hat_dt, 1, sys_vars->N);
-
  	// Add the forcing
 	if (sys_vars->local_forcing_proc) {
 		for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
 	 		// printf("scale: %lf\t-\tk[%d, %d]: %1.16lf\t%1.16lfi\t\t%1.16lf\t%1.16lfi--\t%1.16lf %1.16lfi\n", sys_vars->force_scale_var, run_data->forcing_k[0][i], run_data->forcing_k[1][i], creal(dw_hat_dt[run_data->forcing_indx[i]]), cimag(dw_hat_dt[run_data->forcing_indx[i]]), creal(run_data->forcing[i]), cimag(run_data->forcing[i]), creal(run_data->forcing[i]) / creal(dw_hat_dt[run_data->forcing_indx[i]]), cimag(run_data->forcing[i]) / cimag(dw_hat_dt[run_data->forcing_indx[i]]));
 			dw_hat_dt[run_data->forcing_indx[i]] += run_data->forcing[i]; 
+	 		// printf("scale: %lf\t-\tk[%d, %d]: %1.16lf\t%1.16lfi\t\t%1.16lf\t%1.16lfi--\t%1.16lf %1.16lfi\n", sys_vars->force_scale_var, run_data->forcing_k[0][i], run_data->forcing_k[1][i], creal(dw_hat_dt[run_data->forcing_indx[i]]), cimag(dw_hat_dt[run_data->forcing_indx[i]]), creal(run_data->forcing[i]), cimag(run_data->forcing[i]), creal(run_data->forcing[i]) / creal(dw_hat_dt[run_data->forcing_indx[i]]), cimag(run_data->forcing[i]) / cimag(dw_hat_dt[run_data->forcing_indx[i]]));
 		}
 	}
 
+	// PrintScalarFourier(dw_hat_dt, sys_vars->N, "curl");
+
+	
+ 	// Apply dealiasing 
+ 	ApplyDealiasing(dw_hat_dt, 1, sys_vars->N);
 
 	// Ensure conjugacy in the ky = 0 modes of the intial condition
-    ForceConjugacy(w_hat, sys_vars->N);
+    ForceConjugacy(dw_hat_dt, sys_vars->N, 1);
 }
 /**
  * Function to apply the selected dealiasing filter to the input array. Can be Fourier vorticity or velocity
@@ -1044,12 +1073,12 @@ void ApplyDealiasing(fftw_complex* array, int array_dim, const long int* N) {
 
 	// Initialize variables
 	int tmp, indx;
-	ptrdiff_t local_Nx        = sys_vars->local_Nx;
-	const long int Nx         = N[0];
-	const long int Ny         = N[1];
-	const long int Ny_Fourier = Ny / 2 + 1;
+	ptrdiff_t local_Ny        = sys_vars->local_Ny;
+	const long int Ny         = N[0];
+	const long int Nx         = N[1];
+	const long int Nx_Fourier = Nx / 2 + 1;
 	double k_sqr;
-	double kmax_sqr = pow((int) (Nx / 3.0), 2.0);
+	double kmax_sqr = pow((int) (Ny / 3.0), 2.0);
 	#if defined(__DEALIAS_HOU_LI)
 	double hou_li_filter;
 	#endif
@@ -1057,39 +1086,36 @@ void ApplyDealiasing(fftw_complex* array, int array_dim, const long int* N) {
 	// --------------------------------------------
 	// Apply Appropriate Filter 
 	// --------------------------------------------
-	for (int i = 0; i < local_Nx; ++i) {
-		tmp = i * Ny_Fourier;
-		for (int j = 0; j < Ny_Fourier; ++j) {
+	for (int i = 0; i < local_Ny; ++i) {
+		tmp = i * Nx_Fourier;
+		for (int j = 0; j < Nx_Fourier; ++j) {
 			indx = array_dim * (tmp + j);
 
 			// Get |k|^2
 			k_sqr = (double) run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j];
 
 			#if defined(__DEALIAS_23)
-			if (k_sqr >= kmax_sqr) {
+			if (sqrt(k_sqr) <= 0.0 || sqrt(k_sqr) > (int)(Ny / 3.0) - 0.5) {
 				for (int l = 0; l < array_dim; ++l) {
 					// Set dealised modes to 0
 					array[indx + l] = 0.0 + 0.0 * I;	
 				}
-			// printf("f[%d,%d]: %d ", run_data->k[0][i], run_data->k[1][j], 0);
 			}
-			else if (!(strcmp(sys_vars->forcing, "KOLM")) && run_data->k[0][i] == 0) {
+			else if (!(strcmp(sys_vars->forcing, "KOLM")) && (run_data->k[1][j] == 0 && run_data->k[0][i] > 0)) {
 					for (int l = 0; l < array_dim; ++l) {
 						// Set dealised modes to 0
 						array[indx + l] = 0.0 + 0.0 * I;	
 					}
-				// printf("f[%d,%d]: %d ", run_data->k[0][i], run_data->k[1][j], 0);
 			}
 			else {
 				for (int l = 0; l < array_dim; ++l) {
 					// Apply DFT normaliztin to undealiased modes
 					array[indx + l] = array[indx + l];	
 				}				
-			// printf("f[%d,%d]: %d ", run_data->k[0][i], run_data->k[1][j], 1);
 			}
 			#elif defined(__DEALIAS_HOU_LI)
 			// Compute Hou-Li filter
-			hou_li_filter = exp(-36.0 * pow((sqrt(pow(run_data->k[0][i] / (Nx / 2), 2.0) + pow(run_data->k[1][j] / (Ny / 2), 2.0))), 36.0));
+			hou_li_filter = exp(-36.0 * pow((sqrt(pow(run_data->k[0][i] / (Ny / 2), 2.0) + pow(run_data->k[1][j] / (Nx / 2), 2.0))), 36.0));
 
 			for (int l = 0; l < array_dim; ++l) {
 				// Apply filter and DFT normaliztion
@@ -1097,9 +1123,7 @@ void ApplyDealiasing(fftw_complex* array, int array_dim, const long int* N) {
 			}
 			#endif
 		}
-		// printf("\n");
 	}
-	// printf("\n\n\n");
 }
 /**
  * Function to compute the initial condition for the integration
@@ -1112,12 +1136,12 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 
 	// Initialize variables
 	int tmp, indx;
-	const long int Nx         = N[0];
-	const long int Ny 		  = N[1];
-	const long int Ny_Fourier = N[1] / 2 + 1; 
+	const long int Ny         = N[0];
+	const long int Nx 		  = N[1];
+	const long int Nx_Fourier = N[1] / 2 + 1; 
 
 	// Initialize local variables 
-	ptrdiff_t local_Nx = sys_vars->local_Nx;
+	ptrdiff_t local_Ny = sys_vars->local_Ny;
 
     // ------------------------------------------------
     // Set Seed for RNG
@@ -1128,9 +1152,9 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 		// ------------------------------------------------
 		// Taylor Green Initial Condition - Real Space
 		// ------------------------------------------------
-		for (int i = 0; i < local_Nx; ++i) {
-			tmp = i * (Ny + 2);
-			for (int j = 0; j < Ny; ++j) {
+		for (int i = 0; i < local_Ny; ++i) {
+			tmp = i * (Nx + 2);
+			for (int j = 0; j < Nx; ++j) {
 				indx = (tmp + j);
 
 				// Fill the velocities
@@ -1146,9 +1170,9 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 		// -------------------------------------------------
 		// Taylor Green Initial Condition - Fourier Space
 		// -------------------------------------------------
-		for (int i = 0; i < local_Nx; ++i) {	
-			tmp = i * (Ny_Fourier);
-			for (int j = 0; j < Ny_Fourier; ++j) {
+		for (int i = 0; i < local_Ny; ++i) {	
+			tmp = i * (Nx_Fourier);
+			for (int j = 0; j < Nx_Fourier; ++j) {
 				indx = tmp + j;
 
 				// Fill vorticity
@@ -1166,9 +1190,9 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 		// ------------------------------------------------
 		// Taylor Green Initial Condition - Real Space
 		// ------------------------------------------------
-		for (int i = 0; i < local_Nx; ++i) {
-			tmp = i * (Ny + 2);
-			for (int j = 0; j < Ny; ++j) {
+		for (int i = 0; i < local_Ny; ++i) {
+			tmp = i * (Nx + 2);
+			for (int j = 0; j < Nx; ++j) {
 				indx = (tmp + j);
 
 				// Compute the vorticity of the Taylor Green vortex
@@ -1185,9 +1209,9 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 		// ------------------------------------------------
 		// Double Shear Lyaer - Real Space Vorticity
 		// ------------------------------------------------
-		for (int i = 0; i < local_Nx; ++i) {
-			tmp = i * (Ny + 2);
-			for (int j = 0; j < Ny; ++j) {
+		for (int i = 0; i < local_Ny; ++i) {
+			tmp = i * (Nx + 2);
+			for (int j = 0; j < Nx; ++j) {
 				indx = (tmp + j);
 
 				// Top Layer
@@ -1207,9 +1231,9 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 		// ------------------------------------------------
 		// Zero - A Zero vorticity field initial condition
 		// ------------------------------------------------
-		for (int i = 0; i < local_Nx; ++i) {
-			tmp = i * Ny_Fourier;
-			for (int j = 0; j < Ny_Fourier; ++j) {
+		for (int i = 0; i < local_Ny; ++i) {
+			tmp = i * Nx_Fourier;
+			for (int j = 0; j < Nx_Fourier; ++j) {
 				indx = (tmp + j);
 
 				// Zero field
@@ -1217,22 +1241,20 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 				
 				// Initialize the specific modes for the Kolmogorov zero initial condition
 				if (!(strcmp(sys_vars->u0, "ZERO_KOLM"))){
-					if (run_data->k[1][j] == 1 && (run_data->k[0][i] == 1 || run_data->k[0][i] == 1)) {
+					if (run_data->k[1][j] == 1 && (run_data->k[0][i] == 1 || run_data->k[0][i] == -1)) {
 						w_hat[indx] = -0.5 + 0.0 * I;
 					}
-					else if (run_data->k[1][j] == 2 && (run_data->k[0][i] == 3 || run_data->k[0][i] == 4)) {
+					if (run_data->k[1][j] == 2 && (run_data->k[0][i] == 3 || run_data->k[0][i] == 4)) {
 						w_hat[indx] = -4.0 + 1.0 * I;
 					}
-					else if (run_data->k[1][j] == 3 && (run_data->k[0][i] == 4 || run_data->k[0][i] == 5)) {
+					if (run_data->k[1][j] == 3 && (run_data->k[0][i] == 4 || run_data->k[0][i] == 5)) {
 						w_hat[indx] = -2.0 + 3.0 * I;
 					}
-					else if (run_data->k[1][j] == 4 && (run_data->k[0][i] == 5 || run_data->k[0][i] == 6)) {
+					if (run_data->k[1][j] == 4 && (run_data->k[0][i] == 5 || run_data->k[0][i] == 6)) {
 						w_hat[indx] = 8.0 - 6.0 * I;
 					} 
 				}
-				printf("w[%d,%d]: %1.1lf %1.1lfi  ", run_data->k[0][i], run_data->k[1][j], creal(w_hat[indx]), cimag(w_hat[indx]));
 			}
-			printf("\n");
 		}
 	}
 	else if (!(strcmp(sys_vars->u0, "DECAY_TURB_BB")) || !(strcmp(sys_vars->u0, "DECAY_TURB_NB")) || !(strcmp(sys_vars->u0, "DECAY_TURB_EXP")) || !(strcmp(sys_vars->u0, "DECAY_TURB_EXP_II"))) {
@@ -1246,14 +1268,14 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 		double spec_1d = 0.0;
 
 		#if defined(DEBUG)
-		double* rand_u = (double*)fftw_malloc(sizeof(double) * Nx * Ny_Fourier);
+		double* rand_u = (double*)fftw_malloc(sizeof(double) * Ny * Nx_Fourier);
 		#endif
 		// ---------------------------------------------------------------
 		// Initialize Vorticity with Specific Spectrum and Random Phases
 		// ---------------------------------------------------------------
-		for (int i = 0; i < local_Nx; ++i) {	
-			tmp = i * (Ny_Fourier);
-			for (int j = 0; j < Ny_Fourier; ++j) {
+		for (int i = 0; i < local_Ny; ++i) {	
+			tmp = i * (Nx_Fourier);
+			for (int j = 0; j < Nx_Fourier; ++j) {
 				indx = tmp + j;	
 
 				if (run_data->k[0][i] == 0.0 && run_data->k[1][j] == 0.0) {
@@ -1303,9 +1325,9 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 			}
 		}
 		#if defined(DEBUG)
-		int dims[2] = {Nx, Ny_Fourier};
-		WriteTestDataReal(rand_u, "rand_u", 2, dims, local_Nx);
-		WriteTestDataFourier(w_hat, "w_hat", Nx, Ny_Fourier, local_Nx);
+		int dims[2] = {Ny, Nx_Fourier};
+		WriteTestDataReal(rand_u, "rand_u", 2, dims, local_Ny);
+		WriteTestDataFourier(w_hat, "w_hat", Ny, Nx_Fourier, local_Ny);
 		fftw_free(rand_u);
 		#endif
 
@@ -1313,16 +1335,16 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 		// Compute the Initial Energy
 		// ---------------------------------------
 		double enrg = 0.0;
-		for (int i = 0; i < local_Nx; ++i) {	
-			tmp = i * (Ny_Fourier);
-			for (int j = 0; j < Ny_Fourier; ++j) {
+		for (int i = 0; i < local_Ny; ++i) {	
+			tmp = i * (Nx_Fourier);
+			for (int j = 0; j < Nx_Fourier; ++j) {
 				indx = tmp + j;	
 
 				if (run_data->k[0][i] != 0 || run_data->k[1][j] != 0) {
 					// Wavenumber prefactor -> 1 / |k|^2
 					inv_k_sqr = 1.0 / (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 
-					if ((j == 0) || (j == Ny_Fourier - 1)) {
+					if ((j == 0) || (j == Nx_Fourier - 1)) {
 						enrg += inv_k_sqr * cabs(w_hat[indx] * conj(w_hat[indx]));
 					}
 					else {
@@ -1332,7 +1354,7 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 			}
 		}
 		// Normalize 
-		enrg *= (0.5 / pow(Nx * Ny, 2.0)) * 4.0 * pow(M_PI, 2.0);
+		enrg *= (0.5 / pow(Ny * Nx, 2.0)) * 4.0 * pow(M_PI, 2.0);
 
 		// Reduce all local energy sums and broadcast back to each process
 		MPI_Allreduce(MPI_IN_PLACE, &enrg, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
@@ -1340,9 +1362,9 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 		// -------------------------------------------
 		// Normalize & Compute the Fourier Vorticity
 		// -------------------------------------------
-		for (int i = 0; i < local_Nx; ++i) {	
-			tmp = i * (Ny_Fourier);
-			for (int j = 0; j < Ny_Fourier; ++j) {
+		for (int i = 0; i < local_Ny; ++i) {	
+			tmp = i * (Nx_Fourier);
+			for (int j = 0; j < Nx_Fourier; ++j) {
 				indx = tmp + j;
 
 				if (run_data->k[0][i] == 0 || run_data->k[1][j] != 0) {
@@ -1376,7 +1398,7 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 		double spec_1d;
 
 		#if defined(DEBUG)
-		fftw_complex* rand_u = (fftw_complex*)fftw_malloc(sizeof(fftw_complex) * Nx * Ny_Fourier);
+		fftw_complex* rand_u = (fftw_complex*)fftw_malloc(sizeof(fftw_complex) * Ny * Nx_Fourier);
 		#endif
 
 		// Allocate memory for the stream function
@@ -1391,9 +1413,9 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 			exit(1);
 		}	
 
-		for (int i = 0; i < local_Nx; ++i) {	
-			tmp = i * (Ny_Fourier);
-			for (int j = 0; j < Ny_Fourier; ++j) {
+		for (int i = 0; i < local_Ny; ++i) {	
+			tmp = i * (Nx_Fourier);
+			for (int j = 0; j < Nx_Fourier; ++j) {
 				indx = tmp + j;	
 
 				// Generate Standard normal random variable
@@ -1422,8 +1444,8 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 			}
 		}
 		#if defined(DEBUG)
-		WriteTestDataFourier(rand_u, "rand_u", Nx, Ny_Fourier, local_Nx);
-		WriteTestDataFourier(psi_hat, "psi_hat", Nx, Ny_Fourier, local_Nx);
+		WriteTestDataFourier(rand_u, "rand_u", Ny, Nx_Fourier, local_Ny);
+		WriteTestDataFourier(psi_hat, "psi_hat", Ny, Nx_Fourier, local_Ny);
 		fftw_free(rand_u);
 		#endif
 		
@@ -1435,13 +1457,13 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 
 		// Transform and Normalize while also gathering the mean
 		fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_c2r), psi_hat, psi);
-		for (int i = 0; i < local_Nx; ++i) {	
-			tmp = i * (Ny + 2);
-			for (int j = 0; j < Ny; ++j) {
+		for (int i = 0; i < local_Ny; ++i) {	
+			tmp = i * (Nx + 2);
+			for (int j = 0; j < Nx; ++j) {
 				indx = tmp + j;	
 
 				// Normalize
-				psi[indx] /= (Nx * Ny);
+				psi[indx] *= 1.0; /// (Ny * Nx);
 
 				// Update the sum for the mean
 				mean += psi[indx];
@@ -1453,13 +1475,13 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 		MPI_Allreduce(MPI_IN_PLACE, &mean, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
 		// Enforce the zero mean of the stream function field
-		for (int i = 0; i < local_Nx; ++i) {	
-			tmp = i * (Ny + 2);
-			for (int j = 0; j < Ny; ++j) {
+		for (int i = 0; i < local_Ny; ++i) {	
+			tmp = i * (Nx + 2);
+			for (int j = 0; j < Nx; ++j) {
 				indx = tmp + j;	
 
 				// Normalize
-				psi[indx] -=  (mean / (Nx * Ny));
+				psi[indx] -=  (mean / (Ny * Nx));
 			}
 		}
 
@@ -1471,15 +1493,15 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 		// Compute the Energy
 		// ---------------------------------------------
 		double enrg = 0.0;
-		for (int i = 0; i < local_Nx; ++i) {
-			tmp = i * Ny_Fourier;
-			for (int j = 0; j < Ny_Fourier; ++j) {
+		for (int i = 0; i < local_Ny; ++i) {
+			tmp = i * Nx_Fourier;
+			for (int j = 0; j < Nx_Fourier; ++j) {
 				indx = tmp + j;
 
 				// Wavenumber prefactor -> |k|^2
 				k_sqrd = (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 
-				if ((j == 0) || (j == Ny_Fourier - 1)) {
+				if ((j == 0) || (j == Nx_Fourier - 1)) {
 					enrg += k_sqrd * cabs(psi_hat[indx] * conj(psi_hat[indx]));
 				}
 				else {
@@ -1488,7 +1510,7 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 			}
 		}
 		// Normalize the energy
-		enrg *= 4.0 * pow(M_PI, 2.0) * (0.5 / pow(Nx * Ny, 2.0));
+		enrg *= 4.0 * pow(M_PI, 2.0) * (0.5 / pow(Ny * Nx, 2.0));
 		
 		// Reduce all local energy sums and broadcast back to each process
 		MPI_Allreduce(MPI_IN_PLACE, &enrg, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
@@ -1496,9 +1518,9 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 		// ---------------------------------------------
 		// Normalize Initial Condition - Compute the Vorticity
 		// ---------------------------------------------
-		for (int i = 0; i < local_Nx; ++i) {
-			tmp = i * Ny_Fourier;
-			for (int j = 0; j < Ny_Fourier; ++j) {
+		for (int i = 0; i < local_Ny; ++i) {
+			tmp = i * Nx_Fourier;
+			for (int j = 0; j < Nx_Fourier; ++j) {
 				indx = tmp + j;
 
 				// Normalize the initial condition
@@ -1535,9 +1557,9 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 		// Allocate memory for the stream function
 		fftw_complex* psi_hat = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->alloc_local);
 
-		for (int i = 0; i < local_Nx; ++i) {	
-			tmp = i * (Ny_Fourier);
-			for (int j = 0; j < Ny_Fourier; ++j) {
+		for (int i = 0; i < local_Ny; ++i) {	
+			tmp = i * (Nx_Fourier);
+			for (int j = 0; j < Nx_Fourier; ++j) {
 				indx = tmp + j;	
 
 				if (run_data->k[0][i] == 0 && run_data->k[1][j] == 0) {
@@ -1560,16 +1582,16 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 		// Compute the Energy
 		// ---------------------------------------------
 		double enrg = 0.0;
-		for (int i = 0; i < local_Nx; ++i) {
-			tmp = i * Ny_Fourier;
-			for (int j = 0; j < Ny_Fourier; ++j) {
+		for (int i = 0; i < local_Ny; ++i) {
+			tmp = i * Nx_Fourier;
+			for (int j = 0; j < Nx_Fourier; ++j) {
 				indx = tmp + j;
 
 				if (run_data->k[0][i] != 0 || run_data->k[1][j] != 0) {
 					// Wavenumber prefactor -> |k|^2
 					k_sqrd = (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 
-					if ((j == 0) || (j == Ny_Fourier - 1)) {
+					if ((j == 0) || (j == Nx_Fourier - 1)) {
 						enrg += k_sqrd * cabs(psi_hat[indx] * conj(psi_hat[indx]));
 					}
 					else {
@@ -1579,7 +1601,7 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 			}
 		}
 		// Normalize the energy
-		enrg *= 4.0 * pow(M_PI, 2.0) * (0.5 / pow(Nx * Ny, 2.0));
+		enrg *= 4.0 * pow(M_PI, 2.0) * (0.5 / pow(Ny * Nx, 2.0));
 		
 		// Reduce all local energy sums and broadcast back to each process
 		MPI_Allreduce(MPI_IN_PLACE, &enrg, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
@@ -1587,9 +1609,9 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 		// ---------------------------------------------
 		// Normalize Initial Condition - Compute the Vorticity
 		// ---------------------------------------------
-		for (int i = 0; i < local_Nx; ++i) {
-			tmp = i * Ny_Fourier;
-			for (int j = 0; j < Ny_Fourier; ++j) {
+		for (int i = 0; i < local_Ny; ++i) {
+			tmp = i * Nx_Fourier;
+			for (int j = 0; j < Nx_Fourier; ++j) {
 				indx = tmp + j;
 
 				// Normalize the initial condition
@@ -1620,12 +1642,12 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 		// ---------------------------------------
 		double norm = 0.0;
 		double k_sqr;
-		for (int i = 0; i < local_Nx; ++i) {	
-			for (int j = 0; j < Ny_Fourier; ++j) {
+		for (int i = 0; i < local_Ny; ++i) {	
+			for (int j = 0; j < Nx_Fourier; ++j) {
 				// Get |k|^2
 				k_sqr = (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 
-				if ((j == 0) || (j == Ny_Fourier - 1)) {
+				if ((j == 0) || (j == Nx_Fourier - 1)) {
 					// Compute the sum of appropiate modes to use as a normalization factor
 					if ((k_sqr > 0) && (sqrt(k_sqr) > EXTRM_ENS_MIN_K)) {
 						norm += pow(sqrt(k_sqr), -EXTRM_ENS_POW);
@@ -1653,9 +1675,9 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 		// Initialize Fourier Space Vorticity
 		// ---------------------------------------
 		double u1;
-		for (int i = 0; i < local_Nx; ++i) {	
-			tmp = i * Ny_Fourier;
-			for (int j = 0; j < Ny_Fourier; ++j) {
+		for (int i = 0; i < local_Ny; ++i) {	
+			tmp = i * Nx_Fourier;
+			for (int j = 0; j < Nx_Fourier; ++j) {
 				indx = tmp + j;
 
 				// Get |k|^2
@@ -1686,8 +1708,8 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 		double norm = 0.0;
 		double abs_k;
 		double u1;
-		for (int i = 0; i < local_Nx; ++i) {	
-			for (int j = 0; j < Ny_Fourier; ++j) {
+		for (int i = 0; i < local_Ny; ++i) {	
+			for (int j = 0; j < Nx_Fourier; ++j) {
 				// Get the absolute wavevector value
 				abs_k = sqrt((double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]));
 
@@ -1705,9 +1727,9 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 		// ---------------------------------------
 		// Initialize Fourier Space Vorticity
 		// ---------------------------------------
-		for (int i = 0; i < local_Nx; ++i) {	
-			tmp = i * Ny_Fourier;
-			for (int j = 0; j < Ny_Fourier; ++j) {
+		for (int i = 0; i < local_Ny; ++i) {	
+			tmp = i * Nx_Fourier;
+			for (int j = 0; j < Nx_Fourier; ++j) {
 				indx = tmp + j;
 
 				// Get the absolute wavevector value
@@ -1733,14 +1755,14 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 		double norm = 0.0;
 		double k_abs;
 		double u1;
-		for (int i = 0; i < local_Nx; ++i) {	
-			for (int j = 0; j < Ny_Fourier; ++j) {
+		for (int i = 0; i < local_Ny; ++i) {	
+			for (int j = 0; j < Nx_Fourier; ++j) {
 				// Get |k|^2
 				k_abs = sqrt((double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]));
 
 				// Compute the sum of appropiate modes to use as a normalization factor
 				if ((k_abs > UNIF_MIN_K && k_abs < UNIF_MAX_K)) {
-					if (j == 0 || j == Ny_Fourier - 1) {
+					if (j == 0 || j == Nx_Fourier - 1) {
 						norm += 1.0;
 					}
 					else {
@@ -1756,9 +1778,9 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 		// ---------------------------------------
 		// Initialize Fourier Space Vorticity
 		// ---------------------------------------
-		for (int i = 0; i < local_Nx; ++i) {	
-			tmp = i * Ny_Fourier;
-			for (int j = 0; j < Ny_Fourier; ++j) {
+		for (int i = 0; i < local_Ny; ++i) {	
+			tmp = i * Nx_Fourier;
+			for (int j = 0; j < Nx_Fourier; ++j) {
 				indx = tmp + j;
 
 				// Get the absolute wavevector value
@@ -1783,8 +1805,8 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 		// ---------------------------------------
 		// Allocate memory for the Real Space stream function
 		double* tmp_psi       = (double* )fftw_malloc(sizeof(double) * 2 * sys_vars->alloc_local);
-		double* tmp_psi_local = (double* )fftw_malloc(sizeof(double) * sys_vars->local_Nx * Ny);
-		double* tmp_psi_full  = (double* )fftw_malloc(sizeof(double) * Nx * Ny);
+		double* tmp_psi_local = (double* )fftw_malloc(sizeof(double) * sys_vars->local_Ny * Nx);
+		double* tmp_psi_full  = (double* )fftw_malloc(sizeof(double) * Ny * Nx);
 		fftw_complex* tmp_psi_hat = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->alloc_local);
 
 
@@ -1818,16 +1840,16 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 		// Distribute Initial Condition
 		// ---------------------------------------
 		// Scatter the initial stream function data to the local processes
-		MPI_Scatter(tmp_psi_full, sys_vars->local_Nx * Ny, MPI_DOUBLE, tmp_psi_local, sys_vars->local_Nx * Ny, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+		MPI_Scatter(tmp_psi_full, sys_vars->local_Ny * Nx, MPI_DOUBLE, tmp_psi_local, sys_vars->local_Ny * Nx, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
 		// Write the local data to the appropriately padded arrays
-		for (int i = 0; i < local_Nx; ++i) {	
-			tmp = i * (Ny + 2);
-			for (int j = 0; j < Ny; ++j) {
+		for (int i = 0; i < local_Ny; ++i) {	
+			tmp = i * (Nx + 2);
+			for (int j = 0; j < Nx; ++j) {
 				indx = tmp + j;
 
 				// Write the local data to the padded arrays
-				tmp_psi[indx] = tmp_psi_local[i * Ny + j];
+				tmp_psi[indx] = tmp_psi_local[i * Nx + j];
 			}
 		}
 
@@ -1839,9 +1861,9 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 		// ---------------------------------------
 		// Initialize Fourier Space Vorticity
 		// ---------------------------------------
-		for (int i = 0; i < local_Nx; ++i) {	
-			tmp = i * Ny_Fourier;
-			for (int j = 0; j < Ny_Fourier; ++j) {
+		for (int i = 0; i < local_Ny; ++i) {	
+			tmp = i * Nx_Fourier;
+			for (int j = 0; j < Nx_Fourier; ++j) {
 				indx = tmp + j;
 
 				// Compute the real space vorticity from stream function
@@ -1860,9 +1882,9 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 		// ---------------------------------------
 		// Define the Gaussian Blob
 		// ---------------------------------------
-		for (int i = 0; i < local_Nx; ++i) {	
-			tmp = i * (Ny + 2);
-			for (int j = 0; j < Ny; ++j) {
+		for (int i = 0; i < local_Ny; ++i) {	
+			tmp = i * (Nx + 2);
+			for (int j = 0; j < Nx; ++j) {
 				indx = tmp + j;
 
 				// Fill vorticity
@@ -1886,9 +1908,9 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 		double enst_norm;
 		double r1;
 
-		for (int i = 0; i < local_Nx; ++i) {	
-			tmp = i * (Ny_Fourier);
-			for (int j = 0; j < Ny_Fourier; ++j) {
+		for (int i = 0; i < local_Ny; ++i) {	
+			tmp = i * (Nx_Fourier);
+			for (int j = 0; j < Nx_Fourier; ++j) {
 				indx = tmp + j;
 
 				// Get the |k|^2
@@ -1927,9 +1949,9 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 		// ---------------------------------------
 		// Normalize
 		// ---------------------------------------
-		for (int i = 0; i < local_Nx; ++i) {	
-			tmp = i * (Ny_Fourier);
-			for (int j = 0; j < Ny_Fourier; ++j) {
+		for (int i = 0; i < local_Ny; ++i) {	
+			tmp = i * (Nx_Fourier);
+			for (int j = 0; j < Nx_Fourier; ++j) {
 				indx = tmp + j;
 
 				// Fill vorticity
@@ -1950,16 +1972,16 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 		// Initialize temp variables
 		double inv_k_sqr;
 
-		for (int i = 0; i < local_Nx; ++i) {	
-			tmp = i * (Ny_Fourier);
-			for (int j = 0; j < Ny_Fourier; ++j) {
+		for (int i = 0; i < local_Ny; ++i) {	
+			tmp = i * (Nx_Fourier);
+			for (int j = 0; j < Nx_Fourier; ++j) {
 				indx = tmp + j;
 
 				if ((run_data->k[0][i] == 0) && (run_data->k[1][j] == 0)){
 					// Fill zero modes
 					w_hat[indx] = 0.0 + 0.0 * I;
 				}
-				else if (j == 0 && run_data->k[0][i] < 0 ) {
+				else if (j == 0 && run_data->k[0][i] < 0) {
 					// Amplitudes
 					inv_k_sqr = 1.0 / (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 
@@ -1981,9 +2003,9 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 		// ---------------------------------------
 		// Random Initial Conditions
 		// ---------------------------------------
-		for (int i = 0; i < local_Nx; ++i) {	
-			tmp = i * (Ny_Fourier);
-			for (int j = 0; j < Ny_Fourier; ++j) {
+		for (int i = 0; i < local_Ny; ++i) {	
+			tmp = i * (Nx_Fourier);
+			for (int j = 0; j < Nx_Fourier; ++j) {
 				indx = tmp + j;
 
 				// Fill vorticity
@@ -1998,9 +2020,10 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 	ApplyDealiasing(w_hat, 1, N);
     
     // Ensure conjugacy in the ky = 0 modes of the intial condition
-    ForceConjugacy(w_hat, N);
+    ForceConjugacy(w_hat, N, 1);
+    ForceConjugacy(u_hat, N, 2);
+ 	
 
- 
    	// -------------------------------------------------
    	// Get Max of Initial Condition
    	// -------------------------------------------------
@@ -2026,36 +2049,36 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 void InitializeSpaceVariables(double** x, int** k, const long int* N) {
 
 	// Initialize variables
-	const long int Nx = N[0];
-	const long int Ny = N[1];
-	const long int Ny_Fourier = N[1] / 2 + 1;
+	const long int Ny = N[0];
+	const long int Nx = N[1];
+	const long int Nx_Fourier = N[1] / 2 + 1;
 
 	// Initialize local variables 
-	ptrdiff_t local_Nx       = sys_vars->local_Nx;
-	ptrdiff_t local_Nx_start = sys_vars->local_Nx_start;
+	ptrdiff_t local_Ny       = sys_vars->local_Ny;
+	ptrdiff_t local_Ny_start = sys_vars->local_Ny_start;
 	
 	// Set the spatial increments
-	sys_vars->dx = 2.0 * M_PI / (double )Nx;
-	sys_vars->dy = 2.0 * M_PI / (double )Ny;
+	sys_vars->dx = 2.0 * M_PI / (double )Ny;
+	sys_vars->dy = 2.0 * M_PI / (double )Nx;
 
 	// -------------------------------
 	// Fill the first dirction 
 	// -------------------------------
 	int j = 0;
-	for (int i = 0; i < Nx; ++i) {
-		if((i >= local_Nx_start) && ( i < local_Nx_start + local_Nx)) { // Ensure each process only writes to its local array slice
-			x[0][j] = (double) i * 2.0 * M_PI / (double) Nx;
+	for (int i = 0; i < Ny; ++i) {
+		if((i >= local_Ny_start) && ( i < local_Ny_start + local_Ny)) { // Ensure each process only writes to its local array slice
+			x[0][j] = (double) i * 2.0 * M_PI / (double) Ny;
 			j++;
 		}
 	}
 	j = 0;
-	for (int i = 0; i < local_Nx; ++i) {
-		if (local_Nx_start + i <= Nx / 2) {   // Set the first half of array to the positive k
-			k[0][j] = local_Nx_start + i;
+	for (int i = 0; i < local_Ny; ++i) {
+		if (local_Ny_start + i <= Ny / 2) {   // Set the first half of array to the positive k
+			k[0][j] = local_Ny_start + i;
 			j++;
 		}
-		else if (local_Nx_start + i > Nx / 2) { // Set the second half of array to the negative k
-			k[0][j] = local_Nx_start + i - Nx;
+		else if (local_Ny_start + i > Ny / 2) { // Set the second half of array to the negative k
+			k[0][j] = local_Ny_start + i - Ny;
 			j++;
 		}
 	}
@@ -2063,46 +2086,51 @@ void InitializeSpaceVariables(double** x, int** k, const long int* N) {
 	// -------------------------------
 	// Fill the second direction 
 	// -------------------------------
-	for (int i = 0; i < Ny; ++i) {
-		if (i < Ny_Fourier) {
+	for (int i = 0; i < Nx; ++i) {
+		if (i < Nx_Fourier) {
 			k[1][i] = i;
 		}
-		x[1][i] = (double) i * 2.0 * M_PI / (double) Ny;
+		x[1][i] = (double) i * 2.0 * M_PI / (double) Nx;
 	}
 }
 /**
  * Function to force conjugacy of the initial condition
  * @param w_hat The Fourier space worticity field
  * @param N     The array containing the size of the system in each dimension
+ * @param dim   Dimension of the array -> 1: for scalar, 2: for vector.
  */
-void ForceConjugacy(fftw_complex* w_hat, const long int* N) {
+void ForceConjugacy(fftw_complex* array, const long int* N, const int dim) {
 
 	// Initialize variables
 	int tmp;
-	int local_Nx       = (int) sys_vars->local_Nx;
-	int local_Nx_start = (int) sys_vars->local_Nx_start;
-	const long int Nx         = N[0];
-	const long int Ny_Fourier = N[1] / 2 + 1;
+	int local_Ny       = (int) sys_vars->local_Ny;
+	int local_Ny_start = (int) sys_vars->local_Ny_start;
+	const long int Ny         = N[0];
+	const long int Nx_Fourier = N[1] / 2 + 1;
 
 	// Allocate tmp memory to hold the data to be conjugated
-	fftw_complex* conj_data = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * Nx);
+	fftw_complex* conj_data = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * Ny * dim);
 
 	// Loop through local process and store data in appropriate location in conj_data
-	for (int i = 0; i < local_Nx; ++i) {
-		tmp = i * Ny_Fourier;
-		conj_data[local_Nx_start + i] = w_hat[tmp];
+	for (int i = 0; i < local_Ny; ++i) {
+		tmp = i * Nx_Fourier;
+		for (int d = 0; d < dim; ++d) {
+			conj_data[dim * (local_Ny_start + i) + d] = array[dim * tmp + d];
+			// printf("c[%d,%d]: %lf %lf i\n", run_data->k[0][i], d, creal(conj_data[dim * (local_Ny_start + i) + d]), cimag(conj_data[dim * (local_Ny_start + i) + d]));
+		}
 	}
 
 	// Gather the data on all process
-	MPI_Allgather(MPI_IN_PLACE, (int)local_Nx, MPI_C_DOUBLE_COMPLEX, conj_data, (int)local_Nx, MPI_C_DOUBLE_COMPLEX, MPI_COMM_WORLD);
+	MPI_Allgather(MPI_IN_PLACE, (int)(local_Ny * dim), MPI_C_DOUBLE_COMPLEX, conj_data, (int)(local_Ny * dim), MPI_C_DOUBLE_COMPLEX, MPI_COMM_WORLD);
 
 	// Now ensure the 
-	for (int i = 0; i < local_Nx; ++i) {
-		if (run_data->k[0][i] < 0) {
-			tmp = i * Ny_Fourier;
-
-			// Fill the conjugate modes with the conjugate of the postive k modes
-			run_data->w_hat[tmp] = conj(conj_data[abs(run_data->k[0][i])]);
+	for (int i = 0; i < local_Ny; ++i) {
+		if (run_data->k[0][i] > 0) {
+			tmp = i * Nx_Fourier;
+			for (int d = 0; d < dim; ++d) {
+				// Fill the conjugate modes with the conjugate of the postive k modes
+				array[dim * tmp + d] = conj(conj_data[dim * (Ny - run_data->k[0][i]) + d]);
+			}
 		}
 	}
 
@@ -2175,9 +2203,9 @@ void InitializeIntegrationVariables(double* t0, double* t, double* dt, double* T
 double GetMaxData(char* dtype) {
 
 	// Initialize variables
-	const long int Nx         = sys_vars->N[0];
-	const long int Ny 		  = sys_vars->N[1];
-	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
+	const long int Ny         = sys_vars->N[0];
+	const long int Nx 		  = sys_vars->N[1];
+	const long int Nx_Fourier = sys_vars->N[1] / 2 + 1;
 	int tmp;
 	int indx;
 	fftw_complex I_over_k_sqr;
@@ -2187,9 +2215,9 @@ double GetMaxData(char* dtype) {
 	// -------------------------------
 	if (strcmp(dtype, "VEL") == 0) {
 		// Compute the velocity in Fourier space
-		for (int i = 0; i < sys_vars->local_Nx; ++i) {
-			tmp = i * Ny_Fourier;
-			for (int j = 0; j < Ny_Fourier; ++j) {
+		for (int i = 0; i < sys_vars->local_Ny; ++i) {
+			tmp = i * Nx_Fourier;
+			for (int j = 0; j < Nx_Fourier; ++j) {
 				indx = tmp + j;
 
 				if ((run_data->k[0][i] != 0) || (run_data->k[1][j]  != 0)) {
@@ -2197,39 +2225,48 @@ double GetMaxData(char* dtype) {
 					I_over_k_sqr = I / (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 
 					// compute the velocity in Fourier space
-					run_data->u_hat[SYS_DIM * indx + 0] = ((double) run_data->k[1][j]) * I_over_k_sqr * run_data->w_hat[indx];
-					run_data->u_hat[SYS_DIM * indx + 1] = -1.0 * ((double) run_data->k[0][i]) * I_over_k_sqr * run_data->w_hat[indx];
+					run_data->u_hat_tmp[SYS_DIM * indx + 0] = ((double) run_data->k[1][j]) * I_over_k_sqr * run_data->w_hat[indx];
+					run_data->u_hat_tmp[SYS_DIM * indx + 1] = -1.0 * ((double) run_data->k[0][i]) * I_over_k_sqr * run_data->w_hat[indx];
 				}
 				else {
-					run_data->u_hat[SYS_DIM * indx + 0] = 0.0 + 0.0 * I;
-					run_data->u_hat[SYS_DIM * indx + 1] = 0.0 + 0.0 * I;
+					run_data->u_hat_tmp[SYS_DIM * indx + 0] = 0.0 + 0.0 * I;
+					run_data->u_hat_tmp[SYS_DIM * indx + 1] = 0.0 + 0.0 * I;
 				}
 			}
 		}
 
 		// Transform back to Fourier space
-		fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_batch_c2r), run_data->u_hat, run_data->u);
-		for (int i = 0; i < sys_vars->local_Nx; ++i) {
-			tmp = i * (Ny + 2);
-			for (int j = 0; j < Ny; ++j) {
+		fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_batch_c2r), run_data->u_hat_tmp, run_data->u);
+		for (int i = 0; i < sys_vars->local_Ny; ++i) {
+			tmp = i * (Nx + 2);
+			for (int j = 0; j < Nx; ++j) {
 				indx = tmp + j;
 
 				// Normalize
-				run_data->u[SYS_DIM * indx + 0] *= 1.0 / (double )(Nx * Ny);
-				run_data->u[SYS_DIM * indx + 1] *= 1.0 / (double )(Nx * Ny);
+				run_data->u[SYS_DIM * indx + 0] *= 1.0; /// (double )(Ny * Nx);
+				run_data->u[SYS_DIM * indx + 1] *= 1.0; /// (double )(Ny * Nx);
 			}
 		}
 	}
 	else if (strcmp(dtype, "VORT") == 0) {
+		// Write w_hat to temporary array for transform back to real space
+		for (int i = 0; i < sys_vars->local_Ny; ++i) {
+			tmp = i * Nx_Fourier;
+			for (int j = 0; j < Nx_Fourier; ++j) {
+				indx = tmp + j;
+
+				run_data->w_hat_tmp[indx] = run_data->w_hat[indx];
+			}
+		}
 		// Perform transform back to real space for the vorticity
-		fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_c2r), run_data->w_hat, run_data->w);
-		for (int i = 0; i < sys_vars->local_Nx; ++i) {
-			tmp = i * (Ny + 2);
-			for (int j = 0; j < Ny; ++j) {
+		fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_c2r), run_data->w_hat_tmp, run_data->w);
+		for (int i = 0; i < sys_vars->local_Ny; ++i) {
+			tmp = i * (Nx + 2);
+			for (int j = 0; j < Nx; ++j) {
 				indx = tmp + j;
 
 				// Normalize
-				run_data->w[indx] *= 1.0 / (double )(Nx * Ny);
+				run_data->w[indx] *= 1.0; // (double )(Ny * Nx);
 			}
 		}
 	}
@@ -2241,11 +2278,11 @@ double GetMaxData(char* dtype) {
 	double wmax = 0.0;
 
 	// Loop over array to find the maximum
-	for (int i = 0; i < sys_vars->local_Nx; ++i) {
+	for (int i = 0; i < sys_vars->local_Ny; ++i) {
 		// Find the max of the Real Space vorticity
 		if (strcmp(dtype, "VORT_FOUR") == 0) {
-			tmp = i * Ny_Fourier;
-			for (int j = 0; j < Ny_Fourier; ++j) {
+			tmp = i * Nx_Fourier;
+			for (int j = 0; j < Nx_Fourier; ++j) {
 				indx = tmp + j;
 
 				// Check if maximum
@@ -2259,8 +2296,8 @@ double GetMaxData(char* dtype) {
 		}
 		// Find the max of the Fourier Vorticity
 		else if (strcmp(dtype, "VORT") == 0) {
-			tmp = i * (Ny + 2);
-			for (int j = 0; j < Ny; ++j) {
+			tmp = i * (Nx + 2);
+			for (int j = 0; j < Nx; ++j) {
 				indx = tmp + j;
 
 				// Check if maximum
@@ -2274,8 +2311,8 @@ double GetMaxData(char* dtype) {
 		}
 		// Find the max of the Real space velocity
 		else if (strcmp(dtype, "VEL") == 0) {
-			tmp = i * (Ny + 2);
-			for (int j = 0; j < Ny; ++j) {
+			tmp = i * (Nx + 2);
+			for (int j = 0; j < Nx; ++j) {
 				for (int l = 0; l < SYS_DIM; ++l) {
 					indx = tmp + j;
 
@@ -2387,14 +2424,14 @@ void GetTimestep(double* dt) {
 		int tmp;
 		int indx;
 		fftw_complex I_over_k_sqr;
-		const long int Nx = sys_vars->N[0];
-		const long int Ny = sys_vars->N[1];
+		const long int Ny = sys_vars->N[0];
+		const long int Nx = sys_vars->N[1];
 		
 		// -------------------------------
 		// Compute the Velocity
 		// -------------------------------
 		// Compute the velocity in Fourier space
-		for (int i = 0; i < sys_vars->local_Nx; ++i) {
+		for (int i = 0; i < sys_vars->local_Ny; ++i) {
 			tmp = i * sys_vars->N[1] / 2 + 1;
 			for (int j = 0; j < sys_vars->N[1] / 2 + 1; ++j) {
 				indx = tmp + j;
@@ -2404,27 +2441,27 @@ void GetTimestep(double* dt) {
 					I_over_k_sqr = I / (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 
 					// compute the velocity in Fourier space
-					run_data->u_hat[SYS_DIM * indx + 0] = ((double) run_data->k[1][j]) * I_over_k_sqr * run_data->w_hat[indx];
-					run_data->u_hat[SYS_DIM * indx + 1] = -1.0 * ((double) run_data->k[0][i]) * I_over_k_sqr * run_data->w_hat[indx];
+					run_data->u_hat_tmp[SYS_DIM * indx + 0] = ((double) run_data->k[1][j]) * I_over_k_sqr * run_data->w_hat[indx];
+					run_data->u_hat_tmp[SYS_DIM * indx + 1] = -1.0 * ((double) run_data->k[0][i]) * I_over_k_sqr * run_data->w_hat[indx];
 				}
 				else {
 					// Get the zero mode
-					run_data->u_hat[SYS_DIM * indx + 0] = 0.0 + 0.0 * I;
-					run_data->u_hat[SYS_DIM * indx + 1] = 0.0 + 0.0 * I;
+					run_data->u_hat_tmp[SYS_DIM * indx + 0] = 0.0 + 0.0 * I;
+					run_data->u_hat_tmp[SYS_DIM * indx + 1] = 0.0 + 0.0 * I;
 				}
 			}
 		}
 
 		// Transform back to Fourier space
-		fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_batch_c2r), run_data->u_hat, run_data->u);
-		for (int i = 0; i < sys_vars->local_Nx; ++i) {
-			tmp = i * (Ny + 2);
-			for (int j = 0; j < Ny; ++j) {
+		fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_batch_c2r), run_data->u_hat_tmp	, run_data->u);
+		for (int i = 0; i < sys_vars->local_Ny; ++i) {
+			tmp = i * (Nx + 2);
+			for (int j = 0; j < Nx; ++j) {
 				indx = tmp + j;
 
 				// Normalize
-				run_data->u[SYS_DIM * indx + 0] *= 1.0 / (double )(Nx * Ny);
-				run_data->u[SYS_DIM * indx + 1] *= 1.0 / (double )(Nx * Ny);
+				run_data->u[SYS_DIM * indx + 0] *= 1.0; /// (double )(Ny * Nx);
+				run_data->u[SYS_DIM * indx + 1] *= 1.0; /// (double )(Ny * Nx);
 			}
 		}
 
@@ -2433,7 +2470,7 @@ void GetTimestep(double* dt) {
 		// -------------------------------
 		// Find the convective scales
 		double scales_convect = 0.0;
-		for (int i = 0; i < sys_vars->local_Nx; ++i) {
+		for (int i = 0; i < sys_vars->local_Ny; ++i) {
 			tmp = i * (sys_vars->N[1] + 2);
 			for (int j = 0; j < sys_vars->N[1]; ++j) {
 				indx = tmp + j;
@@ -2503,9 +2540,10 @@ void TestTaylorGreenVortex(const double t, const long int* N, double* norms) {
 	// Initialize variables
 	int tmp;
 	int indx;
-	const long int Nx         = N[0];
-	const long int Ny         = N[1];
-	double norm_const = 1.0 / (double)(Nx * Ny);
+	const long int Ny         = N[0];
+	const long int Nx         = N[1];
+	const long int Nx_Fourier = N[1] / 2.0 + 1;
+	double norm_const = 1.0 / (double)(Ny * Nx);
 	double linf_norm  = 0.0;
 	double l2_norm    = 0.0;
 	double tg_exact;
@@ -2514,15 +2552,24 @@ void TestTaylorGreenVortex(const double t, const long int* N, double* norms) {
 	// --------------------------------
 	// Get the Real Space Vorticity
 	// --------------------------------
+	// Write w_hat to temporary array for transform back to real space
+	for (int i = 0; i < sys_vars->local_Ny; ++i) {
+		tmp = i * Nx_Fourier;
+		for (int j = 0; j < Nx_Fourier; ++j) {
+			indx = tmp + j;
+
+			run_data->w_hat_tmp[indx] = run_data->w_hat[indx];
+		}
+	}
 	// Transform back to Fourier space -> Don't normalize now - normalize in loop below
-	fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_c2r), run_data->w_hat, run_data->w);
+	fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_c2r), run_data->w_hat_tmp, run_data->w);
 	
 	// --------------------------------
 	// Compute The Error
 	// --------------------------------
-	for (int i = 0; i < sys_vars->local_Nx; ++i) {
-		tmp = i * (Ny + 2);
-		for (int j = 0; j < Ny; ++j) {
+	for (int i = 0; i < sys_vars->local_Ny; ++i) {
+		tmp = i * (Nx + 2);
+		for (int j = 0; j < Nx; ++j) {
 			indx = tmp + j;
 
 			if (!(strcmp(sys_vars->u0, "TG_VEL"))) {
@@ -2577,14 +2624,14 @@ void TaylorGreenSoln(const double t, const long int* N) {
 	// Initialize variables
 	int tmp;
 	int indx;
-	const long int Ny = N[1];
+	const long int Nx = N[1];
 	
 	// --------------------------------
 	// Compute The Taylor Green Soln
 	// --------------------------------
-	for (int i = 0; i < sys_vars->local_Nx; ++i) {
-		tmp = i * (Ny + 2);
-		for (int j = 0; j < Ny; ++j) {
+	for (int i = 0; i < sys_vars->local_Ny; ++i) {
+		tmp = i * (Nx + 2);
+		for (int j = 0; j < Nx; ++j) {
 			indx = tmp + j;
 
 			if (!(strcmp(sys_vars->u0, "TG_VEL"))) {
@@ -2607,17 +2654,17 @@ void TaylorGreenSoln(const double t, const long int* N) {
 void AllocateMemory(const long int* NBatch, Int_data_struct* Int_data) {
 
 	// Initialize variables
-	const long int Nx         = sys_vars->N[0];
-	const long int Ny         = sys_vars->N[1];
-	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;	
+	const long int Ny         = sys_vars->N[0];
+	const long int Nx         = sys_vars->N[1];
+	const long int Nx_Fourier = sys_vars->N[1] / 2 + 1;	
 
 	// -------------------------------
 	// Get Local Array Sizes - FFTW 
 	// -------------------------------
 	//  Find the size of memory for the FFTW transforms - use these to allocate appropriate memory
-	sys_vars->alloc_local       = fftw_mpi_local_size_2d(Nx, Ny_Fourier, MPI_COMM_WORLD, &(sys_vars->local_Nx), &(sys_vars->local_Nx_start));
-	sys_vars->alloc_local_batch = fftw_mpi_local_size_many((int)SYS_DIM, NBatch, (ptrdiff_t) SYS_DIM, FFTW_MPI_DEFAULT_BLOCK, MPI_COMM_WORLD, &(sys_vars->local_Nx), &(sys_vars->local_Nx_start));
-	if (sys_vars->local_Nx == 0) {
+	sys_vars->alloc_local       = fftw_mpi_local_size_2d(Ny, Nx_Fourier, MPI_COMM_WORLD, &(sys_vars->local_Ny), &(sys_vars->local_Ny_start));
+	sys_vars->alloc_local_batch = fftw_mpi_local_size_many((int)SYS_DIM, NBatch, (ptrdiff_t) SYS_DIM, FFTW_MPI_DEFAULT_BLOCK, MPI_COMM_WORLD, &(sys_vars->local_Ny), &(sys_vars->local_Ny_start));
+	if (sys_vars->local_Ny == 0) {
 		printf("\n["MAGENTA"WARNING"RESET"] --- FFTW was unable to allocate local memory for each process -->> Code will run but will be slow\n");
 	}
 	
@@ -2625,16 +2672,16 @@ void AllocateMemory(const long int* NBatch, Int_data_struct* Int_data) {
 	// Allocate Space Variables 
 	// -------------------------------
 	// Allocate the wavenumber arrays
-	run_data->k[0] = (int* )fftw_malloc(sizeof(int) * sys_vars->local_Nx);  // kx
-	run_data->k[1] = (int* )fftw_malloc(sizeof(int) * Ny_Fourier);     		// ky
+	run_data->k[0] = (int* )fftw_malloc(sizeof(int) * sys_vars->local_Ny);  // ky
+	run_data->k[1] = (int* )fftw_malloc(sizeof(int) * Nx_Fourier);     		// kx
 	if (run_data->k[0] == NULL || run_data->k[1] == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "wavenumber list");
 		exit(1);
 	}
 
 	// Allocate the collocation points
-	run_data->x[0] = (double* )fftw_malloc(sizeof(double) * sys_vars->local_Nx);  // x direction 
-	run_data->x[1] = (double* )fftw_malloc(sizeof(double) * Ny);     			  // y direction
+	run_data->x[0] = (double* )fftw_malloc(sizeof(double) * sys_vars->local_Ny);  // y direction 
+	run_data->x[1] = (double* )fftw_malloc(sizeof(double) * Nx);     			  // x direction
 	if (run_data->x[0] == NULL || run_data->x[1] == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "collocation points");
 		exit(1);
@@ -2653,6 +2700,12 @@ void AllocateMemory(const long int* NBatch, Int_data_struct* Int_data) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Fourier Space Vorticity");
 		exit(1);
 	}
+	// This array is for performing Real to Complex transforms of w_hat because the input array gets overwritten
+	run_data->w_hat_tmp = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->alloc_local);
+	if (run_data->w_hat_tmp == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Temporary Fourier Space Vorticity");
+		exit(1);
+	}
 
 	// Allocate the Real and Fourier space velocities
 	run_data->u     = (double* )fftw_malloc(sizeof(double) * 2 * sys_vars->alloc_local_batch);
@@ -2663,6 +2716,11 @@ void AllocateMemory(const long int* NBatch, Int_data_struct* Int_data) {
 	run_data->u_hat = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->alloc_local_batch);
 	if (run_data->u_hat == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Fourier Space Velocities");
+		exit(1);
+	}
+	run_data->u_hat_tmp = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->alloc_local_batch);
+	if (run_data->u_hat_tmp == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Temporary Fourier Space Velocities");
 		exit(1);
 	}
 	#if defined(PHASE_ONLY)
@@ -2798,11 +2856,11 @@ void AllocateMemory(const long int* NBatch, Int_data_struct* Int_data) {
 	// -------------------------------
 	int tmp_real, tmp_four;
 	int indx_real, indx_four;
-	for (int i = 0; i < sys_vars->local_Nx; ++i) {
-		tmp_real = i * (Ny + 2);
-		tmp_four = i * Ny_Fourier;
+	for (int i = 0; i < sys_vars->local_Ny; ++i) {
+		tmp_real = i * (Nx + 2);
+		tmp_four = i * Nx_Fourier;
 		
-		for (int j = 0; j < Ny; ++j){
+		for (int j = 0; j < Nx; ++j){
 			indx_real = tmp_real + j;
 			indx_four = tmp_four + j;
 			
@@ -2817,16 +2875,19 @@ void AllocateMemory(const long int* NBatch, Int_data_struct* Int_data) {
 			run_data->tg_soln[indx_real]                = 0.0;
 			#endif
 			run_data->w[indx_real]                      = 0.0;
-			if (j < Ny_Fourier) {
+			if (j < Nx_Fourier) {
 				#if defined(PHASE_ONLY)
 				run_data->a_k[indx_four] 				= 0.0;
 				run_data->phi_k[indx_four]			    = 0.0;
 				run_data->tmp_a_k[indx_four] 			= 0.0;
 				#endif
 				run_data->w_hat[indx_four]               	  = 0.0 + 0.0 * I;
+				run_data->w_hat_tmp[indx_four]             	  = 0.0 + 0.0 * I;
 				Int_data->RK_tmp[indx_four]    			 	  = 0.0 + 0.0 * I;
 				run_data->u_hat[SYS_DIM * indx_four + 0] 	  = 0.0 + 0.0 * I;
 				run_data->u_hat[SYS_DIM * indx_four + 1] 	  = 0.0 + 0.0 * I;
+				run_data->u_hat_tmp[SYS_DIM * indx_four + 0]  = 0.0 + 0.0 * I;
+				run_data->u_hat_tmp[SYS_DIM * indx_four + 1]  = 0.0 + 0.0 * I;
 				Int_data->RK1[SYS_DIM * indx_four + 0]    	  = 0.0 + 0.0 * I;
 				Int_data->RK1[SYS_DIM * indx_four + 1]    	  = 0.0 + 0.0 * I;
 				Int_data->RK2[SYS_DIM * indx_four + 0]    	  = 0.0 + 0.0 * I;
@@ -2860,7 +2921,7 @@ void AllocateMemory(const long int* NBatch, Int_data_struct* Int_data) {
 				#endif
 			}
 			if (i == 0) {
-				if (j < Ny_Fourier) {
+				if (j < Nx_Fourier) {
 					run_data->k[1][j] = 0;
 				}
 				run_data->x[1][j] = 0.0;
@@ -2877,15 +2938,15 @@ void AllocateMemory(const long int* NBatch, Int_data_struct* Int_data) {
 void InitializeFFTWPlans(const long int* N) {
 
 	// Initialize variables
-	const long int Nx = N[0];
-	const long int Ny = N[1];
+	const long int Ny = N[0];
+	const long int Nx = N[1];
 
 	// -----------------------------------
 	// Initialize Plans for Vorticity 
 	// -----------------------------------
 	// Set up FFTW plans for normal transform - vorticity field
-	sys_vars->fftw_2d_dft_r2c = fftw_mpi_plan_dft_r2c_2d(Nx, Ny, run_data->w, run_data->w_hat, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_PRESERVE_INPUT);
-	sys_vars->fftw_2d_dft_c2r = fftw_mpi_plan_dft_c2r_2d(Nx, Ny, run_data->w_hat, run_data->w, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_PRESERVE_INPUT);
+	sys_vars->fftw_2d_dft_r2c = fftw_mpi_plan_dft_r2c_2d(Ny, Nx, run_data->w, run_data->w_hat, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_PRESERVE_INPUT);
+	sys_vars->fftw_2d_dft_c2r = fftw_mpi_plan_dft_c2r_2d(Ny, Nx, run_data->w_hat, run_data->w, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_PRESERVE_INPUT);
 	if (sys_vars->fftw_2d_dft_r2c == NULL || sys_vars->fftw_2d_dft_c2r == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to initialize basic FFTW Plans \n-->> Exiting!!!\n");
 		exit(1);
@@ -2924,8 +2985,10 @@ void FreeMemory(Int_data_struct* Int_data) {
 	// Free system variables
 	fftw_free(run_data->u);
 	fftw_free(run_data->u_hat);
+	fftw_free(run_data->u_hat_tmp);
 	fftw_free(run_data->w);
 	fftw_free(run_data->w_hat);
+	fftw_free(run_data->w_hat_tmp);
 	if (sys_vars->local_forcing_proc) {
 		fftw_free(run_data->forcing);
 		fftw_free(run_data->forcing_indx);

@@ -608,25 +608,25 @@ void PrintSimulationDetails(int argc, char** argv, double sim_time) {
 void PrintVorticityReal(const long int* N) {
 
 	// Initialize variables
-	const long int Nx = N[0];
-	const long int Ny = N[1];
+	const long int Ny = N[0];
+	const long int Nx = N[1];
 
 	// Allocate memory to recieve lcoal vorticity arrays
-	double* w0 = (double* )fftw_malloc(sizeof(double) * Nx * (Ny + 2));
-	for (int i = 0; i < Nx; ++i) {
-		for (int j = 0; j < Ny + 2; ++j) {
-			w0[i * (Ny + 2) + j] = 0.0;
+	double* w0 = (double* )fftw_malloc(sizeof(double) * Ny * (Nx + 2));
+	for (int i = 0; i < Ny; ++i) {
+		for (int j = 0; j < Nx + 2; ++j) {
+			w0[i * (Nx + 2) + j] = 0.0;
 		}
 	}
 
 	// Gather all the local arrays into w0
-	MPI_Gather(run_data->w, sys_vars->local_Nx * (Ny + 2), MPI_DOUBLE, w0, sys_vars->local_Nx * (Ny + 2), MPI_DOUBLE, 0, MPI_COMM_WORLD);
+	MPI_Gather(run_data->w, sys_vars->local_Ny * (Nx + 2), MPI_DOUBLE, w0, sys_vars->local_Ny * (Nx + 2), MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
 	// On the master rank print the result
 	if ( !(sys_vars->rank) ) {
-		for (int i = 0; i < Nx; ++i) {
-			for (int j = 0; j < Ny; ++j) {
-				printf("w[%ld]: %+5.16lf\t", i * (Ny) + j, w0[i * (Ny + 2) + j]);
+		for (int i = 0; i < Ny; ++i) {
+			for (int j = 0; j < Nx; ++j) {
+				printf("w[%ld]: %+5.16lf\t", i * (Nx) + j, w0[i * (Nx + 2) + j]);
 			}
 			printf("\n");
 		}
@@ -643,24 +643,24 @@ void PrintVorticityReal(const long int* N) {
 void PrintVorticityFourier(const long int* N) {
 
 	// Initialize variables
-	const long int Nx 		  = N[0];
-	const long int Ny_Fourier = N[1] / 2 + 1;
+	const long int Ny 		  = N[0];
+	const long int Nx_Fourier = N[1] / 2 + 1;
 
 	// Allocate memory to recieve lcoal vorticity arrays
-	fftw_complex* w_hat0 = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * Nx * (Ny_Fourier));
-	for (int i = 0; i < Nx; ++i) {
-		for (int j = 0; j < Ny_Fourier; ++j) {
-			w_hat0[i * (Ny_Fourier) + j] = 0.0 + 0.0 * I;
+	fftw_complex* w_hat0 = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * Ny * (Nx_Fourier));
+	for (int i = 0; i < Ny; ++i) {
+		for (int j = 0; j < Nx_Fourier; ++j) {
+			w_hat0[i * (Nx_Fourier) + j] = 0.0 + 0.0 * I;
 		}
 	}
 	// Gather all the local arrays into w0
-	MPI_Gather(run_data->w_hat, sys_vars->local_Nx * Ny_Fourier, MPI_C_DOUBLE_COMPLEX, w_hat0, sys_vars->local_Nx * Ny_Fourier, MPI_C_DOUBLE_COMPLEX, 0, MPI_COMM_WORLD);
+	MPI_Gather(run_data->w_hat, sys_vars->local_Ny * Nx_Fourier, MPI_C_DOUBLE_COMPLEX, w_hat0, sys_vars->local_Ny * Nx_Fourier, MPI_C_DOUBLE_COMPLEX, 0, MPI_COMM_WORLD);
 
 	// On the master rank print the result
 	if ( !(sys_vars->rank) ) {
-		for (int i = 0; i < Nx; ++i) {
-			for (int j = 0; j < Ny_Fourier; ++j) {
-				printf("wh[%ld]: %+5.16lf %+5.16lfI\t", i * (Ny_Fourier) + j, creal(w_hat0[i * Ny_Fourier + j]), cimag(w_hat0[i * Ny_Fourier + j]));
+		for (int i = 0; i < Ny; ++i) {
+			for (int j = 0; j < Nx_Fourier; ++j) {
+				printf("wh[%ld]: %+5.16lf %+5.16lfI\t", i * (Nx_Fourier) + j, creal(w_hat0[i * Nx_Fourier + j]), cimag(w_hat0[i * Nx_Fourier + j]));
 			}
 			printf("\n");
 		}
@@ -677,34 +677,34 @@ void PrintVorticityFourier(const long int* N) {
 void PrintVelocityReal(const long int* N) {
 
 	// Initialize variables
-	const long int Nx = N[0];
-	const long int Ny = N[1];
+	const long int Ny = N[0];
+	const long int Nx = N[1];
 
 	// Allocate memory to recieve lcoal vorticity arrays
-	double* u0 = (double* )fftw_malloc(sizeof(double) * Nx * (Ny + 2) * SYS_DIM);
-	for (int i = 0; i < Nx; ++i) {
-		for (int j = 0; j < Ny + 2; ++j) {
-			u0[SYS_DIM * (i * (Ny + 2) + j) + 0] = 0.0;
-			u0[SYS_DIM * (i * (Ny + 2) + j) + 1] = 0.0;
+	double* u0 = (double* )fftw_malloc(sizeof(double) * Ny * (Nx + 2) * SYS_DIM);
+	for (int i = 0; i < Ny; ++i) {
+		for (int j = 0; j < Nx + 2; ++j) {
+			u0[SYS_DIM * (i * (Nx + 2) + j) + 0] = 0.0;
+			u0[SYS_DIM * (i * (Nx + 2) + j) + 1] = 0.0;
 		}
 	}
 
 	// Gather all the local arrays into u0 and v0
-	MPI_Gather(run_data->u, sys_vars->local_Nx * (Ny + 2) * SYS_DIM, MPI_DOUBLE, u0, sys_vars->local_Nx * (Ny + 2)* SYS_DIM, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+	MPI_Gather(run_data->u, sys_vars->local_Ny * (Nx + 2) * SYS_DIM, MPI_DOUBLE, u0, sys_vars->local_Ny * (Nx + 2)* SYS_DIM, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 	
 	// On the master rank print the result
 	if ( !(sys_vars->rank) ) {
-		for (int i = 0; i < Nx; ++i) {
-			for (int j = 0; j < Ny; ++j) {
-				printf("u[%ld]: %+5.16lf\t", i * (Ny) + j, u0[SYS_DIM * (i * (Ny + 2) + j) + 0]);
+		for (int i = 0; i < Ny; ++i) {
+			for (int j = 0; j < Nx; ++j) {
+				printf("u[%ld]: %+5.16lf\t", i * (Nx) + j, u0[SYS_DIM * (i * (Nx + 2) + j) + 0]);
 			}
 			printf("\n");
 		}
 		printf("\n\n");
 
-		for (int i = 0; i < Nx; ++i) {
-			for (int j = 0; j < Ny; ++j) {
-				printf("v[%ld]: %+5.16lf\t", i * (Ny) + j, u0[SYS_DIM * (i * (Ny + 2) + j) + 1]);
+		for (int i = 0; i < Ny; ++i) {
+			for (int j = 0; j < Nx; ++j) {
+				printf("v[%ld]: %+5.16lf\t", i * (Nx) + j, u0[SYS_DIM * (i * (Nx + 2) + j) + 1]);
 			}
 			printf("\n");
 		}
@@ -721,34 +721,34 @@ void PrintVelocityReal(const long int* N) {
 void PrintVelocityFourier(const long int* N) {
 
 	// Initialize variables
-	const long int Nx 		  = N[0];
-	const long int Ny_Fourier = N[1] / 2 + 1;
+	const long int Ny 		  = N[0];
+	const long int Nx_Fourier = N[1] / 2 + 1;
 
 	// Allocate memory to recieve lcoal vorticity arrays
-	fftw_complex* u_hat0 = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * Nx * Ny_Fourier * SYS_DIM);
-	for (int i = 0; i < Nx; ++i) {
-		for (int j = 0; j < Ny_Fourier; ++j) {
-			u_hat0[SYS_DIM * (i * (Ny_Fourier) + j) + 0] = 0.0 + 0.0 * I;
-			u_hat0[SYS_DIM * (i * (Ny_Fourier) + j) + 1] = 0.0 + 0.0 * I;
+	fftw_complex* u_hat0 = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * Ny * Nx_Fourier * SYS_DIM);
+	for (int i = 0; i < Ny; ++i) {
+		for (int j = 0; j < Nx_Fourier; ++j) {
+			u_hat0[SYS_DIM * (i * (Nx_Fourier) + j) + 0] = 0.0 + 0.0 * I;
+			u_hat0[SYS_DIM * (i * (Nx_Fourier) + j) + 1] = 0.0 + 0.0 * I;
 		}
 	}
 
 	// Gather all the local arrays into u_hat0 and v_hat0
-	MPI_Gather(run_data->u_hat, sys_vars->local_Nx * Ny_Fourier * SYS_DIM, MPI_C_DOUBLE_COMPLEX, u_hat0, sys_vars->local_Nx * Ny_Fourier* SYS_DIM, MPI_C_DOUBLE_COMPLEX, 0, MPI_COMM_WORLD);
+	MPI_Gather(run_data->u_hat, sys_vars->local_Ny * Nx_Fourier * SYS_DIM, MPI_C_DOUBLE_COMPLEX, u_hat0, sys_vars->local_Ny * Nx_Fourier* SYS_DIM, MPI_C_DOUBLE_COMPLEX, 0, MPI_COMM_WORLD);
 	
 	// On the master rank print the result
 	if ( !(sys_vars->rank) ) {
-		for (int i = 0; i < Nx; ++i) {
-			for (int j = 0; j < Ny_Fourier; ++j) {
-				printf("uh[%ld]: %+5.10lf %+5.10lfI\t", i * (Ny_Fourier) + j, creal(u_hat0[SYS_DIM * (i * Ny_Fourier + j) + 0]), cimag(u_hat0[SYS_DIM * (i * Ny_Fourier + j) + 0]));
+		for (int i = 0; i < Ny; ++i) {
+			for (int j = 0; j < Nx_Fourier; ++j) {
+				printf("uh[%d,%d]: %+5.10lf %+5.10lfI\t", run_data->k[0][i], run_data->k[1][j], creal(u_hat0[SYS_DIM * (i * Nx_Fourier + j) + 0]), cimag(u_hat0[SYS_DIM * (i * Nx_Fourier + j) + 0]));
 			}
 			printf("\n");
 		}
 		printf("\n\n");
 
-		for (int i = 0; i < Nx; ++i) {
-			for (int j = 0; j < Ny_Fourier; ++j) {
-				printf("vh[%ld]: %+5.10lf %+5.10lf I\t", i * (Ny_Fourier) + j, creal(u_hat0[SYS_DIM * (i * Ny_Fourier + j) + 1]), cimag(u_hat0[SYS_DIM * (i * Ny_Fourier + j) + 1]));
+		for (int i = 0; i < Ny; ++i) {
+			for (int j = 0; j < Nx_Fourier; ++j) {
+				printf("vh[%d,%d]: %+5.10lf %+5.10lf I\t", run_data->k[0][i], run_data->k[1][j], creal(u_hat0[SYS_DIM * (i * Nx_Fourier + j) + 1]), cimag(u_hat0[SYS_DIM * (i * Nx_Fourier + j) + 1]));
 			}
 			printf("\n");
 		}
@@ -766,25 +766,28 @@ void PrintVelocityFourier(const long int* N) {
 void PrintScalarFourier(fftw_complex* data, const long int* N, char* arr_name) {
 
 	// Initialize variables
-	const long int Nx 		  = N[0];
-	const long int Ny_Fourier = N[1] / 2 + 1;
+	const long int Ny 		  = N[0];
+	const long int Nx_Fourier = N[1] / 2 + 1;
 
 	// Allocate memory to recieve lcoal vorticity arrays
-	fftw_complex* w_hat0 = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * Nx * (Ny_Fourier));
-	for (int i = 0; i < Nx; ++i) {
-		for (int j = 0; j < Ny_Fourier; ++j) {
-			w_hat0[(i * (Ny_Fourier) + j)] = 0.0 + 0.0 * I;
+	fftw_complex* w_hat0 = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * Ny * (Nx_Fourier));
+	for (int i = 0; i < Ny; ++i) {
+		for (int j = 0; j < Nx_Fourier; ++j) {
+			w_hat0[(i * (Nx_Fourier) + j)] = 0.0 + 0.0 * I;
 		}
 	}
+	int* k0    = (int* )fftw_malloc(sizeof(int) * Ny);
+	// Gather the data from each process onto master rank for printing
+	MPI_Gather(run_data->k[0], sys_vars->local_Ny, MPI_INT, k0, sys_vars->local_Ny, MPI_INT, 0, MPI_COMM_WORLD);
 
 	// Gather all the local arrays into w0
-	MPI_Gather(data, sys_vars->local_Nx * Ny_Fourier, MPI_C_DOUBLE_COMPLEX, w_hat0, sys_vars->local_Nx * Ny_Fourier, MPI_C_DOUBLE_COMPLEX, 0, MPI_COMM_WORLD);
+	MPI_Gather(data, sys_vars->local_Ny * Nx_Fourier, MPI_C_DOUBLE_COMPLEX, w_hat0, sys_vars->local_Ny * Nx_Fourier, MPI_C_DOUBLE_COMPLEX, 0, MPI_COMM_WORLD);
 
 	// On the master rank print the result
 	if ( !(sys_vars->rank) ) {
-		for (int i = 0; i < Nx; ++i) {
-			for (int j = 0; j < Ny_Fourier; ++j) {
-				printf("%s[%ld]: %1.16lf %1.16lf I\n", arr_name, i * (Ny_Fourier) + j, creal(w_hat0[i * Ny_Fourier + j]), cimag(w_hat0[i * Ny_Fourier + j]));
+		for (int i = 0; i < Ny; ++i) {
+			for (int j = 0; j < Nx_Fourier; ++j) {
+				printf("%s[%d,%d]: %1.16lf %1.16lf ", arr_name, k0[i], run_data->k[1][j], creal(w_hat0[i * Nx_Fourier + j]), cimag(w_hat0[i * Nx_Fourier + j]));
 			}
 			printf("\n");
 		}
@@ -793,6 +796,7 @@ void PrintScalarFourier(fftw_complex* data, const long int* N, char* arr_name) {
 
 	// Free temporary memory
 	fftw_free(w_hat0);
+	fftw_free(k0);
 }
 /**
  * Function to print scalar array in Real space
@@ -802,25 +806,25 @@ void PrintScalarFourier(fftw_complex* data, const long int* N, char* arr_name) {
 void PrintScalarReal(double* data, const long int* N, char* arr_name) {
 
 	// Initialize variables
-	const long int Nx = N[0];
-	const long int Ny = N[1];
+	const long int Ny = N[0];
+	const long int Nx = N[1];
 
 	// Allocate memory to recieve lcoal vorticity arrays
-	double* w_hat0 = (double* )fftw_malloc(sizeof(double) * Nx * (Ny + 2));
-	for (int i = 0; i < Nx; ++i) {
-		for (int j = 0; j < Ny + 2; ++j) {
-			w_hat0[(i * (Ny + 2) + j)] = 0.0;
+	double* w_hat0 = (double* )fftw_malloc(sizeof(double) * Ny * (Nx + 2));
+	for (int i = 0; i < Ny; ++i) {
+		for (int j = 0; j < Nx + 2; ++j) {
+			w_hat0[(i * (Nx + 2) + j)] = 0.0;
 		}
 	}
 
 	// Gather all the local arrays into w0
-	MPI_Gather(data, sys_vars->local_Nx * (Ny + 2), MPI_DOUBLE, w_hat0, sys_vars->local_Nx * (Ny + 2), MPI_DOUBLE, 0, MPI_COMM_WORLD);
+	MPI_Gather(data, sys_vars->local_Ny * (Nx + 2), MPI_DOUBLE, w_hat0, sys_vars->local_Ny * (Nx + 2), MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
 	// On the master rank print the result
 	if ( !(sys_vars->rank) ) {
-		for (int i = 0; i < Nx; ++i) {
-			for (int j = 0; j < Ny; ++j) {
-				printf("%s[%ld]: %g ", arr_name, i * (Ny) + j, w_hat0[i * (Ny + 2) + j]);
+		for (int i = 0; i < Ny; ++i) {
+			for (int j = 0; j < Nx; ++j) {
+				printf("%s[%d,%d]: %1.16lf ", arr_name, i , j, w_hat0[i * (Nx + 2) + j]);
 			}
 			printf("\n");
 		}
@@ -838,34 +842,34 @@ void PrintScalarReal(double* data, const long int* N, char* arr_name) {
 void PrintVectorReal(double* data, const long int* N, char* arr_name1, char* arr_name2) {
 
 	// Initialize variables
-	const long int Nx = N[0];
-	const long int Ny = N[1];
+	const long int Ny = N[0];
+	const long int Nx = N[1];
 
 	// Allocate memory to recieve lcoal vorticity arrays
-	double* u0 = (double* )fftw_malloc(sizeof(double) * Nx * (Ny + 2) * SYS_DIM);
-	for (int i = 0; i < Nx; ++i) {
-		for (int j = 0; j < Ny + 2; ++j) {
-			u0[SYS_DIM * (i * (Ny + 2) + j) + 0] = 0.0;
-			u0[SYS_DIM * (i * (Ny + 2) + j) + 1] = 0.0;
+	double* u0 = (double* )fftw_malloc(sizeof(double) * Ny * (Nx + 2) * SYS_DIM);
+	for (int i = 0; i < Ny; ++i) {
+		for (int j = 0; j < Nx + 2; ++j) {
+			u0[SYS_DIM * (i * (Nx + 2) + j) + 0] = 0.0;
+			u0[SYS_DIM * (i * (Nx + 2) + j) + 1] = 0.0;
 		}
 	}
-
+	
 	// Gather all the local arrays into u0 and v0
-	MPI_Gather(data, sys_vars->local_Nx * (Ny + 2) * SYS_DIM, MPI_DOUBLE, u0, sys_vars->local_Nx * (Ny + 2)* SYS_DIM, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+	MPI_Gather(data, sys_vars->local_Ny * (Nx + 2) * SYS_DIM, MPI_DOUBLE, u0, sys_vars->local_Ny * (Nx + 2)* SYS_DIM, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 	
 	// On the master rank print the result
 	if ( !(sys_vars->rank) ) {
-		for (int i = 0; i < Nx; ++i) {
-			for (int j = 0; j < Ny; ++j) {
-				printf("%s[%ld]: %+5.16lf", arr_name1, i * (Ny) + j, u0[SYS_DIM * (i * (Ny + 2) + j) + 0]);
+		for (int i = 0; i < Ny; ++i) {
+			for (int j = 0; j < Nx; ++j) {
+				printf("%s[%d, %d]: %+5.16lf ", arr_name1, i, j, u0[SYS_DIM * (i * (Nx + 2) + j) + 0]);
 			}
 			printf("\n");
 		}
 		printf("\n\n");
 
-		for (int i = 0; i < Nx; ++i) {
-			for (int j = 0; j < Ny; ++j) {
-				printf("%s[%ld]: %+5.16lf", arr_name2, i * (Ny) + j, u0[SYS_DIM * (i * (Ny + 2) + j) + 1]);
+		for (int i = 0; i < Ny; ++i) {
+			for (int j = 0; j < Nx; ++j) {
+				printf("%s[%d, %d]: %+5.16lf ", arr_name2, i, j, u0[SYS_DIM * (i * (Nx + 2) + j) + 1]);
 			}
 			printf("\n");
 		}
@@ -878,34 +882,38 @@ void PrintVectorReal(double* data, const long int* N, char* arr_name1, char* arr
 void PrintVectorFourier(fftw_complex* data, const long int* N, char* arr_name1, char* arr_name2) {
 
 	// Initialize variables
-	const long int Nx = N[0];
-	const long int Ny_Fourier = N[1] / 2 + 1;
+	const long int Ny = N[0];
+	const long int Nx_Fourier = N[1] / 2 + 1;
 
 	// Allocate memory to recieve lcoal vorticity arrays
-	fftw_complex* u_hat0 = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * Nx * (Ny_Fourier) * SYS_DIM);
-	for (int i = 0; i < Nx; ++i) {
-		for (int j = 0; j < Ny_Fourier; ++j) {
-			u_hat0[SYS_DIM * (i * (Ny_Fourier) + j) + 0] = 0.0 + 0.0 * I;
-			u_hat0[SYS_DIM * (i * (Ny_Fourier) + j) + 1] = 0.0 + 0.0 * I;
+	fftw_complex* u_hat0 = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * Ny * (Nx_Fourier) * SYS_DIM);
+	for (int i = 0; i < Ny; ++i) {
+		for (int j = 0; j < Nx_Fourier; ++j) {
+			u_hat0[SYS_DIM * (i * (Nx_Fourier) + j) + 0] = 0.0 + 0.0 * I;
+			u_hat0[SYS_DIM * (i * (Nx_Fourier) + j) + 1] = 0.0 + 0.0 * I;
 		}
 	}
+	int* k0    = (int* )fftw_malloc(sizeof(int) * Ny);
+	// Gather the data from each process onto master rank for printing
+	MPI_Gather(run_data->k[0], sys_vars->local_Ny, MPI_INT, k0, sys_vars->local_Ny, MPI_INT, 0, MPI_COMM_WORLD);
+
 
 	// Gather all the local arrays into u_hat0 and v_hat0
-	MPI_Gather(data, sys_vars->local_Nx * (Ny_Fourier) * SYS_DIM, MPI_C_DOUBLE_COMPLEX, u_hat0, sys_vars->local_Nx * (Ny_Fourier)* SYS_DIM, MPI_C_DOUBLE_COMPLEX, 0, MPI_COMM_WORLD);
+	MPI_Gather(data, sys_vars->local_Ny * (Nx_Fourier) * SYS_DIM, MPI_C_DOUBLE_COMPLEX, u_hat0, sys_vars->local_Ny * (Nx_Fourier)* SYS_DIM, MPI_C_DOUBLE_COMPLEX, 0, MPI_COMM_WORLD);
 
 	// On the master rank print the result
 	if ( !(sys_vars->rank) ) {
-		for (int i = 0; i < Nx; ++i) {
-			for (int j = 0; j < Ny_Fourier; ++j) {
-				printf("%s[%ld]: %5.16lf %5.16lf I", arr_name1, i * (Ny_Fourier) + j, creal(u_hat0[SYS_DIM * (i * (Ny_Fourier) + j) + 0]), cimag(u_hat0[SYS_DIM * (i * (Ny_Fourier) + j) + 0]));
+		for (int i = 0; i < Ny; ++i) {
+			for (int j = 0; j < Nx_Fourier; ++j) {
+				printf("%s[%d,%d]: %5.16lf %5.16lf ", arr_name1, k0[i], run_data->k[1][j], creal(u_hat0[SYS_DIM * (i * (Nx_Fourier) + j) + 0]), cimag(u_hat0[SYS_DIM * (i * (Nx_Fourier) + j) + 0]));
 			}
 			printf("\n");
 		}
 		printf("\n\n");
 
-		for (int i = 0; i < Nx; ++i) {
-			for (int j = 0; j < Ny_Fourier; ++j) {
-				printf("%s[%ld]: %5.16lf %5.16lf I", arr_name2, i * (Ny_Fourier) + j, creal(u_hat0[SYS_DIM * (i * (Ny_Fourier) + j) + 1]), cimag(u_hat0[SYS_DIM * (i * (Ny_Fourier) + j) + 0]));
+		for (int i = 0; i < Ny; ++i) {
+			for (int j = 0; j < Nx_Fourier; ++j) {
+				printf("%s[%d,%d]: %5.16lf %5.16lf ", arr_name2, k0[i], run_data->k[1][j], creal(u_hat0[SYS_DIM * (i * (Nx_Fourier) + j) + 1]), cimag(u_hat0[SYS_DIM * (i * (Nx_Fourier) + j) + 1]));
 			}
 			printf("\n");
 		}
@@ -913,6 +921,7 @@ void PrintVectorFourier(fftw_complex* data, const long int* N, char* arr_name1, 
 	}
 
 	// Free temporary memory
+	fftw_free(k0);
 	fftw_free(u_hat0);
 }
 /**
@@ -921,21 +930,21 @@ void PrintVectorFourier(fftw_complex* data, const long int* N, char* arr_name1, 
 void PrintSpaceVariables(const long int* N) {
 
 	// Initialize variables
-	const long int Nx = N[0];
-	const long int Ny_Fourier = N[1] / 2 + 1; 
+	const long int Ny = N[0];
+	const long int Nx_Fourier = N[1] / 2 + 1; 
 
 	// Allocate global array memory
-	double* x0 = (double* )fftw_malloc(sizeof(double) * Nx);
-	int* k0    = (int* )fftw_malloc(sizeof(int) * Nx);
+	double* x0 = (double* )fftw_malloc(sizeof(double) * Ny);
+	int* k0    = (int* )fftw_malloc(sizeof(int) * Ny);
 
 	// Gather the data from each process onto master rank for printing
-	MPI_Gather(run_data->x[0], sys_vars->local_Nx, MPI_DOUBLE, x0, sys_vars->local_Nx, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-	MPI_Gather(run_data->k[0], sys_vars->local_Nx, MPI_INT, k0, sys_vars->local_Nx, MPI_INT, 0, MPI_COMM_WORLD);
+	MPI_Gather(run_data->x[0], sys_vars->local_Ny, MPI_DOUBLE, x0, sys_vars->local_Ny, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+	MPI_Gather(run_data->k[0], sys_vars->local_Ny, MPI_INT, k0, sys_vars->local_Ny, MPI_INT, 0, MPI_COMM_WORLD);
 
 	// Print results on the master process
 	if ( !(sys_vars->rank) ) {
-		for (int i = 0; i < Nx; ++i) {
-			if (i < Ny_Fourier) {
+		for (int i = 0; i < Ny; ++i) {
+			if (i < Nx_Fourier) {
 				printf("x[%d]: %5.16lf\ty[%d]: %5.16lf\tkx[%d]: %d\tky[%d]: %d\n", i, x0[i], i, run_data->x[1][i], i, k0[i], i, run_data->k[1][i]);
 			}
 			else {
@@ -955,9 +964,9 @@ void PrintSpaceVariables(const long int* N) {
  * @param dset_name   The name of the dataset
  * @param dset_rank   The rank of the dataset
  * @param dset_dims   Array containing the dimensions of the dataset to be written
- * @param local_dim_x The size of the first dimension of the lcoal dataset
+ * @param local_dim_y The size of the first dimension of the lcoal dataset
  */
-void WriteTestDataReal(double* data, char* dset_name, int dset_rank, int* dset_dims, int local_dim_x) {
+void WriteTestDataReal(double* data, char* dset_name, int dset_rank, int* dset_dims, int local_dim_y) {
 
 	// Initialize variables
 	hsize_t rank = dset_rank;
@@ -976,7 +985,7 @@ void WriteTestDataReal(double* data, char* dset_name, int dset_rank, int* dset_d
 	}	
 
 	// Gather full dataset on root process
-	int local_size = local_dim_x;
+	int local_size = local_dim_y;
 	for (int i = 1; i < (int)rank; ++i) {
 		local_size *= dset_dims[i];
 	}
@@ -1003,9 +1012,9 @@ void WriteTestDataReal(double* data, char* dset_name, int dset_rank, int* dset_d
  * @param dset_name   The name of the dataset to be written	
  * @param dim_x       The size of the first dimension of the global dataset
  * @param dim_y       The size of the second dimension of the global dataset
- * @param local_dim_x The size of first dimension of the local (to each process) dataset
+ * @param local_dim_y The size of first dimension of the local (to each process) dataset
  */
-void WriteTestDataFourier(fftw_complex* data, char* dset_name, int dim_x, int dim_y, int local_dim_x) {
+void WriteTestDataFourier(fftw_complex* data, char* dset_name, int dim_x, int dim_y, int local_dim_y) {
 	
 	// Initialzie variables
 	hsize_t rank = 2;
@@ -1020,7 +1029,7 @@ void WriteTestDataFourier(fftw_complex* data, char* dset_name, int dim_x, int di
 	}	
 
 	// Gather full dataset on root process
-	MPI_Gather(data, local_dim_x * dim_y, MPI_C_DOUBLE_COMPLEX, full_data, local_dim_x * dim_y, MPI_C_DOUBLE_COMPLEX, 0, MPI_COMM_WORLD);
+	MPI_Gather(data, local_dim_y * dim_y, MPI_C_DOUBLE_COMPLEX, full_data, local_dim_y * dim_y, MPI_C_DOUBLE_COMPLEX, 0, MPI_COMM_WORLD);
 	
 	// Write dataset to file
 	if (!sys_vars->rank) {   

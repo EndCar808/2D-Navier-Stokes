@@ -36,7 +36,7 @@ void InitializeForcing(void) {
 	double sum_k	             = 0.0;
 	double scaling_exp           = 0.0;
 	sys_vars->local_forcing_proc = 0;
-	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
+	const long int Nx_Fourier = sys_vars->N[1] / 2 + 1;
 
 	// -----------------------------------
 	// Initialize Forcing Objects 
@@ -44,8 +44,8 @@ void InitializeForcing(void) {
 	//--------------------------------- Apply Kolmogorov forcing
 	if(!(strcmp(sys_vars->forcing, "KOLM"))) {
 		// Loop through modes to identify local process(es) containing the modes to be forced
-		for (int i = 0; i < sys_vars->local_Nx; ++i) {
-			if (run_data->k[0][i] == 0) {
+		for (int i = 0; i < sys_vars->local_Ny; ++i) {
+			if (run_data->k[0][i] == sys_vars->force_k || run_data->k[0][i] == -sys_vars->force_k) {
 				sys_vars->local_forcing_proc = 1;
 				num_forced_modes++;
 			}
@@ -89,23 +89,26 @@ void InitializeForcing(void) {
 			// -----------------------------------
 			// Fill Forcing Info
 			// -----------------------------------
-			// Get the forcing index
-			run_data->forcing_indx[0] = sys_vars->force_k;
-
-			// Get the forcing wavenumbers
-			run_data->forcing_k[0][0] = 0;
-			run_data->forcing_k[1][0] = run_data->k[1][sys_vars->force_k];
-
-			// Get the forcing scaling 
-			run_data->forcing_scaling[0] = sys_vars->force_scale_var;
+			force_mode_counter = 0;
+			for (int i = 0; i < sys_vars->local_Ny; ++i) {
+				if (run_data->k[0][i] == sys_vars->force_k || run_data->k[0][i] == -sys_vars->force_k) {
+					// Get the forcing info
+					run_data->forcing_indx[force_mode_counter] = i * Nx_Fourier;
+					run_data->forcing_k[0][force_mode_counter] = run_data->k[0][i];
+					run_data->forcing_k[1][force_mode_counter] = 0;
+					run_data->forcing_scaling[force_mode_counter] = sys_vars->force_scale_var;
+					// increment counter
+					force_mode_counter++;
+				}
+			}
 		}
 	}
 	//--------------------------------- Apply Stochastic Uniform forcing
 	else if(!(strcmp(sys_vars->forcing, "STOC"))) {
 		// Loop through modes to identify local process(es) containing the modes to be forced		
 		double forc_spect = 0.0;
-		for (int i = 0; i < sys_vars->local_Nx; ++i) {
-			for (int j = 0; j < Ny_Fourier; ++j) {
+		for (int i = 0; i < sys_vars->local_Ny; ++i) {
+			for (int j = 0; j < Nx_Fourier; ++j) {
 				// Compute |k|
 				k_abs = sqrt((double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]));
 
@@ -113,7 +116,7 @@ void InitializeForcing(void) {
 					continue;
 				}
 				else {
-					if (j == 0 || j == Ny_Fourier - 1) {
+					if (j == 0 || j == Nx_Fourier - 1) {
 						forc_spect += exp(- pow(k_abs - sys_vars->force_k, 2.0) / (2.0 * STOC_FORC_UNIF_DELTA_K * STOC_FORC_UNIF_DELTA_K)) / (2.0 * pow(k_abs, 2.0));
 					}
 					else {
@@ -173,9 +176,9 @@ void InitializeForcing(void) {
 			// Initialize variables
 			scale_fac_f0       = sys_vars->force_scale_var / forc_spect;
 			force_mode_counter = 0;
-			for (int i = 0; i < sys_vars->local_Nx; ++i) {
-				tmp = i * Ny_Fourier;
-				for (int j = 0; j < Ny_Fourier; ++j) {
+			for (int i = 0; i < sys_vars->local_Ny; ++i) {
+				tmp = i * Nx_Fourier;
+				for (int j = 0; j < Nx_Fourier; ++j) {
 					indx = tmp + j;
 
 					// Compute |k|
@@ -200,8 +203,8 @@ void InitializeForcing(void) {
 	else if(!(strcmp(sys_vars->forcing, "STOC_GAUSS"))) {
 		// Loop through modes to identify local process(es) containing the modes to be forced		
 		sum_k = 0.0;
-		for (int i = 0; i < sys_vars->local_Nx; ++i) {
-			for (int j = 0; j < Ny_Fourier; ++j) {
+		for (int i = 0; i < sys_vars->local_Ny; ++i) {
+			for (int j = 0; j < Nx_Fourier; ++j) {
 				// Compute |k|
 				k_abs = sqrt((double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]));
 
@@ -209,7 +212,7 @@ void InitializeForcing(void) {
 					continue;
 				}
 				else {
-					if (j == 0 || j == Ny_Fourier - 1) {
+					if (j == 0 || j == Nx_Fourier - 1) {
 						if (k_abs > sys_vars->force_k - 0.5 && k_abs < sys_vars->force_k + 0.5) {
 							sum_k += pow(k_abs, 2.0);
 
@@ -277,9 +280,9 @@ void InitializeForcing(void) {
 			// Initialize variables
 			scale_fac_f0       = sqrt(sys_vars->force_scale_var / sum_k);
 			force_mode_counter = 0;
-			for (int i = 0; i < sys_vars->local_Nx; ++i) {
-				tmp = i * Ny_Fourier;
-				for (int j = 0; j < Ny_Fourier; ++j) {
+			for (int i = 0; i < sys_vars->local_Ny; ++i) {
+				tmp = i * Nx_Fourier;
+				for (int j = 0; j < Nx_Fourier; ++j) {
 					indx = tmp + j;
 
 					// Compute |k|
@@ -305,8 +308,8 @@ void InitializeForcing(void) {
 	//--------------------------------- If CONST_GAUSS modes forcing selected
 	else if(!(strcmp(sys_vars->forcing, "CONST_GAUSS"))) {
 		// Loop through modes to identify local process(es) containing the modes to be forced
-		for (int i = 0; i < sys_vars->local_Nx; ++i) {
-			for (int j = 0; j < Ny_Fourier; ++j) {
+		for (int i = 0; i < sys_vars->local_Ny; ++i) {
+			for (int j = 0; j < Nx_Fourier; ++j) {
 
 				// Compute |k|
 				k_abs = sqrt((double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]));
@@ -338,8 +341,8 @@ void InitializeForcing(void) {
 		// Generate the gaussian data and record the modes to conjugate later
 		force_mode_counter = 0;
 		scale_fac_f0 = 0.0;
-		for (int i = 0; i < sys_vars->local_Nx; ++i) {
-			for (int j = 0; j < Ny_Fourier; ++j) {
+		for (int i = 0; i < sys_vars->local_Ny; ++i) {
+			for (int j = 0; j < Nx_Fourier; ++j) {
 
 				// Compute |k|
 				k_abs = sqrt((double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]));
@@ -358,7 +361,7 @@ void InitializeForcing(void) {
 					gauss_data[force_mode_counter] = re_f + im_f * I;
 					if(run_data->k[1][i] == 0 && (run_data->k[0][i] > 0)) {
 						// Record the forcing for modes to conjugate
-						conj_data[run_data->k[0][i] * Ny_Fourier + 0] = re_f + im_f * I;
+						conj_data[run_data->k[0][i] * Nx_Fourier + 0] = re_f + im_f * I;
 					}
 					force_mode_counter++;
 
@@ -406,9 +409,9 @@ void InitializeForcing(void) {
 			// Fill Forcing Info
 			// -----------------------------------
 			force_mode_counter = 0;
-			for (int i = 0; i < sys_vars->local_Nx; ++i) {
-				tmp = i * Ny_Fourier;
-				for (int j = 0; j < Ny_Fourier; ++j) {
+			for (int i = 0; i < sys_vars->local_Ny; ++i) {
+				tmp = i * Nx_Fourier;
+				for (int j = 0; j < Nx_Fourier; ++j) {
 					indx = tmp + j;
 
 					// Compute |k|
@@ -435,8 +438,8 @@ void InitializeForcing(void) {
 	//--------------------------------- If ZERO modes forcing selected
 	else if(!(strcmp(sys_vars->forcing, "ZERO"))) {
 		// Loop through modes to identify local process(es) containing the modes to be forced
-		for (int i = 0; i < sys_vars->local_Nx; ++i) {
-			for (int j = 0; j < Ny_Fourier; ++j) {
+		for (int i = 0; i < sys_vars->local_Ny; ++i) {
+			for (int j = 0; j < Nx_Fourier; ++j) {
 
 				// Count the forced modes
 				if ((abs(run_data->k[0][i]) <= sys_vars->force_k) || (abs(run_data->k[1][j]) <= sys_vars->force_k)) {
@@ -485,9 +488,9 @@ void InitializeForcing(void) {
 			// Fill Forcing Info
 			// -----------------------------------
 			force_mode_counter = 0;
-			for (int i = 0; i < sys_vars->local_Nx; ++i) {
-				tmp = i * Ny_Fourier;
-				for (int j = 0; j < Ny_Fourier; ++j) {
+			for (int i = 0; i < sys_vars->local_Ny; ++i) {
+				tmp = i * Nx_Fourier;
+				for (int j = 0; j < Nx_Fourier; ++j) {
 					indx = tmp + j;
 
 					// Record the data for the forced modes
@@ -531,10 +534,12 @@ void ComputeForcing(double dt) {
 				run_data->w_hat[run_data->forcing_indx[i]] = 0.0 + 0.0 * I;
 			}
 		}
-		//---------------------------- Compute Kolmogorov forcing -> f(u) = (a sin(n y), 0); f(w) = -n a cos(n y) -> f_k = -1/2 * n * a \delta(n)
+		//---------------------------- Compute Kolmogorov forcing -> f(u) = (scale sin(n y), 0); f(w) = -n scale cos(n y) -> f_k = -1/2 * n * scale \delta(n)
 		else if(!(strcmp(sys_vars->forcing, "KOLM"))) {
 			// Compute the Kolmogorov forcing
-			run_data->forcing[0] = -0.5 * sys_vars->force_scale_var * (sys_vars->force_k + 0.0 * I);
+			for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
+				run_data->forcing[i] = -0.5 * sys_vars->force_scale_var * (sys_vars->force_k + 0.0 * I);
+			}
 		}
 		//---------------------------- Compute Stochastic Gaussian forcing
 		else if(!(strcmp(sys_vars->forcing, "STOC_GAUSS"))) {

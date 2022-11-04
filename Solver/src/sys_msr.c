@@ -35,13 +35,13 @@ void ComputeSystemMeasurables(double t, int iter, Int_data_struct* Int_data) {
 	int tmp;
 	int indx;
 	int spec_indx;
-	ptrdiff_t local_Nx 		  = sys_vars->local_Nx;
-	const long int Nx         = sys_vars->N[0];
-	const long int Ny         = sys_vars->N[1];
-	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
+	ptrdiff_t local_Ny 		  = sys_vars->local_Ny;
+	const long int Ny         = sys_vars->N[0];
+	const long int Nx         = sys_vars->N[1];
+	const long int Nx_Fourier = sys_vars->N[1] / 2 + 1;
 	double k_sqr, pre_fac;
 	fftw_complex u_z, v_z, div_u_z;
-	double norm_fac  = 0.5 / pow(Nx * Ny, 2.0);
+	double norm_fac  = 0.5 / pow(Ny * Nx, 2.0);
     double const_fac = 4.0 * pow(M_PI, 2.0);
     #if defined(__ENRG_FLUX_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__ENRG_FLUX) || defined(__ENST_FLUX)
     double lwr_sbst_lim_sqr = pow(LWR_SBST_LIM, 2.0);
@@ -143,9 +143,9 @@ void ComputeSystemMeasurables(double t, int iter, Int_data_struct* Int_data) {
 	// Compute Measurables in Fourier Space
 	// -------------------------------------
 	// Loop over Fourier vorticity
-	for (int i = 0; i < local_Nx; ++i) {
-		tmp = i * Ny_Fourier;
-		for (int j = 0; j < Ny_Fourier; ++j) {
+	for (int i = 0; i < local_Ny; ++i) {
+		tmp = i * Nx_Fourier;
+		for (int j = 0; j < Nx_Fourier; ++j) {
 			indx = tmp + j;
 
 			#if defined(__ENRG_SPECT) || defined(__ENST_SPECT) || defined(__ENRG_FLUX_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__PHASE_SYNC)
@@ -188,7 +188,7 @@ void ComputeSystemMeasurables(double t, int iter, Int_data_struct* Int_data) {
 
 
 					// Update the sums
-					if ((j == 0) || (j == Ny_Fourier - 1)) { // only count the 0 and N/2 modes once as they have no conjugate
+					if ((j == 0) || (j == Nx_Fourier - 1)) { // only count the 0 and N/2 modes once as they have no conjugate
 						run_data->tot_energy[iter] += cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * (1.0 / k_sqr);
 						run_data->tot_enstr[iter]  += cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
 						run_data->tot_div[iter]    += cabs(div_u_z * conj(div_u_z));
@@ -260,7 +260,7 @@ void ComputeSystemMeasurables(double t, int iter, Int_data_struct* Int_data) {
 				tmp_diss  = pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * const_fac * norm_fac;
 				#endif
 
-				if ((j == 0) || (j == Ny_Fourier - 1)) {
+				if ((j == 0) || (j == Nx_Fourier - 1)) {
 					// Update the current bin
 					#if defined(__ENRG_SPECT)
 					run_data->enrg_spect[spec_indx] += const_fac * norm_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * (1.0 / k_sqr);
@@ -310,7 +310,7 @@ void ComputeSystemMeasurables(double t, int iter, Int_data_struct* Int_data) {
 			tmp_order = Int_data->RK1[indx] * cexp(-I * carg(run_data->w_hat[indx]));
 
 			// Average over the annulus
-			if (j == 0 || j == Ny_Fourier - 1) {
+			if (j == 0 || j == Nx_Fourier - 1) {
 				if (run_data->k[0][i] > 0) {
 					run_data->phase_order_k[spec_indx] += tmp_order;
 					if (cabs(tmp_order) != 0.0) {
@@ -335,10 +335,10 @@ void ComputeSystemMeasurables(double t, int iter, Int_data_struct* Int_data) {
 	}
 
 	// Get mean flow in the x direction
-	for (int i = 0; i < Ny_Fourier; ++i) {
-		for (int j = 0; j < local_Nx; ++j) {
-			u_z = I * ((double )run_data->k[1][j]) * run_data->w_hat[j * Ny_Fourier + i] / k_sqr;
-			if (i == 0 || i == Ny_Fourier - 1) {
+	for (int i = 0; i < Nx_Fourier; ++i) {
+		for (int j = 0; j < local_Ny; ++j) {
+			u_z = I * ((double )run_data->k[1][j]) * run_data->w_hat[j * Nx_Fourier + i] / k_sqr;
+			if (i == 0 || i == Nx_Fourier - 1) {
 				run_data->mean_flow_x[i] += cabs(u_z);
 			}
 			else {
@@ -347,29 +347,29 @@ void ComputeSystemMeasurables(double t, int iter, Int_data_struct* Int_data) {
 		}
 	}
 
-	// ------------------------------------
-	// Normalize Measureables 
-	// ------------------------------------	
-	#if defined(__SYS_MEASURES)
-	if (iter < sys_vars->num_print_steps) {
-		// Normalize results and take into account computation in Fourier space
-		run_data->enrg_diss[iter]  *= 2.0 * const_fac * norm_fac;
-		run_data->enst_diss[iter]  *= 2.0 * const_fac * norm_fac;
-		run_data->tot_enstr[iter]  *= const_fac * norm_fac;
-		run_data->tot_palin[iter]  *= const_fac * norm_fac;
-		run_data->tot_forc[iter]   *= const_fac * norm_fac;
-		run_data->tot_div[iter]    *= const_fac * norm_fac;
-		run_data->tot_energy[iter] *= const_fac * norm_fac;
-	}
-	#endif
-	#if defined(__ENRG_FLUX)
-	run_data->enrg_flux_sbst[iter] *= const_fac * norm_fac;
-	run_data->enrg_diss_sbst[iter] *= 2.0 * const_fac * norm_fac;
-	#endif
-	#if defined(__ENST_FLUX)
-	run_data->enst_flux_sbst[iter] *= const_fac * norm_fac;
-	run_data->enst_diss_sbst[iter] *= 2.0 * const_fac * norm_fac;
-	#endif
+	// // ------------------------------------
+	// // Normalize Measureables 
+	// // ------------------------------------	
+	// #if defined(__SYS_MEASURES)
+	// if (iter < sys_vars->num_print_steps) {
+	// 	// Normalize results and take into account computation in Fourier space
+	// 	run_data->enrg_diss[iter]  *= 2.0 * const_fac * norm_fac;
+	// 	run_data->enst_diss[iter]  *= 2.0 * const_fac * norm_fac;
+	// 	run_data->tot_enstr[iter]  *= const_fac * norm_fac;
+	// 	run_data->tot_palin[iter]  *= const_fac * norm_fac;
+	// 	run_data->tot_forc[iter]   *= const_fac * norm_fac;
+	// 	run_data->tot_div[iter]    *= const_fac * norm_fac;
+	// 	run_data->tot_energy[iter] *= const_fac * norm_fac;
+	// }
+	// #endif
+	// #if defined(__ENRG_FLUX)
+	// run_data->enrg_flux_sbst[iter] *= const_fac * norm_fac;
+	// run_data->enrg_diss_sbst[iter] *= 2.0 * const_fac * norm_fac;
+	// #endif
+	// #if defined(__ENST_FLUX)
+	// run_data->enst_flux_sbst[iter] *= const_fac * norm_fac;
+	// run_data->enst_diss_sbst[iter] *= 2.0 * const_fac * norm_fac;
+	// #endif
 }
 /**
  * Function to initialize and compute the system measurables and spectra of the initial conditions
@@ -388,10 +388,10 @@ void InitializeSystemMeasurables(Int_data_struct* Int_data) {
 
 	// Get the size of the spectrum arrays
 	#if defined(__ENST_SPECT) || defined(__ENRG_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__ENRG_FLUX_SPECT) || defined(__PHASE_SYNC)
-	const long int Nx = sys_vars->N[0];
-	const long int Ny = sys_vars->N[1];
+	const long int Ny = sys_vars->N[0];
+	const long int Nx = sys_vars->N[1];
 
-	sys_vars->n_spect = (int) round(sqrt((double)(Nx / 2.0) * (Nx / 2.0) + (double)(Ny / 2.0) * (Ny / 2.0)) + 1);
+	sys_vars->n_spect = (int) round(sqrt((double)(Ny / 2.0) * (Ny / 2.0) + (double)(Nx / 2.0) * (Nx / 2.0)) + 1);
 	int n_spect = sys_vars->n_spect;
 	#endif
 
@@ -476,7 +476,7 @@ void InitializeSystemMeasurables(Int_data_struct* Int_data) {
 	}
 
 	// Mean flow y Direction
-	run_data->mean_flow_y = (double* )fftw_malloc(sizeof(double) * sys_vars->local_Nx);
+	run_data->mean_flow_y = (double* )fftw_malloc(sizeof(double) * sys_vars->local_Ny);
 	if (run_data->mean_flow_y == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Mean Flow y Direction");
 		exit(1);
@@ -627,11 +627,11 @@ void EnergySpectrum(void) {
 	int indx;
 	int spec_indx;
 	double k_sqr;
-	ptrdiff_t local_Nx 		  = sys_vars->local_Nx;
-	const long int Nx         = sys_vars->N[0];
-	const long int Ny         = sys_vars->N[1];
-	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
-	double norm_fac = 0.5 / pow(Nx * Ny, 2.0);
+	ptrdiff_t local_Ny 		  = sys_vars->local_Ny;
+	const long int Ny         = sys_vars->N[0];
+	const long int Nx         = sys_vars->N[1];
+	const long int Nx_Fourier = sys_vars->N[1] / 2 + 1;
+	double norm_fac = 0.5 / pow(Ny * Nx, 2.0);
     double const_fac = 4.0 * pow(M_PI, 2.0);
 	// ------------------------------------
 	// Initialize Spectrum Array
@@ -643,9 +643,9 @@ void EnergySpectrum(void) {
 	// ------------------------------------
 	// Compute Spectrum
 	// ------------------------------------
-	for (int i = 0; i < local_Nx; ++i) {
-		tmp = i * Ny_Fourier;
-		for (int j = 0; j < Ny_Fourier; ++j) {
+	for (int i = 0; i < local_Ny; ++i) {
+		tmp = i * Nx_Fourier;
+		for (int j = 0; j < Nx_Fourier; ++j) {
 			indx = tmp + j;
 
 			// Get spectrum index -> spectrum is computed by summing over the energy contained in concentric annuli in wavenumber space
@@ -658,7 +658,7 @@ void EnergySpectrum(void) {
 				// Compute |k|^2
 				k_sqr = 1.0 / ((double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]));
 
-				if ((j == 0) || (j == Ny_Fourier - 1)) {
+				if ((j == 0) || (j == Nx_Fourier - 1)) {
 					// Update the current bin for mode
 					run_data->enrg_spect[spec_indx] += const_fac * norm_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * k_sqr;
 				}
@@ -680,11 +680,11 @@ void EnstrophySpectrum(void) {
 	int tmp;
 	int indx;
 	int spec_indx;
-	ptrdiff_t local_Nx 		  = sys_vars->local_Nx;
-	const long int Nx         = sys_vars->N[0];
-	const long int Ny         = sys_vars->N[1];
-	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
-	double norm_fac = 0.5 / pow(Nx * Ny, 2.0);
+	ptrdiff_t local_Ny 		  = sys_vars->local_Ny;
+	const long int Ny         = sys_vars->N[0];
+	const long int Nx         = sys_vars->N[1];
+	const long int Nx_Fourier = sys_vars->N[1] / 2 + 1;
+	double norm_fac = 0.5 / pow(Ny * Nx, 2.0);
     double const_fac = 4.0 * pow(M_PI, 2.0);
 	// ------------------------------------
 	// Initialize Spectrum Array
@@ -696,9 +696,9 @@ void EnstrophySpectrum(void) {
 	// ------------------------------------
 	// Compute Spectrum
 	// ------------------------------------
-	for (int i = 0; i < local_Nx; ++i) {
-		tmp = i * Ny_Fourier;
-		for (int j = 0; j < Ny_Fourier; ++j) {
+	for (int i = 0; i < local_Ny; ++i) {
+		tmp = i * Nx_Fourier;
+		for (int j = 0; j < Nx_Fourier; ++j) {
 			indx = tmp + j;
 
 			// Get spectrum index -> spectrum is computed by summing over the energy contained in concentric annuli in wavenumber space
@@ -708,7 +708,7 @@ void EnstrophySpectrum(void) {
 				run_data->enst_spect[spec_indx] += 0.0;
 			}
 			else {
-				if ((j == 0) || (j == Ny_Fourier - 1)) {
+				if ((j == 0) || (j == Nx_Fourier - 1)) {
 					// Update the current bin for mode
 					run_data->enst_spect[spec_indx] += const_fac * norm_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
 				}
@@ -732,19 +732,19 @@ double TotalDivergence(void) {
 	fftw_complex k_sqr_inv;
 	fftw_complex u_z, v_z, div_u_z;
 	double tot_div = 0.0;
-	ptrdiff_t local_Nx 		  = sys_vars->local_Nx;
-	const long int Nx         = sys_vars->N[0];
-	const long int Ny         = sys_vars->N[1];
-	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
-	double norm_fac = 0.5 / pow(Nx * Ny, 2.0);
+	ptrdiff_t local_Ny 		  = sys_vars->local_Ny;
+	const long int Ny         = sys_vars->N[0];
+	const long int Nx         = sys_vars->N[1];
+	const long int Nx_Fourier = sys_vars->N[1] / 2 + 1;
+	double norm_fac = 0.5 / pow(Ny * Nx, 2.0);
 
 
 	// ------------------------------------------
 	// Compute Fourier Space Velocity & Divergence
 	// ------------------------------------------
-	for (int i = 0; i < local_Nx; ++i) {
-		tmp = i * Ny_Fourier;
-		for (int j = 0; j < Ny_Fourier; ++j) {
+	for (int i = 0; i < local_Ny; ++i) {
+		tmp = i * Nx_Fourier;
+		for (int j = 0; j < Nx_Fourier; ++j) {
 			indx = tmp + j;
 
 			if ((run_data->k[0][i] != 0) || (run_data->k[1][j] != 0)) {
@@ -758,7 +758,7 @@ double TotalDivergence(void) {
 				// Get the divergence of u_z
 				div_u_z = I * ((double )run_data->k[0][i] * u_z + (double )run_data->k[1][j] * v_z);
 
-				if ((j == 0) || (j == Ny_Fourier - 1)) {
+				if ((j == 0) || (j == Nx_Fourier - 1)) {
 					// Update the sum for the total energy
 					tot_div += cabs(div_u_z * conj(div_u_z));
 				}
@@ -784,9 +784,9 @@ double TotalForcing(void) {
 
 	// Initialize variables
 	double tot_forcing = 0.0;
-	const long int Nx = sys_vars->N[0];
-	const long int Ny = sys_vars->N[1];
-	double norm_fac = 0.5 / pow(Nx * Ny, 2.0);
+	const long int Ny = sys_vars->N[0];
+	const long int Nx = sys_vars->N[1];
+	double norm_fac = 0.5 / pow(Ny * Nx, 2.0);
 
 	// ------------------------------------------
 	// Compute The Total Forcing
@@ -808,25 +808,25 @@ double TotalEnergy(void) {
 	int indx;
 	double k_sqr;
 	double tot_energy = 0.0;
-	ptrdiff_t local_Nx 		  = sys_vars->local_Nx;
-	const long int Nx         = sys_vars->N[0];
-	const long int Ny         = sys_vars->N[1];
-	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
-	double norm_fac = 0.5 / pow(Nx * Ny, 2.0);
+	ptrdiff_t local_Ny 		  = sys_vars->local_Ny;
+	const long int Ny         = sys_vars->N[0];
+	const long int Nx         = sys_vars->N[1];
+	const long int Nx_Fourier = sys_vars->N[1] / 2 + 1;
+	double norm_fac = 0.5 / pow(Ny * Nx, 2.0);
 
 	// ------------------------------------------
 	// Compute Fourier Space Velocity & Energy
 	// ------------------------------------------
-	for (int i = 0; i < local_Nx; ++i) {
-		tmp = i * Ny_Fourier;
-		for (int j = 0; j < Ny_Fourier; ++j) {
+	for (int i = 0; i < local_Ny; ++i) {
+		tmp = i * Nx_Fourier;
+		for (int j = 0; j < Nx_Fourier; ++j) {
 			indx = tmp + j;
 
 			if ((run_data->k[0][i] != 0) || (run_data->k[1][j] != 0)) {
 				// The 1/k^2 prefactor
 				k_sqr = 1.0 / (double )(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 
-				if ((j == 0) || (j == Ny_Fourier - 1)) {
+				if ((j == 0) || (j == Nx_Fourier - 1)) {
 					// Update the sum for the total energy
 					tot_energy += cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * k_sqr;
 				}
@@ -853,11 +853,11 @@ double TotalEnstrophy(void) {
 	// Initialize variables
 	int tmp;
 	int indx;
-	ptrdiff_t local_Nx 		  = sys_vars->local_Nx;
-	const long int Nx         = sys_vars->N[0];
-	const long int Ny         = sys_vars->N[1];
-	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
-	double norm_fac = 0.5 / pow(Nx * Ny, 2.0);
+	ptrdiff_t local_Ny 		  = sys_vars->local_Ny;
+	const long int Ny         = sys_vars->N[0];
+	const long int Nx         = sys_vars->N[1];
+	const long int Nx_Fourier = sys_vars->N[1] / 2 + 1;
+	double norm_fac = 0.5 / pow(Ny * Nx, 2.0);
 
 	// -------------------------------
 	// Compute The Total Energy 
@@ -866,12 +866,12 @@ double TotalEnstrophy(void) {
 	double tot_enstr = 0.0;
 
 	// Loop over Fourier vorticity
-	for (int i = 0; i < local_Nx; ++i) {
-		tmp = i * Ny_Fourier;
-		for (int j = 1; j < Ny_Fourier; ++j) {
+	for (int i = 0; i < local_Ny; ++i) {
+		tmp = i * Nx_Fourier;
+		for (int j = 1; j < Nx_Fourier; ++j) {
 			indx = tmp + j;
 
-			if ((j == 0) || (j == Ny_Fourier - 1)) {
+			if ((j == 0) || (j == Nx_Fourier - 1)) {
 				// Update the sum for the total enstrophy -> only count the 0 and N/2 modes once as they have no conjugate
 				tot_enstr += cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
 			}	
@@ -896,11 +896,11 @@ double TotalPalinstrophy(void) {
 	int tmp;
 	int indx;
 	double k_sqr;
-	ptrdiff_t local_Nx 		  = sys_vars->local_Nx;
-	const long int Nx         = sys_vars->N[0];
-	const long int Ny         = sys_vars->N[1];
-	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
-	double norm_fac = 0.5 / pow(Nx * Ny, 2.0);
+	ptrdiff_t local_Ny 		  = sys_vars->local_Ny;
+	const long int Ny         = sys_vars->N[0];
+	const long int Nx         = sys_vars->N[1];
+	const long int Nx_Fourier = sys_vars->N[1] / 2 + 1;
+	double norm_fac = 0.5 / pow(Ny * Nx, 2.0);
 
 	// -------------------------------
 	// Compute The Total Palinstrophy 
@@ -909,9 +909,9 @@ double TotalPalinstrophy(void) {
 	double tot_palin = 0.0;
 
 	// Loop over Fourier vorticity
-	for (int i = 0; i < local_Nx; ++i) {
-		tmp = i * Ny_Fourier;
-		for (int j = 0; j < Ny_Fourier; ++j) {
+	for (int i = 0; i < local_Ny; ++i) {
+		tmp = i * Nx_Fourier;
+		for (int j = 0; j < Nx_Fourier; ++j) {
 			indx = tmp + j;
 
 			if((run_data->k[0][i] != 0) || (run_data->k[1][j] != 0)) {
@@ -919,7 +919,7 @@ double TotalPalinstrophy(void) {
 				k_sqr = 1.0 * (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 
 				// Update the running sum for the palinstrophy
-				if((j == 0) || (j == Ny_Fourier - 1)) {
+				if((j == 0) || (j == Nx_Fourier - 1)) {
 					tot_palin += k_sqr * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
 				}
 				else {
@@ -948,11 +948,11 @@ double EnergyDissipationRate(void) {
 	double pre_fac;
 	double k_sqr;
 	fftw_complex tmp_u_x, tmp_u_y;
-	ptrdiff_t local_Nx 		  = sys_vars->local_Nx;
-	const long int Nx         = sys_vars->N[0];
-	const long int Ny         = sys_vars->N[1];
-	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
-	double norm_fac = 0.5 / pow(Nx * Ny, 2.0);
+	ptrdiff_t local_Ny 		  = sys_vars->local_Ny;
+	const long int Ny         = sys_vars->N[0];
+	const long int Nx         = sys_vars->N[1];
+	const long int Nx_Fourier = sys_vars->N[1] / 2 + 1;
+	double norm_fac = 0.5 / pow(Ny * Nx, 2.0);
 
 	// -------------------------------
 	// Compute The Energy Diss Rate
@@ -961,9 +961,9 @@ double EnergyDissipationRate(void) {
 	double enrgy_diss = 0.0;
 
 	// Loop over Fourier vorticity
-	for (int i = 0; i < local_Nx; ++i) {
-		tmp = i * Ny_Fourier;
-		for (int j = 0; j < Ny_Fourier; ++j) {
+	for (int i = 0; i < local_Ny; ++i) {
+		tmp = i * Nx_Fourier;
+		for (int j = 0; j < Nx_Fourier; ++j) {
 			indx = tmp + j;
 
 			// Compute |k|^2
@@ -993,7 +993,7 @@ double EnergyDissipationRate(void) {
 				}
 
 				// Update the running sum for the palinstrophy -> first and last modes have no conjugate so only count once
-				if((j == 0) || (j == Ny_Fourier - 1)) {
+				if((j == 0) || (j == Nx_Fourier - 1)) {
 					enrgy_diss += pre_fac * cabs(tmp_u_x * conj(tmp_u_x) + tmp_u_y * conj(tmp_u_y));
 				}
 				else {
@@ -1018,11 +1018,11 @@ double EnstrophyDissipationRate(void) {
 	int indx;
 	double k_sqr;
 	double pre_fac;
-	ptrdiff_t local_Nx 		  = sys_vars->local_Nx;
-	const long int Nx         = sys_vars->N[0];
-	const long int Ny         = sys_vars->N[1];
-	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
-	double norm_fac = 0.5 / pow(Nx * Ny, 2.0);
+	ptrdiff_t local_Ny 		  = sys_vars->local_Ny;
+	const long int Ny         = sys_vars->N[0];
+	const long int Nx         = sys_vars->N[1];
+	const long int Nx_Fourier = sys_vars->N[1] / 2 + 1;
+	double norm_fac = 0.5 / pow(Ny * Nx, 2.0);
 
 	// -------------------------------
 	// Compute The Enstrophy Diss Rate 
@@ -1031,9 +1031,9 @@ double EnstrophyDissipationRate(void) {
 	double tot_enst_diss = 0.0;
 
 	// Loop over Fourier vorticity
-	for (int i = 0; i < local_Nx; ++i) {
-		tmp = i * Ny_Fourier;
-		for (int j = 0; j < Ny_Fourier; ++j) {
+	for (int i = 0; i < local_Ny; ++i) {
+		tmp = i * Nx_Fourier;
+		for (int j = 0; j < Nx_Fourier; ++j) {
 			indx = tmp + j;
 
 			if((run_data->k[0][i] != 0) || (run_data->k[1][j] != 0)) {
@@ -1059,7 +1059,7 @@ double EnstrophyDissipationRate(void) {
 				}
 
 				// Update the running sum for the enst_dissstrophy -> first and last modes have no conjugate so only count once
-				if((j == 0) || (j == Ny_Fourier - 1)) {
+				if((j == 0) || (j == Nx_Fourier - 1)) {
 					tot_enst_diss += pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
 				}
 				else {
@@ -1093,11 +1093,11 @@ void EnstrophyFlux(double* d_e_dt, double* enst_flux, double* enst_diss, Int_dat
 	double tmp_d_e_dt;
 	double tmp_enst_flux;
 	double tmp_enst_diss;
-	ptrdiff_t local_Nx 		  = sys_vars->local_Nx;
-	const long int Nx         = sys_vars->N[0];
-	const long int Ny         = sys_vars->N[1];
-	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
-	double norm_fac = 0.5 / pow(Nx * Ny, 2.0);
+	ptrdiff_t local_Ny 		  = sys_vars->local_Ny;
+	const long int Ny         = sys_vars->N[0];
+	const long int Nx         = sys_vars->N[1];
+	const long int Nx_Fourier = sys_vars->N[1] / 2 + 1;
+	double norm_fac = 0.5 / pow(Ny * Nx, 2.0);
 	double tmp_deriv, tmp_diss;
 
 	// -----------------------------------
@@ -1127,9 +1127,9 @@ void EnstrophyFlux(double* d_e_dt, double* enst_flux, double* enst_diss, Int_dat
 	tmp_enst_diss = 0.0;
 
 	// Loop over Fourier vorticity
-	for (int i = 0; i < local_Nx; ++i) {
-		tmp = i * Ny_Fourier;
-		for (int j = 0; j < Ny_Fourier; ++j) {
+	for (int i = 0; i < local_Ny; ++i) {
+		tmp = i * Nx_Fourier;
+		for (int j = 0; j < Nx_Fourier; ++j) {
 			indx = tmp + j;
 
 			// Consider only a subset of modes
@@ -1160,7 +1160,7 @@ void EnstrophyFlux(double* d_e_dt, double* enst_flux, double* enst_diss, Int_dat
 				tmp_diss  = pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
 
 				// Update sums
-				if ((j == 0) || (Ny_Fourier - 1)) {
+				if ((j == 0) || (Nx_Fourier - 1)) {
 					// Update the running sum for the flux of enstrophy
 					tmp_d_e_dt += tmp_deriv; 
 
@@ -1218,11 +1218,11 @@ void EnergyFlux(double* d_e_dt, double* enrg_flux, double* enrg_diss, Int_data_s
 	double tmp_d_e_dt;
 	double tmp_enrgy_flux;
 	double tmp_enrgy_diss;
-	ptrdiff_t local_Nx 		  = sys_vars->local_Nx;
-	const long int Nx         = sys_vars->N[0];
-	const long int Ny         = sys_vars->N[1];
-	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
-	double norm_fac = 0.5 / pow(Nx * Ny, 2.0);
+	ptrdiff_t local_Ny 		  = sys_vars->local_Ny;
+	const long int Ny         = sys_vars->N[0];
+	const long int Nx         = sys_vars->N[1];
+	const long int Nx_Fourier = sys_vars->N[1] / 2 + 1;
+	double norm_fac = 0.5 / pow(Ny * Nx, 2.0);
 	double tmp_deriv, tmp_diss;
 
 	// -----------------------------------
@@ -1252,9 +1252,9 @@ void EnergyFlux(double* d_e_dt, double* enrg_flux, double* enrg_diss, Int_data_s
 	tmp_enrgy_diss = 0.0;
 
 	// Loop over Fourier vorticity
-	for (int i = 0; i < local_Nx; ++i) {
-		tmp = i * Ny_Fourier;
-		for (int j = 0; j < Ny_Fourier; ++j) {
+	for (int i = 0; i < local_Ny; ++i) {
+		tmp = i * Nx_Fourier;
+		for (int j = 0; j < Nx_Fourier; ++j) {
 			indx = tmp + j;
 
 			if ((run_data->k[0][i] != 0) || (run_data->k[1][j] != 0)) {
@@ -1286,7 +1286,7 @@ void EnergyFlux(double* d_e_dt, double* enrg_flux, double* enrg_diss, Int_data_s
 					tmp_diss  = pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) / k_sqr;
 
 					// Update sums
-					if ((j == 0) || (Ny_Fourier - 1)) {
+					if ((j == 0) || (Nx_Fourier - 1)) {
 						// Update the running sum for the time derivative of energy
 						tmp_d_e_dt += tmp_deriv;
 
@@ -1346,12 +1346,12 @@ void EnergyFluxSpectrum(Int_data_struct* Int_data) {
 	int indx;
 	double k_sqr;
 	int spec_indx;
-	ptrdiff_t local_Nx 		  = sys_vars->local_Nx;
-	const long int Nx         = sys_vars->N[0];
-	const long int Ny         = sys_vars->N[1];
-	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
+	ptrdiff_t local_Ny 		  = sys_vars->local_Ny;
+	const long int Ny         = sys_vars->N[0];
+	const long int Nx         = sys_vars->N[1];
+	const long int Nx_Fourier = sys_vars->N[1] / 2 + 1;
 	double pre_fac = 0.0;
-	double norm_fac = 0.5 / pow(Nx * Ny, 2.0);
+	double norm_fac = 0.5 / pow(Ny * Nx, 2.0);
 	double tmp_deriv, tmp_diss;
 
 	// ------------------------------------
@@ -1383,9 +1383,9 @@ void EnergyFluxSpectrum(Int_data_struct* Int_data) {
 	// Compute the Energy Flux Spectrum
 	// -------------------------------------
 	// Loop over Fourier vorticity
-	for (int i = 0; i < local_Nx; ++i) {
-		tmp = i * Ny_Fourier;
-		for (int j = 0; j < Ny_Fourier; ++j) {
+	for (int i = 0; i < local_Ny; ++i) {
+		tmp = i * Nx_Fourier;
+		for (int j = 0; j < Nx_Fourier; ++j) {
 			indx = tmp + j;
 
 			if ((run_data->k[0][i] != 0) || (run_data->k[1][j] != 0)) {
@@ -1418,7 +1418,7 @@ void EnergyFluxSpectrum(Int_data_struct* Int_data) {
 				tmp_diss  = pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) / k_sqr;
 
 				// Update spectrum bin
-				if ((j == 0) || (Ny_Fourier - 1)) {
+				if ((j == 0) || (Nx_Fourier - 1)) {
 					// Update the running sum for the flux of energy
 					run_data->d_enrg_dt_spect[spec_indx] += tmp_deriv;
 					run_data->enrg_diss_spect[spec_indx] += tmp_diss;
@@ -1451,12 +1451,12 @@ void EnstrophyFluxSpectrum(Int_data_struct* Int_data) {
 	int indx;
 	double k_sqr;
 	int spec_indx;
-	ptrdiff_t local_Nx 		  = sys_vars->local_Nx;
-	const long int Nx         = sys_vars->N[0];
-	const long int Ny         = sys_vars->N[1];
-	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
+	ptrdiff_t local_Ny 		  = sys_vars->local_Ny;
+	const long int Ny         = sys_vars->N[0];
+	const long int Nx         = sys_vars->N[1];
+	const long int Nx_Fourier = sys_vars->N[1] / 2 + 1;
 	double pre_fac = 0.0;
-	double norm_fac = 0.5 / pow(Nx * Ny, 2.0);
+	double norm_fac = 0.5 / pow(Ny * Nx, 2.0);
 	double tmp_deriv, tmp_diss;
 
 	// ------------------------------------
@@ -1488,9 +1488,9 @@ void EnstrophyFluxSpectrum(Int_data_struct* Int_data) {
 	// Compute the Energy Flux Spectrum
 	// -------------------------------------
 	// Loop over Fourier vorticity
-	for (int i = 0; i < local_Nx; ++i) {
-		tmp = i * Ny_Fourier;
-		for (int j = 0; j < Ny_Fourier; ++j) {
+	for (int i = 0; i < local_Ny; ++i) {
+		tmp = i * Nx_Fourier;
+		for (int j = 0; j < Nx_Fourier; ++j) {
 			indx = tmp + j;
 
 			if ((run_data->k[0][i] != 0) || (run_data->k[1][j] != 0)) {
@@ -1523,7 +1523,7 @@ void EnstrophyFluxSpectrum(Int_data_struct* Int_data) {
 				tmp_diss  = pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
 
 				// Update spectrum bin
-				if ((j == 0) || (Ny_Fourier - 1)) {
+				if ((j == 0) || (Nx_Fourier - 1)) {
 					// Update the current bin sum 
 					run_data->d_enst_dt_spect[spec_indx] += tmp_deriv;
 					run_data->enst_diss_spect[spec_indx] += tmp_diss;

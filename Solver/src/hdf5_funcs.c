@@ -33,9 +33,9 @@
 void CreateOutputFilesWriteICs(const long int* N, double dt) {
 
 	// Initialize variabeles
-	const long int Nx 		  = N[0];
-	const long int Ny 		  = N[1];
-	const long int Ny_Fourier = Ny / 2 + 1;
+	const long int Ny 		  = N[0];
+	const long int Nx 		  = N[1];
+	const long int Nx_Fourier = Nx / 2 + 1;
 	hid_t main_group_id;
 	#if defined(__ENST_SPECT) || defined(__ENRG_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__ENRG_FLUX_SPECT)
 	hid_t spectra_group_id = (hid_t) NULL;
@@ -150,51 +150,60 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 
 		///-------------------------------------- Real Space Voriticity
 		#if defined(__VORT_REAL)
+		// Write w_hat to temporary array for transform back to real space
+		for (int i = 0; i < sys_vars->local_Ny; ++i) {
+			tmp = i * Nx_Fourier;
+			for (int j = 0; j < Nx_Fourier; ++j) {
+				indx = tmp + j;
+
+				run_data->w_hat_tmp[indx] = run_data->w_hat[indx];
+			}
+		}
 		// Transform vorticity back to real space and normalize
-		fftw_mpi_execute_dft_c2r(sys_vars->fftw_2d_dft_c2r, run_data->w_hat, run_data->w);
-		for (int i = 0; i < sys_vars->local_Nx; ++i) {
-			tmp = i * (Ny + 2);
-			for (int j = 0; j < Ny; ++j) {
+		fftw_mpi_execute_dft_c2r(sys_vars->fftw_2d_dft_c2r, run_data->w_hat_tmp, run_data->w);
+		for (int i = 0; i < sys_vars->local_Ny; ++i) {
+			tmp = i * (Nx + 2);
+			for (int j = 0; j < Nx; ++j) {
 				indx = tmp + j;
 
 				// Normalize
-				run_data->w[indx] *= 1.0 / (double) (Nx * Ny);
+				run_data->w[indx] *= 1.0; /// (double) (Ny * Nx);
 			}
 		}
 
 		// Specify dataset dimensions
-		dset_dims2D[0] 	  = Nx;
-		dset_dims2D[1] 	  = Ny;
-		slab_dims2D[0]      = sys_vars->local_Nx;
-		slab_dims2D[1]      = Ny;
-		mem_space_dims2D[0] = sys_vars->local_Nx;
-		mem_space_dims2D[1] = Ny + 2;
+		dset_dims2D[0] 	  = Ny;
+		dset_dims2D[1] 	  = Nx;
+		slab_dims2D[0]      = sys_vars->local_Ny;
+		slab_dims2D[1]      = Nx;
+		mem_space_dims2D[0] = sys_vars->local_Ny;
+		mem_space_dims2D[1] = Nx + 2;
 
 		// Write the real space vorticity
-		WriteDataReal(0.0, 0, main_group_id, "w", H5T_NATIVE_DOUBLE, d_set_rank2D, dset_dims2D, slab_dims2D, mem_space_dims2D, sys_vars->local_Nx_start, run_data->w);
+		WriteDataReal(0.0, 0, main_group_id, "w", H5T_NATIVE_DOUBLE, d_set_rank2D, dset_dims2D, slab_dims2D, mem_space_dims2D, sys_vars->local_Ny_start, run_data->w);
 		#endif
 
 		///-------------------------------------- Fourier Space Voriticity
 		#if defined(__VORT_FOUR)
 		// Create dimension arrays
-		dset_dims2D[0] 	  = Nx;
-		dset_dims2D[1] 	  = Ny_Fourier;
-		slab_dims2D[0] 	  = sys_vars->local_Nx;
-		slab_dims2D[1] 	  = Ny_Fourier;
-		mem_space_dims2D[0] = sys_vars->local_Nx;
-		mem_space_dims2D[1] = Ny_Fourier;
+		dset_dims2D[0] 	  = Ny;
+		dset_dims2D[1] 	  = Nx_Fourier;
+		slab_dims2D[0] 	  = sys_vars->local_Ny;
+		slab_dims2D[1] 	  = Nx_Fourier;
+		mem_space_dims2D[0] = sys_vars->local_Ny;
+		mem_space_dims2D[1] = Nx_Fourier;
 
 		// Write the real space vorticity
-		WriteDataFourier(0.0, 0, main_group_id, "w_hat", file_info->COMPLEX_DTYPE, d_set_rank2D, dset_dims2D, slab_dims2D, mem_space_dims2D, sys_vars->local_Nx_start, run_data->w_hat);
+		WriteDataFourier(0.0, 0, main_group_id, "w_hat", file_info->COMPLEX_DTYPE, d_set_rank2D, dset_dims2D, slab_dims2D, mem_space_dims2D, sys_vars->local_Ny_start, run_data->w_hat);
 		#endif
 
 		#if defined(__MODES) || defined(__REALSPACE)
 		fftw_complex k_sqr;
 
 		// Get the Fourier velocities
-		for (int i = 0; i < sys_vars->local_Nx; ++i) {
-			tmp = i * Ny_Fourier;
-			for (int j = 0; j < Ny_Fourier; ++j) {
+		for (int i = 0; i < sys_vars->local_Ny; ++i) {
+			tmp = i * Nx_Fourier;
+			for (int j = 0; j < Nx_Fourier; ++j) {
 				indx = tmp + j;
 
 				if ((run_data->k[0][i] != 0) || (run_data->k[1][j] != 0)) {
@@ -216,56 +225,66 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 		///-------------------------------------- Fourier Space Velocity	
 		#if defined(__MODES)
 		// Create dimension arrays
-		dset_dims3D[0] 	    = Nx;
-		dset_dims3D[1] 	    = Ny_Fourier;
+		dset_dims3D[0] 	    = Ny;
+		dset_dims3D[1] 	    = Nx_Fourier;
 		dset_dims3D[2]      = SYS_DIM;
-		slab_dims3D[0] 	    = sys_vars->local_Nx;
-		slab_dims3D[1] 	    = Ny_Fourier;
+		slab_dims3D[0] 	    = sys_vars->local_Ny;
+		slab_dims3D[1] 	    = Nx_Fourier;
 		slab_dims3D[2]      = SYS_DIM;
-		mem_space_dims3D[0] = sys_vars->local_Nx;
-		mem_space_dims3D[1] = Ny_Fourier;
+		mem_space_dims3D[0] = sys_vars->local_Ny;
+		mem_space_dims3D[1] = Nx_Fourier;
 		mem_space_dims3D[2] = SYS_DIM;
 
 		// Write the real space vorticity
-		WriteDataFourier(0.0, 0, main_group_id, "u_hat", file_info->COMPLEX_DTYPE, d_set_rank3D, dset_dims3D, slab_dims3D, mem_space_dims3D, sys_vars->local_Nx_start, run_data->u_hat);
+		WriteDataFourier(0.0, 0, main_group_id, "u_hat", file_info->COMPLEX_DTYPE, d_set_rank3D, dset_dims3D, slab_dims3D, mem_space_dims3D, sys_vars->local_Ny_start, run_data->u_hat);
 		#endif
 
 		///-------------------------------------- Real Space Velocity
 		#if defined(__REALSPACE)
+		// Write u_hat to temporay array for transforming back to real space
+		for (int i = 0; i < sys_vars->local_Ny; ++i) {
+			tmp = i * Nx_Fourier;
+			for (int j = 0; j < Nx_Fourier; ++j) {
+				indx = tmp + j;
+
+				run_data->u_hat_tmp[SYS_DIM * indx + 0] = run_data->u_hat[SYS_DIM * indx + 0]; 
+				run_data->u_hat_tmp[SYS_DIM * indx + 1] = run_data->u_hat[SYS_DIM * indx + 1]; 
+			}
+		}
 		// Transform velocities back to real space and normalize
-		fftw_mpi_execute_dft_c2r(sys_vars->fftw_2d_dft_batch_c2r, run_data->u_hat, run_data->u);
-		for (int i = 0; i < sys_vars->local_Nx; ++i) {
-			tmp = i * (Ny + 2);
-			for (int j = 0; j < Ny; ++j) {
+		fftw_mpi_execute_dft_c2r(sys_vars->fftw_2d_dft_batch_c2r, run_data->u_hat_tmp, run_data->u);
+		for (int i = 0; i < sys_vars->local_Ny; ++i) {
+			tmp = i * (Nx + 2);
+			for (int j = 0; j < Nx; ++j) {
 				indx = tmp + j;
 
 				// Normalize
-				run_data->u[SYS_DIM * indx + 0] *= 1.0 / (double) (Nx * Ny);
-				run_data->u[SYS_DIM * indx + 1] *= 1.0 / (double) (Nx * Ny);
+				run_data->u[SYS_DIM * indx + 0] *= 1.0; /// (double) (Ny * Nx);
+				run_data->u[SYS_DIM * indx + 1] *= 1.0; /// (double) (Ny * Nx);
 			}
 		}
 
 		// Specify dataset dimensions
-		dset_dims3D[0] 	  = Nx;
-		dset_dims3D[1] 	  = Ny;
+		dset_dims3D[0] 	  = Ny;
+		dset_dims3D[1] 	  = Nx;
 		dset_dims3D[2]    = SYS_DIM;
-		slab_dims3D[0]    = sys_vars->local_Nx;
-		slab_dims3D[1]    = Ny;
+		slab_dims3D[0]    = sys_vars->local_Ny;
+		slab_dims3D[1]    = Nx;
 		slab_dims3D[2]    = SYS_DIM;
-		mem_space_dims3D[0] = sys_vars->local_Nx;
-		mem_space_dims3D[1] = (Ny + 2);
+		mem_space_dims3D[0] = sys_vars->local_Ny;
+		mem_space_dims3D[1] = (Nx + 2);
 		mem_space_dims3D[2] = SYS_DIM;
 
 		// Write the real space vorticity
-		WriteDataReal(0.0, 0, main_group_id, "u", H5T_NATIVE_DOUBLE, d_set_rank3D, dset_dims3D, slab_dims3D, mem_space_dims3D, sys_vars->local_Nx_start, run_data->u);
+		WriteDataReal(0.0, 0, main_group_id, "u", H5T_NATIVE_DOUBLE, d_set_rank3D, dset_dims3D, slab_dims3D, mem_space_dims3D, sys_vars->local_Ny_start, run_data->u);
 		#endif
 
 		///-------------------------------------- Fourier Phases & Amplitudes of the Vorticity
 		#if defined(PHASE_ONLY)
 		// Record the Fourier amplitudes and phases
-		for (int i = 0; i < sys_vars->local_Nx; ++i) {
-			tmp = i * Ny_Fourier;
-			for (int j = 0; j < Ny_Fourier; ++j) {
+		for (int i = 0; i < sys_vars->local_Ny; ++i) {
+			tmp = i * Nx_Fourier;
+			for (int j = 0; j < Nx_Fourier; ++j) {
 				indx = tmp + j;
 
 				//record the amplitudes
@@ -276,33 +295,33 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 		}
 		
 		// Create dimension arrays for the Fourier amplitudes and phases
-		dset_dims2D[0] 	  = Nx;
-		dset_dims2D[1] 	  = Ny_Fourier;
-		slab_dims2D[0] 	  = sys_vars->local_Nx;
-		slab_dims2D[1] 	  = Ny_Fourier;
-		mem_space_dims2D[0] = sys_vars->local_Nx;
-		mem_space_dims2D[1] = Ny_Fourier;
+		dset_dims2D[0] 	  = Ny;
+		dset_dims2D[1] 	  = Nx_Fourier;
+		slab_dims2D[0] 	  = sys_vars->local_Ny;
+		slab_dims2D[1] 	  = Nx_Fourier;
+		mem_space_dims2D[0] = sys_vars->local_Ny;
+		mem_space_dims2D[1] = Nx_Fourier;
 
 		// Write the Fourier amplitudes
-		WriteDataReal(0.0, 0, main_group_id, "a_k", H5T_NATIVE_DOUBLE, d_set_rank2D, dset_dims2D, slab_dims2D, mem_space_dims2D, sys_vars->local_Nx_start, run_data->a_k);
+		WriteDataReal(0.0, 0, main_group_id, "a_k", H5T_NATIVE_DOUBLE, d_set_rank2D, dset_dims2D, slab_dims2D, mem_space_dims2D, sys_vars->local_Ny_start, run_data->a_k);
 
 		// Write the Fourier phases
-		WriteDataReal(0.0, 0, main_group_id, "phi_k", H5T_NATIVE_DOUBLE, d_set_rank2D, dset_dims2D, slab_dims2D, mem_space_dims2D, sys_vars->local_Nx_start, run_data->phi_k);
+		WriteDataReal(0.0, 0, main_group_id, "phi_k", H5T_NATIVE_DOUBLE, d_set_rank2D, dset_dims2D, slab_dims2D, mem_space_dims2D, sys_vars->local_Ny_start, run_data->phi_k);
 		#endif
 
 		///-------------------------------------- Taylor Green Initial Condition
 		#if defined(TESTING)
 		if (!(strcmp(sys_vars->u0, "TG_VEL")) || !(strcmp(sys_vars->u0, "TG_VORT"))) {
 			// Create dimension arrays
-			dset_dims2D[0] 	    = Nx;
-			dset_dims2D[1] 	    = Ny;
-			slab_dims2D[0]      = sys_vars->local_Nx;
-			slab_dims2D[1]      = Ny;
-			mem_space_dims2D[0] = sys_vars->local_Nx;
-			mem_space_dims2D[1] = Ny + 2;
+			dset_dims2D[0] 	    = Ny;
+			dset_dims2D[1] 	    = Nx;
+			slab_dims2D[0]      = sys_vars->local_Ny;
+			slab_dims2D[1]      = Nx;
+			mem_space_dims2D[0] = sys_vars->local_Ny;
+			mem_space_dims2D[1] = Nx + 2;
 
 			// Write the real space vorticity
-			WriteDataReal(0.0, 0, main_group_id, "TGSoln", H5T_NATIVE_DOUBLE, d_set_rank2D, dset_dims2D, slab_dims2D, mem_space_dims2D, sys_vars->local_Nx_start, run_data->tg_soln);	
+			WriteDataReal(0.0, 0, main_group_id, "TGSoln", H5T_NATIVE_DOUBLE, d_set_rank2D, dset_dims2D, slab_dims2D, mem_space_dims2D, sys_vars->local_Ny_start, run_data->tg_soln);	
 		}
 		#endif
 
@@ -655,9 +674,9 @@ void WriteDataToFile(double t, double dt, long int iters) {
 	int indx;
 	#endif
 	char group_name[128];
-	const long int Nx 		  = sys_vars->N[0];
-	const long int Ny 		  = sys_vars->N[1];
-	const long int Ny_Fourier = Ny / 2 + 1;
+	const long int Ny 		  = sys_vars->N[0];
+	const long int Nx 		  = sys_vars->N[1];
+	const long int Nx_Fourier = Nx / 2 + 1;
 	herr_t status;
 	hid_t main_group_id;
 	#if defined(__ENST_SPECT) || defined(__ENRG_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__ENRG_FLUX_SPECT)
@@ -772,50 +791,59 @@ void WriteDataToFile(double t, double dt, long int iters) {
 	// -------------------------------
 	///--------------------------------------- Real Space Vorticity
 	#if defined(__VORT_REAL)
+	// Write w_hat to temporary array for transform back to real space
+	for (int i = 0; i < sys_vars->local_Ny; ++i) {
+		tmp = i * Nx_Fourier;
+		for (int j = 0; j < Nx_Fourier; ++j) {
+			indx = tmp + j;
+
+			run_data->w_hat_tmp[indx] = run_data->w_hat[indx];
+		}
+	}
 	// Transform Fourier space vorticiy to real space and normalize
-	fftw_mpi_execute_dft_c2r(sys_vars->fftw_2d_dft_c2r, run_data->w_hat, run_data->w);
-	for (int i = 0; i < sys_vars->local_Nx; ++i) {
-		tmp = i * (Ny + 2);
-		for (int j = 0; j < Ny; ++j) {
+	fftw_mpi_execute_dft_c2r(sys_vars->fftw_2d_dft_c2r, run_data->w_hat_tmp, run_data->w);
+	for (int i = 0; i < sys_vars->local_Ny; ++i) {
+		tmp = i * (Nx + 2);
+		for (int j = 0; j < Nx; ++j) {
 			indx = tmp + j;
 
 			// Normalize
-			run_data->w[indx] *= 1.0 / (double) (Nx * Ny);
+			run_data->w[indx] *= 1.0; /// (double) (Ny * Nx);
 		}
 	}
 
 	// Create dimension arrays
-	dset_dims2D[0] 	    = Nx;
-	dset_dims2D[1] 	    = Ny;
-	slab_dims2D[0]      = sys_vars->local_Nx;
-	slab_dims2D[1]      = Ny;
-	mem_space_dims2D[0] = sys_vars->local_Nx;
-	mem_space_dims2D[1] = Ny + 2;
+	dset_dims2D[0] 	    = Ny;
+	dset_dims2D[1] 	    = Nx;
+	slab_dims2D[0]      = sys_vars->local_Ny;
+	slab_dims2D[1]      = Nx;
+	mem_space_dims2D[0] = sys_vars->local_Ny;
+	mem_space_dims2D[1] = Nx + 2;
 
 	// Write the real space vorticity
-	WriteDataReal(t, (int)iters, main_group_id, "w", H5T_NATIVE_DOUBLE, d_set_rank2D, dset_dims2D, slab_dims2D, mem_space_dims2D, sys_vars->local_Nx_start, run_data->w);
+	WriteDataReal(t, (int)iters, main_group_id, "w", H5T_NATIVE_DOUBLE, d_set_rank2D, dset_dims2D, slab_dims2D, mem_space_dims2D, sys_vars->local_Ny_start, run_data->w);
 	#endif
 
 	///--------------------------------------- Fourier Space Vorticity
 	#if defined(__VORT_FOUR)
 	// Create dimension arrays
-	dset_dims2D[0]      = Nx;
-	dset_dims2D[1]      = Ny_Fourier;
-	slab_dims2D[0]      = sys_vars->local_Nx;
-	slab_dims2D[1]      = Ny_Fourier;
-	mem_space_dims2D[0] = sys_vars->local_Nx;
-	mem_space_dims2D[1] = Ny_Fourier;
+	dset_dims2D[0]      = Ny;
+	dset_dims2D[1]      = Nx_Fourier;
+	slab_dims2D[0]      = sys_vars->local_Ny;
+	slab_dims2D[1]      = Nx_Fourier;
+	mem_space_dims2D[0] = sys_vars->local_Ny;
+	mem_space_dims2D[1] = Nx_Fourier;
 
 	// Write the real space vorticity
-	WriteDataFourier(t, (int)iters, main_group_id, "w_hat", file_info->COMPLEX_DTYPE, d_set_rank2D, dset_dims2D, slab_dims2D, mem_space_dims2D, sys_vars->local_Nx_start, run_data->w_hat);
+	WriteDataFourier(t, (int)iters, main_group_id, "w_hat", file_info->COMPLEX_DTYPE, d_set_rank2D, dset_dims2D, slab_dims2D, mem_space_dims2D, sys_vars->local_Ny_start, run_data->w_hat);
 	#endif
 	#if defined(__MODES) || defined(__REALSPACE)
 	fftw_complex k_sqr;
 
 	// Get the Fourier velocities
-	for (int i = 0; i < sys_vars->local_Nx; ++i) {
-		tmp = i * Ny_Fourier;
-		for (int j = 0; j < Ny_Fourier; ++j) {
+	for (int i = 0; i < sys_vars->local_Ny; ++i) {
+		tmp = i * Nx_Fourier;
+		for (int j = 0; j < Nx_Fourier; ++j) {
 			indx = tmp + j;
 
 			if ((run_data->k[0][i] != 0) || (run_data->k[1][j] != 0)) {
@@ -837,70 +865,80 @@ void WriteDataToFile(double t, double dt, long int iters) {
 	///--------------------------------------- Fourier Space Velocities
 	#if defined(__MODES)
 	// Create dimension arrays
-	dset_dims3D[0] 	    = Nx;
-	dset_dims3D[1] 	    = Ny_Fourier;
+	dset_dims3D[0] 	    = Ny;
+	dset_dims3D[1] 	    = Nx_Fourier;
 	dset_dims3D[2]      = SYS_DIM;
-	slab_dims3D[0] 	    = sys_vars->local_Nx;
-	slab_dims3D[1] 	    = Ny_Fourier;
+	slab_dims3D[0] 	    = sys_vars->local_Ny;
+	slab_dims3D[1] 	    = Nx_Fourier;
 	slab_dims3D[2]      = SYS_DIM;
-	mem_space_dims3D[0] = sys_vars->local_Nx;
-	mem_space_dims3D[1] = Ny_Fourier;
+	mem_space_dims3D[0] = sys_vars->local_Ny;
+	mem_space_dims3D[1] = Nx_Fourier;
 	mem_space_dims3D[2] = SYS_DIM;
 
 	// Write the real space vorticity
-	WriteDataFourier(t, (int)iters, main_group_id, "u_hat", file_info->COMPLEX_DTYPE, d_set_rank3D, dset_dims3D, slab_dims3D, mem_space_dims3D, sys_vars->local_Nx_start, run_data->u_hat);
+	WriteDataFourier(t, (int)iters, main_group_id, "u_hat", file_info->COMPLEX_DTYPE, d_set_rank3D, dset_dims3D, slab_dims3D, mem_space_dims3D, sys_vars->local_Ny_start, run_data->u_hat);
 	#endif
 
 	///--------------------------------------- Real Space Velocities
 	#if defined(__REALSPACE)
+	// Write u_hat to temporay array for transforming back to real space
+	for (int i = 0; i < sys_vars->local_Ny; ++i) {
+		tmp = i * Nx_Fourier;
+		for (int j = 0; j < Nx_Fourier; ++j) {
+			indx = tmp + j;
+
+			run_data->u_hat_tmp[SYS_DIM * indx + 0] = run_data->u_hat[SYS_DIM * indx + 0]; 
+			run_data->u_hat_tmp[SYS_DIM * indx + 1] = run_data->u_hat[SYS_DIM * indx + 1]; 
+		}
+	}
 	// Transform velocities back to real space and normalize
-	fftw_mpi_execute_dft_c2r(sys_vars->fftw_2d_dft_batch_c2r, run_data->u_hat, run_data->u);
-	for (int i = 0; i < sys_vars->local_Nx; ++i) {
-		tmp = i * (Ny + 2);
-		for (int j = 0; j < Ny; ++j) {
+	fftw_mpi_execute_dft_c2r(sys_vars->fftw_2d_dft_batch_c2r, run_data->u_hat_tmp, run_data->u);
+	for (int i = 0; i < sys_vars->local_Ny; ++i) {
+		tmp = i * (Nx + 2);
+		for (int j = 0; j < Nx; ++j) {
 			indx = tmp + j;
 
 			// Normalize
-			run_data->u[SYS_DIM * indx + 0] *= 1.0 / (double) (Nx * Ny);
-			run_data->u[SYS_DIM * indx + 1] *= 1.0 / (double) (Nx * Ny);
+			run_data->u[SYS_DIM * indx + 0] *= 1.0; /// (double) (Ny * Nx);
+			run_data->u[SYS_DIM * indx + 1] *= 1.0; /// (double) (Ny * Nx);
 		}
 	}
 
 	// Specify dataset dimensions
-	dset_dims3D[0] 	    = Nx;
-	dset_dims3D[1] 	    = Ny;
+	dset_dims3D[0] 	    = Ny;
+	dset_dims3D[1] 	    = Nx;
 	dset_dims3D[2]      = SYS_DIM;
-	slab_dims3D[0]      = sys_vars->local_Nx;
-	slab_dims3D[1]      = Ny;
+	slab_dims3D[0]      = sys_vars->local_Ny;
+	slab_dims3D[1]      = Nx;
 	slab_dims3D[2]      = SYS_DIM;
-	mem_space_dims3D[0] = sys_vars->local_Nx;
-	mem_space_dims3D[1] = (Ny + 2);
+	mem_space_dims3D[0] = sys_vars->local_Ny;
+	mem_space_dims3D[1] = (Nx + 2);
 	mem_space_dims3D[2] = SYS_DIM;
 
 	// Write the real space vorticity
-	WriteDataReal(t, (int)iters, main_group_id, "u", H5T_NATIVE_DOUBLE, d_set_rank3D, dset_dims3D, slab_dims3D, mem_space_dims3D, sys_vars->local_Nx_start, run_data->u);
+	WriteDataReal(t, (int)iters, main_group_id, "u", H5T_NATIVE_DOUBLE, d_set_rank3D, dset_dims3D, slab_dims3D, mem_space_dims3D, sys_vars->local_Ny_start, run_data->u);
 	#endif
 
 	///--------------------------------------- Fourier Space Nonlinear Term
 	#if defined(__NONLIN)
 	// Create dimension arrays for the Fourier nonlinear term
-	dset_dims2D[0] 	  = Nx;
-	dset_dims2D[1] 	  = Ny_Fourier;
-	slab_dims2D[0] 	  = sys_vars->local_Nx;
-	slab_dims2D[1] 	  = Ny_Fourier;
-	mem_space_dims2D[0] = sys_vars->local_Nx;
-	mem_space_dims2D[1] = Ny_Fourier;
+	dset_dims2D[0] 	  = Ny;
+	dset_dims2D[1] 	  = Nx_Fourier;
+	slab_dims2D[0] 	  = sys_vars->local_Ny;
+	slab_dims2D[1] 	  = Nx_Fourier;
+	mem_space_dims2D[0] = sys_vars->local_Ny;
+	mem_space_dims2D[1] = Nx_Fourier;
 
 	// Write the Fourier nonlinear term
-	WriteDataFourier(t, (int)iters, main_group_id, "NonlinearTerm", file_info->COMPLEX_DTYPE, d_set_rank2D, dset_dims2D, slab_dims2D, mem_space_dims2D, sys_vars->local_Nx_start, run_data->nonlinterm);
+	WriteDataFourier(t, (int)iters, main_group_id, "NonlinearTerm", file_info->COMPLEX_DTYPE, d_set_rank2D, dset_dims2D, slab_dims2D, mem_space_dims2D, sys_vars->local_Ny_start, run_data->nonlinterm);
 	#endif
 
 	///--------------------------------------- Foureir Phases & Amplitudes of the Vorticity
 	#if defined(PHASE_ONLY)
 	// Record the Fourier amplitudes and phases
-	for (int i = 0; i < sys_vars->local_Nx; ++i) {
-		tmp = i * Ny_Fourier;
-		for (int j = 0; j < Ny_Fourier; ++j) {
+	for (int i = 0; i < sys_vars->local_Ny; ++i) {
+		tmp = i * Nx_Fourier;
+		for (int j = 0; j < Nx_Fourier; ++j) {
 			indx = tmp + j;
 
 			// Record the amplitudes
@@ -911,33 +949,33 @@ void WriteDataToFile(double t, double dt, long int iters) {
 	}
 
 	// Create dimension arrays for the Fourier amplitudes and phases
-	dset_dims2D[0] 	  = Nx;
-	dset_dims2D[1] 	  = Ny_Fourier;
-	slab_dims2D[0] 	  = sys_vars->local_Nx;
-	slab_dims2D[1] 	  = Ny_Fourier;
-	mem_space_dims2D[0] = sys_vars->local_Nx;
-	mem_space_dims2D[1] = Ny_Fourier;
+	dset_dims2D[0] 	  = Ny;
+	dset_dims2D[1] 	  = Nx_Fourier;
+	slab_dims2D[0] 	  = sys_vars->local_Ny;
+	slab_dims2D[1] 	  = Nx_Fourier;
+	mem_space_dims2D[0] = sys_vars->local_Ny;
+	mem_space_dims2D[1] = Nx_Fourier;
 
 	// Write the Fourier amplitudes
-	WriteDataReal(t, (int)iters, main_group_id, "a_k", H5T_NATIVE_DOUBLE, d_set_rank2D, dset_dims2D, slab_dims2D, mem_space_dims2D, sys_vars->local_Nx_start, run_data->a_k);
+	WriteDataReal(t, (int)iters, main_group_id, "a_k", H5T_NATIVE_DOUBLE, d_set_rank2D, dset_dims2D, slab_dims2D, mem_space_dims2D, sys_vars->local_Ny_start, run_data->a_k);
 
 	// Write the Fourier phases
-	WriteDataReal(t, (int)iters, main_group_id, "phi_k", H5T_NATIVE_DOUBLE, d_set_rank2D, dset_dims2D, slab_dims2D, mem_space_dims2D, sys_vars->local_Nx_start, run_data->phi_k);
+	WriteDataReal(t, (int)iters, main_group_id, "phi_k", H5T_NATIVE_DOUBLE, d_set_rank2D, dset_dims2D, slab_dims2D, mem_space_dims2D, sys_vars->local_Ny_start, run_data->phi_k);
 	#endif
 
 	///--------------------------------------- Taylor Green Exact Solution
 	#if defined(TESTING)
 	if (!(strcmp(sys_vars->u0, "TG_VEL")) || !(strcmp(sys_vars->u0, "TG_VORT"))) {
 		// Create dimension arrays
-		dset_dims2D[0] 	    = Nx;
-		dset_dims2D[1] 	    = Ny;
-		slab_dims2D[0]      = sys_vars->local_Nx;
-		slab_dims2D[1]      = Ny;
-		mem_space_dims2D[0] = sys_vars->local_Nx;
-		mem_space_dims2D[1] = Ny + 2;
+		dset_dims2D[0] 	    = Ny;
+		dset_dims2D[1] 	    = Nx;
+		slab_dims2D[0]      = sys_vars->local_Ny;
+		slab_dims2D[1]      = Nx;
+		mem_space_dims2D[0] = sys_vars->local_Ny;
+		mem_space_dims2D[1] = Nx + 2;
 
 		// Write the real space vorticity
-		WriteDataReal(t, (int)iters, main_group_id, "TGSoln", H5T_NATIVE_DOUBLE, d_set_rank2D, dset_dims2D, slab_dims2D, mem_space_dims2D, sys_vars->local_Nx_start, run_data->tg_soln);	
+		WriteDataReal(t, (int)iters, main_group_id, "TGSoln", H5T_NATIVE_DOUBLE, d_set_rank2D, dset_dims2D, slab_dims2D, mem_space_dims2D, sys_vars->local_Ny_start, run_data->tg_soln);	
 	}
 	#endif
 
@@ -1128,10 +1166,10 @@ hid_t CreateGroup(hid_t file_handle, char* filename, char* group_name, double t,
  * @param dset_dims      Array containg the dimensions of the dataset to create
  * @param slab_dims      Array containing the dimensions of the hyperslab to select
  * @param mem_space_dims Array containing the dimensions of the memory space that will be written to file
- * @param offset_Nx      The offset in the dataset that each process will write to
+ * @param offset_Ny      The offset in the dataset that each process will write to
  * @param data           The data being written to file
  */
-void WriteDataFourier(double t, int iters, hid_t group_id, char* dset_name, hid_t dtype, int dset_rank, hsize_t* dset_dims, hsize_t* slab_dims, hsize_t* mem_space_dims, int offset_Nx, fftw_complex* data) {
+void WriteDataFourier(double t, int iters, hid_t group_id, char* dset_name, hid_t dtype, int dset_rank, hsize_t* dset_dims, hsize_t* slab_dims, hsize_t* mem_space_dims, int offset_Ny, fftw_complex* data) {
 
 	// Initialize variables
 	hid_t plist_id;
@@ -1189,7 +1227,7 @@ void WriteDataFourier(double t, int iters, hid_t group_id, char* dset_name, hid_
 		dset_offset[i]   = 0;
 		dset_slabsize[i] = slab_dims[i];
 	}
-	dset_offset[0]   = offset_Nx;
+	dset_offset[0]   = offset_Ny;
 
 	// Select the hyperslab in the dataset on file to write to
 	if ((H5Sselect_hyperslab(dset_space, H5S_SELECT_SET, dset_offset, NULL, dset_slabsize, NULL)) < 0 ) {
@@ -1226,10 +1264,10 @@ void WriteDataFourier(double t, int iters, hid_t group_id, char* dset_name, hid_
  * @param dset_dims      Array containg the dimensions of the dataset to create
  * @param slab_dims      Array containing the dimensions of the hyperslab to select
  * @param mem_space_dims Array containing the dimensions of the memory space that will be written to file
- * @param offset_Nx      The offset in the dataset that each process will write to
+ * @param offset_Ny      The offset in the dataset that each process will write to
  * @param data           The data being written to file
  */
-void WriteDataReal(double t, int iters, hid_t group_id, char* dset_name, hid_t dtype, int dset_rank, hsize_t* dset_dims, hsize_t* slab_dims, hsize_t* mem_space_dims, int offset_Nx, double* data) {
+void WriteDataReal(double t, int iters, hid_t group_id, char* dset_name, hid_t dtype, int dset_rank, hsize_t* dset_dims, hsize_t* slab_dims, hsize_t* mem_space_dims, int offset_Ny, double* data) {
 
 	// Initialize variables
 	hid_t plist_id;
@@ -1287,7 +1325,7 @@ void WriteDataReal(double t, int iters, hid_t group_id, char* dset_name, hid_t d
 		dset_offset[i]   = 0;
 		dset_slabsize[i] = slab_dims[i];
 	}
-	dset_offset[0]   = offset_Nx;
+	dset_offset[0]   = offset_Ny;
 
 	// Select the hyperslab in the dataset on file to write to
 	if ((H5Sselect_hyperslab(dset_space, H5S_SELECT_SET, dset_offset, NULL, dset_slabsize, NULL)) < 0 ) {
@@ -1371,9 +1409,9 @@ void WriteDataSerial(double t, int iters, hid_t group_id, int dims, char* dset_n
 void FinalWriteAndCloseOutputFiles(const long int* N, int iters, int save_data_indx) {
 
 	// Initialize Variables
-	const long int Nx 		  = N[0];
-	const long int Ny 		  = N[1];
-	const long int Ny_Fourier = Ny / 2 + 1;
+	const long int Ny 		  = N[0];
+	const long int Nx 		  = N[1];
+	const long int Nx_Fourier = Nx / 2 + 1;
 	herr_t status;
 	static const hsize_t D1 = 1;
 	hsize_t dims1D[D1];
@@ -1418,18 +1456,18 @@ void FinalWriteAndCloseOutputFiles(const long int* N, int iters, int save_data_i
 	// -------------------------------
 	#if defined(__WAVELIST)
 	// Allocate array to gather the wavenumbers from each of the local arrays - in the x direction
-	int* k0 = (int* )fftw_malloc(sizeof(int) * Nx);
-	MPI_Gather(run_data->k[0], sys_vars->local_Nx, MPI_INT, k0, sys_vars->local_Nx, MPI_INT, 0, MPI_COMM_WORLD); 
+	int* k0 = (int* )fftw_malloc(sizeof(int) * Ny);
+	MPI_Gather(run_data->k[0], sys_vars->local_Ny, MPI_INT, k0, sys_vars->local_Ny, MPI_INT, 0, MPI_COMM_WORLD); 
 
 	// Write to file
 	if (!(sys_vars->rank)) {
-		dims1D[0] = Nx;
-		if ( (H5LTmake_dataset(file_info->sys_msr_file_handle, "kx", D1, dims1D, H5T_NATIVE_INT, k0)) < 0) {
-			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "kx");
-		}
-		dims1D[0] = Ny_Fourier;
-		if ( (H5LTmake_dataset(file_info->sys_msr_file_handle, "ky", D1, dims1D, H5T_NATIVE_INT, run_data->k[1])) < 0) {
+		dims1D[0] = Ny;
+		if ( (H5LTmake_dataset(file_info->sys_msr_file_handle, "ky", D1, dims1D, H5T_NATIVE_INT, k0)) < 0) {
 			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "ky");
+		}
+		dims1D[0] = Nx_Fourier;
+		if ( (H5LTmake_dataset(file_info->sys_msr_file_handle, "kx", D1, dims1D, H5T_NATIVE_INT, run_data->k[1])) < 0) {
+			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "kx");
 		}
 	}
 	fftw_free(k0);
@@ -1440,21 +1478,21 @@ void FinalWriteAndCloseOutputFiles(const long int* N, int iters, int save_data_i
 	// -------------------------------
 	#if defined(__COLLOC_PTS)
 	// Allocate array to gather the collocation points from each of the local arrays
-	double* x0 = (double* )fftw_malloc(sizeof(double) * Nx);
-	MPI_Gather(run_data->x[0], sys_vars->local_Nx, MPI_DOUBLE, x0, sys_vars->local_Nx, MPI_DOUBLE, 0, MPI_COMM_WORLD); 
+	double* y0 = (double* )fftw_malloc(sizeof(double) * Ny);
+	MPI_Gather(run_data->x[0], sys_vars->local_Ny, MPI_DOUBLE, y0, sys_vars->local_Ny, MPI_DOUBLE, 0, MPI_COMM_WORLD); 
 
 	// Write to file
 	if (!(sys_vars->rank)) {
-		dims1D[0] = Nx;
-		if ( (H5LTmake_dataset(file_info->sys_msr_file_handle, "x", D1, dims1D, H5T_NATIVE_DOUBLE, x0)) < 0) {
-			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "x");
-		}
 		dims1D[0] = Ny;
-		if ( (H5LTmake_dataset(file_info->sys_msr_file_handle, "y", D1, dims1D, H5T_NATIVE_DOUBLE, run_data->x[1]))< 0) {
+		if ( (H5LTmake_dataset(file_info->sys_msr_file_handle, "y", D1, dims1D, H5T_NATIVE_DOUBLE, y0)) < 0) {
 			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "y");
 		}
+		dims1D[0] = Nx;
+		if ( (H5LTmake_dataset(file_info->sys_msr_file_handle, "x", D1, dims1D, H5T_NATIVE_DOUBLE, run_data->x[1]))< 0) {
+			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "x");
+		}
 	}
-	fftw_free(x0);
+	fftw_free(y0);
 	#endif
 
 	// -------------------------------
@@ -1474,12 +1512,12 @@ void FinalWriteAndCloseOutputFiles(const long int* N, int iters, int save_data_i
 	#if defined(__SYS_MEASURES)
 	//-------------- Write mean flows
 	// Mean flow in the y direction -> \bar{v}(x)
-	double* tmp = (double* )fftw_malloc(sizeof(double) * Nx);
-	MPI_Gather(run_data->mean_flow_y, sys_vars->local_Nx, MPI_DOUBLE, tmp, sys_vars->local_Nx, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-	for (int i = 0; i < Nx; ++i) {
+	double* tmp = (double* )fftw_malloc(sizeof(double) * Ny);
+	MPI_Gather(run_data->mean_flow_y, sys_vars->local_Ny, MPI_DOUBLE, tmp, sys_vars->local_Ny, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+	for (int i = 0; i < Ny; ++i) {
 		tmp[i] /= sys_vars->num_sys_msr_counts;
 	}
-	dims1D[0] = Nx;
+	dims1D[0] = Ny;
 	if (!sys_vars->rank) {
 		if ( (H5LTmake_dataset(file_info->sys_msr_file_handle, "MeanFlow_y", D1, dims1D, H5T_NATIVE_DOUBLE, tmp)) < 0) {
 			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "MeanFlow_y");
@@ -1488,10 +1526,10 @@ void FinalWriteAndCloseOutputFiles(const long int* N, int iters, int save_data_i
 	fftw_free(tmp);
 
 	// Mean flow in the x direction -> \bar{u}(y)	
-	for (int i = 0; i < Ny_Fourier; ++i) {
+	for (int i = 0; i < Nx_Fourier; ++i) {
 		run_data->mean_flow_x[i] /= sys_vars->num_sys_msr_counts;
 	}
-	dims1D[0] = Ny_Fourier;
+	dims1D[0] = Nx_Fourier;
 	if (!sys_vars->rank) {
 		if ( (H5LTmake_dataset(file_info->sys_msr_file_handle, "MeanFlow_x", D1, dims1D, H5T_NATIVE_DOUBLE, run_data->mean_flow_x)) < 0) {
 			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "MeanFlow_x");
@@ -1504,7 +1542,7 @@ void FinalWriteAndCloseOutputFiles(const long int* N, int iters, int save_data_i
 	// -------------------------------
 	#if defined(__STATS)
 	// Get max scales
-	int num_r_scales = (int) GSL_MIN(Nx, Ny) / 2;
+	int num_r_scales = (int) GSL_MIN(Ny, Nx) / 2;
 
 	///------------------- Structure Functions
 	#if defined(__VEL_STR_FUNC)

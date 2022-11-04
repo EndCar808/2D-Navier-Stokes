@@ -197,8 +197,8 @@ typedef struct system_vars_struct {
 	fftw_plan fftw_2d_dft_batch_c2r;	// FFTW plan to perform a batch transform from Fourier to Real
 	ptrdiff_t alloc_local;				// Variable to hold size of memory to allocate for local (on process) arrays for normal transform
 	ptrdiff_t alloc_local_batch;		// Variable to hold size of memory to allocate for local (on process) arrays for batch transform
-	ptrdiff_t local_Nx;					// Size of the first dimension for the local arrays
-	ptrdiff_t local_Nx_start;			// Position where the local arrays start in the undistributed array
+	ptrdiff_t local_Ny;					// Size of the first dimension for the local arrays
+	ptrdiff_t local_Ny_start;			// Position where the local arrays start in the undistributed array
 	int num_procs;						// Variable to hold the number of active provcesses
 	int rank;							// Rank of the active processes
 	long int num_t_steps;				// Number of iteration steps to perform
@@ -241,7 +241,9 @@ typedef struct runtime_data_struct {
 	double* x[SYS_DIM];       			// Array to hold collocation pts
 	int* k[SYS_DIM];		  			// Array to hold wavenumbers
 	fftw_complex* w_hat;      			// Fourier space vorticity
+	fftw_complex* w_hat_tmp;   			// Temporary Fourier space vorticity array for performing DFT to real space w
 	fftw_complex* u_hat;      			// Fourier space velocity
+	fftw_complex* u_hat_tmp;  			// Temporary Fourier space velocity array for performing DFT to real space u
 	fftw_complex* rhs; 		  			// Array to hold the RHS of the equation of motion
 	fftw_complex* nonlinterm; 			// Array to hold the nonlinear term
 	double* w;				  			// Real space vorticity

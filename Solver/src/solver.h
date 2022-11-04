@@ -23,14 +23,14 @@
 void SpectralSolve(void);
 // Integration functions
 #if defined(__RK4) || defined(__RK4CN)
-void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Nx, Int_data_struct* Int_data);
+void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Ny, Int_data_struct* Int_data);
 #endif
 #if defined(__AB4)
-void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Nx, Int_data_struct* Int_data);
-void AB4Step(const double dt, const long int* N, const int iters, const ptrdiff_t local_Nx, Int_data_struct* Int_data);
+void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Ny, Int_data_struct* Int_data);
+void AB4Step(const double dt, const long int* N, const int iters, const ptrdiff_t local_Ny, Int_data_struct* Int_data);
 #endif
 #if defined(__RK5) || defined(__DPRK5)
-void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdiff_t local_Nx, Int_data_struct* Int_data);
+void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdiff_t local_Ny, Int_data_struct* Int_data);
 #endif
 #ifdef __DPRK5
 double DPMax(double a, double b);
@@ -38,7 +38,7 @@ double DPMin(double a, double b);
 #endif
 void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* nonlinear, double* u, double* w);
 void ApplyDealiasing(fftw_complex* array, int array_dim, const long int* N);
-void ForceConjugacy(fftw_complex* w_hat, const long int* N);
+void ForceConjugacy(fftw_complex* array, const long int* N, const int dim);
 // Initialize the system functions
 void InitializeSpaceVariables(double** x, int** k, const long int* N);
 void InitializeIntegrationVariables(double* t0, double* t, double* dt, double* T, long int* trans_steps);
