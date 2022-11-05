@@ -399,6 +399,12 @@ int GetCMLArgs(int argc, char** argv) {
 					force_flag = 1;
 					break;
 				}
+				else if (!(strcmp(optarg,"BODY_FORC"))  && (force_flag == 0)) {
+					// Body Forcing: f_omeage(x, y) = cos(2 x) -> see Y.-K. Tsang, E. Ott, T. M. Antonsen, and P. N. Guzdar, Phys. Rev E, 2005
+					strncpy(sys_vars->forcing, "BODY_FORC", 64);
+					force_flag = 1;
+					break;
+				}
 				else if (!(strcmp(optarg,"STOC"))  && (force_flag == 0)) {
 					// Stochastic Uniform forcing
 					strncpy(sys_vars->forcing, "STOC", 64);

@@ -12,9 +12,10 @@ import numpy as np
 import sys
 import os
 import matplotlib as mpl
-# mpl.rcParams['text.usetex'] = True
-# mpl.rcParams['font.family'] = 'serif'
-# mpl.rcParams['font.serif']  = 'Computer Modern Roman'
+if matplotlib.__version__ > '2':    
+       mpl.rcParams['text.usetex'] = True
+       mpl.rcParams['font.family'] = 'serif'
+       mpl.rcParams['font.serif']  = 'Computer Modern Roman'
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 from matplotlib.pyplot import cm
@@ -303,7 +304,7 @@ def plot_flow_summary(out_dir, i, w, w_min, w_max, measure_min, measure_max, x, 
     ## Plot vorticity   
     ##-------------------------
     ax1 = fig.add_subplot(gs[0, 0])
-    im1 = ax1.imshow(w, extent = (y[0], y[-1], x[-1], x[0]), cmap = "bwr") #,vmin = w_min, vmax = w_max
+    im1 = ax1.imshow(w, extent = (y[0], y[-1], x[-1], x[0]), cmap = "bwr", vmin = w_min, vmax = w_max)
     ax1.set_xlabel(r"$y$")
     ax1.set_ylabel(r"$x$")
     ax1.set_xlim(0.0, y[-1])
@@ -351,7 +352,7 @@ def plot_flow_summary(out_dir, i, w, w_min, w_max, measure_min, measure_max, x, 
     ax3.set_xscale('log')
     ax3.set_xlim(1, Nx)
     # ax3.set_ylim(1e-6, 1e0)
-    ax3.legend()
+    # ax3.legend()
     ax3.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
 
 
@@ -372,7 +373,7 @@ def plot_flow_summary(out_dir, i, w, w_min, w_max, measure_min, measure_max, x, 
     ax4.set_xscale('log')
     ax4.set_xlim(1, Nx)
     # ax4.set_ylim(1e-2, 3e1)
-    ax4.legend()
+    # ax4.legend()
     ax4.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
 
 

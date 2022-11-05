@@ -496,7 +496,7 @@ void GetOutputDirPath(void) {
 		#elif defined(__DPRK5)
 		sprintf(solv_type, "%s", "DP5");
 		#elif defined(__AB4)
-		sprintf(solv_type, "%s", "AB4");
+		sprintf(solv_type, "%s", "AB4"); 
 		#else 
 		sprintf(solv_type, "%s", "UKN");
 		#endif

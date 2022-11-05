@@ -103,6 +103,68 @@ void InitializeForcing(void) {
 			}
 		}
 	}
+	//--------------------------------- Apply Body Forcing -> f_omega(x, y) = cos(2x) -> see Y.-K. Tsang, E. Ott, T. M. Antonsen, and P. N. Guzdar, Phys. Rev E, 2005
+	if(!(strcmp(sys_vars->forcing, "BODY_FORC"))) {
+		// Loop through modes to identify local process(es) containing the modes to be forced
+		for (int i = 0; i < sys_vars->local_Ny; ++i) {
+			if (run_data->k[0][i] == sys_vars->force_k || run_data->k[0][i] == -sys_vars->force_k) { // note sys_vars->forc_k will be period of the forcing (= 2 in the paper)
+				sys_vars->local_forcing_proc = 1;
+				num_forced_modes++;
+			}
+		}
+
+		// Get the number of forced modes
+		sys_vars->num_forced_modes = num_forced_modes;
+
+		// Allocate forcing data on the local forcing process only
+		if (sys_vars->local_forcing_proc) {
+			// -----------------------------------
+			// Allocate Memory 
+			// -----------------------------------
+			// Allocate the forcing array to hold the forcing
+			run_data->forcing = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * num_forced_modes);
+			if (run_data->forcing == NULL) {
+				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Forcing");
+				exit(1);
+			}
+			// Allocate array for the forced mode index
+			run_data->forcing_indx = (int* )fftw_malloc(sizeof(int) * num_forced_modes);
+			if (run_data->forcing_indx == NULL) {
+				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Forcing Indices");
+				exit(1);
+			}
+			// Allocate array for the scaling 
+			run_data->forcing_scaling = (double* )fftw_malloc(sizeof(double) * num_forced_modes);
+			if (run_data->forcing_scaling == NULL) {
+				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Forcing Scaling");
+				exit(1);
+			}
+			// Allocate array for the forced mode wavenumbers
+			for (int i = 0; i < SYS_DIM; ++i) {
+				run_data->forcing_k[i] = (int* )fftw_malloc(sizeof(int) * num_forced_modes);
+				if (run_data->forcing_k[i] == NULL) {
+					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Forcing Wavevectors");
+					exit(1);
+				}
+			}
+
+			// -----------------------------------
+			// Fill Forcing Info
+			// -----------------------------------
+			force_mode_counter = 0;
+			for (int i = 0; i < sys_vars->local_Ny; ++i) {
+				if (run_data->k[0][i] == sys_vars->force_k || run_data->k[0][i] == -sys_vars->force_k) {
+					// Get the forcing info
+					run_data->forcing_indx[force_mode_counter] = i * Nx_Fourier;
+					run_data->forcing_k[0][force_mode_counter] = run_data->k[0][i];
+					run_data->forcing_k[1][force_mode_counter] = 0;
+					run_data->forcing_scaling[force_mode_counter] = sys_vars->force_scale_var;
+					// increment counter
+					force_mode_counter++;
+				}
+			}
+		}
+	}
 	//--------------------------------- Apply Stochastic Uniform forcing
 	else if(!(strcmp(sys_vars->forcing, "STOC"))) {
 		// Loop through modes to identify local process(es) containing the modes to be forced		
@@ -541,6 +603,13 @@ void ComputeForcing(double dt) {
 				run_data->forcing[i] = -0.5 * sys_vars->force_scale_var * (sys_vars->force_k + 0.0 * I);
 			}
 		}
+		//---------------------------- Compute Body Forcing -> f_omega(x, y) = cos(2x); -> f_k = 1/2 * scale * \delta(n - 2); scale = 1 to match the paper
+		else if(!(strcmp(sys_vars->forcing, "BODY_FORC"))) {
+			// Compute the Kolmogorov forcing
+			for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
+				run_data->forcing[i] = 0.5 * sys_vars->force_scale_var * (sys_vars->force_k + 0.0 * I);
+			}
+		}
 		//---------------------------- Compute Stochastic Gaussian forcing
 		else if(!(strcmp(sys_vars->forcing, "STOC_GAUSS"))) {
 			// Loop over the forced modes
@@ -555,8 +624,6 @@ void ComputeForcing(double dt) {
 
 				// Now compute the forcing 
 				run_data->forcing[i] = run_data->forcing_scaling[i] * (re_f + im_f * I);
-			
-				// printf("F[%d, %d]: %1.16lf %1.16lf -- (%d %d) -- dt: %1.16lf\n", run_data->forcing_k[0][i], run_data->forcing_k[1][i], creal(run_data->forcing[i]), cimag(run_data->forcing[i]), run_data->forcing_k[0][i], run_data->forcing_k[1][i], dt);
 			}		
 		}
 		//---------------------------- Compute Stochastic forcing
@@ -568,7 +635,6 @@ void ComputeForcing(double dt) {
 
 				// // Now compute the forcing 
 				run_data->forcing[i] = sqrt(run_data->forcing_scaling[i]) * cexp(2.0 * M_PI * I * r1) / sqrt(dt);
-				// printf("F[%d, %d]: %1.16lf %1.16lf -- (%d %d) -- dt: %1.16lf\n", run_data->forcing_k[0][i], run_data->forcing_k[1][i], creal(run_data->forcing[i]), cimag(run_data->forcing[i]), run_data->forcing_k[0][i], run_data->forcing_k[1][i], dt);
 			}	
 		}
 		//---------------------------- Compute Constant (in time) Gaussian ring forcing -> f_k = n1 + n2 * I, n1, n2 ~ N(0, 1)

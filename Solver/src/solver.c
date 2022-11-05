@@ -73,7 +73,6 @@ void SpectralSolve(void) {
 	InitializeFFTWPlans(N);
 
 
-
 	// -------------------------------
 	// Initialize the System
 	// -------------------------------
