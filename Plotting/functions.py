@@ -330,19 +330,29 @@ def sim_data(input_dir, method = "default"):
 
         ## Initialize class
         def __init__(self, Nx = 0, Ny = 0, Nk = 0, nu = 0.0, t0 = 0.0, T = 0.0, ndata = 0, u0 = "TG_VORT", cfl = 0.0, spec_size = 0, dt = 0., dx = 0., dy = 0.):
-            self.Nx        = int(Nx)
-            self.Ny        = int(Ny)
-            self.Nk        = int(Nk)
-            self.nu        = float(nu)
-            self.t0        = float(t0)
-            self.T         = float(T)
-            self.ndata     = int(ndata)
-            self.u0        = str(u0)
-            self.cfl       = float(cfl)
-            self.dt        = float(dt)
-            self.dx        = float(dx)
-            self.dy        = float(dy)
-            self.spec_size = int(spec_size)
+            self.Nx         = int(Nx)
+            self.Ny         = int(Ny)
+            self.Nk         = int(Nk)
+            self.nu         = float(nu)
+            self.hyper      = False
+            self.hyper_pow  = 2.0
+            self.alpha      = float(0.0)
+            self.drag       = float(0.0)
+            self.drag_pow   = -2.0
+            self.t0         = float(t0)
+            self.T          = float(T)
+            self.ndata      = int(ndata)
+            self.u0         = str(u0)
+            self.cfl        = float(cfl)
+            self.dt         = float(dt)
+            self.dx         = float(dx)
+            self.dy         = float(dy)
+            self.PO         = False
+            self.forc_type  = "NONE"
+            self.forc_k     = 0.0
+            self.forc_scale = 1.0
+            self.po_slope   = np.sqrt(3.0)
+            self.spec_size  = int(spec_size)
 
 
     ## Create instance of class
@@ -358,6 +368,28 @@ def sim_data(input_dir, method = "default"):
                 ## Parse viscosity
                 if line.startswith('Viscosity'):
                     data.nu = float(line.split()[-1])
+                ## Parse Hyperviscosity Flag
+                if line.startswith('Hyperviscosity'):
+                    if str(line.split()[-1]) == "YES":
+                        data.hyper = True
+                    else:
+                        data.hyper = False
+                ## Parse Hyper viscosity power
+                if line.startswith('Hyperviscosity Power'):
+                    data.hyper_pow = float(line.split()[-1])
+
+                ## Parse drag
+                if line.startswith('Ekman Alpha'):
+                    data.alpha = float(line.split()[-1])
+                ## Parse Ekman Flag
+                if line.startswith('Ekman Drag'):
+                    if str(line.split()[-1]) == "YES":
+                        data.hyper = True
+                    else:
+                        data.hyper = False
+                ## Parse Ekman power
+                if line.startswith('Ekman Power'):
+                    data.drag_pow = float(line.split()[-1])
 
                 ## Parse number of collocation points
                 if line.startswith('Collocation Points'):
@@ -381,6 +413,18 @@ def sim_data(input_dir, method = "default"):
                 if line.startswith('Initial Conditions'):
                     data.u0 = str(line.split()[-1])
 
+                ## Parse the Forcing details
+                if line.startswith('Forcing Type'):
+                    data.forc_type = str(line.split()[-1])
+                if line.startswith('Forcing Wavenumer'):
+                    data.forc_k = int(line.split()[-1])
+                if line.startswith('Forcing Scaling'):
+                    data.forc_scale = float(line.split()[-1])
+
+                ## Parse the Phase Only amplitude slope
+                if line.startswith('Phase Only Amplitude Slope'):
+                    data.po_slope = float(line.split()[-1])
+
                 ## Parse the timestep
                 if line.startswith('Finishing Timestep'):
                     data.dt = float(line.split()[-1])
@@ -389,6 +433,13 @@ def sim_data(input_dir, method = "default"):
                 if line.startswith('Spatial Increment'):
                     data.dy = float(line.split()[-1].rstrip(']'))
                     data.dx = float(line.split()[-2].rstrip(',').lstrip('['))
+
+                ## Parse model type
+                if line.startswith('Model Type'):
+                    if str(line.split()[-1]) == "PHASEONLY":
+                        data.PO = True
+                    else:
+                        data.PO = False
 
             ## Get spectrum size
             data.spec_size = int(np.round(np.sqrt((data.Nx / 2)**2 + (data.Ny / 2)**2)) + 1)

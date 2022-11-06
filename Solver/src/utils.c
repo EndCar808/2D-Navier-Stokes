@@ -83,11 +83,13 @@ int GetCMLArgs(int argc, char** argv) {
 	sys_vars->EKMN_DRAG_POW  = EKMN_POW;
 	// Write to file every 
 	sys_vars->SAVE_EVERY = 100;
+	// Phase only amplitude slope
+	sys_vars->PO_SLOPE = sqrt(3.0);
 
 	// -------------------------------
 	// Parse CML Arguments
 	// -------------------------------
-	while ((c = getopt(argc, argv, "o:h:n:d:s:e:t:v:i:c:p:f:z:T:")) != -1) {
+	while ((c = getopt(argc, argv, "o:h:n:d:s:e:t:v:i:c:p:f:z:T:P:")) != -1) {
 		switch(c) {
 			case 'o':
 				if (output_dir_flag == 0) {
@@ -374,6 +376,14 @@ int GetCMLArgs(int argc, char** argv) {
 					// trans_iter_flag = 2;
 					break;
 				}
+				break;
+			case 'P':
+				// Read in the amplitude slope for the phase only mode
+				sys_vars->PO_SLOPE = atof(optarg);
+				if (sys_vars->PO_SLOPE < 0.0) {
+					fprintf(stderr, "\n["RED"ERROR"RESET"] Parsing of Command Line Arguements Failed: Incorrect amplitdue slope: [%d] Must be positive\n-->> Exiting!\n\n", sys_vars->PO_SLOPE);		
+					exit(1);
+				}
 				break;				
 			case 'p':
 				// Read in how often to print to file
@@ -513,25 +523,29 @@ void PrintSimulationDetails(int argc, char** argv, double sim_time) {
 	sprintf(solv_type, "%s", "RK4");
 	#elif defined(__RK5)
 	sprintf(solv_type, "%s", "RK5");
+	#elif defined(__RK4CN)
+	sprintf(solv_type, "%s", "RK4CN");
+	#elif defined(__AB4)
+	sprintf(solv_type, "%s", "AB4");
 	#elif defined(__DPRK5)
 	sprintf(solv_type, "%s", "DP5");
 	#else 
 	sprintf(solv_type, "%s", "SOLV_UKN");
 	#endif
 	#if defined(__PHASE_ONLY)
-	sprintf(model_type, "%s", "PHAEONLY");
+	sprintf(model_type, "%s", "PHASEONLY");
 	#else
 	sprintf(model_type, "%s", "FULL");
 	#endif
 	fprintf(sim_file, "Systen Type: %s\nSolver Type: %s\nModel Type: %s\n", sys_type, solv_type, model_type);
 
 	// System Params
-	fprintf(sim_file, "Viscosity: %1.6lf\n", sys_vars->NU);
-	fprintf(sim_file, "Re: %5.1lf\n", 1.0 / sys_vars->NU);
+	fprintf(sim_file, "Viscosity: %g\n", sys_vars->NU);
+	fprintf(sim_file, "Re: %g\n", 1.0 / sys_vars->NU);
 	#if defined(__EKMN_DRAG)
 	fprintf(sim_file, "Ekman Drag: YES\n");
-	fprintf(sim_file, "Ekman Alpha: %1.4lf\n", sys_vars->EKMN_ALPHA);
-	fprintf(sim_file, "Ekman Power: %d\n", EKMN_POW);
+	fprintf(sim_file, "Ekman Alpha: %g\n", sys_vars->EKMN_ALPHA);
+	fprintf(sim_file, "Ekman Power: %1.1lf\n", EKMN_POW);
 	#else
 	fprintf(sim_file, "Ekman Drag: NO\n");
 	#endif
@@ -540,6 +554,9 @@ void PrintSimulationDetails(int argc, char** argv, double sim_time) {
 	fprintf(sim_file, "Hyperviscosity Power: %1.1lf\n", VIS_POW);	
 	#else
 	fprintf(sim_file, "Hyperviscosity: NO\n");
+	#endif
+	#if defined(__PHASE_ONLY)
+	fprintf(sim_file, "Phase Only Amplitude Slope: %lf\n", sys_vars->PO_SLOPE);
 	#endif
 
 	// Spatial details
@@ -561,7 +578,9 @@ void PrintSimulationDetails(int argc, char** argv, double sim_time) {
 	fprintf(sim_file, "Dealiasing: %s\n", dealias_type);
 	
 	// Forcing
-	fprintf(sim_file, "Forcing Type: %s\n\n", sys_vars->forcing);
+	fprintf(sim_file, "Forcing Type: %s\n", sys_vars->forcing);
+	fprintf(sim_file, "Forcing Wavenumber: %s\n", sys_vars->forc_k);
+	fprintf(sim_file, "Forcing Scaling: %s\n\n", sys_vars->force_scale_var);
 
 	// Time details
 	fprintf(sim_file, "Time Range: [%1.1lf - %1.1lf]\n", sys_vars->t0, sys_vars->T);

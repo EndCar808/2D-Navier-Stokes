@@ -234,6 +234,7 @@ typedef struct system_vars_struct {
 	int EKMN_DRAG_FLAG;					// Flag for indicating if ekman drag is to be used
 	double EKMN_DRAG_POW;				// The power of the hyper drag to be used
 	int num_sys_msr_counts; 			// Counter for counting the number of system measures is called for averaging
+	double PO_SLOPE;					// Slope of the amplitudes for the phase only model
 } system_vars_struct;
 
 // Runtime data struct

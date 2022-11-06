@@ -12,7 +12,7 @@ import numpy as np
 import sys
 import os
 import matplotlib as mpl
-if matplotlib.__version__ > '2':    
+if mpl.__version__ > '2':    
        mpl.rcParams['text.usetex'] = True
        mpl.rcParams['font.family'] = 'serif'
        mpl.rcParams['font.serif']  = 'Computer Modern Roman'
@@ -58,7 +58,7 @@ def plot_summary_snaps(out_dir, i, w, x, y, w_min, w_max, kx, ky, kx_max, tot_en
     ## Plot vorticity   
     ##-------------------------
     ax1 = fig.add_subplot(gs[0:2, 0:1])
-    im1 = ax1.imshow(w, extent = (y[0], y[-1], x[-1], x[0]), cmap = "RdBu") # , vmin = w_min, vmax = w_max 
+    im1 = ax1.imshow(w, extent = (y[0], y[-1], x[-1], x[0]), cmap = "RdBu", vmin = w_min, vmax = w_max)
     ax1.set_xlabel(r"$y$")
     ax1.set_ylabel(r"$x$")
     ax1.set_xlim(0.0, y[-1])
@@ -268,7 +268,7 @@ def plot_phase_snaps(out_dir, i, w, phases, enrg_spec, enst_spec, spec_lims, w_m
     plt.savefig(out_dir + "Phase_SNAP_{:05d}.png".format(i), bbox_inches='tight') 
     plt.close()
 
-def plot_flow_summary(out_dir, i, w, w_min, w_max, measure_min, measure_max, x, y, time, Nx, Ny, kx, ky, enrg_spec, enst_spec, tot_en, tot_ens, tot_pal):
+def plot_flow_summary(out_dir, i, w, w_min, w_max, measure_min, measure_max, enrg_spec_min, enrg_spec_max, enst_spec_min, enst_spec_max, force_k, x, y, time, Nx, Ny, kx, ky, enrg_spec, enst_spec, tot_en, tot_ens, tot_pal):
 
     """
     Plots summary snap of the solver data for the current iteration. Plots vorticity, full zero centre phases and spectra.
@@ -330,10 +330,9 @@ def plot_flow_summary(out_dir, i, w, w_min, w_max, measure_min, measure_max, x, 
     ax2.plot(time[:i], tot_pal[:i])
     ax2.set_xlabel(r"$t$")
     ax2.set_xlim(time[0], time[-1])
-    ax2.set_ylim(measure_min, measure_max)
-    # ax2.set_yscale("log")
+    # ax2.set_ylim(measure_min, measure_max)
     ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
-    ax2.legend([r"$\mathcal{K}(t) $", r"$\mathcal{E}(t) $", r"$\epsilon(t) $"])
+    ax2.legend([r"Energy: $\mathcal{K}(t) $", r"Enstrophy: $\mathcal{E}(t) $", r"Enstrophy Diss: $\epsilon(t)$"])
 
     #--------------------------    
     # Plot Energy Spectra   
@@ -351,7 +350,7 @@ def plot_flow_summary(out_dir, i, w, w_min, w_max, measure_min, measure_max, x, 
     ax3.set_yscale('log')
     ax3.set_xscale('log')
     ax3.set_xlim(1, Nx)
-    # ax3.set_ylim(1e-6, 1e0)
+    ax3.set_ylim(enrg_spec_min, enrg_spec_max)
     # ax3.legend()
     ax3.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
 
@@ -372,7 +371,7 @@ def plot_flow_summary(out_dir, i, w, w_min, w_max, measure_min, measure_max, x, 
     ax4.set_yscale('log')
     ax4.set_xscale('log')
     ax4.set_xlim(1, Nx)
-    # ax4.set_ylim(1e-2, 3e1)
+    ax4.set_ylim(enst_spec_min, enst_spec_max)
     # ax4.legend()
     ax4.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
 

@@ -16,9 +16,11 @@ from numba import njit
 import matplotlib as mpl
 # mpl.use('TkAgg') # Use this backend for displaying plots in window
 mpl.use('Agg') # Use this backend for writing plots to file
-# mpl.rcParams['text.usetex'] = True
-# mpl.rcParams['font.family'] = 'serif'
-# mpl.rcParams['font.serif']  = 'Computer Modern Roman'
+import matplotlib as mpl
+if mpl.__version__ > '2':
+    mpl.rcParams['text.usetex'] = True
+    mpl.rcParams['font.family'] = 'serif'
+    mpl.rcParams['font.serif']  = 'Computer Modern Roman'
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -26,7 +28,7 @@ import getopt
 from itertools import zip_longest
 import multiprocessing as mprocs
 import time as TIME
-from subprocess import Popen, PIPE
+from subprocess import Popen, PIPE, run
 from matplotlib.pyplot import cm
 from functions import tc, sim_data, import_data, import_spectra_data, import_post_processing_data, import_sys_msr
 from plot_functions import plot_flow_summary
@@ -129,11 +131,11 @@ if __name__ == '__main__':
     ## Read in spectra data
     spec_data = import_spectra_data(cmdargs.in_dir, sys_vars)
 
-    snaps_output_dir = cmdargs.out_dir + "/RUN_SNAPS/"
+    snaps_output_dir = cmdargs.out_dir + "RUN_SNAPS/"
     if os.path.isdir(snaps_output_dir) != True:
         print("Making folder:" + tc.C + " RUN_SNAPS/" + tc.Rst)
         os.mkdir(snaps_output_dir)
-    vid_snaps_output_dir = cmdargs.out_dir + "/VID_SNAPS/"
+    vid_snaps_output_dir = cmdargs.out_dir + "VID_SNAPS/"
     if os.path.isdir(vid_snaps_output_dir) != True:
         print("Making folder:" + tc.C + " VID_SNAPS/" + tc.Rst)
         os.mkdir(vid_snaps_output_dir)
@@ -172,7 +174,7 @@ if __name__ == '__main__':
 
     ##---------- Energy Enstrophy
     fig = plt.figure(figsize = (32, 8))
-    gs  = GridSpec(2, 3)
+    gs  = GridSpec(2, 3, hspace = 0.35)
     ## Plot the energy dissipation
     ax1 = fig.add_subplot(gs[0, 0])
     ax1.plot(sys_msr_data.time, sys_msr_data.enrg_diss)
@@ -262,21 +264,17 @@ if __name__ == '__main__':
     fig = plt.figure(figsize = (32, 8))
     gs  = GridSpec(1, 2)
     ax1 = fig.add_subplot(gs[0, 0])
-    ax1.plot(np.arange(1, int(sys_vars.Nx/3)), spec_data.enrg_spectrum[-1, 1:int(sys_vars.Nx//3)], label = "$$")
+    ax1.plot(np.arange(1, int(sys_vars.Nx/3)), spec_data.enrg_flux_spectrum[-1, 1:int(sys_vars.Nx//3)], label = "$$")
     ax1.set_xlabel(r"$k$")
     ax1.set_title(r"Energy")
     ax1.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
     ax1.set_yscale('log')
-    ax1.set_xscale('log')
-
     ax2 = fig.add_subplot(gs[0, 1])
-    ax2.plot(np.arange(1, int(sys_vars.Nx/3)), spec_data.enst_spectrum[-1, 1:int(sys_vars.Nx//3)], label = "$$")
+    ax2.plot(np.arange(1, int(sys_vars.Nx/3)), spec_data.enst_flux_spectrum[-1, 1:int(sys_vars.Nx//3)], label = "$$")
     ax2.set_xlabel(r"$k$")
     ax2.set_title(r"Energy")
     ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
     ax2.set_yscale('log')
-    ax2.set_xscale('log')
-
     plt.savefig(snaps_output_dir + "Flux_Spectra.png")
     plt.close()
 
@@ -300,7 +298,6 @@ if __name__ == '__main__':
     ax2.plot(np.arange(1, int(sys_vars.Nx/3)), np.mean(spec_data.enst_flux_spectrum[:, 1:int(sys_vars.Nx/3)], axis = 0), 'k')
     ax2.set_xlabel(r"$k$")
     ax2.set_xscale('log')
-    ax2.set_yscale('symlog')
     ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
     ax2.set_title(r"$\Pi(|\mathbf{k}|)$: Enstrophy Flux Spectrum")
     
@@ -312,21 +309,29 @@ if __name__ == '__main__':
 
     if cmdargs.video:
 
-        wmin = np.amin(run_data.w)
-        wmax = np.amax(run_data.w)
+        wmin = np.amin(run_data.w / np.sqrt(np.mean(run_data.w**2)))
+        wmax = np.amax(run_data.w / np.sqrt(np.mean(run_data.w**2)))
+
+        sys_vars.forc_k = 2.0
 
         ## Get max and min system measures 
         emax  = np.amax(sys_msr_data.tot_enrg[:] )
-        enmax = np.amax(sys_msr_data.tot_enst[:] / 15.5**2 )
-        pmax  = np.amax(sys_msr_data.enst_diss[:] / 15.5**2 )
+        enmax = np.amax(sys_msr_data.tot_enst[:] / sys_vars.forc_k**2 )
+        pmax  = np.amax(sys_msr_data.enst_diss[:] / sys_vars.forc_k**2 )
         # print(emax, enmax, pmax)
         emin  = np.amin(sys_msr_data.tot_enrg[:] )
-        enmin = np.amin(sys_msr_data.tot_enst[:] / 15.5**2 )
-        pmin  = np.amin(sys_msr_data.enst_diss[:] / 15.5**2 )
+        enmin = np.amin(sys_msr_data.tot_enst[:] / sys_vars.forc_k**2 )
+        pmin  = np.amin(sys_msr_data.enst_diss[:] / sys_vars.forc_k**2 )
         m_max = np.amax([emax, enmax, pmax])
         m_min = np.amin([emin, enmin, pmin])
         # m_max = np.amax([emax, enmax])
         # m_min = np.amin([emin, enmin])
+        ## Get the min and max spectra values
+        enrg_spec_max = np.amax(spec_data.enrg_spectrum[spec_data.enrg_spectrum != 0.0])
+        enrg_spec_min = np.amin(spec_data.enrg_spectrum[spec_data.enrg_spectrum != 0.0])
+        enst_spec_max = np.amax(spec_data.enst_spectrum[spec_data.enst_spectrum != 0.0])
+        enst_spec_min = np.amin(spec_data.enst_spectrum[spec_data.enrg_spectrum != 0.0])
+
 
         ## Start timer
         start = TIME.perf_counter()
@@ -339,7 +344,7 @@ if __name__ == '__main__':
             proc_lim = cmdargs.num_threads
 
             ## Create tasks for the process pool
-            groups_args = [(mprocs.Process(target = plot_flow_summary, args = (vid_snaps_output_dir, i, run_data.w[i, :, :] / np.sqrt(np.mean(run_data.w[:, :, :]**2)), wmin, wmax, m_min, m_max, sys_msr_data.x, sys_msr_data.y, sys_msr_data.time, sys_vars.Nx, sys_vars.Ny, sys_msr_data.kx, sys_msr_data.ky, spec_data.enrg_spectrum[i, :], spec_data.enst_spectrum[i, :], sys_msr_data.tot_enrg, sys_msr_data.tot_enst[:] / (15.5**2), sys_msr_data.enst_diss / (15.5**2))) for i in range(run_data.w.shape[0]))] * proc_lim
+            groups_args = [(mprocs.Process(target = plot_flow_summary, args = (vid_snaps_output_dir, i, run_data.w[i, :, :] / np.sqrt(np.mean(run_data.w[:, :, :]**2)), wmin, wmax, m_min, m_max, enrg_spec_min, enrg_spec_max, enst_spec_min, enst_spec_max, sys_vars.forc_k, sys_msr_data.x, sys_msr_data.y, sys_msr_data.time, sys_vars.Nx, sys_vars.Ny, sys_msr_data.kx, sys_msr_data.ky, spec_data.enrg_spectrum[i, :], spec_data.enst_spectrum[i, :], sys_msr_data.tot_enrg, sys_msr_data.tot_enst[:] / (15.5**2), sys_msr_data.enst_diss / (15.5**2))) for i in range(run_data.w.shape[0]))] * proc_lim
 
             ## Loop of grouped iterable
             for procs in zip_longest(*groups_args): 
@@ -356,7 +361,7 @@ if __name__ == '__main__':
         else:
             # Loop over snapshots
             for i in range(sys_vars.ndata):
-                plot_flow_summary(vid_snaps_output_dir, i, run_data.w[i, :, :] / np.sqrt(np.mean(run_data.w[:, :, :]**2)), wmin, wmax, m_min, m_max, sys_msr_data.x, sys_msr_data.y, sys_msr_data.time, sys_vars.Nx, sys_vars.Ny, sys_msr_data.kx, sys_msr_data.ky, spec_data.enrg_spectrum[i, :], spec_data.enst_spectrum[i, :], sys_msr_data.tot_enrg, sys_msr_data.tot_enst[:] / (15.5**2), sys_msr_data.enst_diss / (15.5**2))
+                plot_flow_summary(vid_snaps_output_dir, i, run_data.w[i, :, :] / np.sqrt(np.mean(run_data.w[:, :, :]**2)), wmin, wmax, m_min, m_max, enrg_spec_min, enrg_spec_max, enst_spec_min, enst_spec_max, sys_vars.forc_k, sys_msr_data.x, sys_msr_data.y, sys_msr_data.time, sys_vars.Nx, sys_vars.Ny, sys_msr_data.kx, sys_msr_data.ky, spec_data.enrg_spectrum[i, :], spec_data.enst_spectrum[i, :], sys_msr_data.tot_enrg, sys_msr_data.tot_enst[:] / (15.5**2), sys_msr_data.enst_diss / (15.5**2))
         
 
         framesPerSec = 15
@@ -374,3 +379,7 @@ if __name__ == '__main__':
         ## Prin summary of timmings to screen
         print("\n" + tc.Y + "Finished making video..." + tc.Rst)
         print("Video Location: " + tc.C + videoName + tc.Rst + "\n")
+
+
+        ## Remove the generated snaps after video is created
+        run("cd {};".format(vid_snaps_output_dir) + "rm {};".format("./*.png") + "cd -;", shell = True)
