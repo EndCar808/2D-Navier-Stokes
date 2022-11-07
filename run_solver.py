@@ -267,7 +267,7 @@ if __name__ == '__main__':
             solver_error  = []
 
         ## Generate command list 
-        cmd_list = [["mpirun -n {} {} -o {} -n {} -n {} -s {:3.5f} -e {:3.5f} -T {} -c {} -c {:1.6f} -h {:1.6f} -h {} -v {:1.10f} -v {} -v {:1.1f} -d {:1.6f} -d {} -d {:1.1f} -i {} -t {} -f {} -f {} -f {} -p {}".format(
+        cmd_list = [["mpirun -n {} {} -o {} -n {} -n {} -s {:3.5f} -e {:3.5f} -T {} -c {} -c {:1.6f} -h {:1.6f} -h {} -v {:g} -v {} -v {:1.1f} -d {:g} -d {} -d {:1.1f} -i {} -t {} -f {} -f {} -f {} -p {}".format(
                                                                                                                                                                                     solver_procs, 
                                                                                                                                                                                     executable, 
                                                                                                                                                                                     output_dir, 
@@ -348,7 +348,7 @@ if __name__ == '__main__':
         
 
         ## Generate command list 
-        cmd_list = [["PostProcessing/bin/main -i {} -o {} -v {:1.10f} -v {} -v {:1.1f} -d {:1.6f} -d {} -d {:1.1f} -f {} -f {} -f {} {}".format(
+        cmd_list = [["PostProcessing/bin/main -i {} -o {} -v {:g} -v {} -v {:1.1f} -d {:g} -d {} -d {:1.1f} -f {} -f {} -f {} {}".format(
                                                         post_input_dir + "N[{},{}]_T[{:1.1f},{},{:1.3f}]_NU[{:g},{},{:1.1f}]_DRAG[{:g},{},{:1.1f}]_CFL[{:1.2f}]_FORC[{},{},{:g}]_u0[{}]_TAG[{}]/".format(nx, ny, t0, h, t, v, int(hype), hypervisc_pow, ekmn_alpha, int(ekmn_hypo_diff), ekmn_hypo_pow, c, forcing, force_k, force_scale, u0, s_tag), 
                                                         post_output_dir + "N[{},{}]_T[{:1.1f},{},{:1.3f}]_NU[{:g},{},{:1.1f}]_DRAG[{:g},{},{:1.1f}]_CFL[{:1.2f}]_FORC[{},{},{:g}]_u0[{}]_TAG[{}]/".format(nx, ny, t0, h, t, v, int(hype), hypervisc_pow, ekmn_alpha, int(ekmn_hypo_diff), ekmn_hypo_pow, c, forcing, force_k, force_scale, u0, s_tag),
                                                         v, hypervisc, hypervisc_pow, 

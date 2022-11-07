@@ -521,14 +521,14 @@ void PrintSimulationDetails(int argc, char** argv, double sim_time) {
 	#endif
 	#if defined(__RK4)
 	sprintf(solv_type, "%s", "RK4");
-	#elif defined(__RK5)
-	sprintf(solv_type, "%s", "RK5");
+	#elif defined(__RK5CN)
+	sprintf(solv_type, "%s", "RK5CN");
 	#elif defined(__RK4CN)
 	sprintf(solv_type, "%s", "RK4CN");
-	#elif defined(__AB4)
-	sprintf(solv_type, "%s", "AB4");
-	#elif defined(__DPRK5)
-	sprintf(solv_type, "%s", "DP5");
+	#elif defined(__AB4CN)
+	sprintf(solv_type, "%s", "AB4CN");
+	#elif defined(__DPRK5CN)
+	sprintf(solv_type, "%s", "DP5CN");
 	#else 
 	sprintf(solv_type, "%s", "SOLV_UKN");
 	#endif

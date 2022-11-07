@@ -124,7 +124,7 @@ void ComputeSystemMeasurables(double t, int iter, Int_data_struct* Int_data) {
 
 	#if defined(__ENRG_FLUX) || defined(__ENST_FLUX) || defined(__ENRG_FLUX_SPECT) || defined(__ENST_FLUX_SPECT)
 	// Compute the nonlinear term & subtract the forcing as the flux computation should ignore focring
-	NonlinearRHSBatch(run_data->w_hat, Int_data->RK1, Int_data->nonlin, Int_data->nabla_psi, Int_data->nabla_w);
+	NonlinearRHSBatch(run_data->w_hat, Int_data->RK1, Int_data->nonlin, Int_data->nabla_psi);
 	if (sys_vars->local_forcing_proc) {
 		for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
 			Int_data->RK1[run_data->forcing_indx[i]] -= run_data->forcing[i];
@@ -1111,7 +1111,7 @@ void EnstrophyFlux(double* d_e_dt, double* enst_flux, double* enst_diss, Int_dat
 	}
 
 	// Compute the nonlinear term & subtract the forcing as the flux computation should ignore focring
-	NonlinearRHSBatch(run_data->w_hat, dwhat_dt, Int_data->nonlin, Int_data->nabla_psi, Int_data->nabla_w);
+	NonlinearRHSBatch(run_data->w_hat, dwhat_dt, Int_data->nonlin, Int_data->nabla_psi);
 	if (sys_vars->local_forcing_proc) {
 		for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
 			dwhat_dt[run_data->forcing_indx[i]] -= run_data->forcing[i];
@@ -1236,7 +1236,7 @@ void EnergyFlux(double* d_e_dt, double* enrg_flux, double* enrg_diss, Int_data_s
 	}
 
 	// Compute the nonlinear term & subtract the forcing as the flux computation should ignore focring
-	NonlinearRHSBatch(run_data->w_hat, dwhat_dt, Int_data->nonlin, Int_data->nabla_psi, Int_data->nabla_w);
+	NonlinearRHSBatch(run_data->w_hat, dwhat_dt, Int_data->nonlin, Int_data->nabla_psi);
 	if (sys_vars->local_forcing_proc) {
 		for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
 			dwhat_dt[run_data->forcing_indx[i]] -= run_data->forcing[i];
@@ -1372,7 +1372,7 @@ void EnergyFluxSpectrum(Int_data_struct* Int_data) {
 	}
 
 	// Compute the nonlinear term & subtract the forcing as the flux computation should ignore focring
-	NonlinearRHSBatch(run_data->w_hat, dwhat_dt, Int_data->nonlin, Int_data->nabla_psi, Int_data->nabla_w);
+	NonlinearRHSBatch(run_data->w_hat, dwhat_dt, Int_data->nonlin, Int_data->nabla_psi);
 	if (sys_vars->local_forcing_proc) {
 		for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
 			dwhat_dt[run_data->forcing_indx[i]] -= run_data->forcing[i];
@@ -1477,7 +1477,7 @@ void EnstrophyFluxSpectrum(Int_data_struct* Int_data) {
 	}
 
 	// Compute the nonlinear term & subtract the forcing as the flux computation should ignore focring
-	NonlinearRHSBatch(run_data->w_hat, dwhat_dt, Int_data->nonlin, Int_data->nabla_psi, Int_data->nabla_w);
+	NonlinearRHSBatch(run_data->w_hat, dwhat_dt, Int_data->nonlin, Int_data->nabla_psi);
 	if (sys_vars->local_forcing_proc) {
 		for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
 			dwhat_dt[run_data->forcing_indx[i]] -= run_data->forcing[i];

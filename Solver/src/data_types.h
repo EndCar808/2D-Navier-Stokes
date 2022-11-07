@@ -51,10 +51,10 @@
 // #define __NAVIER
 // Choose which integrator to use
 // #define __RK4
-#define __RK4CN
-// #define __AB4
-// #define __RK5
-// #define __DPRK5
+// #define __RK4CN
+#define __AB4CN
+// #define __RK5CN
+// #define __DPRK5CN
 // Choose which filter to use
 #define __DEALIAS_23
 // #define __DEALIAS_HOU_LI
@@ -297,7 +297,6 @@ typedef struct Int_data_struct {
 	fftw_complex* RK_tmp;	  		// Array to hold the tempory updates to w_hat - input to RHS function
 	fftw_complex* w_hat_last; 		// Array to hold the values of the Fourier space vorticity from the previous iteration - used in the stepsize control in DP scheme
 	double* nabla_psi;		  		// Batch array the velocities u = d\psi_dy and v = -d\psi_dx
-	double* nabla_w;		  		// Batch array to hold \nabla\omega - the vorticity derivatives
 	double* nonlin;           		// Array to hold the result of the nonlinear term in real space
 	double DP_err; 			  		// Variable to hold the error between the embedded methods in the Dormand Prince scheme
 	int DP_fails;			  		// Counter to count the number of failed steps for the Dormand Prince scheme

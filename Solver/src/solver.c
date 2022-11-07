@@ -26,13 +26,13 @@
 //  Global Variables
 // ---------------------------------------------------------------------
 // Define RK4 variables - Butcher Tableau
-#if defined(__RK4) || defined(__AB4) || defined(__RK4CN)
+#if defined(__RK4) || defined(__AB4CN) || defined(__RK4CN)
 static const double RK4_C2 = 0.5, 	  RK4_A21 = 0.5, \
 				  	RK4_C3 = 0.5,	           					RK4_A32 = 0.5, \
 				  	RK4_C4 = 1.0,                      									   RK4_A43 = 1.0, \
 				              	 	  RK4_B1 = 1.0/6.0, 		RK4_B2  = 1.0/3.0, 		   RK4_B3  = 1.0/3.0, 		RK4_B4 = 1.0/6.0;
 // Define RK5 Dormand Prince variables - Butcher Tableau
-#elif defined(__RK5) || defined(__DPRK5)
+#elif defined(__RK5CN) || defined(__DPRK5CN)
 static const double RK5_C2 = 0.2, 	  RK5_A21 = 0.2, \
 				  	RK5_C3 = 0.3,     RK5_A31 = 3.0/40.0,       RK5_A32 = 0.5, \
 				  	RK5_C4 = 0.8,     RK5_A41 = 44.0/45.0,      RK5_A42 = -56.0/15.0,	   RK5_A43 = 32.0/9.0, \
@@ -42,7 +42,7 @@ static const double RK5_C2 = 0.2, 	  RK5_A21 = 0.2, \
 				              		  RK5_B1  = 35.0/384.0, 							   RK5_B3  = 500.0/1113.0,   RK5_B4  = 125.0/192.0,   RK5_B5  = -2187.0/6784.0,    RK5_B6  = 11.0/84.0, \
 				              		  RK5_Bs1 = 5179.0/57600.0, 						   RK5_Bs3 = 7571.0/16695.0, RK5_Bs4 = 393.0/640.0,   RK5_Bs5 = -92097.0/339200.0, RK5_Bs6 = 187.0/2100.0, RK5_Bs7 = 1.0/40.0;
 #endif
-#if defined(__AB4)
+#if defined(__AB4CN)
 static const double AB4_1 = 55.0/24.0, AB4_2 = -59.0/24.0,		AB4_3 = 37.0/24.0,			AB4_4 = -3.0/8.0;
 #endif
 // ---------------------------------------------------------------------
@@ -90,7 +90,6 @@ void SpectralSolve(void) {
 	// // Initialize the forcing 
 	InitializeForcing();
 	
-
 	// -------------------------------
 	// Integration Variables
 	// -------------------------------
@@ -100,7 +99,7 @@ void SpectralSolve(void) {
 	double dt;
 	double T;
 	long int trans_steps;
-	#if defined(__DPRK5)
+	#if defined(__DPRK5CN)
 	int try = 1;
 	double dt_new;
 	#endif
@@ -145,11 +144,11 @@ void SpectralSolve(void) {
 		// -------------------------------
 		#if defined(__RK4) || defined(__RK4CN)
 		RK4Step(dt, N, sys_vars->local_Ny, Int_data);
-		#elif defined(__AB4)
+		#elif defined(__AB4CN)
 		AB4Step(dt, N, iters, sys_vars->local_Ny, Int_data);
-		#elif defined(__RK5)
+		#elif defined(__RK5CN)
 		RK5DPStep(dt, N, iters, sys_vars->local_Ny, Int_data);
-		#elif defined(__DPRK5)
+		#elif defined(__DPRK5CN)
 		while (try) {
 			// Try a Dormand Prince step and compute the local error
 			RK5DPStep(dt, N, iters, sys_vars->local_Ny, Int_data);
@@ -223,7 +222,7 @@ void SpectralSolve(void) {
 			t += dt; 
 		}
 		else {
-			#if defined(__DPRK5)
+			#if defined(__DPRK5CN)
 			t += dt;
 			#else
 			t = iters * dt;
@@ -248,7 +247,7 @@ void SpectralSolve(void) {
 	// -------------------------------
 	FreeMemory(Int_data);
 }
-#if defined(__AB4)
+#if defined(__AB4CN)
 /**
  * Function to perform an integration step using the 4th order Adams Bashforth scheme
  * @param dt       The current timestep of the system
@@ -292,8 +291,7 @@ void AB4Step(const double dt, const long int* N, const int iters, const ptrdiff_
 		// Compute Nonlinear Term
 		// -----------------------------------
 		// Get the nonlinear term for the current step
-		NonlinearRHSBatch(run_data->w_hat, Int_data->AB_tmp, Int_data->nonlin, Int_data->nabla_psi, Int_data->nabla_w);
-
+		NonlinearRHSBatch(run_data->w_hat, Int_data->AB_tmp, Int_data->nonlin, Int_data->nabla_psi);
 
 		/////////////////////
 		/// AB Update Step
@@ -355,7 +353,7 @@ void AB4Step(const double dt, const long int* N, const int iters, const ptrdiff_
  * @param local_Ny Int indicating the local size of the first dimension of the arrays	
  * @param Int_data  Struct pointing the Integration variables: stages, tmp arrays, rhs and arrays needed for NonlinearRHS function
  */
-#if defined(__RK5) || defined(__DPRK5)
+#if defined(__RK5CN) || defined(__DPRK5CN)
 void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdiff_t local_Ny, Int_data_struct* Int_data) {
 
 
@@ -367,7 +365,7 @@ void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdif
 	double D_fac;
 	#endif
 	const long int Nx_Fourier = N[1] / 2 + 1;
-	#if defined(__DPRK5)
+	#if defined(__DPRK5CN)
 	const long int Ny = N[0];
 	double dp_ho_step;
 	double err_sum;
@@ -396,7 +394,7 @@ void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdif
 	/// RK STAGES
 	/////////////////////
 	// ----------------------- Stage 1
-	NonlinearRHSBatch(run_data->w_hat, Int_data->RK1, Int_data->nonlin, Int_data->nabla_psi, Int_data->nabla_w);
+	NonlinearRHSBatch(run_data->w_hat, Int_data->RK1, Int_data->nonlin, Int_data->nabla_psi);
 	for (int i = 0; i < local_Ny; ++i) {
 		tmp = i * Nx_Fourier;
 		for (int j = 0; j < Nx_Fourier; ++j) {
@@ -407,7 +405,7 @@ void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdif
 		}
 	}
 	// ----------------------- Stage 2
-	NonlinearRHSBatch(Int_data->RK_tmp, Int_data->RK2, Int_data->nonlin, Int_data->nabla_psi, Int_data->nabla_w);
+	NonlinearRHSBatch(Int_data->RK_tmp, Int_data->RK2, Int_data->nonlin, Int_data->nabla_psi);
 	for (int i = 0; i < local_Ny; ++i) {
 		tmp = i * Nx_Fourier;
 		for (int j = 0; j < Nx_Fourier; ++j) {
@@ -418,7 +416,7 @@ void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdif
 		}
 	}
 	// ----------------------- Stage 3
-	NonlinearRHSBatch(Int_data->RK_tmp, Int_data->RK3, Int_data->nonlin, Int_data->nabla_psi, Int_data->nabla_w);
+	NonlinearRHSBatch(Int_data->RK_tmp, Int_data->RK3, Int_data->nonlin, Int_data->nabla_psi);
 	for (int i = 0; i < local_Ny; ++i) {
 		tmp = i * Nx_Fourier;
 		for (int j = 0; j < Nx_Fourier; ++j) {
@@ -429,7 +427,7 @@ void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdif
 		}
 	}
 	// ----------------------- Stage 4
-	NonlinearRHSBatch(Int_data->RK_tmp, Int_data->RK4, Int_data->nonlin, Int_data->nabla_psi, Int_data->nabla_w);
+	NonlinearRHSBatch(Int_data->RK_tmp, Int_data->RK4, Int_data->nonlin, Int_data->nabla_psi);
 	for (int i = 0; i < local_Ny; ++i) {
 		tmp = i * Nx_Fourier;
 		for (int j = 0; j < Nx_Fourier; ++j) {
@@ -440,7 +438,7 @@ void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdif
 		}
 	}
 	// ----------------------- Stage 5
-	NonlinearRHSBatch(Int_data->RK_tmp, Int_data->RK5, Int_data->nonlin, Int_data->nabla_psi, Int_data->nabla_w);
+	NonlinearRHSBatch(Int_data->RK_tmp, Int_data->RK5, Int_data->nonlin, Int_data->nabla_psi);
 	for (int i = 0; i < local_Ny; ++i) {
 		tmp = i * Nx_Fourier;
 		for (int j = 0; j < Nx_Fourier; ++j) {
@@ -451,8 +449,8 @@ void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdif
 		}
 	}
 	// ----------------------- Stage 6
-	NonlinearRHSBatch(Int_data->RK_tmp, Int_data->RK6, Int_data->nonlin, Int_data->nabla_psi, Int_data->nabla_w);
-	#if defined(__DPRK5)
+	NonlinearRHSBatch(Int_data->RK_tmp, Int_data->RK6, Int_data->nonlin, Int_data->nabla_psi);
+	#if defined(__DPRK5CN)
 	for (int i = 0; i < local_Ny; ++i) {
 		tmp = i * Nx_Fourier;
 		for (int j = 0; j < Nx_Fourier; ++j) {
@@ -463,7 +461,7 @@ void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdif
 		}
 	}
 	// ----------------------- Stage 7
-	NonlinearRHSBatch(Int_data->RK_tmp, Int_data->RK7, Int_data->nonlin, Int_data->nabla_psi, Int_data->nabla_w);
+	NonlinearRHSBatch(Int_data->RK_tmp, Int_data->RK7, Int_data->nonlin, Int_data->nabla_psi);
 	#endif
 
 	/////////////////////
@@ -510,7 +508,7 @@ void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdif
 				// Reset the amplitudes
 				run_data->w_hat[indx] *= (tmp_a_k_norm / cabs(run_data->w_hat[indx]));
 				#endif
-				#if defined(__DPRK5)
+				#if defined(__DPRK5CN)
 				if (iters > 1) {
 					// Get the higher order update step
 					dp_ho_step = run_data->w_hat[indx] + dt * (RK5_Bs1 * Int_data->RK1[indx]) + dt * (RK5_Bs3 * Int_data->RK3[indx]) + dt * (RK5_Bs4 * Int_data->RK4[indx]) + dt * (RK5_Bs5 * Int_data->RK5[indx]) + dt * (RK5_Bs6 * Int_data->RK6[indx]) + dt * (RK5_Bs7 * Int_data->RK7[indx]);
@@ -534,14 +532,14 @@ void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdif
 	}
 	#if defined(__NONLIN)
 	// Record the nonlinear for the updated Fourier vorticity
-	NonlinearRHSBatch(run_data->w_hat, run_data->nonlinterm, Int_data->nonlin, Int_data->nabla_psi, Int_data->nabla_w);
+	NonlinearRHSBatch(run_data->w_hat, run_data->nonlinterm, Int_data->nonlin, Int_data->nabla_psi);
 	if (sys_vars->local_forcing_proc) {
 		for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
 			run_data->nonlinterm[run_data->forcing_indx[i]] -= run_data->forcing[i];
 		}
 	}
 	#endif
-	#if defined(__DPRK5)
+	#if defined(__DPRK5CN)
 	if (iters > 1) {
 		// Reduce and sync the error sum across the processes
 		MPI_Allreduce(MPI_IN_PLACE, &err_sum, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
@@ -568,7 +566,7 @@ void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdif
 	#endif
 }
 #endif
-#if defined(__DPRK5)
+#if defined(__DPRK5CN)
 /**
  * Function used to find the max between two numbers -> used in the Dormand Prince scheme
  * @param  a Double that will be used to find the max
@@ -620,7 +618,7 @@ double DPMin(double a, double b) {
  * @param local_Ny Int indicating the local size of the first dimension of the arrays	
  * @param Int_data  Struct pointing the Integration variables: stages, tmp arrays, rhs and arrays needed for NonlinearRHS function
  */
-#if defined(__RK4) || defined(__RK4CN) || defined(__AB4)
+#if defined(__RK4) || defined(__RK4CN) || defined(__AB4CN)
 void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Ny, Int_data_struct* Int_data) {
 
 	// Initialize vairables
@@ -653,7 +651,7 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Ny, Int_d
 	/// RK STAGES
 	/////////////////////
 	// ----------------------- Stage 1
-	NonlinearRHSBatch(run_data->w_hat, Int_data->RK1, Int_data->nonlin, Int_data->nabla_psi, Int_data->nabla_w);
+	NonlinearRHSBatch(run_data->w_hat, Int_data->RK1, Int_data->nonlin, Int_data->nabla_psi);
 	for (int i = 0; i < local_Ny; ++i) {
 		tmp = i * Nx_Fourier;
 		for (int j = 0; j < Nx_Fourier; ++j) {
@@ -686,16 +684,13 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Ny, Int_d
 
 			// Update temporary input for nonlinear term
 			Int_data->RK_tmp[indx] = run_data->w_hat[indx] + RK4_A21 * (dt * Int_data->RK1[indx]);
-			// printf("RHS1[%d, %d]: %1.16lf %1.16lf -- (%d, %d) -- wh[%d, %d]: %1.16lf %1.16lf \n", run_data->k[0][i], run_data->k[1][j], creal(Int_data->RK1[indx] * dt), cimag(Int_data->RK1[indx] * dt), run_data->k[0][i], run_data->k[1][j], run_data->k[0][i], run_data->k[1][j], creal(Int_data->RK_tmp[indx]), cimag(Int_data->RK_tmp[indx]));
 		}
-		// printf("\n");
 	}
-	// printf("\n");
 	// PrintScalarFourier(Int_data->RK1, N, "RK1");
 	// PrintScalarFourier(Int_data->RK_tmp, N, "wh");
 
 	// ----------------------- Stage 2
-	NonlinearRHSBatch(Int_data->RK_tmp, Int_data->RK2, Int_data->nonlin, Int_data->nabla_psi, Int_data->nabla_w);
+	NonlinearRHSBatch(Int_data->RK_tmp, Int_data->RK2, Int_data->nonlin, Int_data->nabla_psi);
 	for (int i = 0; i < local_Ny; ++i) {
 		tmp = i * Nx_Fourier;
 		for (int j = 0; j < Nx_Fourier; ++j) {
@@ -725,19 +720,14 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Ny, Int_d
 			Int_data->RK2[indx] += D_fac * Int_data->RK_tmp[indx];
 			#endif
 
-
 			// Update temporary input for nonlinear term
 			Int_data->RK_tmp[indx] = run_data->w_hat[indx] + RK4_A32 * (dt * Int_data->RK2[indx]);
-			// printf("RHS2[%d, %d]: %1.16lf %1.16lf -- (%d, %d)\n", run_data->k[0][i], run_data->k[1][j], creal(Int_data->RK2[indx] * dt), cimag(Int_data->RK2[indx] * dt), run_data->k[0][i], run_data->k[1][j]);
 		}
-		// printf("\n");
 	}
-	// printf("\n");
-	// PrintScalarFourier(Int_data->RK2, N, "RK2");
-	// PrintScalarFourier(Int_data->RK_tmp, N, "wh");
+
 
 	// ----------------------- Stage 3
-	NonlinearRHSBatch(Int_data->RK_tmp, Int_data->RK3, Int_data->nonlin, Int_data->nabla_psi, Int_data->nabla_w);
+	NonlinearRHSBatch(Int_data->RK_tmp, Int_data->RK3, Int_data->nonlin, Int_data->nabla_psi);
 	for (int i = 0; i < local_Ny; ++i) {
 		tmp = i * Nx_Fourier;
 		for (int j = 0; j < Nx_Fourier; ++j) {
@@ -767,16 +757,13 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Ny, Int_d
 			Int_data->RK3[indx] += D_fac * Int_data->RK_tmp[indx];
 			#endif
 
-
 			// Update temporary input for nonlinear term
 			Int_data->RK_tmp[indx] = run_data->w_hat[indx] + RK4_A43 * (dt * Int_data->RK3[indx]);
-			// printf("RHS3[%d, %d]: %1.16lf %1.16lf -- (%d, %d)\n", run_data->k[0][i], run_data->k[1][j], creal(Int_data->RK3[indx] * dt), cimag(Int_data->RK3[indx] * dt), run_data->k[0][i], run_data->k[1][j]);
 		}
-		// printf("\n");
 	}
-	// printf("\n");
+
 	// ----------------------- Stage 4
-	NonlinearRHSBatch(Int_data->RK_tmp, Int_data->RK4, Int_data->nonlin, Int_data->nabla_psi, Int_data->nabla_w);
+	NonlinearRHSBatch(Int_data->RK_tmp, Int_data->RK4, Int_data->nonlin, Int_data->nabla_psi);
 	#if defined(__RK4)
 	for (int i = 0; i < local_Ny; ++i) {
 		tmp = i * Nx_Fourier;
@@ -804,26 +791,9 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Ny, Int_d
 			}
 
 			Int_data->RK4[indx] += D_fac * Int_data->RK_tmp[indx];
-
-			// printf("RHS4[%d, %d]: %1.16lf %1.16lf -- (%d, %d)\n", run_data->k[0][i], run_data->k[1][j], creal(Int_data->RK4[indx] * dt), cimag(Int_data->RK4[indx] * dt), run_data->k[0][i], run_data->k[1][j]);
-
 		}
-		// printf("\n");
 	}
 	#endif
-	
-	// for (int i = 0; i < local_Ny; ++i) {
-	// 	tmp = i * Nx_Fourier;
-	// 	for (int j = 0; j < Nx_Fourier; ++j) {
-	// 		indx = tmp + j;
-	// 		printf("RHS4[%d, %d]: %1.16lf %1.16lf -- (%d, %d)\n", run_data->k[0][i], run_data->k[1][j], creal(Int_data->RK4[indx] * dt), cimag(Int_data->RK4[indx] * dt), run_data->k[0][i], run_data->k[1][j]);
-	// 	}
-	// 	printf("\n");
-	// }
-	// printf("\n");
-	// printf("\n\n\n\n\n");
-	
-	// printf("nu: %lf\tdt: %lf\ta: %lf\thyper_flag: %d\thyper_pow: %lf\thypo_flag: %d\thypo_pow: %lf\t\t--HYPER: %d\t\tHYPO: %d\n", sys_vars->NU, dt, sys_vars->EKMN_ALPHA, sys_vars->HYPER_VISC_FLAG, sys_vars->HYPER_VISC_POW, sys_vars->EKMN_DRAG_FLAG, sys_vars->EKMN_DRAG_POW, HYPER_VISC, EKMN_DRAG);
 	
 	/////////////////////
 	/// UPDATE STEP
@@ -841,9 +811,8 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Ny, Int_d
 
 				#if defined(__EULER) || (defined(__NAVIER) && defined(__RK4))
 				// Update Fourier vorticity with the RHS
-				run_data->w_hat[indx] = run_data->w_hat[indx] + (dt / 6.0) * (Int_data->RK1[indx] + 2.0 * Int_data->RK2[indx] + 2.0 * Int_data->RK3[indx] + Int_data->RK4[indx]);
-				// run_data->w_hat[indx] = run_data->w_hat[indx] + (dt * (RK4_B1 * Int_data->RK1[indx]) + dt * (RK4_B2 * Int_data->RK2[indx]) + dt * (RK4_B3 * Int_data->RK3[indx]) + dt * (RK4_B4 * Int_data->RK4[indx]));
-				#elif defined(__NAVIER) && defined(__RK4CN)
+				run_data->w_hat[indx] = run_data->w_hat[indx] + (dt * (RK4_B1 * Int_data->RK1[indx]) + dt * (RK4_B2 * Int_data->RK2[indx]) + dt * (RK4_B3 * Int_data->RK3[indx]) + dt * (RK4_B4 * Int_data->RK4[indx]));
+				#elif defined(__NAVIER) && (defined(__RK4CN) || defined(__AB4CN))
 				// Compute the pre factors for the RK4CN update step
 				k_sqr = (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 				
@@ -863,10 +832,8 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Ny, Int_d
 					// No hyper viscosity or no ekman drag -> just normal viscosity
 					D_fac = dt * sys_vars->NU * k_sqr;
 				}
-				
 				// Update Fourier vorticity
-				run_data->w_hat[indx] = (1.0 / (1.0 + 0.5 * D_fac)) * ((1.0 - 0.5 * D_fac) * run_data->w_hat[indx] + (RK4_B1 * (Int_data->RK1[indx] * dt) + RK4_B2 * (Int_data->RK2[indx] * dt) + RK4_B3 * (Int_data->RK3[indx] * dt) + RK4_B4 * (Int_data->RK4[indx] * dt)));
-				// run_data->w_hat[indx] = run_data->w_hat[indx] * ((2.0 - D_fac) / (2.0 + D_fac)) + (2.0 * dt / (2.0 + D_fac)) * (RK4_B1 * Int_data->RK1[indx] + RK4_B2 * Int_data->RK2[indx] + RK4_B3 * Int_data->RK3[indx] + RK4_B4 * Int_data->RK4[indx]);
+				run_data->w_hat[indx] = run_data->w_hat[indx] * ((2.0 - D_fac) / (2.0 + D_fac)) + (2.0 * dt / (2.0 + D_fac)) * (RK4_B1 * Int_data->RK1[indx] + RK4_B2 * Int_data->RK2[indx] + RK4_B3 * Int_data->RK3[indx] + RK4_B4 * Int_data->RK4[indx]);
 				#endif
 				#if defined(PHASE_ONLY)
 				run_data->w_hat[indx] *= (tmp_a_k_norm / cabs(run_data->w_hat[indx]));
@@ -875,15 +842,12 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Ny, Int_d
 			else {
 				run_data->w_hat[indx] = 0.0 + 0.0 * I;
 			}
-			// printf("d[%d,%d]: %1.6lf - %1.6lf ", run_data->k[0][i], run_data->k[1][j], 1.0/(1.0 + D_fac * 0.5), 1.0 - D_fac * 0.5);
-			// printf("wh[%d,%d]: %1.16lf %1.16lfi\n", run_data->k[0][i], run_data->k[1][j], creal(run_data->w_hat[indx]), cimag(run_data->w_hat[indx]));
 		}
-		// printf("\n");
 	}
-	// PrintScalarFourier(run_data->w_hat, N, "wnew");
+
 	#if defined(__NONLIN)
 	// Record the nonlinear term with the updated Fourier vorticity
-	NonlinearRHSBatch(run_data->w_hat, run_data->nonlinterm, Int_data->nonlin, Int_data->nabla_psi, Int_data->nabla_w);
+	NonlinearRHSBatch(run_data->w_hat, run_data->nonlinterm, Int_data->nonlin, Int_data->nabla_psi);
 	if (sys_vars->local_forcing_proc) {
 		for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
 			run_data->nonlinterm[run_data->forcing_indx[i]] -= run_data->forcing[i];
@@ -899,9 +863,8 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Ny, Int_d
  * @param w_hat     Input array: contains the current vorticity of the system
  * @param dw_hat_dt Output array: Contains the result of the dealiased nonlinear term. Also used as an intermediate array to save memory
  * @param u         Array to hold the real space velocities
- * @param nabla_w   Array to hold the real space vorticity derivatives
  */
-void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* nonlinear, double* u, double* nabla_w) {
+void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* nonlinear, double* u) {
 
 	// Initialize variables
 	int tmp, indx;
@@ -914,7 +877,8 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* non
 	double vel2;
 	double norm_fac = 1.0 / (Ny * Nx);
 
-		// -----------------------------------
+
+	// -----------------------------------
 	// Compute Fourier Space Velocities
 	// -----------------------------------
 	// Compute (-\Delta)^-1 \omega - i.e., u_hat = d\psi_dy = I ky/|k|^2 \omegahat_k, v_hat = -d\psi_dx = I kx/|k|^2 \omegahat_k
@@ -938,16 +902,9 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* non
 				dw_hat_dt[SYS_DIM * indx + 0] = 0.0 + 0.0 * I;
 				dw_hat_dt[SYS_DIM * indx + 1] = 0.0 + 0.0 * I;
 			}
-			// printf("uh[%d, %d]: %1.16lf %1.16lf -- vh[%d, %d]: %1.16lf %1.16lf -- wh[%d, %d]: %1.16lf %1.16lf  -- (%d, %d)\n", run_data->k[0][i], run_data->k[1][j], creal(dw_hat_dt[SYS_DIM * indx + 0]), cimag(dw_hat_dt[SYS_DIM * indx + 0]), run_data->k[0][i], run_data->k[1][j], creal(dw_hat_dt[SYS_DIM * indx + 1]), cimag(dw_hat_dt[SYS_DIM * indx + 1]), run_data->k[0][i], run_data->k[1][j], creal(w_hat[indx]), cimag(w_hat[indx]), run_data->k[0][i], run_data->k[1][j]);
 		}
-		// printf("\n");
 	}
-	// printf("\n");
-
-	// PrintVectorFourier(dw_hat_dt, sys_vars->N, "uh", "vh");
-	// PrintScalarFourier(run_data->w_hat_tmp, sys_vars->N, "wh");
-
-	// // Ensure conjugacy in the ky = 0 modes of the intial condition
+	// Ensure conjugacy in the kx = 0
     ForceConjugacy(dw_hat_dt, sys_vars->N, 2);
 
 	// ----------------------------------
@@ -955,43 +912,15 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* non
 	// ----------------------------------
 	// Batch transform both fourier velocites to real space
 	fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_batch_c2r), dw_hat_dt, u);
-	
-	
-	// ---------------------------------------------
-	// Compute Fourier Space Vorticity Derivatives
-	// ---------------------------------------------
-	// // Compute \nabla\omega - i.e., d\omegahat_dx = -I kx \omegahat_k, d\omegahat_dy = -I ky \omegahat_k
-	// for (int i = 0; i < local_Ny; ++i) {
-	// 	tmp = i * (Nx_Fourier);
-	// 	for (int j = 0; j < Nx_Fourier; ++j) {
-	// 		indx = tmp + j;
-
-	// 		// Fill vorticity derivatives array
-	// 		if ((run_data->k[0][i] != 0) || (run_data->k[1][j]  != 0)) {
-	// 			dw_hat_dt[SYS_DIM * indx + 0] = I * ((double) run_data->k[1][j]) * w_hat[indx];
-	// 			dw_hat_dt[SYS_DIM * indx + 1] = I * ((double) run_data->k[0][i]) * w_hat[indx]; 
-	// 		}
-	// 		else {
-	// 			dw_hat_dt[SYS_DIM * indx + 0] = 0.0 + 0.0 * I;
-	// 			dw_hat_dt[SYS_DIM * indx + 1] = 0.0 + 0.0 * I;
-	// 		}
-	// 		// printf("dwdx[%d, %d]: %1.16lf %1.16lf -- dwdy[%d, %d]: %1.16lf %1.16lf -- (%d, %d)\n", i, j, creal(dw_hat_dt[SYS_DIM * indx + 0]), cimag(dw_hat_dt[SYS_DIM * indx + 0]), i, j, creal(dw_hat_dt[SYS_DIM * indx + 1]), cimag(dw_hat_dt[SYS_DIM * indx + 1]), run_data->k[0][i], run_data->k[1][j]);
-
-	// 	}
-	// 	// printf("\n");
-	// }
-	// // printf("\n");
-
 
 	// ----------------------------------
 	// Transform to Real Space
 	// ----------------------------------
-	// Batch transform both fourier vorticity derivatives to real space
-	// fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_batch_c2r), dw_hat_dt, nabla_w);
+	// Transform Fourier vorticity to real space
 	fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_c2r), run_data->w_hat_tmp, run_data->w);
-	
 	// PrintVectorReal(u, sys_vars->N, "u", "v");
 	// PrintScalarReal(run_data->w, sys_vars->N, "w");
+	
 	// -----------------------------------
 	// Perform Convolution in Real Space
 	// -----------------------------------
@@ -1000,28 +929,20 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* non
 		tmp = i * (Nx + 2);
 		for (int j = 0; j < Nx; ++j) {
 			indx = tmp + j; 
-			// printf("u[%d, %d]: %1.16lf -- v[%d, %d]: %1.16lf -- w[%d, %d]: %1.16lf\n", i, j, u[SYS_DIM * indx + 0], i, j, u[SYS_DIM * indx + 1], i, j, run_data->w[indx]);
 
- 			// // Perform multiplication of the nonlinear term 
- 			// vel1 = u[SYS_DIM * indx + 0];
- 			// vel2 = u[SYS_DIM * indx + 1];
- 			// nonlinear[indx] = (vel1 * nabla_w[SYS_DIM * indx + 0] + vel2 * nabla_w[SYS_DIM * indx + 1]);
 			// Perform multiplication of the nonlinear term 
 			u[SYS_DIM * indx + 0] *= run_data->w[indx];
 			u[SYS_DIM * indx + 1] *= run_data->w[indx];
  		}
- 		// printf("\n");
  	}
- 	// printf("\n");
 
  	// -------------------------------------
  	// Transform Nonlinear Term To Fourier
  	// -------------------------------------
  	// Transform Fourier nonlinear term back to Fourier space
- 	// fftw_mpi_execute_dft_r2c((sys_vars->fftw_2d_dft_r2c), nonlinear, dw_hat_dt);
  	fftw_mpi_execute_dft_r2c((sys_vars->fftw_2d_dft_batch_r2c), u, dw_hat_dt);
 
-	// // Ensure conjugacy in the ky = 0 modes of the intial condition
+	// Ensure conjugacy in the kx = 0 modes
     ForceConjugacy(dw_hat_dt, sys_vars->N, 2);
 
  	for (int i = 0; i < local_Ny; ++i) {
@@ -1031,7 +952,6 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* non
 
  			if ((run_data->k[0][i] != 0) || (run_data->k[1][j]  != 0)) {
  				dw_hat_dt[indx] = (-I * run_data->k[1][j] * dw_hat_dt[SYS_DIM * indx + 0] -I * run_data->k[0][i] * dw_hat_dt[SYS_DIM * indx + 1]) * pow(norm_fac, 1.0);
- 				// dw_hat_dt[indx] *= pow(norm_fac, 2.0);
  			}
  			else {
  				dw_hat_dt[indx] = 0.0 + 0.0 * I;
@@ -1049,10 +969,8 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* non
 			dw_hat_dt[run_data->forcing_indx[i]] += run_data->forcing[i]; 
 		}
 	}
-
 	// PrintScalarFourier(dw_hat_dt, sys_vars->N, "curl");
 
-	
  	// Apply dealiasing 
  	ApplyDealiasing(dw_hat_dt, 1, sys_vars->N);
 
@@ -1249,6 +1167,7 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 					if (run_data->k[1][j] == 4 && (run_data->k[0][i] == 5 || run_data->k[0][i] == 6)) {
 						w_hat[indx] = 8.0 - 6.0 * I;
 					} 
+					// w_hat[indx] = (i + sys_vars->local_Ny_start) + (i + sys_vars->local_Ny_start) * I;
 				}
 			}
 		}
@@ -1350,7 +1269,7 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 			}
 		}
 		// Normalize 
-		enrg *= (0.5 / pow(Ny * Nx, 2.0)) * 4.0 * pow(M_PI, 2.0);
+		// enrg *= (0.5 / pow(Ny * Nx, 2.0)) * 4.0 * pow(M_PI, 2.0);
 
 		// Reduce all local energy sums and broadcast back to each process
 		MPI_Allreduce(MPI_IN_PLACE, &enrg, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
@@ -1477,7 +1396,7 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 				indx = tmp + j;	
 
 				// Normalize
-				psi[indx] -=  (mean / (Ny * Nx));
+				psi[indx] -=  (mean); // / (Ny * Nx)
 			}
 		}
 
@@ -1506,7 +1425,7 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 			}
 		}
 		// Normalize the energy
-		enrg *= 4.0 * pow(M_PI, 2.0) * (0.5 / pow(Ny * Nx, 2.0));
+		// enrg *= 4.0 * pow(M_PI, 2.0) * (0.5 / pow(Ny * Nx, 2.0));
 		
 		// Reduce all local energy sums and broadcast back to each process
 		MPI_Allreduce(MPI_IN_PLACE, &enrg, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
@@ -1597,7 +1516,7 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 			}
 		}
 		// Normalize the energy
-		enrg *= 4.0 * pow(M_PI, 2.0) * (0.5 / pow(Ny * Nx, 2.0));
+		// enrg *= 4.0 * pow(M_PI, 2.0) * (0.5 / pow(Ny * Nx, 2.0));
 		
 		// Reduce all local energy sums and broadcast back to each process
 		MPI_Allreduce(MPI_IN_PLACE, &enrg, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
@@ -1769,7 +1688,7 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 		}
 		// Synchronize normalization factor amongst the processes
 		MPI_Allreduce(MPI_IN_PLACE, &norm, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-		norm = sqrt(1.0 / norm);
+		norm = 0.5 * sqrt(1.0 / norm);
 
 		// ---------------------------------------
 		// Initialize Fourier Space Vorticity
@@ -2112,7 +2031,6 @@ void ForceConjugacy(fftw_complex* array, const long int* N, const int dim) {
 		tmp = i * Nx_Fourier;
 		for (int d = 0; d < dim; ++d) {
 			conj_data[dim * (local_Ny_start + i) + d] = array[dim * tmp + d];
-			// printf("c[%d,%d]: %lf %lf i\n", run_data->k[0][i], d, creal(conj_data[dim * (local_Ny_start + i) + d]), cimag(conj_data[dim * (local_Ny_start + i) + d]));
 		}
 	}
 
@@ -2518,7 +2436,7 @@ void GetTimestep(double* dt) {
 	// -------------------------------
 	// Record Min/Max Timestep
 	// -------------------------------
-	#if !defined(__DPRK5)
+	#if !defined(__DPRK5CN)
 	// Get min timestep
 	sys_vars->min_dt = fmin((*dt), sys_vars->min_dt);
 	// Get max timestep
@@ -2769,11 +2687,6 @@ void AllocateMemory(const long int* NBatch, Int_data_struct* Int_data) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for Integration Array ["CYAN"%s"RESET"] \n-->> Exiting!!!\n", "nabla_psi");
 		exit(1);
 	}
-	Int_data->nabla_w   = (double* )fftw_malloc(sizeof(double) * 2 * sys_vars->alloc_local_batch);
-	if (Int_data->nabla_w == NULL) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for Integration Array ["CYAN"%s"RESET"] \n-->> Exiting!!!\n", "nabla_w");
-		exit(1);
-	}
 	Int_data->nonlin   = (double* )fftw_malloc(sizeof(double) * 2 * sys_vars->alloc_local);
 	if (Int_data->nonlin == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for Integration Array ["CYAN"%s"RESET"] \n-->> Exiting!!!\n", "nonlin");
@@ -2804,7 +2717,7 @@ void AllocateMemory(const long int* NBatch, Int_data_struct* Int_data) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for Integration Array ["CYAN"%s"RESET"] \n-->> Exiting!!!\n", "RK_tmp");
 		exit(1);
 	}
-	#if defined(__RK5) || defined(__DPRK5)
+	#if defined(__RK5CN) || defined(__DPRK5CN)
 	Int_data->RK5       = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->alloc_local_batch);
 	if (Int_data->RK5 == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for Integration Array ["CYAN"%s"RESET"] \n-->> Exiting!!!\n", "RK5");
@@ -2816,7 +2729,7 @@ void AllocateMemory(const long int* NBatch, Int_data_struct* Int_data) {
 		exit(1);
 	}
 	#endif
-	#if defined(__DPRK5)
+	#if defined(__DPRK5CN)
 	Int_data->RK7       = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->alloc_local_batch);
 	if (Int_data->RK7 == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for Integration Array ["CYAN"%s"RESET"] \n-->> Exiting!!!\n", "RK7");
@@ -2828,7 +2741,7 @@ void AllocateMemory(const long int* NBatch, Int_data_struct* Int_data) {
 		exit(1);
 	}
 	#endif
-	#if defined(__AB4)
+	#if defined(__AB4CN)
 	// Initialize the number of derivative steps
 	Int_data->AB_pre_steps = 3;
 
@@ -2863,8 +2776,6 @@ void AllocateMemory(const long int* NBatch, Int_data_struct* Int_data) {
 			Int_data->nonlin[indx_real]                  = 0.0;
 			run_data->u[SYS_DIM * indx_real + 0]         = 0.0;
 			run_data->u[SYS_DIM * indx_real + 1]         = 0.0;
-			Int_data->nabla_w[SYS_DIM * indx_real + 0]   = 0.0;
-			Int_data->nabla_w[SYS_DIM * indx_real + 1]   = 0.0;
 			Int_data->nabla_psi[SYS_DIM * indx_real + 0] = 0.0;
 			Int_data->nabla_psi[SYS_DIM * indx_real + 1] = 0.0;
 			#if defined(TESTING)
@@ -2896,18 +2807,18 @@ void AllocateMemory(const long int* NBatch, Int_data_struct* Int_data) {
 				run_data->nonlinterm[SYS_DIM * indx_four + 0] = 0.0 + 0.0 * I;
 				run_data->nonlinterm[SYS_DIM * indx_four + 1] = 0.0 + 0.0 * I;
 				#endif
-				#if defined(__RK5)
+				#if defined(__RK5CN)
 				Int_data->RK5[SYS_DIM * indx_four + 0]    	  = 0.0 + 0.0 * I;
 				Int_data->RK5[SYS_DIM * indx_four + 1]    	  = 0.0 + 0.0 * I;
 				Int_data->RK6[SYS_DIM * indx_four + 0]    	  = 0.0 + 0.0 * I;
 				Int_data->RK6[SYS_DIM * indx_four + 1]    	  = 0.0 + 0.0 * I;
 				#endif
-				#if defined(__DPRK5)
+				#if defined(__DPRK5CN)
 				Int_data->RK7[SYS_DIM * indx_four + 0]    	 = 0.0 + 0.0 * I;
 				Int_data->RK7[SYS_DIM * indx_four + 1]    	 = 0.0 + 0.0 * I;
 				Int_data->w_hat_last[indx_four]			 	 = 0.0 + 0.0 * I;
 				#endif
-				#if defined(__DPRK5)
+				#if defined(__DPRK5CN)
 				Int_data->AB_tmp[SYS_DIM * indx_four + 0] = 0.0 + 0.0 * I;
 				Int_data->AB_tmp[SYS_DIM * indx_four + 1] = 0.0 + 0.0 * I;
 				for (int a = 0; a < 3; ++a) {
@@ -3053,15 +2964,15 @@ void FreeMemory(Int_data_struct* Int_data) {
 	fftw_free(Int_data->RK2);
 	fftw_free(Int_data->RK3);
 	fftw_free(Int_data->RK4);
-	#if defined(__RK5) || defined(__DPRK5)
+	#if defined(__RK5CN) || defined(__DPRK5CN)
 	fftw_free(Int_data->RK5);
 	fftw_free(Int_data->RK6);
 	#endif 
-	#if defined(__DPRK5)
+	#if defined(__DPRK5CN)
 	fftw_free(Int_data->RK7);
 	fftw_free(Int_data->w_hat_last);
 	#endif
-	#if defined(__AB4)
+	#if defined(__AB4CN)
 	fftw_free(Int_data->AB_tmp);
 	for (int i = 0; i < 3; ++i) {
 		fftw_free(Int_data->AB_tmp_nonlin[i]);
@@ -3069,7 +2980,6 @@ void FreeMemory(Int_data_struct* Int_data) {
 	#endif
 	fftw_free(Int_data->RK_tmp);
 	fftw_free(Int_data->nonlin);
-	fftw_free(Int_data->nabla_w);
 	fftw_free(Int_data->nabla_psi);
 
 	#if defined(__STATS)

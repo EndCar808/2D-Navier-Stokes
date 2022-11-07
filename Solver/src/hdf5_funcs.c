@@ -159,6 +159,8 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 				run_data->w_hat_tmp[indx] = run_data->w_hat[indx];
 			}
 		}
+		ApplyDealiasing(run_data->w_hat_tmp, 1, sys_vars->N);
+
 		// Transform vorticity back to real space and normalize
 		fftw_mpi_execute_dft_c2r(sys_vars->fftw_2d_dft_c2r, run_data->w_hat_tmp, run_data->w);
 		for (int i = 0; i < sys_vars->local_Ny; ++i) {
@@ -251,6 +253,8 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 				run_data->u_hat_tmp[SYS_DIM * indx + 1] = run_data->u_hat[SYS_DIM * indx + 1]; 
 			}
 		}
+		ApplyDealiasing(run_data->u_hat_tmp, 2, sys_vars->N);
+
 		// Transform velocities back to real space and normalize
 		fftw_mpi_execute_dft_c2r(sys_vars->fftw_2d_dft_batch_c2r, run_data->u_hat_tmp, run_data->u);
 		for (int i = 0; i < sys_vars->local_Ny; ++i) {
@@ -491,12 +495,12 @@ void GetOutputDirPath(void) {
 		sprintf(solv_type, "%s", "RK4");
 		#elif defined(__RK4CN)
 		sprintf(solv_type, "%s", "RK4CN");
-		#elif defined(__RK5)
-		sprintf(solv_type, "%s", "RK5");
-		#elif defined(__DPRK5)
-		sprintf(solv_type, "%s", "DP5");
-		#elif defined(__AB4)
-		sprintf(solv_type, "%s", "AB4"); 
+		#elif defined(__RK5CN)
+		sprintf(solv_type, "%s", "RK5CN");
+		#elif defined(__DPRK5CN)
+		sprintf(solv_type, "%s", "DP5CN");
+		#elif defined(__AB4CN)
+		sprintf(solv_type, "%s", "AB4CN"); 
 		#else 
 		sprintf(solv_type, "%s", "UKN");
 		#endif
@@ -580,12 +584,12 @@ void GetOutputDirPath(void) {
 		sprintf(solv_type, "%s", "RK4");
 		#elif defined(__RK4CN)
 		sprintf(solv_type, "%s", "RK4CN");
-		#elif defined(__RK5)
-		sprintf(solv_type, "%s", "RK5");
-		#elif defined(__AB4)
-		sprintf(solv_type, "%s", "AB4");
-		#elif defined(__DPRK5)
-		sprintf(solv_type, "%s", "DP5");
+		#elif defined(__RK5CN)
+		sprintf(solv_type, "%s", "RK5CN");
+		#elif defined(__AB4CN)
+		sprintf(solv_type, "%s", "AB4CN");
+		#elif defined(__DPRK5CN)
+		sprintf(solv_type, "%s", "DP5CN");
 		#else 
 		sprintf(solv_type, "%s", "SOLV_UKN");
 		#endif
@@ -823,6 +827,8 @@ void WriteDataToFile(double t, double dt, long int iters) {
 			run_data->w_hat_tmp[indx] = run_data->w_hat[indx];
 		}
 	}
+	ApplyDealiasing(run_data->w_hat_tmp, 1, sys_vars->N);
+
 	// Transform Fourier space vorticiy to real space and normalize
 	fftw_mpi_execute_dft_c2r(sys_vars->fftw_2d_dft_c2r, run_data->w_hat_tmp, run_data->w);
 	for (int i = 0; i < sys_vars->local_Ny; ++i) {
@@ -914,6 +920,8 @@ void WriteDataToFile(double t, double dt, long int iters) {
 			run_data->u_hat_tmp[SYS_DIM * indx + 1] = run_data->u_hat[SYS_DIM * indx + 1]; 
 		}
 	}
+	ApplyDealiasing(run_data->u_hat_tmp, 2, sys_vars->N);
+
 	// Transform velocities back to real space and normalize
 	fftw_mpi_execute_dft_c2r(sys_vars->fftw_2d_dft_batch_c2r, run_data->u_hat_tmp, run_data->u);
 	for (int i = 0; i < sys_vars->local_Ny; ++i) {

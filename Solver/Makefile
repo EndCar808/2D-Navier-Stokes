@@ -87,8 +87,11 @@ OUTDIR := $(shell mkdir -p $(OUT))
 
 SRCDIR     := src
 SRCFILE    := $(wildcard $(SRCDIR)/*.c)
+## Main Solver Objects
 SRCOBJ     := $(patsubst $(SRCDIR)/%.c, $(OBJBIN)/%.o, $(SRCFILE))
+## Phase Only Objects
 SRCOBJ_PO  := $(patsubst $(SRCDIR)/%.c, $(OBJBIN)/%_phase_only.o, $(SRCFILE))
+## Testing Src Objects
 SRCOBJ_TG  := $(patsubst $(SRCDIR)/%.c, $(OBJBIN)/%_TG_test.o, $(SRCFILE))
 SRCOBJ_DSL := $(patsubst $(SRCDIR)/%.c, $(OBJBIN)/%_DB_SL_test.o, $(SRCFILE))
 SRCOBJ_DT  := $(patsubst $(SRCDIR)/%.c, $(OBJBIN)/%_DT_test.o, $(SRCFILE))
@@ -107,9 +110,9 @@ DEPS = $(wildcard *.h)
 all: $(BIN)/solver $(BIN)/solver_phase_only $(BIN)/solver_TG_test $(BIN)/solver_DB_SL_test $(BIN)/solver_DT_test $(BIN)/solver_DT2_test
 
 
-####--------
-#  Solver
-####--------
+##################################
+##  		FULL SOLVER   		##
+##################################
 solver: $(BIN)/solver 
 
 $(BIN)/solver: $(SRCOBJ) $(DEPS)
@@ -118,9 +121,9 @@ $(BIN)/solver: $(SRCOBJ) $(DEPS)
 $(OBJBIN)/%.o: $(SRCDIR)/%.c $(DEPS)
 	$(GCC) $(CCFLAG) $(SOLVER_FLAGS) $(DSET_FLAGS) -c $^ -o $@ ${INCDIR} ${LIBDIR} $(LIBFLAG) $(GSLFLAG)
 
-####-----------
-#  Phase Only 
-####-----------
+##################################
+##  		PHASE O   		##
+##################################
 solver_phase_only: $(BIN)/solver_phase_only 
 
 $(BIN)/solver_phase_only: $(SRCOBJ_PO) $(DEPS)
@@ -129,9 +132,9 @@ $(BIN)/solver_phase_only: $(SRCOBJ_PO) $(DEPS)
 $(OBJBIN)/%_phase_only.o: $(SRCDIR)/%.c $(DEPS)
 	$(GCC) $(CCFLAG) $(PHASE_ONLY_FLAGS) $(DSET_FLAGS) -c $^ -o $@ ${INCDIR} ${LIBDIR} $(LIBFLAG) $(GSLFLAG)
 
-####--------
-#  Testing
-####--------
+##############################
+##  		TESTING	   		##
+##############################
 test: $(BIN)/solver_TG_test $(BIN)/solver_DB_SL_test $(BIN)/solver_DT_test $(BIN)/solver_DT2_test
 
 test_run: $(BIN)/solver_TG_test $(BIN)/solver_DB_SL_test $(BIN)/solver_DT_test $(BIN)/solver_DT2_test
@@ -140,28 +143,36 @@ test_run: $(BIN)/solver_TG_test $(BIN)/solver_DB_SL_test $(BIN)/solver_DT_test $
 	mpirun -n 4 $(BIN)/solver_DT_test -o "../Data/Test/" -n 512 -n 512 -s 0.0 -e 11.0 -h 0.001 -i "DECAY_TURB" -v 0.01 -t "DECAY-TEST" -p 100
 	mpirun -n 4 $(BIN)/solver_DT2_test -o "../Data/Test/" -n 512 -n 512 -s 0.0 -e 11.0 -h 0.001 -i "DECAY_TURB_II" -v 0.01 -t "DECAY2-TEST" -p 100
 
-# Taylor Green IC
+# -------------------------
+## Taylor Green IC
+# -------------------------
 $(BIN)/solver_TG_test: $(SRCOBJ_TG) $(DEPS)
 	$(GCC) $(CCFLAG) $(TG_TEST_FLAGS) $(DSET_FLAGS) -o $@ $^ ${INCDIR} ${LIBDIR} $(LIBFLAG) $(GSLFLAG)
 
 $(OBJBIN)/%_TG_test.o: $(SRCDIR)/%.c $(DEPS)
 	$(GCC) $(CCFLAG) $(TG_TEST_FLAGS) $(DSET_FLAGS) -c $^ -o $@ ${INCDIR} ${LIBDIR} $(LIBFLAG) $(GSLFLAG)
 
-# Double Shear Layor IC
+# -------------------------
+## Double Shear Layor IC
+# -------------------------
 $(BIN)/solver_DB_SL_test: $(SRCOBJ_DSL) $(DEPS)
 	$(GCC) $(CCFLAG) $(DB_SL_TEST_FLAGS) $(DSET_FLAGS) -o $@ $^ ${INCDIR} ${LIBDIR} $(LIBFLAG) $(GSLFLAG)
 
 $(OBJBIN)/%_DB_SL_test.o: $(SRCDIR)/%.c $(DEPS)
 	$(GCC) $(CCFLAG) $(DB_SL_TEST_FLAGS) $(DSET_FLAGS) -c $^ -o $@ ${INCDIR} ${LIBDIR} $(LIBFLAG) $(GSLFLAG)
 
-# Decaying Turbulence IC
+# -------------------------
+## Decaying Turbulence IC
+# -------------------------
 $(BIN)/solver_DT_test: $(SRCOBJ_DT) $(DEPS)
 	$(GCC) $(CCFLAG) $(DT_TEST_FLAGS) $(DSET_FLAGS) -o $@ $^ ${INCDIR} ${LIBDIR} $(LIBFLAG) $(GSLFLAG)
 
 $(OBJBIN)/%_DT_test.o: $(SRCDIR)/%.c $(DEPS)
 	$(GCC) $(CCFLAG) $(DT_TEST_FLAGS) $(DSET_FLAGS) -c $^ -o $@ ${INCDIR} ${LIBDIR} $(LIBFLAG) $(GSLFLAG)
 
-# Decaying Turbulence IC with Hyperviscosity
+# --------------------------------------------
+## Decaying Turbulence IC with Hyperviscosity
+# --------------------------------------------
 $(BIN)/solver_DT2_test: $(SRCOBJ_DT2) $(DEPS)
 	$(GCC) $(CCFLAG) $(DT2_TEST_FLAGS) $(DSET_FLAGS) -o $@ $^ ${INCDIR} ${LIBDIR} $(LIBFLAG) $(GSLFLAG)
 

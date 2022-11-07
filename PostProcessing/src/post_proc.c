@@ -133,14 +133,14 @@ void Precompute(void) {
 	// Initialize variables
 	int gsl_status;
 	int tmp, indx;
-	const long int Nx         = sys_vars->N[0];
-	const long int Ny         = sys_vars->N[1];
-	const long int Ny_Fourier = Ny / 2 + 1;
+	const long int Ny         = sys_vars->N[0];
+	const long int Nx         = sys_vars->N[1];
+	const long int Nx_Fourier = Nx / 2 + 1;
 	int r;
-	int N_max_incr = (int) (GSL_MIN(Nx, Ny) / 2);
+	int N_max_incr = (int) (GSL_MIN(Ny, Nx) / 2);
 	int increment[NUM_INCR] = {1, N_max_incr};
 	double long_increment, trans_increment;
-	double norm_fac = 1.0 / (Nx * Ny);
+	double norm_fac = 1.0 / (Ny * Nx);
 	double std_u, std_w;
 
 	// Print to screen that a pre computation step is need and begin timeing it
@@ -161,18 +161,18 @@ void Precompute(void) {
 		// --------------------------------
 		// Compute the graident in Fourier space
 		#if defined(__GRAD_STATS)
-		for (int i = 0; i < Nx; ++i) {
-			tmp = i * Ny_Fourier;
-			for (int j = 0; j < Ny_Fourier; ++j) {
+		for (int i = 0; i < Ny; ++i) {
+			tmp = i * Nx_Fourier;
+			for (int j = 0; j < Nx_Fourier; ++j) {
 				indx = tmp + j;
 
 				// Compute the gradients of the vorticity
-				proc_data->grad_w_hat[SYS_DIM * indx + 0] = I * run_data->k[0][i] * run_data->w_hat[indx];
-				proc_data->grad_w_hat[SYS_DIM * indx + 1] = I * run_data->k[1][j] * run_data->w_hat[indx];
+				proc_data->grad_w_hat[SYS_DIM * indx + 0] = I * run_data->k[1][j] * run_data->w_hat[indx];
+				proc_data->grad_w_hat[SYS_DIM * indx + 1] = I * run_data->k[0][i] * run_data->w_hat[indx];
 
 				// Compute the gradients of the vorticity
-				proc_data->grad_u_hat[SYS_DIM * indx + 0] = I * run_data->k[0][i] * run_data->u_hat[SYS_DIM * indx + 0];
-				proc_data->grad_u_hat[SYS_DIM * indx + 1] = I * run_data->k[1][j] * run_data->u_hat[SYS_DIM * indx + 1];
+				proc_data->grad_u_hat[SYS_DIM * indx + 0] = I * run_data->k[1][j] * run_data->u_hat[SYS_DIM * indx + 0];
+				proc_data->grad_u_hat[SYS_DIM * indx + 1] = I * run_data->k[0][i] * run_data->u_hat[SYS_DIM * indx + 1];
 				// printf("grad_u_x: %1.16lf + %1.16lf I\tgrad_u_y:  %1.16lf + %1.16lf I\n", creal(proc_data->grad_u_hat[SYS_DIM * indx + 0]), cimag(proc_data->grad_u_hat[SYS_DIM * indx + 0]), creal(proc_data->grad_u_hat[SYS_DIM * indx + 1]), cimag(proc_data->grad_u_hat[SYS_DIM * indx + 1]));
 			}
 		}
@@ -182,9 +182,9 @@ void Precompute(void) {
 		#endif
 
 		// Loop over real space
-		for (int i = 0; i < Nx; ++i) {
-			tmp = i * Ny;
-			for (int j = 0; j < Ny; ++j) {
+		for (int i = 0; i < Ny; ++i) {
+			tmp = i * Nx;
+			for (int j = 0; j < Nx; ++j) {
 				indx = tmp + j;
 
 
@@ -220,8 +220,8 @@ void Precompute(void) {
 					r = increment[r_indx];
 
 					//------------- Get the longitudinal and transverse Velocity increments
-					long_increment  = run_data->u[SYS_DIM * (((i + r) % Nx) * Ny + j) + 0] - run_data->u[SYS_DIM * (i * Ny + j) + 0];
-					trans_increment = run_data->u[SYS_DIM * (((i + r) % Nx) * Ny + j) + 1] - run_data->u[SYS_DIM * (i * Ny + j) + 1];
+					long_increment  = run_data->u[SYS_DIM * (((i + r) % Ny) * Nx + j) + 0] - run_data->u[SYS_DIM * (i * Nx + j) + 0];
+					trans_increment = run_data->u[SYS_DIM * (((i + r) % Ny) * Nx + j) + 1] - run_data->u[SYS_DIM * (i * Nx + j) + 1];
 
 					// Update the stats accumulators
 					gsl_rstat_add(long_increment, stats_data->r_stat_vel_incr[0][r_indx]);
@@ -229,8 +229,8 @@ void Precompute(void) {
 
 
 					//------------- Get the longitudinal and transverse Vorticity increments
-					long_increment  = run_data->w[((i + r) % Nx) * Ny + j] - run_data->w[i * Ny + j];
-					trans_increment = run_data->w[i * Ny + ((j + r) % Ny)] - run_data->w[i * Ny + j];
+					long_increment  = run_data->w[((i + r) % Ny) * Nx + j] - run_data->w[i * Nx + j];
+					trans_increment = run_data->w[i * Nx + ((j + r) % Nx)] - run_data->w[i * Nx + j];
 
 					// Update the stats accumulators
 					gsl_rstat_add(long_increment, stats_data->r_stat_vort_incr[0][r_indx]);
@@ -309,36 +309,36 @@ void AllocateMemory(const long int* N) {
 
 	// Initialize variables
 	int tmp1, tmp2, tmp3;
-	const long int Nx = N[0];
-	const long int Ny = N[1];
-	const long int Ny_Fourier = Ny / 2 + 1;
+	const long int Ny = N[0];
+	const long int Nx = N[1];
+	const long int Nx_Fourier = Nx / 2 + 1;
 
 	// --------------------------------
 	//  Allocate Field Data
 	// --------------------------------
 	// Allocate current Fourier vorticity
-	run_data->w_hat = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * Nx * Ny_Fourier);
+	run_data->w_hat = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * Ny * Nx_Fourier);
 	if (run_data->w_hat == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Fourier Vorticity");
 		exit(1);
 	}
-	run_data->tmp_w_hat = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * Nx * Ny_Fourier);
+	run_data->tmp_w_hat = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * Ny * Nx_Fourier);
 	if (run_data->tmp_w_hat == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Fourier Vorticity");
 		exit(1);
 	}
 
 	// Allocate the Fourier stream funciton
-	run_data->psi_hat = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * Nx * Ny_Fourier);
+	run_data->psi_hat = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * Ny * Nx_Fourier);
 	if (run_data->psi_hat == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Fourier Stream Function");
 		exit(1);
 	}
 
 	// Initialize arrays
-	for (int i = 0; i < Nx; ++i) {
-		tmp2 = i * (Ny_Fourier);
-		for (int j = 0; j < Ny_Fourier; ++j) {
+	for (int i = 0; i < Ny; ++i) {
+		tmp2 = i * (Nx_Fourier);
+		for (int j = 0; j < Nx_Fourier; ++j) {
 			run_data->w_hat[tmp2 + j]     = 0.0 + 0.0 * I;
 			run_data->tmp_w_hat[tmp2 + j] = 0.0 + 0.0 * I;
 			run_data->psi_hat[tmp2 + j]   = 0.0 + 0.0 * I;
@@ -349,32 +349,32 @@ void AllocateMemory(const long int* N) {
 	// --------------------------------
 	#if defined(__REAL_STATS) || defined(__ENST_FLUX) || defined(__ENRG_FLUX) || defined(__SEC_PHASE_SYNC) || defined(__VEL_INC_STATS) || defined(__STR_FUNC_STATS) || defined(__GRAD_STATS) || defined(__VORT_REAL) || defined(__MODES) || defined(__REALSPACE)
 	// Allocate current Fourier vorticity
-	run_data->w = (double* )fftw_malloc(sizeof(double) * Nx * Ny);
+	run_data->w = (double* )fftw_malloc(sizeof(double) * Ny * Nx);
 	if (run_data->w == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Vorticity");
 		exit(1);
 	}
 
 	// Allocate current Fourier vorticity
-	run_data->u_hat = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * Nx * Ny_Fourier * SYS_DIM);
+	run_data->u_hat = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * Ny * Nx_Fourier * SYS_DIM);
 	if (run_data->u_hat == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Fourier Velocity");
 		exit(1);
 	}
-	run_data->tmp_u_hat = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * Nx * Ny_Fourier * SYS_DIM);
+	run_data->tmp_u_hat = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * Ny * Nx_Fourier * SYS_DIM);
 	if (run_data->tmp_u_hat == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Fourier Velocity");
 		exit(1);
 	}
 
 	// Allocate current Fourier vorticity
-	run_data->u = (double* )fftw_malloc(sizeof(double) * Nx * Ny * SYS_DIM);
+	run_data->u = (double* )fftw_malloc(sizeof(double) * Ny * Nx * SYS_DIM);
 	if (run_data->u == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Velocity");
 		exit(1);
 	}
 	#if defined(__GRAD_STATS)
-	run_data->tmp_u = (double* )fftw_malloc(sizeof(double) * Nx * Ny * SYS_DIM);
+	run_data->tmp_u = (double* )fftw_malloc(sizeof(double) * Ny * Nx * SYS_DIM);
 	if (run_data->tmp_u == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Temporary Velocity");
 		exit(1);
@@ -388,11 +388,11 @@ void AllocateMemory(const long int* N) {
 
 
 	// Initialize the arrays
-	for (int i = 0; i < Nx; ++i) {
-		tmp1 = i * Ny;
-		tmp2 = i * Ny_Fourier;
-		for (int j = 0; j < Ny; ++j) {
-			if (j < Ny_Fourier) {
+	for (int i = 0; i < Ny; ++i) {
+		tmp1 = i * Nx;
+		tmp2 = i * Nx_Fourier;
+		for (int j = 0; j < Nx; ++j) {
+			if (j < Nx_Fourier) {
 				run_data->u_hat[SYS_DIM * (tmp2 + j) + 0]     = 0.0 + 0.0 * I;
 				run_data->u_hat[SYS_DIM * (tmp2 + j) + 1]     = 0.0 + 0.0 * I;
 				run_data->tmp_u_hat[SYS_DIM * (tmp2 + j) + 0] = 0.0 + 0.0 * I;
@@ -430,13 +430,13 @@ void AllocateMemory(const long int* N) {
 void InitializeFFTWPlans(const long int* N) {
 
 	// Initialize variables
-	const long int Nx = N[0];
-	const long int Ny = N[1];
-	const int N_batch[SYS_DIM] = {Nx, Ny};
+	const long int Ny = N[0];
+	const long int Nx = N[1];
+	const int N_batch[SYS_DIM] = {Ny, Nx};
 
 	#if defined(__REAL_STATS) || defined(__VEL_INC_STATS) || defined(__STR_FUNC_STATS) || defined(__GRAD_STATS) || defined(__VORT_REAL) || defined(__VORT_REAL)
 	// Initialize Fourier Transforms
-	sys_vars->fftw_2d_dft_c2r = fftw_plan_dft_c2r_2d(Nx, Ny, run_data->w_hat, run_data->w, FFTW_MEASURE);
+	sys_vars->fftw_2d_dft_c2r = fftw_plan_dft_c2r_2d(Ny, Nx, run_data->w_hat, run_data->w, FFTW_MEASURE);
 	if (sys_vars->fftw_2d_dft_c2r == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to initialize basic C2R FFTW Plan\n-->> Exiting!!!\n");
 		exit(1);
@@ -444,7 +444,7 @@ void InitializeFFTWPlans(const long int* N) {
 	#endif
 
 	#if defined(__ENST_FLUX) || defined(__ENRG_FLUX) || defined(__SEC_PHASE_SYNC)
-	sys_vars->fftw_2d_dft_r2c = fftw_plan_dft_r2c_2d(Nx, Ny, run_data->w, run_data->w_hat, FFTW_MEASURE);
+	sys_vars->fftw_2d_dft_r2c = fftw_plan_dft_r2c_2d(Ny, Nx, run_data->w, run_data->w_hat, FFTW_MEASURE);
 	if (sys_vars->fftw_2d_dft_r2c == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to initialize basic R2C FFTW Plan\n-->> Exiting!!!\n");
 		exit(1);
