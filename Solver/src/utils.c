@@ -214,7 +214,7 @@ int GetCMLArgs(int argc, char** argv) {
 				else if (visc_flag == 2) {
 					// Read in the hyperviscosity power
 					sys_vars->HYPER_VISC_POW = atof(optarg);
-					if (sys_vars->HYPER_VISC_POW <= 0.0) {
+					if (sys_vars->HYPER_VISC_POW < 0.0) {
 						fprintf(stderr, "\n["RED"ERROR"RESET"] Parsing of Command Line Arguements Failed: The provided hyperviscosity power: [%lf] must be strictly positive\n-->> Exiting!\n\n", sys_vars->HYPER_VISC_POW);		
 						exit(1);
 					}
@@ -381,7 +381,7 @@ int GetCMLArgs(int argc, char** argv) {
 				// Read in the amplitude slope for the phase only mode
 				sys_vars->PO_SLOPE = atof(optarg);
 				if (sys_vars->PO_SLOPE < 0.0) {
-					fprintf(stderr, "\n["RED"ERROR"RESET"] Parsing of Command Line Arguements Failed: Incorrect amplitdue slope: [%d] Must be positive\n-->> Exiting!\n\n", sys_vars->PO_SLOPE);		
+					fprintf(stderr, "\n["RED"ERROR"RESET"] Parsing of Command Line Arguements Failed: Incorrect amplitdue slope: [%lf] Must be positive\n-->> Exiting!\n\n", sys_vars->PO_SLOPE);		
 					exit(1);
 				}
 				break;				
@@ -579,8 +579,8 @@ void PrintSimulationDetails(int argc, char** argv, double sim_time) {
 	
 	// Forcing
 	fprintf(sim_file, "Forcing Type: %s\n", sys_vars->forcing);
-	fprintf(sim_file, "Forcing Wavenumber: %s\n", sys_vars->forc_k);
-	fprintf(sim_file, "Forcing Scaling: %s\n\n", sys_vars->force_scale_var);
+	fprintf(sim_file, "Forcing Wavenumber: %d\n", sys_vars->force_k);
+	fprintf(sim_file, "Forcing Scaling: %lf\n\n", sys_vars->force_scale_var);
 
 	// Time details
 	fprintf(sim_file, "Time Range: [%1.1lf - %1.1lf]\n", sys_vars->t0, sys_vars->T);

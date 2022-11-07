@@ -89,7 +89,8 @@ void SpectralSolve(void) {
 
 	// // Initialize the forcing 
 	InitializeForcing();
-		
+	
+
 	// -------------------------------
 	// Integration Variables
 	// -------------------------------
@@ -913,10 +914,7 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* non
 	double vel2;
 	double norm_fac = 1.0 / (Ny * Nx);
 
-	// Ensure conjugacy in the ky = 0 modes of the intial condition
-    ForceConjugacy(w_hat, sys_vars->N, 1);
-
-	// -----------------------------------
+		// -----------------------------------
 	// Compute Fourier Space Velocities
 	// -----------------------------------
 	// Compute (-\Delta)^-1 \omega - i.e., u_hat = d\psi_dy = I ky/|k|^2 \omegahat_k, v_hat = -d\psi_dx = I kx/|k|^2 \omegahat_k
@@ -984,6 +982,7 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* non
 	// }
 	// // printf("\n");
 
+
 	// ----------------------------------
 	// Transform to Real Space
 	// ----------------------------------
@@ -1047,9 +1046,7 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* non
  	// Add the forcing
 	if (sys_vars->local_forcing_proc) {
 		for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
-	 		// printf("scale: %lf\t-\tk[%d, %d]: %1.16lf\t%1.16lfi\t\t%1.16lf\t%1.16lfi--\t%1.16lf %1.16lfi\n", sys_vars->force_scale_var, run_data->forcing_k[0][i], run_data->forcing_k[1][i], creal(dw_hat_dt[run_data->forcing_indx[i]]), cimag(dw_hat_dt[run_data->forcing_indx[i]]), creal(run_data->forcing[i]), cimag(run_data->forcing[i]), creal(run_data->forcing[i]) / creal(dw_hat_dt[run_data->forcing_indx[i]]), cimag(run_data->forcing[i]) / cimag(dw_hat_dt[run_data->forcing_indx[i]]));
 			dw_hat_dt[run_data->forcing_indx[i]] += run_data->forcing[i]; 
-	 		// printf("scale: %lf\t-\tk[%d, %d]: %1.16lf\t%1.16lfi\t\t%1.16lf\t%1.16lfi--\t%1.16lf %1.16lfi\n", sys_vars->force_scale_var, run_data->forcing_k[0][i], run_data->forcing_k[1][i], creal(dw_hat_dt[run_data->forcing_indx[i]]), cimag(dw_hat_dt[run_data->forcing_indx[i]]), creal(run_data->forcing[i]), cimag(run_data->forcing[i]), creal(run_data->forcing[i]) / creal(dw_hat_dt[run_data->forcing_indx[i]]), cimag(run_data->forcing[i]) / cimag(dw_hat_dt[run_data->forcing_indx[i]]));
 		}
 	}
 

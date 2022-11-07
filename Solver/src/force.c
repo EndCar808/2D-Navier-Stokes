@@ -36,7 +36,9 @@ void InitializeForcing(void) {
 	double sum_k	             = 0.0;
 	double scaling_exp           = 0.0;
 	sys_vars->local_forcing_proc = 0;
+	sys_vars->num_forced_modes   = 0;
 	const long int Nx_Fourier = sys_vars->N[1] / 2 + 1;
+
 
 	// -----------------------------------
 	// Initialize Forcing Objects 
@@ -53,6 +55,8 @@ void InitializeForcing(void) {
 
 		// Get the number of forced modes
 		sys_vars->num_forced_modes = num_forced_modes;
+
+		MPI_Barrier(MPI_COMM_WORLD);
 
 		// Allocate forcing data on the local forcing process only
 		if (sys_vars->local_forcing_proc) {
@@ -104,7 +108,7 @@ void InitializeForcing(void) {
 		}
 	}
 	//--------------------------------- Apply Body Forcing -> f_omega(x, y) = cos(2x) -> see Y.-K. Tsang, E. Ott, T. M. Antonsen, and P. N. Guzdar, Phys. Rev E, 2005
-	if(!(strcmp(sys_vars->forcing, "BODY_FORC"))) {
+	else if(!(strcmp(sys_vars->forcing, "BODY_FORC"))) {
 		// Loop through modes to identify local process(es) containing the modes to be forced
 		for (int i = 0; i < sys_vars->local_Ny; ++i) {
 			if (run_data->k[0][i] == sys_vars->force_k || run_data->k[0][i] == -sys_vars->force_k) { // note sys_vars->forc_k will be period of the forcing (= 2 in the paper)
@@ -583,7 +587,7 @@ void ComputeForcing(double dt) {
 	// Initialize variables
 	double r1, r2;
 	double re_f, im_f;
-	
+		
 	// --------------------------------------------
 	// Compute Forcing
 	// --------------------------------------------
@@ -605,9 +609,9 @@ void ComputeForcing(double dt) {
 		}
 		//---------------------------- Compute Body Forcing -> f_omega(x, y) = cos(2x); -> f_k = 1/2 * scale * \delta(n - 2); scale = 1 to match the paper
 		else if(!(strcmp(sys_vars->forcing, "BODY_FORC"))) {
-			// Compute the Kolmogorov forcing
+			// Compute the Body Forcing
 			for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
-				run_data->forcing[i] = 0.5 * sys_vars->force_scale_var * (sys_vars->force_k + 0.0 * I);
+				run_data->forcing[i] = 0.5 * sys_vars->force_scale_var + 0.0 * I;
 			}
 		}
 		//---------------------------- Compute Stochastic Gaussian forcing
@@ -646,7 +650,7 @@ void ComputeForcing(double dt) {
 		}
 		//---------------------------- No forcing
 		else {
-
+			printf("No Foricnging \n");
 		}
 	}
 }
