@@ -15,6 +15,7 @@
 #include <complex.h>
 #include <time.h>
 #include <sys/time.h>
+#include <sys/stat.h>
 // ---------------------------------------------------------------------
 //  User Libraries and Headers
 // ---------------------------------------------------------------------
@@ -32,7 +33,7 @@
 void PhaseSync(int s) {
 
 	// Initialize variables
-	int k3_x, k3_y, k2_x, k2_y, k1_x, k1_y;
+	int k3_y, k3_x, k2_y, k2_x, k1_y, k1_x;
 	double k3_sqr, k1_sqr, k2_sqr;
 	double flux_pre_fac, flux_wght;
 	double triad_phase, gen_triad_phase;
@@ -51,59 +52,59 @@ void PhaseSync(int s) {
 	int n = 0;
 
 	// Loop through the k wavevector (k is the k3 wavevector)
-	for (int tmp_k3_x = 0; tmp_k3_x <= sys_vars->N[0] - 1; ++tmp_k3_x) {
+	for (int tmp_k3_y = 0; tmp_k3_y <= sys_vars->N[0] - 1; ++tmp_k3_y) {
 		
-		// Get k3_x
-		k3_x = tmp_k3_x - (int) (sys_vars->N[0] / 2) + 1;
+		// Get k3_y
+		k3_y = tmp_k3_y - (int) (sys_vars->N[0] / 2) + 1;
 
-		for (int tmp_k3_y = 0; tmp_k3_y <= sys_vars->N[1] - 1; ++tmp_k3_y) {
+		for (int tmp_k3_x = 0; tmp_k3_x <= sys_vars->N[1] - 1; ++tmp_k3_x) {
 			
-			// Get k3_y
-			k3_y = tmp_k3_y - (int) (sys_vars->N[1] / 2) + 1;
+			// Get k3_x
+			k3_x = tmp_k3_x - (int) (sys_vars->N[1] / 2) + 1;
 
 			// Get polar coords for the k wavevector
-			k3_sqr       = (double) (k3_x * k3_x + k3_y * k3_y);
+			k3_sqr       = (double) (k3_y * k3_y + k3_x * k3_x);
 			
 			if ((k3_sqr > sys_vars->kmax_C_sqr && k3_sqr <= sys_vars->kmax_sqr)) {
 
 				// Loop through the k1 wavevector
-				for (int tmp_k1_x = 0; tmp_k1_x <= sys_vars->N[0] - 1; ++tmp_k1_x) {
+				for (int tmp_k1_y = 0; tmp_k1_y <= sys_vars->N[0] - 1; ++tmp_k1_y) {
 					
-					// Get k1_x
-					k1_x = tmp_k1_x - (int) (sys_vars->N[0] / 2) + 1;
+					// Get k1_y
+					k1_y = tmp_k1_y - (int) (sys_vars->N[0] / 2) + 1;
 
-					for (int tmp_k1_y = 0; tmp_k1_y <= sys_vars->N[1] - 1; ++tmp_k1_y) {
+					for (int tmp_k1_x = 0; tmp_k1_x <= sys_vars->N[1] - 1; ++tmp_k1_x) {
 						
-						// Get k1_y
-						k1_y = tmp_k1_y - (int) (sys_vars->N[1] / 2) + 1;
+						// Get k1_x
+						k1_x = tmp_k1_x - (int) (sys_vars->N[1] / 2) + 1;
 
 						// Get polar coords for k1
-						k1_sqr       = (double) (k1_x * k1_x + k1_y * k1_y);
+						k1_sqr       = (double) (k1_y * k1_y + k1_x * k1_x);
 
 						if((k1_sqr > 0.0 && k1_sqr <= sys_vars->kmax_C_sqr)) {
 							
 							// Find the k2 wavevector
-							k2_x = k3_x - k1_x;
 							k2_y = k3_y - k1_y;
+							k2_x = k3_x - k1_x;
 							
 							// Get polar coords for k2
-							k2_sqr       = (double) (k2_x * k2_x + k2_y * k2_y);
+							k2_sqr       = (double) (k2_y * k2_y + k2_x * k2_x);
 
 							if ((k2_sqr > 0.0 && k2_sqr <= sys_vars->kmax_C_sqr)) {
 
 								// Get correct phase index -> recall that to access kx > 0, use -kx
-								tmp_k1 = (sys_vars->kmax - k1_x) * (2 * sys_vars->kmax + 1);	
-								tmp_k2 = (sys_vars->kmax - k2_x) * (2 * sys_vars->kmax + 1);
-								tmp_k3 = (sys_vars->kmax - k3_x) * (2 * sys_vars->kmax + 1);
+								tmp_k1 = (sys_vars->kmax - k1_y) * (2 * sys_vars->kmax + 1);	
+								tmp_k2 = (sys_vars->kmax - k2_y) * (2 * sys_vars->kmax + 1);
+								tmp_k3 = (sys_vars->kmax - k3_y) * (2 * sys_vars->kmax + 1);
 
 								// Compute the flux pre factor
-								flux_pre_fac = (double) (k1_x * k2_y - k2_x * k1_y) * (1.0 / k1_sqr - 1.0 / k2_sqr);
+								flux_pre_fac = (double) (k1_y * k2_x - k2_y * k1_x) * (1.0 / k1_sqr - 1.0 / k2_sqr);
 
 								// Get the flux weight term
-								flux_wght = flux_pre_fac * (proc_data->amps[tmp_k1 + sys_vars->kmax + k1_y] * proc_data->amps[tmp_k2 + sys_vars->kmax + k2_y] * proc_data->amps[tmp_k3 + sys_vars->kmax + k3_y]);
+								flux_wght = flux_pre_fac * (proc_data->amps[tmp_k1 + sys_vars->kmax + k1_x] * proc_data->amps[tmp_k2 + sys_vars->kmax + k2_x] * proc_data->amps[tmp_k3 + sys_vars->kmax + k3_x]);
 
 								// Get the triad phase
-								triad_phase = proc_data->phases[tmp_k1 + sys_vars->kmax + k1_y] + proc_data->phases[tmp_k2 + sys_vars->kmax + k2_y] - proc_data->phases[tmp_k3 + sys_vars->kmax + k3_y];
+								triad_phase = proc_data->phases[tmp_k1 + sys_vars->kmax + k1_x] + proc_data->phases[tmp_k2 + sys_vars->kmax + k2_x] - proc_data->phases[tmp_k3 + sys_vars->kmax + k3_x];
 
 								// Define the generalized triad phase for the first term in the flux
 								gen_triad_phase = fmod(triad_phase + 2.0 * M_PI + carg(flux_wght), 2.0 * M_PI) - M_PI;
@@ -116,12 +117,12 @@ void PhaseSync(int s) {
 								proc_data->triad_phase_order_test[0] += cexp(I * gen_triad_phase);
 
 								// Record the wavevector data
-								proc_data->phase_sync_wave_vecs_test[K1_X][n] = k1_x;
 								proc_data->phase_sync_wave_vecs_test[K1_Y][n] = k1_y;
-								proc_data->phase_sync_wave_vecs_test[K2_X][n] = k2_x;
+								proc_data->phase_sync_wave_vecs_test[K1_X][n] = k1_x;
 								proc_data->phase_sync_wave_vecs_test[K2_Y][n] = k2_y;
-								proc_data->phase_sync_wave_vecs_test[K3_X][n] = k3_x;
+								proc_data->phase_sync_wave_vecs_test[K2_X][n] = k2_x;
 								proc_data->phase_sync_wave_vecs_test[K3_Y][n] = k3_y;
+								proc_data->phase_sync_wave_vecs_test[K3_X][n] = k3_x;
 
 								n++;
 
@@ -165,43 +166,43 @@ void PhaseSync(int s) {
 			else if ((k3_sqr > 0.0 && k3_sqr <= sys_vars->kmax_C_sqr)) {
 
 				// Loop through the k1 wavevector
-				for (int tmp_k1_x = 0; tmp_k1_x <= sys_vars->N[0] - 1; ++tmp_k1_x) {
+				for (int tmp_k1_y = 0; tmp_k1_y <= sys_vars->N[0] - 1; ++tmp_k1_y) {
 					
-					// Get k1_x
-					k1_x = tmp_k1_x - (int) (sys_vars->N[0] / 2) + 1;
+					// Get k1_y
+					k1_y = tmp_k1_y - (int) (sys_vars->N[0] / 2) + 1;
 
-					for (int tmp_k1_y = 0; tmp_k1_y <= sys_vars->N[1] - 1; ++tmp_k1_y) {
+					for (int tmp_k1_x = 0; tmp_k1_x <= sys_vars->N[1] - 1; ++tmp_k1_x) {
 						
-						// Get k1_y
-						k1_y = tmp_k1_y - (int) (sys_vars->N[1] / 2) + 1;
+						// Get k1_x
+						k1_x = tmp_k1_x - (int) (sys_vars->N[1] / 2) + 1;
 
 						// Get polar coords for k1
-						k1_sqr       = (double) (k1_x * k1_x + k1_y * k1_y);
+						k1_sqr       = (double) (k1_y * k1_y + k1_x * k1_x);
 
 						if((k1_sqr > sys_vars->kmax_C_sqr && k1_sqr <= sys_vars->kmax_sqr)) {									
 							
 							// Find the k2 wavevector
-							k2_x = k3_x - k1_x;
 							k2_y = k3_y - k1_y;
+							k2_x = k3_x - k1_x;
 							
 							// Get polar coords for k2
-							k2_sqr       = (double) (k2_x * k2_x + k2_y * k2_y);
+							k2_sqr       = (double) (k2_y * k2_y + k2_x * k2_x);
 
 							if ((k2_sqr > sys_vars->kmax_C_sqr && k2_sqr <= sys_vars->kmax_sqr)) {
 
 								// Get correct phase index -> recall that to access kx > 0, use -kx
-								tmp_k1 = (sys_vars->kmax - k1_x) * (2 * sys_vars->kmax + 1);	
-								tmp_k2 = (sys_vars->kmax - k2_x) * (2 * sys_vars->kmax + 1);
-								tmp_k3 = (sys_vars->kmax - k3_x) * (2 * sys_vars->kmax + 1);
+								tmp_k1 = (sys_vars->kmax - k1_y) * (2 * sys_vars->kmax + 1);	
+								tmp_k2 = (sys_vars->kmax - k2_y) * (2 * sys_vars->kmax + 1);
+								tmp_k3 = (sys_vars->kmax - k3_y) * (2 * sys_vars->kmax + 1);
 
 								// Compute the flux pre factor
 								flux_pre_fac = (double) (k1_x * k2_y - k2_x * k1_y) * (1.0 / k1_sqr - 1.0 / k2_sqr);
 
 								// Get the flux weight term
-								flux_wght = flux_pre_fac * (proc_data->amps[tmp_k1 + sys_vars->kmax + k1_y] * proc_data->amps[tmp_k2 + sys_vars->kmax + k2_y] * proc_data->amps[tmp_k3 + sys_vars->kmax + k3_y]);
+								flux_wght = flux_pre_fac * (proc_data->amps[tmp_k1 + sys_vars->kmax + k1_x] * proc_data->amps[tmp_k2 + sys_vars->kmax + k2_x] * proc_data->amps[tmp_k3 + sys_vars->kmax + k3_x]);
 
 								// Get the triad phase
-								triad_phase = proc_data->phases[tmp_k1 + sys_vars->kmax + k1_y] + proc_data->phases[tmp_k2 + sys_vars->kmax + k2_y] - proc_data->phases[tmp_k3 + sys_vars->kmax + k3_y];
+								triad_phase = proc_data->phases[tmp_k1 + sys_vars->kmax + k1_x] + proc_data->phases[tmp_k2 + sys_vars->kmax + k2_x] - proc_data->phases[tmp_k3 + sys_vars->kmax + k3_x];
 
 								// Define the generalized triad phase for the first term in the flux
 								gen_triad_phase = fmod(triad_phase + 2.0 * M_PI + carg(flux_wght), 2.0 * M_PI) - M_PI;
@@ -214,12 +215,12 @@ void PhaseSync(int s) {
 								proc_data->triad_phase_order_test[0] += cexp(I * gen_triad_phase);
 								
 								// Record the wavevector data
-								proc_data->phase_sync_wave_vecs_test[K1_X][n] = k1_x;
 								proc_data->phase_sync_wave_vecs_test[K1_Y][n] = k1_y;
-								proc_data->phase_sync_wave_vecs_test[K2_X][n] = k2_x;
+								proc_data->phase_sync_wave_vecs_test[K1_X][n] = k1_x;
 								proc_data->phase_sync_wave_vecs_test[K2_Y][n] = k2_y;
-								proc_data->phase_sync_wave_vecs_test[K3_X][n] = k3_x;
+								proc_data->phase_sync_wave_vecs_test[K2_X][n] = k2_x;
 								proc_data->phase_sync_wave_vecs_test[K3_Y][n] = k3_y;
+								proc_data->phase_sync_wave_vecs_test[K3_X][n] = k3_x;
 
 								n++;
 
@@ -281,7 +282,7 @@ void PhaseSync(int s) {
 void PhaseSyncSector(int s) {
 
 	// Initialize variables
-	int k1_x, k1_y, k2_x, k2_y, k3_x, k3_y;
+	int k1_y, k1_x, k2_y, k2_x, k3_y, k3_x;
 	int tmp_k1, tmp_k2, tmp_k3;
 	double k1_sqr, k2_sqr, k3_sqr;
 	double flux_pre_fac;
@@ -326,12 +327,12 @@ void PhaseSyncSector(int s) {
 				for (int n = 0; n < proc_data->num_wave_vecs[a][l]; ++n) {
 					
 					// Get k1 and k2 and k3
-					k1_x = (int) (proc_data->phase_sync_wave_vecs[a][l][K1_X][n]);
 					k1_y = (int) (proc_data->phase_sync_wave_vecs[a][l][K1_Y][n]);
-					k2_x = (int) (proc_data->phase_sync_wave_vecs[a][l][K2_X][n]);
+					k1_x = (int) (proc_data->phase_sync_wave_vecs[a][l][K1_X][n]);
 					k2_y = (int) (proc_data->phase_sync_wave_vecs[a][l][K2_Y][n]);
-					k3_x = (int) (proc_data->phase_sync_wave_vecs[a][l][K3_X][n]);
+					k2_x = (int) (proc_data->phase_sync_wave_vecs[a][l][K2_X][n]);
 					k3_y = (int) (proc_data->phase_sync_wave_vecs[a][l][K3_Y][n]);
+					k3_x = (int) (proc_data->phase_sync_wave_vecs[a][l][K3_X][n]);
 
 					// Get the mod square of the wavevectors
 					k1_sqr = proc_data->phase_sync_wave_vecs[a][l][K1_SQR][n];
@@ -347,18 +348,18 @@ void PhaseSyncSector(int s) {
 					k3_angle_neg = proc_data->phase_sync_wave_vecs[a][l][K3_ANGLE_NEG][n];
 
 					// Get correct phase index -> recall that to access kx > 0, use -kx
-					tmp_k1 = (sys_vars->kmax - k1_x) * (2 * sys_vars->kmax + 1);	
-					tmp_k2 = (sys_vars->kmax - k2_x) * (2 * sys_vars->kmax + 1);
-					tmp_k3 = (sys_vars->kmax - k3_x) * (2 * sys_vars->kmax + 1);
+					tmp_k1 = (sys_vars->kmax - k1_y) * (2 * sys_vars->kmax + 1);	
+					tmp_k2 = (sys_vars->kmax - k2_y) * (2 * sys_vars->kmax + 1);
+					tmp_k3 = (sys_vars->kmax - k3_y) * (2 * sys_vars->kmax + 1);
 					
 					// Compute the flux pre factor
 					flux_pre_fac = (double) (k1_x * k2_y - k2_x * k1_y) * (1.0 / k1_sqr - 1.0 / k2_sqr);
 
 					// Get the flux weight term
-					flux_wght = flux_pre_fac * (proc_data->amps[tmp_k1 + sys_vars->kmax + k1_y] * proc_data->amps[tmp_k2 + sys_vars->kmax + k2_y] * proc_data->amps[tmp_k3 + sys_vars->kmax + k3_y]);
+					flux_wght = flux_pre_fac * (proc_data->amps[tmp_k1 + sys_vars->kmax + k1_x] * proc_data->amps[tmp_k2 + sys_vars->kmax + k2_x] * proc_data->amps[tmp_k3 + sys_vars->kmax + k3_x]);
 
 					// Get the triad phase
-					triad_phase = proc_data->phases[tmp_k1 + sys_vars->kmax + k1_y] + proc_data->phases[tmp_k2 + sys_vars->kmax + k2_y] - proc_data->phases[tmp_k3 + sys_vars->kmax + k3_y];
+					triad_phase = proc_data->phases[tmp_k1 + sys_vars->kmax + k1_x] + proc_data->phases[tmp_k2 + sys_vars->kmax + k2_x] - proc_data->phases[tmp_k3 + sys_vars->kmax + k3_x];
 
 					// Get flux term
 					flux_term = flux_wght * cos(triad_phase);
@@ -381,7 +382,7 @@ void PhaseSyncSector(int s) {
 						proc_data->triad_phase_order[0][a]          += cexp(I * gen_triad_phase);
 						if (cabs(collective_phase_term) > 0.0) {
 							proc_data->phase_order_C_theta_triads[0][a] += collective_phase_term; /// cabs(collective_phase_term);
-							if (k3_y >= 0) {
+							if (k3_x >= 0) {
 								proc_data->phase_order_C_theta_triads_unidirec[0][a] += collective_phase_term; /// cabs(collective_phase_term);
 							}
 						}
@@ -397,7 +398,7 @@ void PhaseSyncSector(int s) {
 							if (cabs(collective_phase_term) > 0.0) {
 								proc_data->phase_order_C_theta_triads_1d[0][a] += collective_phase_term; /// cabs(collective_phase_term);
 								// Update unidirectional collective phase order parameter for C_theta
-								if (k3_y >= 0) {
+								if (k3_x >= 0) {
 									proc_data->phase_order_C_theta_triads_unidirec_1d[0][a] += collective_phase_term; /// cabs(collective_phase_term);
 								}
 							}
@@ -414,7 +415,7 @@ void PhaseSyncSector(int s) {
 							if (cabs(collective_phase_term) > 0.0) {
 								proc_data->phase_order_C_theta_triads_2d[0][a][l] += collective_phase_term; /// cabs(collective_phase_term);
 								// Update unidirectional collective phase order parameter for C_theta
-								if (k3_y >= 0) {
+								if (k3_x >= 0) {
 									proc_data->phase_order_C_theta_triads_unidirec_2d[0][a][l] += collective_phase_term; /// cabs(collective_phase_term);
 								}
 							}
@@ -447,7 +448,7 @@ void PhaseSyncSector(int s) {
 							proc_data->triad_phase_order[1][a]          += cexp(I * gen_triad_phase);
 							if (cabs(collective_phase_term) > 0.0) {
 								proc_data->phase_order_C_theta_triads[1][a] += collective_phase_term; /// cabs(collective_phase_term);
-								if (k3_y >= 0) {
+								if (k3_x >= 0) {
 									proc_data->phase_order_C_theta_triads_unidirec[1][a] += collective_phase_term; /// cabs(collective_phase_term);
 								}
 							}
@@ -463,7 +464,7 @@ void PhaseSyncSector(int s) {
 								if (cabs(collective_phase_term) > 0.0) {
 									proc_data->phase_order_C_theta_triads_1d[1][a] += collective_phase_term; /// cabs(collective_phase_term);
 									// Update unidirectional collective phase order parameter for C_theta
-									if (k3_y >= 0) {
+									if (k3_x >= 0) {
 										proc_data->phase_order_C_theta_triads_unidirec_1d[1][a] += collective_phase_term; /// cabs(collective_phase_term);
 									}
 								}
@@ -480,7 +481,7 @@ void PhaseSyncSector(int s) {
 								if (cabs(collective_phase_term) > 0.0) {
 									proc_data->phase_order_C_theta_triads_2d[1][a][l] += collective_phase_term; /// cabs(collective_phase_term);
 									// Update unidirectional collective phase order parameter for C_theta
-									if (k3_y >= 0) {
+									if (k3_x >= 0) {
 										proc_data->phase_order_C_theta_triads_unidirec_2d[1][a][l] += collective_phase_term; /// cabs(collective_phase_term);
 									}
 								}
@@ -513,7 +514,7 @@ void PhaseSyncSector(int s) {
 							proc_data->triad_phase_order[2][a]          += cexp(I * gen_triad_phase);
 							if (cabs(collective_phase_term) > 0.0) {
 								proc_data->phase_order_C_theta_triads[2][a] += collective_phase_term; /// cabs(collective_phase_term);
-								if (k3_y >= 0) {
+								if (k3_x >= 0) {
 									proc_data->phase_order_C_theta_triads_unidirec[2][a] += collective_phase_term; /// cabs(collective_phase_term);
 								}
 							}
@@ -529,7 +530,7 @@ void PhaseSyncSector(int s) {
 								if (cabs(collective_phase_term) > 0.0) {
 									proc_data->phase_order_C_theta_triads_1d[2][a] += collective_phase_term; /// cabs(collective_phase_term);
 									// Update unidirectional collective phase order parameter for C_theta
-									if (k3_y >= 0) {
+									if (k3_x >= 0) {
 										proc_data->phase_order_C_theta_triads_unidirec_1d[2][a] += collective_phase_term; /// cabs(collective_phase_term);
 									}
 								}
@@ -546,7 +547,7 @@ void PhaseSyncSector(int s) {
 								if (cabs(collective_phase_term) > 0.0) {
 									proc_data->phase_order_C_theta_triads_2d[2][a][l] += collective_phase_term; /// cabs(collective_phase_term);
 									// Update unidirectional collective phase order parameter for C_theta
-									if (k3_y >= 0) {
+									if (k3_x >= 0) {
 										proc_data->phase_order_C_theta_triads_unidirec_2d[2][a][l] += collective_phase_term; /// cabs(collective_phase_term);
 									}
 								}
@@ -582,7 +583,7 @@ void PhaseSyncSector(int s) {
 							proc_data->triad_phase_order[5][a]          += cexp(I * gen_triad_phase);
 							if (cabs(collective_phase_term) > 0.0) {
 								proc_data->phase_order_C_theta_triads[5][a] += collective_phase_term; /// cabs(collective_phase_term);
-								if (k3_y >= 0) {
+								if (k3_x >= 0) {
 									proc_data->phase_order_C_theta_triads_unidirec[5][a] += collective_phase_term; /// cabs(collective_phase_term);
 								}
 							}
@@ -598,7 +599,7 @@ void PhaseSyncSector(int s) {
 								if (cabs(collective_phase_term) > 0.0) {
 									proc_data->phase_order_C_theta_triads_1d[5][a] += collective_phase_term; /// cabs(collective_phase_term);
 									// Update unidirectional collective phase order parameter for C_theta
-									if (k3_y >= 0) {
+									if (k3_x >= 0) {
 										proc_data->phase_order_C_theta_triads_unidirec_1d[5][a] += collective_phase_term; /// cabs(collective_phase_term);
 									}
 								}
@@ -615,7 +616,7 @@ void PhaseSyncSector(int s) {
 								if (cabs(collective_phase_term) > 0.0) {
 									proc_data->phase_order_C_theta_triads_2d[5][a][l] += collective_phase_term; /// cabs(collective_phase_term);
 									// Update unidirectional collective phase order parameter for C_theta
-									if (k3_y >= 0) {
+									if (k3_x >= 0) {
 										proc_data->phase_order_C_theta_triads_unidirec_2d[5][a][l] += collective_phase_term; /// cabs(collective_phase_term);
 									}
 								}
@@ -650,7 +651,7 @@ void PhaseSyncSector(int s) {
 							proc_data->triad_phase_order[6][a] += cexp(I * gen_triad_phase);
 							if (cabs(collective_phase_term) > 0.0) {
 								proc_data->phase_order_C_theta_triads[6][a] += collective_phase_term; /// cabs(collective_phase_term);
-								if (k3_y >= 0) {
+								if (k3_x >= 0) {
 									proc_data->phase_order_C_theta_triads_unidirec[6][a] += collective_phase_term; /// cabs(collective_phase_term);
 								}
 							}
@@ -666,7 +667,7 @@ void PhaseSyncSector(int s) {
 								if (cabs(collective_phase_term) > 0.0) {
 									proc_data->phase_order_C_theta_triads_1d[6][a] += collective_phase_term; /// cabs(collective_phase_term);
 									// Update unidirectional collective phase order parameter for C_theta
-									if (k3_y >= 0) {
+									if (k3_x >= 0) {
 										proc_data->phase_order_C_theta_triads_unidirec_1d[6][a] += collective_phase_term; /// cabs(collective_phase_term);
 									}
 								}
@@ -683,7 +684,7 @@ void PhaseSyncSector(int s) {
 								if (cabs(collective_phase_term) > 0.0) {
 									proc_data->phase_order_C_theta_triads_2d[6][a][l] += collective_phase_term; /// cabs(collective_phase_term);
 									// Update unidirectional collective phase order parameter for C_theta
-									if (k3_y >= 0) {
+									if (k3_x >= 0) {
 										proc_data->phase_order_C_theta_triads_unidirec_2d[6][a][l] += collective_phase_term; /// cabs(collective_phase_term);
 									}
 								}
@@ -724,7 +725,7 @@ void PhaseSyncSector(int s) {
 						proc_data->triad_phase_order[0][a]          += cexp(I * gen_triad_phase);
 						if (cabs(collective_phase_term) > 0.0) {
 							proc_data->phase_order_C_theta_triads[0][a] += -collective_phase_term; /// cabs(collective_phase_term);
-							if (k1_y >= 0 && k2_y >= 0) {
+							if (k1_x >= 0 && k2_x >= 0) {
 								proc_data->phase_order_C_theta_triads_unidirec[0][a] += -collective_phase_term; /// cabs(collective_phase_term);
 							}
 						}
@@ -740,7 +741,7 @@ void PhaseSyncSector(int s) {
 							if (cabs(collective_phase_term) > 0.0) {
 								proc_data->phase_order_C_theta_triads_1d[0][a] += -collective_phase_term; /// cabs(collective_phase_term);
 								// Update the unidirectional collective phase order parameter for C_theta
-								if (k1_y >= 0 && k2_y >= 0) {
+								if (k1_x >= 0 && k2_x >= 0) {
 									proc_data->phase_order_C_theta_triads_unidirec_1d[0][a] += -collective_phase_term; /// cabs(collective_phase_term);
 								}
 							}
@@ -757,7 +758,7 @@ void PhaseSyncSector(int s) {
 							if (cabs(collective_phase_term) > 0.0) {
 								proc_data->phase_order_C_theta_triads_2d[0][a][l] += -collective_phase_term; /// cabs(collective_phase_term);
 								// Update the unidirectional collective phase order parameter for C_theta
-								if (k1_y >= 0 && k2_y >= 0) {
+								if (k1_x >= 0 && k2_x >= 0) {
 									proc_data->phase_order_C_theta_triads_unidirec_2d[0][a][l] += -collective_phase_term; /// cabs(collective_phase_term);
 								}
 							}
@@ -789,7 +790,7 @@ void PhaseSyncSector(int s) {
 							proc_data->triad_phase_order[3][a]          += cexp(I * gen_triad_phase);
 							if (cabs(collective_phase_term) > 0.0) {
 								proc_data->phase_order_C_theta_triads[3][a] += -collective_phase_term; /// cabs(collective_phase_term);
-								if (k1_y >= 0 && k2_y >= 0) {
+								if (k1_x >= 0 && k2_x >= 0) {
 									proc_data->phase_order_C_theta_triads_unidirec[3][a] += -collective_phase_term; /// cabs(collective_phase_term);
 								}
 							}
@@ -806,7 +807,7 @@ void PhaseSyncSector(int s) {
 								if (cabs(collective_phase_term) > 0.0) {
 									proc_data->phase_order_C_theta_triads_1d[3][a] += -collective_phase_term; /// cabs(collective_phase_term);
 									// Update the unidirectional collective phase order parameter for C_theta
-									if (k1_y >= 0 && k2_y >= 0) {
+									if (k1_x >= 0 && k2_x >= 0) {
 										proc_data->phase_order_C_theta_triads_unidirec_1d[3][a] += -collective_phase_term; /// cabs(collective_phase_term);
 									}
 								}
@@ -823,7 +824,7 @@ void PhaseSyncSector(int s) {
 								if (cabs(collective_phase_term) > 0.0) {
 									proc_data->phase_order_C_theta_triads_2d[3][a][l] += -collective_phase_term; /// cabs(collective_phase_term);
 									// Update the unidirectional collective phase order parameter for C_theta
-									if (k1_y >= 0 && k2_y >= 0) {
+									if (k1_x >= 0 && k2_x >= 0) {
 										proc_data->phase_order_C_theta_triads_unidirec_2d[3][a][l] += -collective_phase_term; /// cabs(collective_phase_term);
 									}								
 								}
@@ -857,7 +858,7 @@ void PhaseSyncSector(int s) {
 							proc_data->triad_phase_order[4][a]          += cexp(I * gen_triad_phase);
 							if (cabs(collective_phase_term) > 0.0) {
 								proc_data->phase_order_C_theta_triads[4][a] += -collective_phase_term; /// cabs(collective_phase_term);
-								if (k1_y >= 0 && k2_y >= 0) {
+								if (k1_x >= 0 && k2_x >= 0) {
 									proc_data->phase_order_C_theta_triads_unidirec[4][a] += -collective_phase_term; /// cabs(collective_phase_term);
 								}
 							}
@@ -873,7 +874,7 @@ void PhaseSyncSector(int s) {
 								if (cabs(collective_phase_term) > 0.0) {
 									proc_data->phase_order_C_theta_triads_1d[4][a] += -collective_phase_term; /// cabs(collective_phase_term);
 									// Update the unidirectional collective phase order parameter for C_theta
-									if (k1_y >= 0 && k2_y >= 0) {
+									if (k1_x >= 0 && k2_x >= 0) {
 										proc_data->phase_order_C_theta_triads_unidirec_1d[4][a] += -collective_phase_term; /// cabs(collective_phase_term);
 									}
 								}
@@ -890,7 +891,7 @@ void PhaseSyncSector(int s) {
 								if (cabs(collective_phase_term) > 0.0) {
 									proc_data->phase_order_C_theta_triads_2d[4][a][l] += -collective_phase_term; /// cabs(collective_phase_term);
 									// Update the unidirectional collective phase order parameter for C_theta
-									if (k1_y >= 0 && k2_y >= 0) {
+									if (k1_x >= 0 && k2_x >= 0) {
 										proc_data->phase_order_C_theta_triads_unidirec_2d[4][a][l] += -collective_phase_term; /// cabs(collective_phase_term);
 									}		
 								}
@@ -926,7 +927,7 @@ void PhaseSyncSector(int s) {
 							proc_data->triad_phase_order[5][a]          += cexp(I * gen_triad_phase);
 							if (cabs(collective_phase_term) > 0.0) {
 								proc_data->phase_order_C_theta_triads[5][a] += -collective_phase_term; /// cabs(collective_phase_term);
-								if (k1_y >= 0 && k2_y >= 0) {
+								if (k1_x >= 0 && k2_x >= 0) {
 									proc_data->phase_order_C_theta_triads_unidirec[5][a] += -collective_phase_term; /// cabs(collective_phase_term);
 								}
 							}
@@ -942,7 +943,7 @@ void PhaseSyncSector(int s) {
 								if (cabs(collective_phase_term) > 0.0) {
 									proc_data->phase_order_C_theta_triads_1d[5][a] += -collective_phase_term; /// cabs(collective_phase_term);
 									// Update the unidirectional collective phase order parameter for C_theta
-									if (k1_y >= 0 && k2_y >= 0) {
+									if (k1_x >= 0 && k2_x >= 0) {
 										proc_data->phase_order_C_theta_triads_unidirec_1d[5][a] += -collective_phase_term; /// cabs(collective_phase_term);
 									}
 								}
@@ -959,7 +960,7 @@ void PhaseSyncSector(int s) {
 								if (cabs(collective_phase_term) > 0.0) {
 									proc_data->phase_order_C_theta_triads_2d[5][a][l] += -collective_phase_term; /// cabs(collective_phase_term);
 									// Update the unidirectional collective phase order parameter for C_theta
-									if (k1_y >= 0 && k2_y >= 0) {
+									if (k1_x >= 0 && k2_x >= 0) {
 										proc_data->phase_order_C_theta_triads_unidirec_2d[5][a][l] += -collective_phase_term; /// cabs(collective_phase_term);
 									}
 								}
@@ -994,7 +995,7 @@ void PhaseSyncSector(int s) {
 							proc_data->triad_phase_order[6][a]          += cexp(I * gen_triad_phase);
 							if (cabs(collective_phase_term) > 0.0) {
 								proc_data->phase_order_C_theta_triads[6][a] += -collective_phase_term; /// cabs(collective_phase_term);
-								if (k1_y >= 0 && k2_y >= 0) {
+								if (k1_x >= 0 && k2_x >= 0) {
 									proc_data->phase_order_C_theta_triads_unidirec[6][a] += -collective_phase_term; /// cabs(collective_phase_term);
 								}
 							}
@@ -1010,7 +1011,7 @@ void PhaseSyncSector(int s) {
 								if (cabs(collective_phase_term) > 0.0) {
 									proc_data->phase_order_C_theta_triads_1d[6][a] += -collective_phase_term; /// cabs(collective_phase_term);
 									// Update the unidirectional collective phase order parameter for C_theta
-									if (k1_y >= 0 && k2_y >= 0) {
+									if (k1_x >= 0 && k2_x >= 0) {
 										proc_data->phase_order_C_theta_triads_unidirec_1d[6][a] += -collective_phase_term; /// cabs(collective_phase_term);
 									}
 								}
@@ -1027,7 +1028,7 @@ void PhaseSyncSector(int s) {
 								if (cabs(collective_phase_term) > 0.0) {
 									proc_data->phase_order_C_theta_triads_2d[6][a][l] += -collective_phase_term; /// cabs(collective_phase_term);
 									// Update the unidirectional collective phase order parameter for C_theta
-									if (k1_y >= 0 && k2_y >= 0) {
+									if (k1_x >= 0 && k2_x >= 0) {
 										proc_data->phase_order_C_theta_triads_unidirec_2d[6][a][l] += -collective_phase_term; /// cabs(collective_phase_term);
 									}
 								}
@@ -1131,9 +1132,12 @@ void AllocatePhaseSyncMemory(const long int* N) {
 
 	// Initialize variables
 	int gsl_status;
-	const long int Nx = N[0];
-	const long int Ny = N[1];
-	const long int Ny_Fourier = Ny / 2 + 1;
+	const long int Ny = N[0];
+	const long int Nx = N[1];
+	const long int Nx_Fourier = Nx / 2 + 1;
+
+	// Compute maximum wavenumber
+	sys_vars->kmax = (int) (Ny / 3.0);
 
 	// Get the various kmax variables
 	sys_vars->kmax_sqr   = pow(sys_vars->kmax, 2.0);
@@ -1229,16 +1233,16 @@ void AllocatePhaseSyncMemory(const long int* N) {
 	//  Allocate Precomputed Vector Angles
 	// -------------------------------------
 	// Allocate memory for the arctangent arrays
-	proc_data->phase_angle = (double* )fftw_malloc(sizeof(double) * Nx * Ny_Fourier);
+	proc_data->phase_angle = (double* )fftw_malloc(sizeof(double) * Ny * Nx_Fourier);
 	if (proc_data->phase_angle == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "ArcTangents of Negative k2");
 		exit(1);
 	}
 
 	// Fill the array for the individual phases with the precomputed arctangents
-	for (int i = 0; i < Nx; ++i) {
-		for (int j = 0; j < Ny_Fourier; ++j) {
-			proc_data->phase_angle[i * Ny_Fourier + j] = atan2((double) run_data->k[0][i], (double)run_data->k[1][j]);
+	for (int i = 0; i < Ny; ++i) {
+		for (int j = 0; j < Nx_Fourier; ++j) {
+			proc_data->phase_angle[i * Nx_Fourier + j] = atan2((double) run_data->k[0][i], (double)run_data->k[1][j]);
 		}
 	}
 
@@ -1667,13 +1671,37 @@ void AllocatePhaseSyncMemory(const long int* N) {
 	herr_t status;
 	char dset_name[64];
 	char wave_vec_file[128];
-	strcpy(file_info->wave_vec_data_name, "./Data/PostProcess/PhaseSync");
-	sprintf(wave_vec_file, "/Wavevector_Data_N[%d,%d]_SECTORS[%d,%d]_KFRAC[%1.2lf].h5", (int)sys_vars->N[0], (int)sys_vars->N[1], sys_vars->num_k3_sectors, sys_vars->num_k1_sectors, sys_vars->kmax_frac);	
+	char* data_dir = getenv("NS2D_DATA_DIR");
+	if (data_dir == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to find environment variable for the data directory ["CYAN"%s"RESET"]. Set this environment variable to the data directory\n-->> Exiting!!!\n", "NS2D_DATA_DIR");
+		exit(1);
+	}
+	sprintf(file_info->wave_vec_data_name, "%sPostProcess/", data_dir);	
+	struct stat st = {0};
+	// Check if wavevector data directory that will host the precomputed  wavevector data for the phase sync calcs in the data directory exists
+	if (stat(file_info->wave_vec_data_name, &st) == -1) {
+		printf("\n["YELLOW"NOTE"RESET"] --- PostProcess Data directory doesn't exist, now creating it...\n");
+		// If not then create it
+		if ((mkdir(file_info->wave_vec_data_name, 0700)) == -1) {
+			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to create provided output directory ["CYAN"%s"RESET"]\n-->> Exiting...\n", file_info->wave_vec_data_name);
+			exit(1);
+		}
+	}
+	strcat(file_info->wave_vec_data_name, "PhaseSync/");
+	if (stat(file_info->wave_vec_data_name, &st) == -1) {
+		printf("\n["YELLOW"NOTE"RESET"] --- Wavevector Data directory doesn't exist, now creating it...\n");
+		// If not then create it
+		if ((mkdir(file_info->wave_vec_data_name, 0700)) == -1) {
+			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to create provided output directory ["CYAN"%s"RESET"]\n-->> Exiting...\n", file_info->wave_vec_data_name);
+			exit(1);
+		}
+	}
+	sprintf(wave_vec_file, "Wavevector_Data_N[%d,%d]_SECTORS[%d,%d]_KFRAC[%1.2lf].h5", (int)sys_vars->N[0], (int)sys_vars->N[1], sys_vars->num_k3_sectors, sys_vars->num_k1_sectors, sys_vars->kmax_frac);	
 	strcat(file_info->wave_vec_data_name, wave_vec_file);
 
-	// Check if Wavector file exists
+	// Check if Wavector data file exists
 	if (access(file_info->wave_vec_data_name, F_OK) == 0) {
-		printf("\n["YELLOW"NOTE"RESET"] --- Reading in wavevectors data for Phase Sync computation...");
+		printf("\n["YELLOW"NOTE"RESET"] --- Reading in wavevectors data for Phase Sync computation...\n");
 		printf("\nNumber of k_3 Sectors: ["CYAN"%d"RESET"]\nNumber of k_1 Sectors: ["CYAN"%d"RESET"]\n\n", sys_vars->num_k3_sectors, sys_vars->num_k1_sectors);
 
 		
@@ -1730,7 +1758,7 @@ void AllocatePhaseSyncMemory(const long int* N) {
 		int nn;
 		int k1_sec_indx; 
 		double C_theta_k3, C_theta_k1, C_theta_k2;
-		int k3_x, k3_y, k1_x, k1_y, k2_x, k2_y;
+		int k3_y, k3_x, k1_y, k1_x, k2_y, k2_x;
 		double k1_sqr, k1_angle, k2_sqr, k2_angle, k3_sqr, k3_angle;
 		double k3_angle_neg, k1_angle_neg, k2_angle_neg;
 		double C_theta_k3_lwr, C_theta_k3_upr, C_theta_k1_upr, C_theta_k1_lwr;
@@ -1743,6 +1771,8 @@ void AllocatePhaseSyncMemory(const long int* N) {
 
 		// Loop through the sectors for k3
 		for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
+
+			printf("k3 Sector: %d/%d\n", a, sys_vars->num_k3_sectors);
 			
 			// Get the angles for the current sector
 			C_theta_k3 = proc_data->theta_k3[a];
@@ -1779,39 +1809,39 @@ void AllocatePhaseSyncMemory(const long int* N) {
 				nn = 0;
 
 				// Loop through the k wavevector (k is the k3 wavevector)
-				for (int tmp_k3_x = 0; tmp_k3_x <= sys_vars->N[0] - 1; ++tmp_k3_x) {
+				for (int tmp_k3_y = 0; tmp_k3_y <= sys_vars->N[0] - 1; ++tmp_k3_y) {
 					
-					// Get k3_x
-					k3_x = tmp_k3_x - (int) (sys_vars->N[0] / 2) + 1;
+					// Get k3_y
+					k3_y = tmp_k3_y - (int) (sys_vars->N[0] / 2) + 1;
 
-					for (int tmp_k3_y = 0; tmp_k3_y <= sys_vars->N[1] - 1; ++tmp_k3_y) {
+					for (int tmp_k3_x = 0; tmp_k3_x <= sys_vars->N[1] - 1; ++tmp_k3_x) {
 						
-						// Get k3_y
-						k3_y = tmp_k3_y - (int) (sys_vars->N[1] / 2) + 1;
+						// Get k3_x
+						k3_x = tmp_k3_x - (int) (sys_vars->N[1] / 2) + 1;
 
 						// Get polar coords for the k wavevector
-						k3_sqr       = (double) (k3_x * k3_x + k3_y * k3_y);
-						k3_angle     = atan2((double)k3_x, (double)k3_y);
-						k3_angle_neg = atan2((double)-k3_x, (double)-k3_y);
+						k3_sqr       = (double) (k3_y * k3_y + k3_x * k3_x);
+						k3_angle     = atan2((double)k3_y, (double)k3_x);
+						k3_angle_neg = atan2((double)-k3_y, (double)-k3_x);
 						
 						if ( (k3_sqr > sys_vars->kmax_C_sqr && k3_sqr <= sys_vars->kmax_sqr) 
 							 && ((k3_angle >= C_theta_k3_lwr && k3_angle < C_theta_k3_upr) || (k3_angle_neg >= C_theta_k3_lwr && k3_angle_neg < C_theta_k3_upr)) ) {  
 
 							// Loop through the k1 wavevector
-							for (int tmp_k1_x = 0; tmp_k1_x <= sys_vars->N[0] - 1; ++tmp_k1_x) {
+							for (int tmp_k1_y = 0; tmp_k1_y <= sys_vars->N[0] - 1; ++tmp_k1_y) {
 								
-								// Get k1_x
-								k1_x = tmp_k1_x - (int) (sys_vars->N[0] / 2) + 1;
+								// Get k1_y
+								k1_y = tmp_k1_y - (int) (sys_vars->N[0] / 2) + 1;
 
-								for (int tmp_k1_y = 0; tmp_k1_y <= sys_vars->N[1] - 1; ++tmp_k1_y) {
+								for (int tmp_k1_x = 0; tmp_k1_x <= sys_vars->N[1] - 1; ++tmp_k1_x) {
 									
-									// Get k1_y
-									k1_y = tmp_k1_y - (int) (sys_vars->N[1] / 2) + 1;
+									// Get k1_x
+									k1_x = tmp_k1_x - (int) (sys_vars->N[1] / 2) + 1;
 
 									// Get polar coords for k1
-									k1_sqr       = (double) (k1_x * k1_x + k1_y * k1_y);
-									k1_angle     = atan2((double) k1_x, (double) k1_y);
-									k1_angle_neg = atan2((double)-k1_x, (double)-k1_y);
+									k1_sqr       = (double) (k1_y * k1_y + k1_x * k1_x);
+									k1_angle     = atan2((double) k1_y, (double) k1_x);
+									k1_angle_neg = atan2((double)-k1_y, (double)-k1_x);
 
 									if( ((k1_sqr > 0.0 && k1_sqr <= sys_vars->kmax_C_sqr) 
 										&& ((k1_angle >= C_theta_k3_lwr && k1_angle < C_theta_k3_upr) || (k1_angle_neg >= C_theta_k3_lwr && k1_angle_neg < C_theta_k3_upr)) 
@@ -1822,27 +1852,27 @@ void AllocatePhaseSyncMemory(const long int* N) {
 										&& !((k1_angle >= C_theta_k3_lwr && k1_angle < C_theta_k3_upr) || (k1_angle_neg >= C_theta_k3_lwr && k1_angle_neg < C_theta_k3_upr))) ) { 
 										
 										// Find the k2 wavevector
-										k2_x = k3_x - k1_x;
 										k2_y = k3_y - k1_y;
+										k2_x = k3_x - k1_x;
 										
 										// Get polar coords for k2
-										k2_sqr       = (double) (k2_x * k2_x + k2_y * k2_y);
-										k2_angle     = atan2((double)k2_x, (double) k2_y);
-										k2_angle_neg = atan2((double)-k2_x, (double) -k2_y);
+										k2_sqr       = (double) (k2_y * k2_y + k2_x * k2_x);
+										k2_angle     = atan2((double)k2_y, (double) k2_x);
+										k2_angle_neg = atan2((double)-k2_y, (double) -k2_x);
 
 										if ( (k2_sqr > 0.0 && k2_sqr <= sys_vars->kmax_sqr) 
 											&& !((k2_sqr > sys_vars->kmax_C_sqr && k2_sqr <= sys_vars->kmax_sqr) 
 											&& ((k2_angle >= C_theta_k3_lwr && k2_angle < C_theta_k3_upr) || (k2_angle_neg >= C_theta_k3_lwr && k2_angle_neg < C_theta_k3_upr))) ) {
 
 											// Add k1 vector
-											proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K1_X][nn] = k1_x;
 											proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K1_Y][nn] = k1_y;
+											proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K1_X][nn] = k1_x;
 											// Add the k2 vector
-											proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K2_X][nn] = k2_x;
 											proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K2_Y][nn] = k2_y;
+											proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K2_X][nn] = k2_x;
 											// Add the k3 vector
-											proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K3_X][nn] = k3_x;
 											proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K3_Y][nn] = k3_y;
+											proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K3_X][nn] = k3_x;
 											// Add the |k1|^2, |k2|^2, |k3|^2 
 											proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K1_SQR][nn] = k1_sqr;
 											proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K2_SQR][nn] = k2_sqr;
@@ -1886,45 +1916,45 @@ void AllocatePhaseSyncMemory(const long int* N) {
 							&& ((k3_angle >= C_theta_k1_lwr && k3_angle < C_theta_k1_upr) || (k3_angle_neg >= C_theta_k1_lwr && k3_angle_neg < C_theta_k1_upr))) ) { 
 
 							// Loop through the k1 wavevector
-							for (int tmp_k1_x = 0; tmp_k1_x <= sys_vars->N[0] - 1; ++tmp_k1_x) {
+							for (int tmp_k1_y = 0; tmp_k1_y <= sys_vars->N[0] - 1; ++tmp_k1_y) {
 								
-								// Get k1_x
-								k1_x = tmp_k1_x - (int) (sys_vars->N[0] / 2) + 1;
+								// Get k1_y
+								k1_y = tmp_k1_y - (int) (sys_vars->N[0] / 2) + 1;
 
-								for (int tmp_k1_y = 0; tmp_k1_y <= sys_vars->N[1] - 1; ++tmp_k1_y) {
+								for (int tmp_k1_x = 0; tmp_k1_x <= sys_vars->N[1] - 1; ++tmp_k1_x) {
 									
-									// Get k1_y
-									k1_y = tmp_k1_y - (int) (sys_vars->N[1] / 2) + 1;
+									// Get k1_x
+									k1_x = tmp_k1_x - (int) (sys_vars->N[1] / 2) + 1;
 
 									// Get polar coords for k1
-									k1_sqr       = (double) (k1_x * k1_x + k1_y * k1_y);
-									k1_angle     = atan2((double) k1_x, (double) k1_y);
-									k1_angle_neg = atan2((double)-k1_x, (double)-k1_y);
+									k1_sqr       = (double) (k1_y * k1_y + k1_x * k1_x);
+									k1_angle     = atan2((double) k1_y, (double) k1_x);
+									k1_angle_neg = atan2((double)-k1_y, (double)-k1_x);
 
 									if( (k1_sqr > sys_vars->kmax_C_sqr && k1_sqr <= sys_vars->kmax_sqr) 
 										&& ((k1_angle >= C_theta_k3_lwr && k1_angle < C_theta_k3_upr) || (k1_angle_neg >= C_theta_k3_lwr && k1_angle_neg < C_theta_k3_upr)) ) { 
 										
 										// Find the k2 wavevector
-										k2_x = k3_x - k1_x;
 										k2_y = k3_y - k1_y;
+										k2_x = k3_x - k1_x;
 										
 										// Get polar coords for k2
-										k2_sqr       = (double) (k2_x * k2_x + k2_y * k2_y);
-										k2_angle     = atan2((double)k2_x, (double) k2_y);
-										k2_angle_neg = atan2((double)-k2_x, (double) -k2_y);
+										k2_sqr       = (double) (k2_y * k2_y + k2_x * k2_x);
+										k2_angle     = atan2((double)k2_y, (double) k2_x);
+										k2_angle_neg = atan2((double)-k2_y, (double) -k2_x);
 
 										if ( (k2_sqr > sys_vars->kmax_C_sqr && k2_sqr <= sys_vars->kmax_sqr) 
 											&& ((k2_angle >= C_theta_k3_lwr && k2_angle < C_theta_k3_upr) || (k2_angle_neg >= C_theta_k3_lwr && k2_angle_neg < C_theta_k3_upr)) ) {
 											
 											// Add k1 vector
-											proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K1_X][nn] = k1_x;
 											proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K1_Y][nn] = k1_y;
+											proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K1_X][nn] = k1_x;
 											// Add the k2 vector
-											proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K2_X][nn] = k2_x;
 											proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K2_Y][nn] = k2_y;
+											proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K2_X][nn] = k2_x;
 											// Add the k3 vector
-											proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K3_X][nn] = k3_x;
 											proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K3_Y][nn] = k3_y;
+											proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K3_X][nn] = k3_x;
 											// Add the |k1|^2, |k2|^2, |k3|^2 
 											proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K1_SQR][nn] = k1_sqr;
 											proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K2_SQR][nn] = k2_sqr;

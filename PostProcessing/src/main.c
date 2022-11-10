@@ -55,7 +55,7 @@ int main(int argc, char** argv) {
 	//  Begin Timing
 	// --------------------------------
 	// Initialize timing counter
-	clock_t main_begin = omp_get_wtime();
+	// clock_t main_begin = omp_get_wtime();
 
 	// --------------------------------
 	//  Get Command Line Arguements
@@ -66,13 +66,13 @@ int main(int argc, char** argv) {
 	}
 
 	// Set the number of threads and get thread IDs
-	omp_set_num_threads(sys_vars->num_threads);
-	#pragma omp parallel
-	{
-		if (!(sys_vars->thread_id)) {
-			printf("\nThreads Active: "CYAN"%d"RESET"\n", sys_vars->num_threads);
-		}
-	}
+	// omp_set_num_threads(sys_vars->num_threads);
+	// #pragma omp parallel
+	// {
+	// 	if (!(sys_vars->thread_id)) {
+	// 		printf("\nThreads Active: "CYAN"%d"RESET"\n", sys_vars->num_threads);
+	// 	}
+	// }
 
 	//////////////////////////////
 	// Call Post Processing
@@ -86,16 +86,16 @@ int main(int argc, char** argv) {
 	//  End Timing
 	// --------------------------------
 	// Finish timing
-	clock_t main_end = omp_get_wtime();
+	// clock_t main_end = omp_get_wtime();
 
-	// calculate execution time
-	double time_spent = (double)(main_end - main_begin);
-	int hh = (int) time_spent / 3600;
-	int mm = ((int )time_spent - hh * 3600) / 60;
-	int ss = time_spent - hh * 3600 - mm * 60;
-	printf("\n\nTotal Execution Time: ["CYAN"%5.10lf"RESET"] --> "CYAN"%d"RESET" hrs : "CYAN"%d"RESET" mins : "CYAN"%d"RESET" secs\n\n", time_spent, hh, mm, ss);
+	// // calculate execution time
+	// double time_spent = (double)(main_end - main_begin);
+	// int hh = (int) time_spent / 3600;
+	// int mm = ((int )time_spent - hh * 3600) / 60;
+	// int ss = time_spent - hh * 3600 - mm * 60;
+	// printf("\n\nTotal Execution Time: ["CYAN"%5.10lf"RESET"] --> "CYAN"%d"RESET" hrs : "CYAN"%d"RESET" mins : "CYAN"%d"RESET" secs\n\n", time_spent, hh, mm, ss);
 
-
+	printf("\n \nEND!!!\n \n");
 	return 0;
 }
 // ---------------------------------------------------------------------

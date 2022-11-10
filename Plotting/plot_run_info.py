@@ -30,7 +30,7 @@ import multiprocessing as mprocs
 import time as TIME
 from subprocess import Popen, PIPE, run
 from matplotlib.pyplot import cm
-from functions import tc, sim_data, import_data, import_spectra_data, import_post_processing_data, import_sys_msr
+from functions import tc, sim_data, import_data, import_spectra_data, import_post_processing_data, import_sys_msr, energy_spectrum, enstrophy_spectrum
 from plot_functions import plot_flow_summary
 ###############################
 ##       FUNCTION DEFS       ##
@@ -302,6 +302,65 @@ if __name__ == '__main__':
     ax2.set_title(r"$\Pi(|\mathbf{k}|)$: Enstrophy Flux Spectrum")
     
     plt.savefig(snaps_output_dir + "TimeAveragedEnstrophySpectra.png")
+    plt.close()
+
+    ##------------------------ Time Averaged Energy Spectra and Flux Spectra
+    fig = plt.figure(figsize = (21, 8))
+    gs  = GridSpec(1, 2)
+    ax2 = fig.add_subplot(gs[0, 0])
+    for i in range(spec_data.enst_spectrum.shape[0]):
+        ax2.plot(np.arange(1, int(sys_vars.Nx/3)), spec_data.enrg_spectrum[i, 1:int(sys_vars.Nx/3)], 'r', alpha = 0.15)
+    ax2.plot(np.arange(1, int(sys_vars.Nx/3)), np.mean(spec_data.enrg_spectrum[:, 1:int(sys_vars.Nx/3)], axis = 0), 'k')
+    ax2.set_xlabel(r"$k$")
+    ax2.set_xscale('log')
+    ax2.set_yscale('log')
+    ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+    ax2.set_title(r"$\mathcal{K}(|\mathbf{k}|)$: Energy Spectrum")
+
+    ax2 = fig.add_subplot(gs[0, 1])
+    for i in range(spec_data.enrg_flux_spectrum.shape[0]):
+        ax2.plot(np.arange(1, int(sys_vars.Nx/3)), spec_data.enrg_flux_spectrum[i, 1:int(sys_vars.Nx/3)], 'r', alpha = 0.15)
+    ax2.plot(np.arange(1, int(sys_vars.Nx/3)), np.mean(spec_data.enrg_flux_spectrum[:, 1:int(sys_vars.Nx/3)], axis = 0), 'k')
+    ax2.set_xlabel(r"$k$")
+    ax2.set_xscale('log')
+    ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+    ax2.set_title(r"$\Pi(|\mathbf{k}|)$: Energy Flux Spectrum")
+    
+    plt.savefig(snaps_output_dir + "TimeAveragedEnergySpectra.png")
+    plt.close()
+
+
+    ##------------------------ Time Averaged Spectra to Measure the Spectra Scaling Exponent
+    k_range = np.arange(1, int(sys_vars.Nx/3))
+    inert_range = np.arange(9, 200)
+    mean_enrg_spec = np.mean(spec_data.enrg_spectrum[:, 1:int(sys_vars.Nx/3)], axis = 0)
+    mean_enst_spec = np.mean(spec_data.enst_spectrum[:, 1:int(sys_vars.Nx/3)], axis = 0)
+    p_enrg = np.polyfit(np.log(k_range[inert_range]), np.log(mean_enrg_spec[inert_range]), 1)
+    p_enst = np.polyfit(np.log(k_range[inert_range]), np.log(mean_enst_spec[inert_range]), 1)
+
+    fig = plt.figure(figsize = (21, 8))
+    gs  = GridSpec(1, 2)
+    ax2 = fig.add_subplot(gs[0, 0])
+    ax2.plot(k_range, mean_enrg_spec, 'k')
+    ax2.plot(k_range[inert_range], np.exp(p_enrg[1]) * k_range[inert_range]**p_enrg[0], '--', color='orangered',label="$E(k) \propto k^{:.2f}$".format(p_enrg[0])) ## \Rightarrow \propto$ k^{-(3 + \qi)} \Rightarrow \qi = {:.2f} , np.absolute(np.absolute(p_enrg[0]) - 3))
+    ax2.set_xlabel(r"$k$")
+    ax2.set_xscale('log')
+    ax2.set_yscale('log')
+    ax2.legend()
+    ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+    ax2.set_title(r"$\mathcal{K}(|\mathbf{k}|)$: Energy Spectrum")
+
+    ax2 = fig.add_subplot(gs[0, 1])
+    ax2.plot(k_range, mean_enst_spec, 'k')
+    ax2.plot(k_range[inert_range], np.exp(p_enst[1]) * k_range[inert_range]**p_enst[0], '--', color='orangered',label="$E(k) \propto k^{:.2f}$".format(p_enst[0])) ## \propto$ k^{-(1 + \qi)} \Rightarrow , \qi = {:.2f} np.absolute(np.absolute(p_enst[0]) - 3))
+    ax2.set_xlabel(r"$k$")
+    ax2.set_xscale('log')
+    ax2.set_yscale('log')
+    ax2.legend()
+    ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+    ax2.set_title(r"$\mathcal{E}(|\mathbf{k}|)$: Enstrophy Spectrum")
+    
+    plt.savefig(snaps_output_dir + "SpectraScaling.png")
     plt.close()
 
 

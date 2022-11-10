@@ -218,6 +218,7 @@ typedef struct system_vars_struct {
 	int n_spect;                        // Size of the spectra arrays
 	int print_every;                    // Records how many iterations are performed before printing to file
 	int SAVE_EVERY; 					// For specifying how often to print
+	int STATS_EVERY; 					// For specifying how often to compute stats
 	double force_scale_var;				// The scaling variable for the forced modes
 	int force_k; 						// The forcing wavenumber 
 	int local_forcing_proc;				// Identifier used to indicate which process contains modes that need to be forced
@@ -305,6 +306,20 @@ typedef struct Int_data_struct {
 	int AB_pre_steps;				// The number of derivatives to perform for the AB4 scheme
 } Int_data_struct;
 
+// Field stats struct -> for computing field stats
+typedef struct field_stats {
+	double min;						// Minimum value of the field
+	double max; 					// Maximum value of the field
+	double data_sqrd_sum;			// The sum of squared data values
+	double data_sum;				// The sum of data values
+	double var;						// The variance of the data values
+	double mean; 					// The mean of the data values
+	double skew;					// The skewness
+	double kurt;					// The kurtosis
+	double std;						// The standard deviation
+	long int n;						// The number of data values
+} field_stats;
+
 // Stats data struct
 typedef struct stats_data_struct {
 	double* vel_str_func[INCR_TYPES][NUM_POW];					// Array to hold the structure functions of the Velocity increments
@@ -313,10 +328,10 @@ typedef struct stats_data_struct {
 	double* vort_str_func_abs[INCR_TYPES][NUM_POW];				// Array to hold the structure functions of the absolute value of flux Vorticity increments
 	double* vel_mixed_str_func;									// Array to hold the mixed velocity structure function, this should be the same as 1/3 of the third order velocity structre function
 	double* vort_mixed_str_func;								// Array to hold the mixed vorticity structure function, this should be the same as the third order vorticity structre function
-	gsl_rstat_workspace* vel_inc_stats[INCR_TYPES][NUM_INCR];   // Struct to hold the running stats for the velocity increments
-	gsl_rstat_workspace* vort_inc_stats[INCR_TYPES][NUM_INCR];	// Struct to hold the running stats for the vorticity increments
-	gsl_rstat_workspace* vel_stats[INCR_TYPES];					// Struct to hold the running stats for the velocity field
-	gsl_rstat_workspace* vort_stats[INCR_TYPES];				// Struct to hold the running stats for the vorticity field
+	struct field_stats vel_inc_stats[INCR_TYPES][NUM_INCR];      // Struct to hold the running stats for the velocity increments
+	struct field_stats vort_inc_stats[INCR_TYPES][NUM_INCR];	// Struct to hold the running stats for the vorticity increments
+	struct field_stats vel_stats[INCR_TYPES];					// Struct to hold the running stats for the velocity field
+	struct field_stats vort_stats[INCR_TYPES];				    // Struct to hold the running stats for the vorticity field
 	gsl_histogram* vel_inc_hist[INCR_TYPES][NUM_INCR];			// Struct to hold the histogram info for the velocity increments
 	gsl_histogram* vort_inc_hist[INCR_TYPES][NUM_INCR];			// Struct to hold the histogram info for the vorticity increments
 	long int num_stats_steps;									// Counter for the number of steps statistics have been computed

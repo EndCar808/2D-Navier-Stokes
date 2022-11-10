@@ -21,6 +21,7 @@
 #include "data_types.h"
 #include "hdf5_funcs.h"
 #include "utils.h"
+#include "stats.h"
 
 
 // ---------------------------------------------------------------------
@@ -46,6 +47,11 @@ void OpenInputAndInitialize(void) {
 	// Create compound datatype for the complex datasets
 	file_info->COMPLEX_DTYPE = CreateComplexDatatype();
 
+	// status = H5Tclose(file_info->COMPLEX_DTYPE);
+	// if (status < 0) {
+	// 	fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close Complex Compound Datat Type at final write\n-->> Exiting...\n");
+	// 	exit(1);
+	// }
 	// --------------------------------
 	//  Get Input File Path
 	// --------------------------------
@@ -55,6 +61,8 @@ void OpenInputAndInitialize(void) {
 			// If input folder construct input file path
 			strcpy(file_info->input_file_name, file_info->input_dir);
 			strcat(file_info->input_file_name, "Main_HDF_Data.h5");
+			strcpy(file_info->sys_msr_file_name, file_info->input_dir);
+			strcat(file_info->sys_msr_file_name, "SystemMeasures_HDF_Data.h5");			
 		}
 		else {
 			// If file only mode construct input file path
@@ -87,13 +95,25 @@ void OpenInputAndInitialize(void) {
 			exit(1);
 		}
 	}
+	if (access(file_info->sys_msr_file_name, F_OK) != 0) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- System Measures Input file ["CYAN"%s"RESET"] does not exist\n-->> Exiting...\n", file_info->sys_msr_file_name);
+		exit(1);
+	}
+	else {
+		// Open file
+		file_info->sys_msr_file_handle = H5Fopen(file_info->sys_msr_file_name, H5F_ACC_RDWR, H5P_DEFAULT);
+		if (file_info->sys_msr_file_handle < 0) {
+			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to open system measures file ["CYAN"%s"RESET"]\n-->> Exiting...\n", file_info->sys_msr_file_name);
+			exit(1);
+		}
+	}
 
 	// --------------------------------
 	//  Get Number of Snaps
 	// --------------------------------
 	// Count the number of snapshot groups in file
 	printf("Checking Number of Snapshots ");
-	for(int i = 0; i < (int) 1e6; ++i) {
+	for(int i = 0; i < (int) 1e7; ++i) {
 		// Check for snap
 		sprintf(group_string, "/Iter_%05d", i);	
 		if(H5Lexists(file_info->input_file_handle, group_string, H5P_DEFAULT) > 0 ) {
@@ -177,31 +197,30 @@ void OpenInputAndInitialize(void) {
 	}
 
 	// Read in space arrays if they exist in input file if not intialize them
-	if((H5Lexists(file_info->input_file_handle, "x", H5P_DEFAULT) > 0) && (H5Lexists(file_info->input_file_handle, "y", H5P_DEFAULT) > 0) && (H5Lexists(file_info->input_file_handle, "kx", H5P_DEFAULT) > 0) && (H5Lexists(file_info->input_file_handle, "ky", H5P_DEFAULT) > 0)) {
+	if((H5Lexists(file_info->sys_msr_file_handle, "x", H5P_DEFAULT) > 0) && (H5Lexists(file_info->sys_msr_file_handle, "y", H5P_DEFAULT) > 0) && (H5Lexists(file_info->sys_msr_file_handle, "kx", H5P_DEFAULT) > 0) && (H5Lexists(file_info->sys_msr_file_handle, "ky", H5P_DEFAULT) > 0)) {
 		// Read in real space arrays
-		if(H5LTread_dataset(file_info->input_file_handle, "x", H5T_NATIVE_DOUBLE, run_data->x[0]) < 0) {
+		if(H5LTread_dataset(file_info->sys_msr_file_handle, "x", H5T_NATIVE_DOUBLE, run_data->x[0]) < 0) {
 			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to read in data for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "x");
 			exit(1);	
 		}
-		if(H5LTread_dataset(file_info->input_file_handle, "y", H5T_NATIVE_DOUBLE, run_data->x[1]) < 0) {
+		if(H5LTread_dataset(file_info->sys_msr_file_handle, "y", H5T_NATIVE_DOUBLE, run_data->x[1]) < 0) {
 			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to read in data for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "y");
 			exit(1);
 		}
 
 		// Read in Fourier space arrays
-		if(H5LTread_dataset(file_info->input_file_handle, "kx", H5T_NATIVE_INT, run_data->k[0]) < 0) {
-			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to read in data for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "kx");
-			exit(1);	
-		}
-		if(H5LTread_dataset(file_info->input_file_handle, "ky", H5T_NATIVE_INT, run_data->k[1]) < 0) {
+		if(H5LTread_dataset(file_info->sys_msr_file_handle, "ky", H5T_NATIVE_INT, run_data->k[0]) < 0) {
 			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to read in data for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "ky");
 			exit(1);
+		}
+		if(H5LTread_dataset(file_info->sys_msr_file_handle, "kx", H5T_NATIVE_INT, run_data->k[1]) < 0) {
+			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to read in data for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "kx");
+			exit(1);	
 		}
 	}
 	else {
 		InitializeSpaceVariables(run_data->x, run_data->k, sys_vars->N);
 	}
-
 
 	// --------------------------------
 	//  Close HDF5 Identifiers
@@ -209,6 +228,11 @@ void OpenInputAndInitialize(void) {
 	status = H5Fclose(file_info->input_file_handle);
 	if (status < 0) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close input file ["CYAN"%s"RESET"] at: Snap = ["CYAN"%s"RESET"]\n-->> Exiting...\n", file_info->input_file_name, "initial");
+		exit(1);		
+	}
+	status = H5Fclose(file_info->sys_msr_file_handle);
+	if (status < 0) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close  system measures file ["CYAN"%s"RESET"] at: Snap = ["CYAN"%s"RESET"]\n-->> Exiting...\n", file_info->sys_msr_file_name, "initial");
 		exit(1);		
 	}
 }
@@ -220,9 +244,9 @@ void ReadInData(int snap_indx) {
 
 	// Initialize variables
 	int indx, tmp;
-	const long int Nx 		  = sys_vars->N[0];
-	const long int Ny 		  = sys_vars->N[1];
-	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
+	const long int Ny 		  = sys_vars->N[0];
+	const long int Nx 		  = sys_vars->N[1];
+	const long int Nx_Fourier = sys_vars->N[1] / 2 + 1;
 	char group_string[64];
 	hid_t dset;
 	herr_t status;
@@ -269,7 +293,7 @@ void ReadInData(int snap_indx) {
 	// --------------------------------
 	//  Read in Real Vorticity
 	// --------------------------------
-	#if defined(__REAL_STATS) || defined(__VEL_INC_STATS) || defined(__STR_FUNC_STATS) || defined(__GRAD_STATS)
+	#if defined(__REAL_STATS) || defined(__VORT_INC_STATS) || defined(__VORT_STR_FUNC_STATS) || defined(__VORT_GRAD_STATS)
 	// If Real Space vorticity exists read it in
 	sprintf(group_string, "/Iter_%05d/w", snap_indx);	
 	if (H5Lexists(file_info->input_file_handle, group_string, H5P_DEFAULT) > 0 ) {
@@ -288,13 +312,11 @@ void ReadInData(int snap_indx) {
 		sys_vars->REAL_VORT_FLAG = 1; 
 	}
 	else {
-		// Real space vorticity does not exists
-		sys_vars->REAL_VORT_FLAG = 0; 
 
 		// Get the real space vorticity from the Fourier space
-		for (int i = 0; i < Nx; ++i) {	
-			tmp = i * Ny_Fourier;
-			for (int j = 0; j < Ny_Fourier; ++j) {
+		for (int i = 0; i < Ny; ++i) {	
+			tmp = i * Nx_Fourier;
+			for (int j = 0; j < Nx_Fourier; ++j) {
 				indx = tmp + j;
 
 				// Save the fourier vorticity before transform as it will be overwrittend
@@ -302,22 +324,25 @@ void ReadInData(int snap_indx) {
 			}
 		}
 		fftw_execute_dft_c2r(sys_vars->fftw_2d_dft_c2r, run_data->tmp_w_hat, run_data->w);
-		for (int i = 0; i < Nx; ++i) {	
-			tmp = i * Ny;
-			for (int j = 0; j < Ny; ++j) {
+		for (int i = 0; i < Ny; ++i) {	
+			tmp = i * Nx;
+			for (int j = 0; j < Nx; ++j) {
 				indx = tmp + j;
 
 				// Normalize the vorticity
-				run_data->w[indx] /= (Nx * Ny);
+				run_data->w[indx] *= 1.0; // /(Ny * Nx);
 			}
 		}
+		
+		// Real space vorticity does not exists
+		sys_vars->REAL_VORT_FLAG = 1; 
 	}
 	#endif
 
 	// --------------------------------
 	//  Read in Real Velocity
 	// --------------------------------
-	#if defined(__REAL_STATS) || defined(__VEL_INC_STATS) || defined(__STR_FUNC_STATS) || defined(__GRAD_STATS)
+	#if defined(__REAL_STATS) || defined(__VEL_INC_STATS) || defined(__VEL_STR_FUNC_STATS) || defined(__VEL_GRAD_STATS)
 	// If Real Space Velocity exists read it in
 	sprintf(group_string, "/Iter_%05d/u", snap_indx);	
 	if (H5Lexists(file_info->input_file_handle, group_string, H5P_DEFAULT) > 0 ) {
@@ -332,11 +357,14 @@ void ReadInData(int snap_indx) {
 			exit(1);	
 		}
 
-		#if defined(__GRAD_STATS)
+		// Real space velocity exists
+		sys_vars->REAL_VEL_FLAG = 1; 
+
+		#if defined(__VEL_GRAD_STATS)
 		// Transform from Real space To Fourier Space
-		for (int i = 0; i < Nx; ++i) {	
-			tmp = i * Ny;
-			for (int j = 0; j < Ny; ++j) {
+		for (int i = 0; i < Ny; ++i) {	
+			tmp = i * Nx;
+			for (int j = 0; j < Nx; ++j) {
 				indx = tmp + j;
 
 				// Normalize the velocity
@@ -345,21 +373,18 @@ void ReadInData(int snap_indx) {
 			}
 		}
 		fftw_execute_dft_r2c(sys_vars->fftw_2d_dft_batch_r2c, run_data->tmp_u, run_data->u_hat);
-		#endif
 
 		// Real space velocity exists
-		sys_vars->REAL_VEL_FLAG = 1; 
+		sys_vars->FOUR_VEL_FLAG = 1; 
+		#endif
 	}
 	else {
 		fftw_complex k_sqr;
 		
-		// Real space velocity doesn't exist
-		sys_vars->REAL_VEL_FLAG = 0; 
-
 		// Compute the Fourier velocity from the Fourier vorticity
-		for (int i = 0; i < Nx; ++i) {
-			tmp = i * Ny_Fourier;
-			for (int j = 0; j < Ny_Fourier; ++j) {
+		for (int i = 0; i < Ny; ++i) {
+			tmp = i * Nx_Fourier;
+			for (int j = 0; j < Nx_Fourier; ++j) {
 				indx = tmp + j;
 
 				if ((run_data->k[0][i] != 0) || (run_data->k[1][j] != 0)) {
@@ -367,8 +392,8 @@ void ReadInData(int snap_indx) {
 					k_sqr = I / (double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 					
 					// Compute the Fourier velocity
-					run_data->u_hat[SYS_DIM * indx + 0] = k_sqr * (double)run_data->k[1][j] * run_data->w_hat[indx];
-					run_data->u_hat[SYS_DIM * indx + 1] = -k_sqr * (double)run_data->k[0][i] * run_data->w_hat[indx];
+					run_data->u_hat[SYS_DIM * indx + 0] = k_sqr * (double)run_data->k[0][i] * run_data->w_hat[indx];
+					run_data->u_hat[SYS_DIM * indx + 1] = -k_sqr * (double)run_data->k[1][j] * run_data->w_hat[indx];
 				}
 				else {
 					run_data->u_hat[SYS_DIM * indx + 0] = 0.0 + 0.0 * I;
@@ -381,18 +406,24 @@ void ReadInData(int snap_indx) {
 			}
 		}
 
+		// Real space velocity exists
+		sys_vars->FOUR_VEL_FLAG = 1; 
+
 		// Transform back to Real space and Normalize
 		fftw_execute_dft_c2r(sys_vars->fftw_2d_dft_batch_c2r, run_data->tmp_u_hat, run_data->u);
-		for (int i = 0; i < Nx; ++i) {	
-			tmp = i * Ny;
-			for (int j = 0; j < Ny; ++j) {
+		for (int i = 0; i < Ny; ++i) {	
+			tmp = i * Nx;
+			for (int j = 0; j < Nx; ++j) {
 				indx = tmp + j;
 
 				// Normalize the velocity
-				run_data->u[SYS_DIM * indx + 0] /= (Nx * Ny);
-				run_data->u[SYS_DIM * indx + 1] /= (Nx * Ny);
+				run_data->u[SYS_DIM * indx + 0] *= 1.0; // /(Ny * Nx);
+				run_data->u[SYS_DIM * indx + 1] *= 1.0; // /(Ny * Nx);
 			}
 		}
+
+		// Real space velocity exists now
+		sys_vars->REAL_VEL_FLAG = 1; 
 	}
 	#endif
 
@@ -412,14 +443,14 @@ void ReadInData(int snap_indx) {
 void OpenOutputFile(void) {
 
 	// Initialize variables
-	char file_name[512];
+	char file_name[1024];
 	herr_t status;
 	struct stat st = {0};	// this is used to check whether the output directories exist or not.
 
 	// --------------------------------
 	//  Generate Output File Path
 	// --------------------------------
-	if (strcmp(file_info->output_dir, "NONE") == -1) {
+	if (strcmp(file_info->output_dir, "NONE") != 0) {
 		// Construct pathh
 		strcpy(file_info->output_file_name, file_info->output_dir);
 		sprintf(file_name, "PostProcessing_HDF_Data_SECTORS[%d,%d]_KFRAC[%1.2lf]_TAG[%s].h5", sys_vars->num_k3_sectors, sys_vars->num_k1_sectors, sys_vars->kmax_frac, file_info->output_tag);
@@ -437,7 +468,7 @@ void OpenOutputFile(void) {
 		strcat(file_info->output_file_name, file_name);
 
 		// Print output file path to screen
-		printf("Output File: "CYAN"%s"RESET"\n\n", file_info->output_file_name);	
+		printf("Output File: "CYAN"%s"RESET"\n\n", file_info->output_file_name);
 	}
 	else if ((stat(file_info->input_dir, &st) == -1) && (stat(file_info->output_dir, &st) == -1)) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"]  --- Output folder not provided or doesn't exist. Please provide output folder - see utils.c: \n-->>Exiting....\n");
@@ -474,9 +505,9 @@ void WriteDataToFile(double t, long int snap) {
 	herr_t status;
 	hid_t group_id;
 	int indx, temp;
-	const long int Nx 		  = sys_vars->N[0];
-	const long int Ny 		  = sys_vars->N[1];
-	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
+	const long int Ny 		  = sys_vars->N[0];
+	const long int Nx 		  = sys_vars->N[1];
+	const long int Nx_Fourier = sys_vars->N[1] / 2 + 1;
 	static const hsize_t Dims1D = 1;
 	hsize_t dset_dims_1d[Dims1D];       
 	static const hsize_t Dims2D = 2;
@@ -484,7 +515,7 @@ void WriteDataToFile(double t, long int snap) {
 	static const hsize_t Dims3D = 3;
 	hsize_t dset_dims_3d[Dims3D];     
 	
-
+	// printf("file_name: %s", file_info->output_file_name);
 	// -------------------------------
 	// Check for Output File
 	// -------------------------------
@@ -510,7 +541,6 @@ void WriteDataToFile(double t, long int snap) {
 	// -------------------------------
 	// Initialize Group Name
 	sprintf(group_name, "/Snap_%05d", (int)snap);
-
 	// Create group for the current snapshot
 	group_id = CreateGroup(file_info->output_file_handle, file_info->output_file_name, group_name, t, snap);
 	if (group_id < 0 ) {
@@ -535,9 +565,9 @@ void WriteDataToFile(double t, long int snap) {
 	#if defined(__MODES) || defined(__REALSPACE)
 	// Get the Fourier space velocities
 	fftw_complex k_sqr_inv;
-	for (int i = 0; i < Nx; ++i) {
-		temp = i * Ny_Fourier;
-		for (int j = 0; j < Ny_Fourier; ++j) {
+	for (int i = 0; i < Ny; ++i) {
+		temp = i * Nx_Fourier;
+		for (int j = 0; j < Nx_Fourier; ++j) {
 			indx = temp + j;
 
 			if ((run_data->k[0][i] != 0) || (run_data->k[1][j] != 0)) {
@@ -545,8 +575,8 @@ void WriteDataToFile(double t, long int snap) {
 				k_sqr_inv = I / (double )(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 
 				// Fill the fourier space velocities
-				run_data->u_hat[SYS_DIM * indx + 0] = k_sqr_inv * run_data->k[1][j] * run_data->w_hat[indx];
-				run_data->u_hat[SYS_DIM * indx + 1] = -k_sqr_inv * run_data->k[0][i] * run_data->w_hat[indx];
+				run_data->u_hat[SYS_DIM * indx + 0] = k_sqr_inv * run_data->k[0][i] * run_data->w_hat[indx];
+				run_data->u_hat[SYS_DIM * indx + 1] = -k_sqr_inv * run_data->k[1][j] * run_data->w_hat[indx];
 			}
 			else {
 				run_data->u_hat[SYS_DIM * indx + 0] = 0.0 + 0.0 * I;
@@ -556,14 +586,15 @@ void WriteDataToFile(double t, long int snap) {
 	}
 	#endif
 
+
 	// -------------------------------
 	// Write Real Space Vorticity
 	// -------------------------------
 	#if defined(__VORT_REAL)
 	// Get the real space vorticity from the Fourier space
-	for (int i = 0; i < Nx; ++i) {	
-		temp = i * Ny_Fourier;
-		for (int j = 0; j < Ny_Fourier; ++j) {
+	for (int i = 0; i < Ny; ++i) {	
+		temp = i * Nx_Fourier;
+		for (int j = 0; j < Nx_Fourier; ++j) {
 			indx = temp + j;
 
 			// Save the fourier vorticity before transform as it will be overwritten
@@ -571,13 +602,13 @@ void WriteDataToFile(double t, long int snap) {
 		}
 	}
 	fftw_execute_dft_c2r(sys_vars->fftw_2d_dft_c2r, run_data->tmp_w_hat, run_data->w);
-	for (int i = 0; i < Nx; ++i) {	
-		temp = i * Ny;
-		for (int j = 0; j < Ny; ++j) {
+	for (int i = 0; i < Ny; ++i) {	
+		temp = i * Nx;
+		for (int j = 0; j < Nx; ++j) {
 			indx = temp + j;
 
 			// Normalize the vorticity
-			run_data->w[indx] /= (Nx * Ny);
+			run_data->w[indx] *= 1.0; // /(Ny * Nx);
 		}
 	}
 
@@ -611,9 +642,9 @@ void WriteDataToFile(double t, long int snap) {
 	// -------------------------------
 	#if defined(__REALSPACE)
 	// Get the real space vorticity from the Fourier space
-	for (int i = 0; i < Nx; ++i) {
-		temp = i * Ny_Fourier;
-		for (int j = 0; j < Ny_Fourier; ++j) {
+	for (int i = 0; i < Ny; ++i) {
+		temp = i * Nx_Fourier;
+		for (int j = 0; j < Nx_Fourier; ++j) {
 			indx = temp + j;
 
 			// Save the Fourier velocities in temp array before transform
@@ -622,14 +653,14 @@ void WriteDataToFile(double t, long int snap) {
 		}
 	}
 	fftw_execute_dft_c2r(sys_vars->fftw_2d_dft_batch_c2r, run_data->tmp_u_hat, run_data->u);
-	for (int i = 0; i < Nx; ++i) {	
-		temp = i * Ny;
-		for (int j = 0; j < Ny; ++j) {
+	for (int i = 0; i < Ny; ++i) {	
+		temp = i * Nx;
+		for (int j = 0; j < Nx; ++j) {
 			indx = temp + j;
 
 			// Normalize the velocity
-			run_data->u[SYS_DIM * indx + 0] /= (Nx * Ny);
-			run_data->u[SYS_DIM * indx + 1] /= (Nx * Ny);
+			run_data->u[SYS_DIM * indx + 0] *= 1.0; // /(Ny * Nx);
+			run_data->u[SYS_DIM * indx + 1] *= 1.0; // /(Ny * Nx);
 		}
 	}
 
@@ -691,28 +722,28 @@ void WriteDataToFile(double t, long int snap) {
 	// -------------------------------
 	#if defined(__REAL_STATS)
 	// The vorticity histogram bin ranges and bin counts
-	dset_dims_1d[0] = stats_data->w_pdf->n + 1;
-	status = H5LTmake_dataset(group_id, "VorticityPDFRanges", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, stats_data->w_pdf->range);
+	dset_dims_1d[0] = stats_data->w_hist->n + 1;
+	status = H5LTmake_dataset(group_id, "VorticityPDFRanges", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, stats_data->w_hist->range);
 	if (status < 0) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Vorticity PDF Bin Ranges", t, snap);
 		exit(1);
 	}		
-	dset_dims_1d[0] = stats_data->w_pdf->n;
-	status = H5LTmake_dataset(group_id, "VorticityPDFCounts", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, stats_data->w_pdf->bin);	
+	dset_dims_1d[0] = stats_data->w_hist->n;
+	status = H5LTmake_dataset(group_id, "VorticityPDFCounts", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, stats_data->w_hist->bin);	
 	if (status < 0) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Vorticity PDF Bin Counts", t, snap);
 		exit(1);
 	}
 	
 	// The velocity histogram bin ranges and bin counts
-	dset_dims_1d[0] = stats_data->u_pdf->n + 1;
-	status = H5LTmake_dataset(group_id, "VelocityPDFRanges", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, stats_data->u_pdf->range);
+	dset_dims_1d[0] = stats_data->u_hist->n + 1;
+	status = H5LTmake_dataset(group_id, "VelocityPDFRanges", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, stats_data->u_hist->range);
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Velocity PDF Bin Ranges", t, snap);
         exit(1);
     }		
-	dset_dims_1d[0] = stats_data->u_pdf->n;
-	status = H5LTmake_dataset(group_id, "VelocityPDFCounts", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, stats_data->u_pdf->bin);	
+	dset_dims_1d[0] = stats_data->u_hist->n;
+	status = H5LTmake_dataset(group_id, "VelocityPDFCounts", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, stats_data->u_hist->bin);	
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Velocity PDF Bin Counts", t, snap);
         exit(1);
@@ -782,6 +813,12 @@ void WriteDataToFile(double t, long int snap) {
     // Write the nonlinear term in Fourier space
     dset_dims_2d[0] = sys_vars->N[0];
     dset_dims_2d[1] = sys_vars->N[1] / 2 + 1;
+   //  for (int i = 0; i < Ny; ++i)
+   //  {
+   //  	for (int j = 0; j < Nx_Fourier; ++j) {
+			// printf("NONLIN[%d,%d]: %5.16lf %5.16lf ", run_data->k[0][i], run_data->k[1][j], creal(proc_data->dw_hat_dt[(i * (Nx_Fourier) + j)]), cimag(proc_data->dw_hat_dt[(i * (Nx_Fourier) + j)]));
+   //  	}
+   //  }
 	status = H5LTmake_dataset(group_id, "NonlinearTerm", Dims2D, dset_dims_2d, file_info->COMPLEX_DTYPE, proc_data->dw_hat_dt);
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file  at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Nonlinear Term", t, snap);
@@ -1057,6 +1094,7 @@ void WriteDataToFile(double t, long int snap) {
     fftw_free(tmp1);
 
 
+
     ///------------------------- Phase Order Stats Data
     #if defined(__SEC_PHASE_SYNC_STATS)
 	// Allocate temporary memory for the phases pdfs
@@ -1182,6 +1220,7 @@ hid_t CreateGroup(hid_t file_handle, char* filename, char* group_name, double t,
 	static const hsize_t attrank = 1;
 	hsize_t attr_dims[attrank];
 
+
 	// -------------------------------
 	// Create the group
 	// -------------------------------
@@ -1259,14 +1298,14 @@ hid_t CreateComplexDatatype(void) {
 	// Insert the real part of the datatype
   	status = H5Tinsert(dtype, "r", offsetof(complex_type_tmp,re), H5T_NATIVE_DOUBLE);
   	if (status < 0) {
-  		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Could not insert real part for the Complex Compound Datatype!!\nExiting...\n");
+  		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Could not insert real part for the Complex Compound Datatype!!\n-->> Exiting...\n");
   		exit(1);
   	}
 
   	// Insert the imaginary part of the datatype
   	status = H5Tinsert(dtype, "i", offsetof(complex_type_tmp,im), H5T_NATIVE_DOUBLE);
   	if (status < 0) {
-  		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Could not insert imaginary part for the Complex Compound Datatype! \n-->>Exiting...\n");
+  		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Could not insert imaginary part for the Complex Compound Datatype!!\n-->> Exiting...\n");
   		exit(1);
   	}
 
@@ -1307,17 +1346,17 @@ void FinalWriteAndClose(void) {
 	}
 
 	// -------------------------------
-	// Write Datasets
+	// Write Space Variables Datasets
 	// -------------------------------
 	///----------------------------------- Write Wavevector list
 	#if defined(__WAVELIST)
 	dset_dims_1d[0] = sys_vars->N[0];
-	if ( (H5LTmake_dataset(file_info->output_file_handle, "kx", Dims1D, dset_dims_1d, H5T_NATIVE_INT, run_data->k[0])) < 0) {
-		printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "kx");
+	if ( (H5LTmake_dataset(file_info->output_file_handle, "ky", Dims1D, dset_dims_1d, H5T_NATIVE_INT, run_data->k[0])) < 0) {
+		printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "ky");
 	}
 	dset_dims_1d[0] = sys_vars->N[1] / 2 + 1;
-	if ( (H5LTmake_dataset(file_info->output_file_handle, "ky", Dims1D, dset_dims_1d, H5T_NATIVE_INT, run_data->k[1])) < 0) {
-		printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "ky");
+	if ( (H5LTmake_dataset(file_info->output_file_handle, "kx", Dims1D, dset_dims_1d, H5T_NATIVE_INT, run_data->k[1])) < 0) {
+		printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "kx");
 	}
 	#endif
 
@@ -1333,6 +1372,11 @@ void FinalWriteAndClose(void) {
 	}
 	#endif	
 
+
+
+	// -------------------------------
+	// Write Flux
+	// -------------------------------
 	///----------------------------------- Write the Enstrophy Flux out of & Dissipation in C
 	#if defined(__ENST_FLUX)
 	// Write the enstrophy flux out of the set C
@@ -1367,332 +1411,13 @@ void FinalWriteAndClose(void) {
 	#endif
 
 
-    ///----------------------------------- Write the Real Space Statistics
-	#if defined(__REAL_STATS)
-    double w_stats[6];
-    double u_stats[SYS_DIM + 1][6];
-    for (int i = 0; i < SYS_DIM + 1; ++i) {
-    	// Velocity stats
-    	u_stats[i][0] = gsl_rstat_min(stats_data->r_stat_u[i]);
-    	u_stats[i][1] = gsl_rstat_max(stats_data->r_stat_u[i]);
-    	u_stats[i][2] = gsl_rstat_mean(stats_data->r_stat_u[i]);
-    	u_stats[i][3] = gsl_rstat_sd(stats_data->r_stat_u[i]);
-    	u_stats[i][4] = gsl_rstat_skew(stats_data->r_stat_u[i]);
-    	u_stats[i][5] = gsl_rstat_kurtosis(stats_data->r_stat_u[i]);
-    	// Vorticity stats
-    	w_stats[0] = gsl_rstat_min(stats_data->r_stat_w);
-    	w_stats[1] = gsl_rstat_max(stats_data->r_stat_w);
-    	w_stats[2] = gsl_rstat_mean(stats_data->r_stat_w);
-    	w_stats[3] = gsl_rstat_sd(stats_data->r_stat_w);
-    	w_stats[4] = gsl_rstat_skew(stats_data->r_stat_w);
-    	w_stats[5] = gsl_rstat_kurtosis(stats_data->r_stat_w);
-    }
-
-    dset_dims_2d[0] = SYS_DIM + 1;
-   	dset_dims_2d[1] = 6;
-   	status = H5LTmake_dataset(file_info->output_file_handle, "VelocityStats", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, u_stats);
-	if (status < 0) {
-        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Velocity Stats");
-        exit(1);
-    }
-    dset_dims_1d[0] = 6;
-    status = H5LTmake_dataset(file_info->output_file_handle, "VorticityStats", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, w_stats);
-	if (status < 0) {
-        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Vorticity Stats");
-        exit(1);
-    }
-    #endif
-
-    ///----------------------------------- Write the Velocity & Vorticity Increments
-	#if defined(__VEL_INC_STATS)
-	// Allocate temporary memory to record the histogram data contiguously
-    double* inc_range  = (double*) fftw_malloc(sizeof(double) * NUM_INCR * (N_BINS + 1));
-    double* inc_counts = (double*) fftw_malloc(sizeof(double) * NUM_INCR * (N_BINS));
-
-    //-------------- Write the longitudinal increments
-    // Velocity Increments
-   	for (int r = 0; r < NUM_INCR; ++r) {
-   		for (int b = 0; b < N_BINS + 1; ++b) {
-	   		inc_range[r * (N_BINS + 1) + b] = stats_data->vel_incr[0][r]->range[b];
-	   		if (b < N_BINS) {
-	   			inc_counts[r * (N_BINS) + b] = stats_data->vel_incr[0][r]->bin[b];	   			
-	   		}
-   		}
-   	}
-   	dset_dims_2d[0] = NUM_INCR;
-   	dset_dims_2d[1] = N_BINS + 1;
-   	status = H5LTmake_dataset(file_info->output_file_handle, "LongitudinalVelIncrements_BinRanges", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, inc_range);
-	if (status < 0) {
-        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Longitudinal Velocity Increment PDF Bin Ranges");
-        exit(1);
-    }		
-	dset_dims_2d[1] = N_BINS;
-	status = H5LTmake_dataset(file_info->output_file_handle, "LongitudinalVelIncrements_BinCounts", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, inc_counts);	
-	if (status < 0) {
-        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Longitudinal Velocity Increment PDF Bin Counts");
-        exit(1);
-    }
-    // Vorticity Increments
-    for (int r = 0; r < NUM_INCR; ++r) {
-   		for (int b = 0; b < N_BINS + 1; ++b) {
-	   		inc_range[r * (N_BINS + 1) + b] = stats_data->w_incr[0][r]->range[b];
-	   		if (b < N_BINS) {
-	   			inc_counts[r * (N_BINS) + b] = stats_data->w_incr[0][r]->bin[b];	   			
-	   		}
-   		}
-   	}
-   	dset_dims_2d[0] = NUM_INCR;
-   	dset_dims_2d[1] = N_BINS + 1;
-   	status = H5LTmake_dataset(file_info->output_file_handle, "LongitudinalVortIncrements_BinRanges", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, inc_range);
-	if (status < 0) {
-        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Longitudinal Vorticity Increment PDF Bin Ranges");
-        exit(1);
-    }		
-	dset_dims_2d[1] = N_BINS;
-	status = H5LTmake_dataset(file_info->output_file_handle, "LongitudinalVortIncrements_BinCounts", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, inc_counts);	
-	if (status < 0) {
-        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Longitudinal Vorticity Increment PDF Bin Counts");
-        exit(1);
-    }
-
-    //--------------- Write the transverse increments
-    // Velocity
-    for (int r = 0; r < NUM_INCR; ++r) {
-   		for (int b = 0; b < N_BINS + 1; ++b) {
-	   		inc_range[r * (N_BINS + 1) + b] = stats_data->vel_incr[1][r]->range[b];
-	   		if (b < N_BINS) {
-	   			inc_counts[r * (N_BINS) + b] = stats_data->vel_incr[1][r]->bin[b];	   			
-	   		}
-   		}
-   	}
-   	dset_dims_2d[1] = N_BINS + 1;
-   	status = H5LTmake_dataset(file_info->output_file_handle, "TransverseVelIncrements_BinRanges", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, inc_range);
-	if (status < 0) {
-        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Transverse Velocity Increment PDF Bin Ranges");
-        exit(1);
-    }		
-	dset_dims_2d[1] = N_BINS;
-	status = H5LTmake_dataset(file_info->output_file_handle, "TransverseVelIncrements_BinCounts", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, inc_counts);	
-	if (status < 0) {
-        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Transverse Velocity Increment PDF Bin Counts");
-        exit(1);
-    }
-    // Vorticity
-    for (int r = 0; r < NUM_INCR; ++r) {
-   		for (int b = 0; b < N_BINS + 1; ++b) {
-	   		inc_range[r * (N_BINS + 1) + b] = stats_data->w_incr[1][r]->range[b];
-	   		if (b < N_BINS) {
-	   			inc_counts[r * (N_BINS) + b] = stats_data->w_incr[1][r]->bin[b];	   			
-	   		}
-   		}
-   	}
-   	dset_dims_2d[1] = N_BINS + 1;
-   	status = H5LTmake_dataset(file_info->output_file_handle, "TransverseVortIncrements_BinRanges", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, inc_range);
-	if (status < 0) {
-        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Transverse Vorticity Increment PDF Bin Ranges");
-        exit(1);
-    }		
-	dset_dims_2d[1] = N_BINS;
-	status = H5LTmake_dataset(file_info->output_file_handle, "TransverseVortIncrements_BinCounts", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, inc_counts);	
-	if (status < 0) {
-        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Transverse Vorticity Increment PDF Bin Counts");
-        exit(1);
-    }
-
-    //--------------- Write increment statistics
-    double vel_incr_stats[INCR_TYPES][NUM_INCR][6];
-    double vort_incr_stats[INCR_TYPES][NUM_INCR][6];
-    for (int i = 0; i < INCR_TYPES; ++i) {
-    	for (int j = 0; j < NUM_INCR; ++j) {
-			// Velocity increment stats
-			vel_incr_stats[i][j][0] = gsl_rstat_min(stats_data->r_stat_vel_incr[i][j]);
-			vel_incr_stats[i][j][1] = gsl_rstat_max(stats_data->r_stat_vel_incr[i][j]);
-			vel_incr_stats[i][j][2] = gsl_rstat_mean(stats_data->r_stat_vel_incr[i][j]);
-			vel_incr_stats[i][j][3] = gsl_rstat_sd(stats_data->r_stat_vel_incr[i][j]);
-			vel_incr_stats[i][j][4] = gsl_rstat_skew(stats_data->r_stat_vel_incr[i][j]);
-			vel_incr_stats[i][j][5] = gsl_rstat_kurtosis(stats_data->r_stat_vel_incr[i][j]);
-			// Vorticity increment stats
-			vort_incr_stats[i][j][0] = gsl_rstat_min(stats_data->r_stat_vort_incr[i][j]);
-			vort_incr_stats[i][j][1] = gsl_rstat_max(stats_data->r_stat_vort_incr[i][j]);
-			vort_incr_stats[i][j][2] = gsl_rstat_mean(stats_data->r_stat_vort_incr[i][j]);
-			vort_incr_stats[i][j][3] = gsl_rstat_sd(stats_data->r_stat_vort_incr[i][j]);
-			vort_incr_stats[i][j][4] = gsl_rstat_skew(stats_data->r_stat_vort_incr[i][j]);
-			vort_incr_stats[i][j][5] = gsl_rstat_kurtosis(stats_data->r_stat_vort_incr[i][j]);
-	    }
-    }
-    dset_dims_3d[0] = INCR_TYPES;
-   	dset_dims_3d[1] = NUM_INCR;
-   	dset_dims_3d[2] = 6;
-   	status = H5LTmake_dataset(file_info->output_file_handle, "VelocityIncrementStats", Dims3D, dset_dims_3d, H5T_NATIVE_DOUBLE, vel_incr_stats);
-	if (status < 0) {
-        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Velocity Increment Stats");
-        exit(1);
-    }
-    status = H5LTmake_dataset(file_info->output_file_handle, "VorticityIncrementStats", Dims3D, dset_dims_3d, H5T_NATIVE_DOUBLE, vort_incr_stats);
-	if (status < 0) {
-        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Vorticity Increment Stats");
-        exit(1);
-    }
-
-
-    // Free temporary memory
-    fftw_free(inc_range);
-    fftw_free(inc_counts);
+    // -------------------------------
+    // Write Stats
+    // -------------------------------
+	#if defined(__REAL_STATS) || defined(__VEL_INC_STATS) || defined(__VORT_INC_STATS) || defined(__VEL_STR_FUNC_STATS) || defined(__VORT_STR_FUNC_STATS) || defined(__VEL_GRAD_STATS) || defined(__VORT_GRAD_STATS)
+    WriteStatsToFile();
 	#endif
 
-    ///----------------------------------- Gradient Statistics
-	#if defined(__GRAD_STATS)
-	//----------------- Write the x gradients
-	// Velocity
-   	dset_dims_1d[0] = N_BINS + 1;
-   	status = H5LTmake_dataset(file_info->output_file_handle, "VelocityGradient_x_BinRanges", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, stats_data->vel_grad[0]->range);
-	if (status < 0) {
-        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Velocity Gradient X PDF Bin Ranges");
-        exit(1);
-    }		
-	dset_dims_1d[0] = N_BINS;
-	status = H5LTmake_dataset(file_info->output_file_handle, "VelocityGradient_x_BinCounts", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, stats_data->vel_grad[0]->bin);	
-	if (status < 0) {
-        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Velocity Gradient X PDF Bin Counts");
-        exit(1);
-    }
-    // Vorticity
-   	dset_dims_1d[0] = N_BINS + 1;
-   	status = H5LTmake_dataset(file_info->output_file_handle, "VorticityGradient_x_BinRanges", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, stats_data->vort_grad[0]->range);
-	if (status < 0) {
-        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Vorticity Gradient X PDF Bin Ranges");
-        exit(1);
-    }		
-	dset_dims_1d[0] = N_BINS;
-	status = H5LTmake_dataset(file_info->output_file_handle, "VortcityGradient_x_BinCounts", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, stats_data->vort_grad[0]->bin);	
-	if (status < 0) {
-        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Vorticity Gradient X PDF Bin Counts");
-        exit(1);
-    }
-
-    //--------------- Write the y gradients
-    // Velocity
-   	dset_dims_1d[0] = N_BINS + 1;
-   	status = H5LTmake_dataset(file_info->output_file_handle, "VelocityGradient_y_BinRanges", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, stats_data->vel_grad[1]->range);
-	if (status < 0) {
-        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Velocity Gradient Y PDF Bin Ranges");
-        exit(1);
-    }		
-	dset_dims_1d[0] = N_BINS;
-	status = H5LTmake_dataset(file_info->output_file_handle, "VelocityGradient_y_BinCounts", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, stats_data->vel_grad[1]->bin);	
-	if (status < 0) {
-        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Velocity Gradient Y PDF Bin Counts");
-        exit(1);
-    }
-    // Vorticity
-   	dset_dims_1d[1] = N_BINS + 1;
-   	status = H5LTmake_dataset(file_info->output_file_handle, "VorticityGradient_y_BinRanges", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, stats_data->vort_grad[1]->range);
-	if (status < 0) {
-        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Vorticity Gradient Y PDF Bin Ranges");
-        exit(1);
-    }		
-	dset_dims_1d[1] = N_BINS;
-	status = H5LTmake_dataset(file_info->output_file_handle, "VorticityGradient_y_BinCounts", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, stats_data->vort_grad[1]->bin);	
-	if (status < 0) {
-        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Vorticity Gradient Y PDF Bin Counts");
-        exit(1);
-    }
-
-    //--------------- Write the gradient statistics
-    double grad_u_stats[SYS_DIM + 1][6];
-    double grad_w_stats[SYS_DIM + 1][6];
-    for (int i = 0; i < SYS_DIM + 1; ++i) {
-    	// Velocity gradient stats
-    	grad_u_stats[i][0] = gsl_rstat_min(stats_data->r_stat_grad_u[i]);
-    	grad_u_stats[i][1] = gsl_rstat_max(stats_data->r_stat_grad_u[i]);
-    	grad_u_stats[i][2] = gsl_rstat_mean(stats_data->r_stat_grad_u[i]);
-    	grad_u_stats[i][3] = gsl_rstat_sd(stats_data->r_stat_grad_u[i]);
-    	grad_u_stats[i][4] = gsl_rstat_skew(stats_data->r_stat_grad_u[i]);
-    	grad_u_stats[i][5] = gsl_rstat_kurtosis(stats_data->r_stat_grad_u[i]);
-    	// Vorticity gradient stats
-    	grad_w_stats[i][0] = gsl_rstat_min(stats_data->r_stat_grad_w[i]);
-    	grad_w_stats[i][1] = gsl_rstat_max(stats_data->r_stat_grad_w[i]);
-    	grad_w_stats[i][2] = gsl_rstat_mean(stats_data->r_stat_grad_w[i]);
-    	grad_w_stats[i][3] = gsl_rstat_sd(stats_data->r_stat_grad_w[i]);
-    	grad_w_stats[i][4] = gsl_rstat_skew(stats_data->r_stat_grad_w[i]);
-    	grad_w_stats[i][5] = gsl_rstat_kurtosis(stats_data->r_stat_grad_w[i]);
-    }
-
-    dset_dims_2d[0] = SYS_DIM + 1;
-   	dset_dims_2d[1] = 6;
-   	status = H5LTmake_dataset(file_info->output_file_handle, "VelocityGradientStats", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, grad_u_stats);
-	if (status < 0) {
-        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Velocity Gradient Stats");
-        exit(1);
-    }
-    status = H5LTmake_dataset(file_info->output_file_handle, "VorticityGradientStats", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, grad_w_stats);
-	if (status < 0) {
-        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Vorticity Gradient Stats");
-        exit(1);
-    }
-	#endif
-
-
-	///----------------------------------- Write the Structure Functions
-    #if defined(__STR_FUNC_STATS)
-    int N_max_incr = (int ) GSL_MIN(sys_vars->N[0], sys_vars->N[1]) / 2;
-    // Allocate temporary memory to record the histogram data contiguously
-    double* str_funcs = (double*) fftw_malloc(sizeof(double) * (STR_FUNC_MAX_POW - 2) * (N_max_incr));
-
-    //----------------------- Write the longitudinal structure functions
-    // Normal Structure functions
-   	for (int p = 0; p < STR_FUNC_MAX_POW - 2; ++p) {
-   		for (int r = 0; r < N_max_incr; ++r) {
-	   		str_funcs[p * (N_max_incr) + r] = stats_data->str_func[0][p][r] / sys_vars->num_snaps;
-   		}
-   	}
-   	dset_dims_2d[0] = STR_FUNC_MAX_POW - 2;
-   	dset_dims_2d[1] = N_max_incr;
-   	status = H5LTmake_dataset(file_info->output_file_handle, "LongitudinalStructureFunctions", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, str_funcs);
-	if (status < 0) {
-        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Longitudinal Structure Functions");
-        exit(1);
-    }			
-    // Absolute Structure functions
-   	for (int p = 0; p < STR_FUNC_MAX_POW - 2; ++p) {
-   		for (int r = 0; r < N_max_incr; ++r) {
-	   		str_funcs[p * (N_max_incr) + r] = stats_data->str_func_abs[0][p][r] / sys_vars->num_snaps;
-   		}
-   	}
-	status = H5LTmake_dataset(file_info->output_file_handle, "AbsoluteLongitudinalStructureFunctions", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, str_funcs);
-	if (status < 0) {
-        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Absolute Longitudinal Structure Functions");
-        exit(1);
-    }	
-
-    //----------------------- Write the transverse structure functions
-    // Normal structure functions
-    for (int p = 0; p < STR_FUNC_MAX_POW - 2; ++p) {
-   		for (int r = 0; r < N_max_incr; ++r) {
-	   		str_funcs[p * (N_max_incr) + r] = stats_data->str_func[1][p][r] / sys_vars->num_snaps;
-   		}
-   	}
-   	status = H5LTmake_dataset(file_info->output_file_handle, "TransverseStructureFunctions", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, str_funcs);
-	if (status < 0) {
-        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Transverse Structure Funcitons");
-        exit(1);
-    }		
-    // Absolute structure functions
-    for (int p = 0; p < STR_FUNC_MAX_POW - 2; ++p) {
-   		for (int r = 0; r < N_max_incr; ++r) {
-	   		str_funcs[p * (N_max_incr) + r] = stats_data->str_func_abs[1][p][r] / sys_vars->num_snaps;
-   		}
-   	}
-   	status = H5LTmake_dataset(file_info->output_file_handle, "AbsoluteTransverseStructureFunctions", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, str_funcs);
-	if (status < 0) {
-        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Absolute Transverse Structure Funcitons");
-        exit(1);
-    }		
-	
-    // Free temporary memory
-    fftw_free(str_funcs);
-    #endif
-	
 
 
 	#if defined(__SEC_PHASE_SYNC)
@@ -1934,14 +1659,15 @@ void FinalWriteAndClose(void) {
     fftw_free(counts);
     #endif
     #endif
+
     // -------------------------------
     // Close HDF5 Identifiers
     // -------------------------------
-    status = H5Fclose(file_info->output_file_handle);
-    if (status < 0) {
-    	fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close output file ["CYAN"%s"RESET"] at final write\n-->> Exiting...\n", file_info->output_file_name);
-    	exit(1);
-    }
+    // status = H5Fclose(file_info->output_file_handle);
+    // if (status < 0) {
+    // 	fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close output file ["CYAN"%s"RESET"] at final write\n-->> Exiting...\n", file_info->output_file_name);
+    // 	exit(1);
+    // }
 }
 // ---------------------------------------------------------------------
 //  Function Definitions

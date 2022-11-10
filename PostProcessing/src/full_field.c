@@ -32,19 +32,19 @@ void FullFieldData(void) {
 	int tmp, tmp1, tmp2;
 	int indx;
 	double k_sqr, k_sqr_fac, phase, amp;
-	const long int Nx 		  = sys_vars->N[0];
-	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
+	const long int Ny 		  = sys_vars->N[0];
+	const long int Nx_Fourier = sys_vars->N[1] / 2 + 1;
 
 
 	// --------------------------------
 	// Fill The Full Field Arrays
 	// --------------------------------
-	for (int i = 0; i < Nx; ++i) {
+	for (int i = 0; i < Ny; ++i) {
 		if (abs(run_data->k[0][i]) <= sys_vars->kmax) {
-			tmp  = i * Ny_Fourier;	
-			tmp1 = (sys_vars->kmax - run_data->k[0][i]) * (2 * sys_vars->kmax + 1); // kx > 0 - are the first kmax rows hence the -kx
-			tmp2 = (sys_vars->kmax + run_data->k[0][i]) * (2 * sys_vars->kmax + 1); // kx < 0 - are the next kmax rows hence the +kx
-			for (int j = 0; j < Ny_Fourier; ++j) {
+			tmp  = i * Nx_Fourier;	
+			tmp1 = (sys_vars->kmax - run_data->k[0][i]) * (2 * sys_vars->kmax + 1); // ky > 0 - are the first kmax rows hence the -kx
+			tmp2 = (sys_vars->kmax + run_data->k[0][i]) * (2 * sys_vars->kmax + 1); // ky < 0 - are the next kmax rows hence the +kx
+			for (int j = 0; j < Nx_Fourier; ++j) {
 				indx = tmp + j;
 				if (abs(run_data->k[1][j]) <= sys_vars->kmax) {
 
@@ -117,9 +117,11 @@ void ApplyDealiasing(fftw_complex* array, int array_dim, const long int* N) {
 
 	// Initialize variables
 	int tmp, indx;
-	const long int Nx         = N[0];
-	const long int Ny         = N[1];
-	const long int Ny_Fourier = Ny / 2 + 1;
+	const long int Ny         = N[0];
+	const long int Nx         = N[1];
+	const long int Nx_Fourier = Nx / 2 + 1;
+	double k_sqr;
+	double kmax_sqr = pow((int) (Ny / 3.0), 2.0);
 	#if defined(__DEALIAS_HOU_LI)
 	double hou_li_filter;
 	#endif
@@ -127,13 +129,16 @@ void ApplyDealiasing(fftw_complex* array, int array_dim, const long int* N) {
 	// --------------------------------------------
 	// Apply Appropriate Filter 
 	// --------------------------------------------
-	for (int i = 0; i < Nx; ++i) {
-		tmp = i * Ny_Fourier;
-		for (int j = 0; j < Ny_Fourier; ++j) {
+	for (int i = 0; i < Ny; ++i) {
+		tmp = i * Nx_Fourier;
+		for (int j = 0; j < Nx_Fourier; ++j) {
 			indx = array_dim * (tmp + j);
 
+			// Get |k|^2
+			k_sqr = (double) run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j];
+
 			#if defined(__DEALIAS_23)
-			if (sqrt((double) run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]) > Nx / 3) {
+			if (k_sqr <= 0.0 || k_sqr > kmax_sqr) {
 				for (int l = 0; l < array_dim; ++l) {
 					// Set dealised modes to 0
 					array[indx + l] = 0.0 + 0.0 * I;	
@@ -147,7 +152,7 @@ void ApplyDealiasing(fftw_complex* array, int array_dim, const long int* N) {
 			}
 			#elif __DEALIAS_HOU_LI
 			// Compute Hou-Li filter
-			hou_li_filter = exp(-36.0 * pow((sqrt(pow(run_data->k[0][i] / (Nx / 2), 2.0) + pow(run_data->k[1][j] / (Ny / 2), 2.0))), 36.0));
+			hou_li_filter = exp(-36.0 * pow((sqrt(pow(run_data->k[0][i] / (Ny / 2), 2.0) + pow(run_data->k[1][j] / (Nx / 2), 2.0))), 36.0));
 
 			for (int l = 0; l < array_dim; ++l) {
 				// Apply filter and DFT normaliztion
@@ -158,6 +163,45 @@ void ApplyDealiasing(fftw_complex* array, int array_dim, const long int* N) {
 	}
 }
 /**
+ * Function to force conjugacy of the initial condition
+ * @param w_hat The Fourier space worticity field
+ * @param N     The array containing the size of the system in each dimension
+ * @param dim   Dimension of the array -> 1: for scalar, 2: for vector.
+ */
+void ForceConjugacy(fftw_complex* array, const long int* N, const int dim) {
+
+	// Initialize variables
+	int tmp;
+	const long int Ny         = N[0];
+	const long int Nx_Fourier = N[1] / 2 + 1;
+
+	// Allocate tmp memory to hold the data to be conjugated
+	fftw_complex* conj_data = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * Ny * dim);
+
+	// Loop through local process and store data in appropriate location in conj_data
+	for (int i = 0; i < Ny; ++i) {
+		tmp = i * Nx_Fourier;
+		for (int d = 0; d < dim; ++d) {
+			conj_data[dim * i + d] = array[dim * tmp + d];
+		}
+	}
+
+	// Now ensure the 
+	for (int i = 0; i < Ny; ++i) {
+		if (run_data->k[0][i] > 0) {
+			tmp = i * Nx_Fourier;
+			for (int d = 0; d < dim; ++d) {
+				// Fill the conjugate modes with the conjugate of the postive k modes
+				array[dim * tmp + d] = conj(conj_data[dim * (Ny - run_data->k[0][i]) + d]);
+				// array[dim * tmp + d] = conj(array[dim * (Ny - run_data->k[0][i]) + d]);
+			}
+		}
+	}
+
+	// Free memory
+	fftw_free(conj_data);
+}
+/**
  * Function to compute the nonlinear term of the equation motion for the Fourier space vorticity
  * @param w_hat      The Fourier space vorticity
  * @param dw_hat_dt  The result of the nonlinear term
@@ -165,39 +209,63 @@ void ApplyDealiasing(fftw_complex* array, int array_dim, const long int* N) {
  * @param u          The real space velocity
  * @param nabla_w    The gradient of the real space velocity
  */
-void NonlinearRHS(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* nonlinterm, double* u, double* nabla_w) {
+void NonlinearRHS(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* u) {
 
 	// Initialize variables
 	int tmp, indx;
-	double vel1;
-	double vel2;
-	fftw_complex k_sqr;
-	const long int Nx         = sys_vars->N[0];
-	const long int Ny         = sys_vars->N[1];
-	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
+	const long int Ny         = sys_vars->N[0];
+	const long int Nx         = sys_vars->N[1];
+	const long int Nx_Fourier = sys_vars->N[1] / 2 + 1;
+	double k_sqr;
+	double norm_fac = 1.0 / (Ny * Nx);
+
 
 	// ----------------------------------
 	//  Compute Fourier Space Velocity
 	// ----------------------------------
-	for (int i = 0; i < Nx; ++i) {
-		tmp = i * (Ny_Fourier);
-		for (int j = 0; j < Ny_Fourier; ++j) {
+	for (int i = 0; i < Ny; ++i) {
+		tmp = i * (Nx_Fourier);
+		for (int j = 0; j < Nx_Fourier; ++j) {
 			indx = tmp + j;
+
+			// Write w_hat to temporary array for transform back to real space
+			run_data->tmp_w_hat[indx] = w_hat[indx];
 
 			if ((run_data->k[0][i] != 0) || (run_data->k[1][j]  != 0)) {
 				// Laplacian prefactor
-				k_sqr = I / (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
+				k_sqr = 1.0 / (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 
 				// Fill fill fourier velocities array
-				dw_hat_dt[SYS_DIM * (indx) + 0] = k_sqr * ((double) run_data->k[1][j]) * w_hat[indx];
-				dw_hat_dt[SYS_DIM * (indx) + 1] = -1.0 * k_sqr * ((double) run_data->k[0][i]) * w_hat[indx];
+				dw_hat_dt[SYS_DIM * indx + 0] = I * ((double) run_data->k[0][i]) * k_sqr * w_hat[indx];
+				dw_hat_dt[SYS_DIM * indx + 1] = -1.0 * I * ((double) run_data->k[1][j]) * k_sqr * w_hat[indx];
 			}
 			else {
 				dw_hat_dt[SYS_DIM * (indx) + 0] = 0.0 + 0.0 * I;
 				dw_hat_dt[SYS_DIM * (indx) + 1] = 0.0 + 0.0 * I;
 			}
+			// printf("wh[%d,%d]: %5.16lf %5.16lf ", i, j, creal(run_data->tmp_w_hat[indx]), cimag(run_data->tmp_w_hat[indx]));
 		}
+		// printf("\n");
 	}
+	// printf("\n");
+
+	// Ensure conjugacy in the kx = 0
+    ForceConjugacy(dw_hat_dt, sys_vars->N, 2);
+ //    for (int i = 0; i < Ny; ++i) {
+	// 	for (int j = 0; j < Nx_Fourier; ++j) {
+	// 		printf("%s[%d,%d]: %5.16lf %5.16lf ", "uh", run_data->k[0][i], run_data->k[1][j], creal(dw_hat_dt[SYS_DIM * (i * (Nx_Fourier) + j) + 0]), cimag(dw_hat_dt[SYS_DIM * (i * (Nx_Fourier) + j) + 0]));
+	// 	}
+	// 	printf("\n");
+	// }
+	// printf("\n\n");
+
+	// for (int i = 0; i < Ny; ++i) {
+	// 	for (int j = 0; j < Nx_Fourier; ++j) {
+	// 		printf("%s[%d,%d]: %5.16lf %5.16lf ", "vh", run_data->k[0][i], run_data->k[1][j], creal(dw_hat_dt[SYS_DIM * (i * (Nx_Fourier) + j) + 1]), cimag(dw_hat_dt[SYS_DIM * (i * (Nx_Fourier) + j) + 1]));
+	// 	}
+	// 	printf("\n");
+	// }
+	// printf("\n\n");
 
 	// ----------------------------------
 	//  Transform to Real Space
@@ -206,37 +274,23 @@ void NonlinearRHS(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* nonlinte
 	fftw_execute_dft_c2r(sys_vars->fftw_2d_dft_batch_c2r, dw_hat_dt, u);
 
 	// ----------------------------------
-	//  Compute Gradient of Voriticty
+	// Transform to Real Space
 	// ----------------------------------
-	for (int i = 0; i < Nx; ++i) {
-		tmp = i * (Ny_Fourier);
-		for (int j = 0; j < Ny_Fourier; ++j) {
-			indx = tmp + j;
+	// Transform Fourier vorticity to real space
+	fftw_execute_dft_c2r(sys_vars->fftw_2d_dft_c2r, run_data->tmp_w_hat, run_data->w);
 
-			// Fill vorticity derivatives array
-			dw_hat_dt[SYS_DIM * indx + 0] = I * ((double) run_data->k[0][i]) * w_hat[indx];
-			dw_hat_dt[SYS_DIM * indx + 1] = I * ((double) run_data->k[1][j]) * w_hat[indx]; 
-		}
-	}
-
-	// ----------------------------------
-	//  Transform to Real Space
-	// ----------------------------------
-	// Perform transformation of the gradient of Fourier space vorticity
-	fftw_execute_dft_c2r(sys_vars->fftw_2d_dft_batch_c2r, dw_hat_dt, nabla_w);
-
-	// ----------------------------------
-	//  Multiply in Real Space
-	// ----------------------------------
-	for (int i = 0; i < Nx; ++i) {
-		tmp = i * Ny;
-		for (int j = 0; j < Ny; ++j) {
+	// -----------------------------------
+	// Perform Convolution in Real Space
+	// -----------------------------------
+	// Perform the multiplication in real space
+	for (int i = 0; i < Ny; ++i) {
+		tmp = i * Nx;
+		for (int j = 0; j < Nx; ++j) {
 			indx = tmp + j; 
- 			
- 			// Perform multiplication of the nonlinear term 
- 			vel1 = u[SYS_DIM * indx + 0];
- 			vel2 = u[SYS_DIM * indx + 1];
- 			nonlinterm[indx] = 1.0 * (vel1 * nabla_w[SYS_DIM * indx + 0] + vel2 * nabla_w[SYS_DIM * indx + 1]);
+
+			// Perform multiplication of the nonlinear term 
+			u[SYS_DIM * indx + 0] *= run_data->w[indx];
+			u[SYS_DIM * indx + 1] *= run_data->w[indx];
  		}
  	}
 
@@ -244,22 +298,34 @@ void NonlinearRHS(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* nonlinte
 	//  Transform to Fourier Space
 	// ----------------------------------
 	// Perform Fourier transform
-	fftw_execute_dft_r2c(sys_vars->fftw_2d_dft_r2c, nonlinterm, dw_hat_dt);
+	fftw_execute_dft_r2c(sys_vars->fftw_2d_dft_batch_r2c, u, dw_hat_dt);
 
-	// Normalize result
-	for (int i = 0; i < Nx; ++i) {
-		tmp = i * (Ny_Fourier);
-		for (int j = 0; j < Ny_Fourier; ++j) {
-			indx = tmp + j;
+	// Ensure conjugacy in the kx = 0 modes
+    ForceConjugacy(dw_hat_dt, sys_vars->N, 2);
 
-			dw_hat_dt[indx] *= 1.0 / pow((Nx * Ny), 2.0);
+ 	for (int i = 0; i < Ny; ++i) {
+ 		tmp = i * (Nx_Fourier);
+ 		for (int j = 0; j < Nx_Fourier; ++j) {
+ 			indx = tmp + j;
+
+ 			if ((run_data->k[0][i] != 0) || (run_data->k[1][j]  != 0)) {
+ 				dw_hat_dt[indx] = (-I * run_data->k[1][j] * dw_hat_dt[SYS_DIM * indx + 0] -I * run_data->k[0][i] * dw_hat_dt[SYS_DIM * indx + 1]) * pow(norm_fac, 1.0);
+ 			}
+ 			else {
+ 				dw_hat_dt[indx] = 0.0 + 0.0 * I;
+ 				dw_hat_dt[indx] = 0.0 + 0.0 * I;
+ 			}
 		}
 	}
 
-	// ----------------------------------
-	//  Perform Dealiasing
-	// ----------------------------------
-	ApplyDealiasing(dw_hat_dt, 1, sys_vars->N);
+	// ----------------------------------------
+ 	// Apply Dealiasing & Conjugacy
+ 	// ----------------------------------------
+ 	// Apply dealiasing 
+ 	ApplyDealiasing(dw_hat_dt, 1, sys_vars->N);
+
+	// Ensure conjugacy in the ky = 0 modes of the intial condition
+    ForceConjugacy(dw_hat_dt, sys_vars->N, 1);
 }
 /**
 * Function to compute 1Denergy spectrum from the Fourier vorticity
@@ -269,10 +335,10 @@ void EnergySpectrum(void) {
     // Initialize variables
     int tmp, indx;
 	int spec_indx;
-	const long int Nx 		  = sys_vars->N[0];
-	const long int Ny 		  = sys_vars->N[1];
-	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
-	double norm_fac  = 0.5 / pow(Nx * Ny, 2.0);
+	const long int Ny 		  = sys_vars->N[0];
+	const long int Nx 		  = sys_vars->N[1];
+	const long int Nx_Fourier = sys_vars->N[1] / 2 + 1;
+	double norm_fac  = 0.5 / pow(Ny * Nx, 2.0);
 	double const_fac = 4.0 * pow(M_PI, 2.0); 
     double k_sqr;
     
@@ -287,9 +353,9 @@ void EnergySpectrum(void) {
     // --------------------------------
 	//  Compute spectrum
 	// --------------------------------	
-    for(int i = 0; i < Nx; ++i) {
-        tmp = i * Ny_Fourier;
-        for(int j = 0; j < Ny_Fourier; ++j) {
+    for(int i = 0; i < Ny; ++i) {
+        tmp = i * Nx_Fourier;
+        for(int j = 0; j < Nx_Fourier; ++j) {
             indx = tmp + j;
             
             // Compute the spectral index
@@ -302,11 +368,13 @@ void EnergySpectrum(void) {
                 // Compute the normalization factor 1.0 / |k|^2
                 k_sqr = 1.0 / ((double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]));
             
-                if ((j == 0) || (j == Ny_Fourier - 1)) {
-                    proc_data->enrg_spec[spec_indx] += const_fac * norm_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * k_sqr;
+                if ((j == 0) || (j == Nx_Fourier - 1)) {
+                    proc_data->enrg_spec[spec_indx] += cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * k_sqr;
+                    // proc_data->enrg_spec[spec_indx] += const_fac * norm_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * k_sqr;
                 }
                 else {
-                    proc_data->enrg_spec[spec_indx] += 2.0 * const_fac * norm_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * k_sqr;
+                    // proc_data->enrg_spec[spec_indx] += 2.0 * const_fac * norm_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * k_sqr;
+                    proc_data->enrg_spec[spec_indx] += 2.0 *cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * k_sqr;
                 }
             }
         }
@@ -320,10 +388,10 @@ void EnstrophySpectrum(void) {
 	// Initialize variables
 	int tmp, indx;
 	int spec_indx;
-	const long int Nx 		  = sys_vars->N[0];
-	const long int Ny 		  = sys_vars->N[1];
-	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
-	double norm_fac  = 0.5 / pow(Nx * Ny, 2.0);
+	const long int Ny 		  = sys_vars->N[0];
+	const long int Nx 		  = sys_vars->N[1];
+	const long int Nx_Fourier = sys_vars->N[1] / 2 + 1;
+	double norm_fac  = 0.5 / pow(Ny * Nx, 2.0);
 	double const_fac = 4.0 * pow(M_PI, 2.0); 
 
 	// --------------------------------
@@ -337,9 +405,9 @@ void EnstrophySpectrum(void) {
 	// --------------------------------
 	//  Compute spectrum
 	// --------------------------------	
-	for (int i = 0; i < Nx; ++i) {
-		tmp = i * Ny_Fourier;
-		for (int j = 0; j < Ny_Fourier; ++j) {
+	for (int i = 0; i < Ny; ++i) {
+		tmp = i * Nx_Fourier;
+		for (int j = 0; j < Nx_Fourier; ++j) {
 			indx = tmp + j;
 
 			// Compute spectrum index/bin
@@ -349,11 +417,13 @@ void EnstrophySpectrum(void) {
 				proc_data->enst_spec[spec_indx] += 0.0;
 			}
 			else {
-				if ((j == 0) || (j == Ny_Fourier - 1)) {
-					proc_data->enst_spec[spec_indx] += const_fac * norm_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+				if ((j == 0) || (j == Nx_Fourier - 1)) {
+					// proc_data->enst_spec[spec_indx] += const_fac * norm_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+					proc_data->enst_spec[spec_indx] += cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
 				}
 				else {
-					proc_data->enst_spec[spec_indx] += 2.0 * const_fac * norm_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+					// proc_data->enst_spec[spec_indx] += 2.0 * const_fac * norm_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+					proc_data->enst_spec[spec_indx] += 2.0 * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
 				}
 			}
 		}
@@ -371,11 +441,11 @@ void FluxSpectra(int snap) {
 	int indx;
 	double k_sqr;
 	int spec_indx;
-	const long int Nx         = sys_vars->N[0];
-	const long int Ny         = sys_vars->N[1];
-	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
+	const long int Ny         = sys_vars->N[0];
+	const long int Nx         = sys_vars->N[1];
+	const long int Nx_Fourier = sys_vars->N[1] / 2 + 1;
 	double pre_fac   = 0.0;
-	double norm_fac  = 0.5 / pow(Nx * Ny, 2.0);
+	double norm_fac  = 0.5 / pow(Ny * Nx, 2.0);
 	double const_fac = 4.0 * pow(M_PI, 2.0);
 	double tmp_deriv, tmp_diss;
 
@@ -409,36 +479,36 @@ void FluxSpectra(int snap) {
 	// Compute the Derivative
 	// -----------------------------------
 	// Compute the nonlinear term
-	NonlinearRHS(run_data->w_hat, proc_data->dw_hat_dt, proc_data->nonlinterm, proc_data->nabla_psi, proc_data->nabla_w);
+	NonlinearRHS(run_data->w_hat, proc_data->dw_hat_dt, proc_data->nabla_psi);
 
 
 	// -------------------------------------
 	// Compute the Energy Flux Spectrum
 	// -------------------------------------
 	// Loop over Fourier vorticity
-	for (int i = 0; i < Nx; ++i) {
-		tmp = i * Ny_Fourier;
-		for (int j = 0; j < Ny_Fourier; ++j) {
+	for (int i = 0; i < Ny; ++i) {
+		tmp = i * Nx_Fourier;
+		for (int j = 0; j < Nx_Fourier; ++j) {
 			indx = tmp + j;
 
 			if ((run_data->k[0][i] != 0) || (run_data->k[1][j] != 0)) {
-				// Compute |k|^2
-				k_sqr = (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
+				// The |k|^2 prefactor
+				k_sqr = (double )(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 
 				// Get the appropriate prefactor
-				if ((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
+				if((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {  
 					// Both Hyperviscosity and Ekman drag
 					pre_fac = sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW) + sys_vars->EKMN_ALPHA * pow(k_sqr, sys_vars->EKMN_DRAG_POW);
 				}
-				else if ((sys_vars->HYPER_VISC_FLAG != HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
+				else if((sys_vars->HYPER_VISC_FLAG != HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
 					// No hyperviscosity but we have Ekman drag
 					pre_fac = sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA * pow(k_sqr, sys_vars->EKMN_DRAG_POW);
 				}
 				else if ((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG != EKMN_DRAG)) {
-					// Hyperviscosity only
+				 	// Hyperviscosity only
 					pre_fac = sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW);
 				}
-				else {
+				else { 
 					// No hyper viscosity or no ekman drag -> just normal viscosity
 					pre_fac = sys_vars->NU * k_sqr; 
 				}
@@ -447,7 +517,7 @@ void FluxSpectra(int snap) {
 				spec_indx = (int) round(sqrt(k_sqr));
 
 				// Update spectrum bin
-				if ((j == 0) || (j == Ny_Fourier - 1)) {
+				if ((j == 0) || (j == Nx_Fourier - 1)) {
 					#if defined(__ENRG_FLUX) || defined(__ENST_FLUX) || defined(__SEC_PHASE_SYNC)
 					// Get temporary values
 					tmp_deriv = creal(run_data->w_hat[indx] * conj(proc_data->dw_hat_dt[indx]) + conj(run_data->w_hat[indx]) * proc_data->dw_hat_dt[indx]) * const_fac * norm_fac;
@@ -559,17 +629,22 @@ void AllocateFullFieldMemory(const long int* N) {
 
 	// Iniitialize variables
 	int tmp3;
-	const long int Nx = N[0];
-	const long int Ny = N[1];
-	const long int Ny_Fourier = Ny / 2 + 1;
+	const long int Ny = N[0];
+	const long int Nx = N[1];
+	const long int Nx_Fourier = Nx / 2 + 1;
 
 	// Compute maximum wavenumber
-	sys_vars->kmax = (int) (Nx / 3.0);	
+	sys_vars->kmax = (int) (Ny / 3.0);
+
+	// Get the various kmax variables
+	sys_vars->kmax_sqr   = pow(sys_vars->kmax, 2.0);
+	sys_vars->kmax_C   	 = (int) ceil(sys_vars->kmax_frac * sys_vars->kmax);
+	sys_vars->kmax_C_sqr = pow(sys_vars->kmax_C, 2.0);
 
 	// --------------------------------	
 	//  Allocate Full Field Arrays
 	// --------------------------------
-	#if defined(__FULL_FIELD)
+	#if defined(__FULL_FIELD) || defined(__SEC_PHASE_SYNC) || defined(__SEC_PHASE_SYNC_STATS)
 	// Allocate memory for the full field phases
 	proc_data->phases = (double* )fftw_malloc(sizeof(double) * (2 * sys_vars->kmax + 1) * (2 * sys_vars->kmax + 1));
 	if (proc_data->phases == NULL) {
@@ -615,7 +690,7 @@ void AllocateFullFieldMemory(const long int* N) {
 	//  Allocate Spectra Arrays
 	// --------------------------------	
 	// Get the size of the spectra
-	sys_vars->n_spec = (int) round(sqrt((double)(Nx / 2.0) * (Nx / 2.0) + (double)(Ny / 2.0) * (Ny / 2.0)) + 1);
+	sys_vars->n_spec = (int) round(sqrt((double)(Ny / 2.0) * (Ny / 2.0) + (double)(Nx / 2.0) * (Nx / 2.0)) + 1);
 
 
 	#if defined(__SPECTRA)
@@ -643,33 +718,22 @@ void AllocateFullFieldMemory(const long int* N) {
 	// --------------------------------	
 	//  Allocate Flux Data
 	// --------------------------------
-	#if defined(__ENST_FLUX) || defined(__ENRG_FLUX) || defined(__SEC_PHASE_SYNC)
-	///-------------- Nonlinear RHS function arrays
+ 	///-------------- Nonlinear RHS function arrays
 	/// RHS
-	proc_data->dw_hat_dt = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * Nx * Ny_Fourier * SYS_DIM);
+	proc_data->dw_hat_dt = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * Ny * Nx_Fourier * SYS_DIM);
 	if (proc_data->dw_hat_dt == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "RHS");
 		exit(1);
 	}
-	// The gradient of the real space vorticity
-	proc_data->nabla_w = (double* )fftw_malloc(sizeof(double) * Nx * Ny * SYS_DIM);
-	if (proc_data->nabla_w == NULL) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Gradient of Real Space Vorticity");
-		exit(1);
-	}
 	// The gradient of the real stream function
-	proc_data->nabla_psi = (double* )fftw_malloc(sizeof(double) * Nx * Ny * SYS_DIM);
+	proc_data->nabla_psi = (double* )fftw_malloc(sizeof(double) * Ny * Nx * SYS_DIM);
 	if (proc_data->nabla_psi == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Gradient of Real Space Vorticity");
 		exit(1);
 	}
-	// The nonlinear term in real space
-	proc_data->nonlinterm = (double* )fftw_malloc(sizeof(double) * Nx * Ny);
-	if (proc_data->nonlinterm == NULL) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Nonlinear Term in Real Spcace");
-		exit(1);
-	}
+	
 
+	#if defined(__ENST_FLUX) || defined(__ENRG_FLUX) || defined(__SEC_PHASE_SYNC) || defined(__SEC_PHASE_SYNC_STATS)
 	// --------------------------------	
 	//  Allocate C_\theta_k3 Enstrophy Flux
 	// --------------------------------
@@ -693,7 +757,7 @@ void AllocateFullFieldMemory(const long int* N) {
 		exit(1);
 	}
 	// Allocate enstorphy dissipation field
-	proc_data->enst_diss_field = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * Nx * Ny_Fourier);
+	proc_data->enst_diss_field = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * Ny * Nx_Fourier);
 	if (proc_data->enst_diss_field == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Enstrophy Dissipation Field Fourier Space");
 		exit(1);
@@ -716,7 +780,7 @@ void AllocateFullFieldMemory(const long int* N) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Enstrophy Flux Spectrum");
 		exit(1);
 	}
-	// The enstrophy flux spectrum
+	// The enstrophy diss spectrum
 	proc_data->enst_diss_spec = (double* )fftw_malloc(sizeof(double) * sys_vars->n_spec);
 	if (proc_data->enst_diss_spec == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Enstrophy Dissipation Spectrum");
@@ -773,17 +837,12 @@ void AllocateFullFieldMemory(const long int* N) {
 	#endif
 
 	// Initialize arrays
-	for (int i = 0; i < Nx; ++i) {
-		for (int j = 0; j < Ny; ++j) {
-			if(j < Ny_Fourier) {
-				proc_data->dw_hat_dt[SYS_DIM * (i * Ny_Fourier + j) + 0] = 0.0 + 0.0 * I;
-				proc_data->dw_hat_dt[SYS_DIM * (i * Ny_Fourier + j) + 1] = 0.0 + 0.0 * I;
+	for (int i = 0; i < Ny; ++i) {
+		for (int j = 0; j < Nx; ++j) {
+			if(j < Nx_Fourier) {
+				// proc_data->dw_hat_dt[SYS_DIM * (i * Nx_Fourier + j) + 0] = 0.0 + 0.0 * I;
+				// proc_data->dw_hat_dt[SYS_DIM * (i * Nx_Fourier + j) + 1] = 0.0 + 0.0 * I;
 			}
-			proc_data->nabla_w[SYS_DIM * (i * Ny + j) + 0]   = 0.0;
-			proc_data->nabla_w[SYS_DIM * (i * Ny + j) + 1]   = 0.0;
-			proc_data->nabla_psi[SYS_DIM * (i * Ny + j) + 0] = 0.0;
-			proc_data->nabla_psi[SYS_DIM * (i * Ny + j) + 1] = 0.0;
-			proc_data->nonlinterm[i * Ny + j]                = 0.0;
 		}
 	}
 	for (int i = 0; i < sys_vars->num_snaps; ++i) {
@@ -822,7 +881,7 @@ void FreeFullFieldObjects(void) {
 	// -------------------------------------
 	// Free Memory
 	// -------------------------------------
-	#if defined(__FULL_FIELD) || defined(__SEC_PHASE_SYNC)
+	#if defined(__FULL_FIELD) || defined(__SEC_PHASE_SYNC) || defined(__SEC_PHASE_SYNC_STATS)
 	fftw_free(proc_data->phases);
 	fftw_free(proc_data->amps);
 	fftw_free(proc_data->enrg);
@@ -832,11 +891,8 @@ void FreeFullFieldObjects(void) {
 	fftw_free(proc_data->enst_spec);
     fftw_free(proc_data->enrg_spec);
 	#endif
-	#if defined(__ENST_FLUX) || defined(__ENRG_FLUX) || defined(__SEC_PHASE_SYNC)
-	fftw_free(proc_data->nabla_w);
-	fftw_free(proc_data->nabla_psi);
-	fftw_free(proc_data->dw_hat_dt);
-	fftw_free(proc_data->nonlinterm);
+	#if defined(__ENST_FLUX) || defined(__ENRG_FLUX) || defined(__SEC_PHASE_SYNC) || defined(__SEC_PHASE_SYNC_STATS)
+	
 	#if defined(__SEC_PHASE_SYNC)
 	fftw_free(proc_data->enst_flux_C_theta);
 	fftw_free(proc_data->enst_diss_C_theta);

@@ -92,14 +92,15 @@ void PostProcessing(void) {
 		// --------------------------------
 		//  Full Field Data
 		// --------------------------------
-		#if defined(__FULL_FIELD) || defined(__SEC_PHASE_SYNC)
+		#if defined(__FULL_FIELD) || defined(__SEC_PHASE_SYNC) || defined(__SEC_PHASE_SYNC_STATS)
 		FullFieldData();
 		#endif
 
 		// --------------------------------
 		//  Phase Sync
 		// --------------------------------
-		#if defined(__SEC_PHASE_SYNC) 
+		#if defined(__SEC_PHASE_SYNC) || defined(__SEC_PHASE_SYNC_STATS)
+		PhaseSync(s); 
 		PhaseSyncSector(s);
 		#endif
 
@@ -138,13 +139,14 @@ void Precompute(void) {
 	const long int Nx_Fourier = Nx / 2 + 1;
 	int r;
 	int N_max_incr = (int) (GSL_MIN(Ny, Nx) / 2);
-	int increment[NUM_INCR] = {1, N_max_incr};
-	double long_increment, trans_increment;
+	double vel_long_increment, vel_trans_increment;
+	double vort_long_increment, vort_trans_increment;
 	double norm_fac = 1.0 / (Ny * Nx);
 	double std_u, std_w;
+	double std_u_incr, std_w_incr;
 
 	// Print to screen that a pre computation step is need and begin timeing it
-	printf("\n["YELLOW"NOTE"RESET"] --- Performing a precomputation step...\n");
+	printf("\n["YELLOW"NOTE"RESET"] --- Performing a precomputation step...\n\n");
 	struct timeval begin, end;
 	gettimeofday(&begin, NULL);
 
@@ -152,6 +154,8 @@ void Precompute(void) {
 	// Loop Through Snapshots
 	// --------------------------------
 	for (int s = 0; s < sys_vars->num_snaps; ++s) {
+
+		printf("Precomputation Step: %d/%ld\n", s + 1, sys_vars->num_snaps);
 		
 		// Read in snaps
 		ReadInData(s);
@@ -160,25 +164,32 @@ void Precompute(void) {
 		// Precompute Stats
 		// --------------------------------
 		// Compute the graident in Fourier space
-		#if defined(__GRAD_STATS)
+		#if defined(__VEL_GRAD_STATS) || defined(__VORT_GRAD_STATS)
 		for (int i = 0; i < Ny; ++i) {
 			tmp = i * Nx_Fourier;
 			for (int j = 0; j < Nx_Fourier; ++j) {
 				indx = tmp + j;
 
 				// Compute the gradients of the vorticity
+				#if defined(__VORT_GRAD_STATS)
 				proc_data->grad_w_hat[SYS_DIM * indx + 0] = I * run_data->k[1][j] * run_data->w_hat[indx];
 				proc_data->grad_w_hat[SYS_DIM * indx + 1] = I * run_data->k[0][i] * run_data->w_hat[indx];
+				#endif
 
 				// Compute the gradients of the vorticity
+				#if defined(__VEL_GRAD_STATS)
 				proc_data->grad_u_hat[SYS_DIM * indx + 0] = I * run_data->k[1][j] * run_data->u_hat[SYS_DIM * indx + 0];
 				proc_data->grad_u_hat[SYS_DIM * indx + 1] = I * run_data->k[0][i] * run_data->u_hat[SYS_DIM * indx + 1];
-				// printf("grad_u_x: %1.16lf + %1.16lf I\tgrad_u_y:  %1.16lf + %1.16lf I\n", creal(proc_data->grad_u_hat[SYS_DIM * indx + 0]), cimag(proc_data->grad_u_hat[SYS_DIM * indx + 0]), creal(proc_data->grad_u_hat[SYS_DIM * indx + 1]), cimag(proc_data->grad_u_hat[SYS_DIM * indx + 1]));
+				#endif
 			}
 		}
 		// Perform inverse transform to get the gradients in real space - no need to presave grad_w_hat & grad_u_hat, wont be used again
+		#if defined(__VORT_GRAD_STATS)
 		fftw_execute_dft_c2r(sys_vars->fftw_2d_dft_batch_c2r, proc_data->grad_w_hat, proc_data->grad_w);
+		#endif
+		#if defined(__VEL_GRAD_STATS)
 		fftw_execute_dft_c2r(sys_vars->fftw_2d_dft_batch_c2r, proc_data->grad_u_hat, proc_data->grad_u);
+		#endif
 		#endif
 
 		// Loop over real space
@@ -187,56 +198,66 @@ void Precompute(void) {
 			for (int j = 0; j < Nx; ++j) {
 				indx = tmp + j;
 
-
-				#if defined(__GRAD_STATS)
 				// Normalize the gradients 
-				proc_data->grad_w[SYS_DIM * indx + 0] *= norm_fac;
-				proc_data->grad_w[SYS_DIM * indx + 1] *= norm_fac;
-				proc_data->grad_u[SYS_DIM * indx + 0] *= norm_fac;
-				proc_data->grad_u[SYS_DIM * indx + 1] *= norm_fac;
-
+				#if defined(__VORT_GRAD_STATS)
+				proc_data->grad_w[SYS_DIM * indx + 0] *= 1.0; //norm_fac;
+				proc_data->grad_w[SYS_DIM * indx + 1] *= 1.0; //norm_fac;
+				#endif
+				#if defined(__VEL_GRAD_STATS)
+				proc_data->grad_u[SYS_DIM * indx + 0] *= 1.0; //norm_fac;
+				proc_data->grad_u[SYS_DIM * indx + 1] *= 1.0; //norm_fac;
+				#endif
 
 				// Add gradients to stats accumulators
 				for (int i = 0; i < SYS_DIM + 1; ++i) {
 					if (i < SYS_DIM) {
 						// Add to the individual directions accumulators
-						gsl_rstat_add(proc_data->grad_w[SYS_DIM * indx + i], stats_data->r_stat_grad_w[i]);
-						gsl_rstat_add(proc_data->grad_u[SYS_DIM * indx + i], stats_data->r_stat_grad_u[i]);
+						#if defined(__VORT_GRAD_STATS)
+						gsl_rstat_add(proc_data->grad_w[SYS_DIM * indx + i], stats_data->w_grad_stats[i]);
+						#endif
+						#if defined(__VEL_GRAD_STATS)
+						gsl_rstat_add(proc_data->grad_u[SYS_DIM * indx + i], stats_data->u_grad_stats[i]);
+						#endif
 					}
 					else {
 						// Add to the combined accumulator
 						for (int j = 0; j < SYS_DIM; ++j) {
-							gsl_rstat_add(proc_data->grad_w[SYS_DIM * indx + j], stats_data->r_stat_grad_w[SYS_DIM]);
-							gsl_rstat_add(proc_data->grad_u[SYS_DIM * indx + j], stats_data->r_stat_grad_u[SYS_DIM]);	
+							#if defined(__VORT_GRAD_STATS)
+							gsl_rstat_add(proc_data->grad_w[SYS_DIM * indx + j], stats_data->w_grad_stats[SYS_DIM]);
+							#endif
+							#if defined(__VEL_GRAD_STATS)
+							gsl_rstat_add(proc_data->grad_u[SYS_DIM * indx + j], stats_data->u_grad_stats[SYS_DIM]);
+							#endif
 						}
 					}
 				}
-				#endif
 
-				#if defined(__VEL_INC_STATS)
+
 				// Compute velocity increments and update histograms
 				for (int r_indx = 0; r_indx < NUM_INCR; ++r_indx) {
 					// Get the current increment
-					r = increment[r_indx];
+					r = stats_data->increments[r_indx];
 
 					//------------- Get the longitudinal and transverse Velocity increments
-					long_increment  = run_data->u[SYS_DIM * (((i + r) % Ny) * Nx + j) + 0] - run_data->u[SYS_DIM * (i * Nx + j) + 0];
-					trans_increment = run_data->u[SYS_DIM * (((i + r) % Ny) * Nx + j) + 1] - run_data->u[SYS_DIM * (i * Nx + j) + 1];
+					#if defined(__VEL_INC_STATS)
+					vel_long_increment  = run_data->u[SYS_DIM * (i * Nx + (j + r) % Nx) + 0] - run_data->u[SYS_DIM * (i * Nx + j) + 0];
+					vel_trans_increment = run_data->u[SYS_DIM * (i * Nx + (j + r) % Nx) + 1] - run_data->u[SYS_DIM * (i * Nx + j) + 1];
 
 					// Update the stats accumulators
-					gsl_rstat_add(long_increment, stats_data->r_stat_vel_incr[0][r_indx]);
-					gsl_rstat_add(trans_increment, stats_data->r_stat_vel_incr[1][r_indx]);
-
+					gsl_rstat_add(vel_long_increment, stats_data->u_incr_stats[0][r_indx]);
+					gsl_rstat_add(vel_trans_increment, stats_data->u_incr_stats[1][r_indx]);
+					#endif
 
 					//------------- Get the longitudinal and transverse Vorticity increments
-					long_increment  = run_data->w[((i + r) % Ny) * Nx + j] - run_data->w[i * Nx + j];
-					trans_increment = run_data->w[i * Nx + ((j + r) % Nx)] - run_data->w[i * Nx + j];
+					#if defined(__VORT_INC_STATS)
+					vort_long_increment  = run_data->w[i * Nx + (j + r) % Nx] - run_data->w[i * Nx + j];
+					vort_trans_increment = run_data->w[((i + r) % Ny) * Nx + j] - run_data->w[i * Nx + j];
 
 					// Update the stats accumulators
-					gsl_rstat_add(long_increment, stats_data->r_stat_vort_incr[0][r_indx]);
-					gsl_rstat_add(trans_increment, stats_data->r_stat_vort_incr[1][r_indx]);			
+					gsl_rstat_add(vort_long_increment, stats_data->w_incr_stats[0][r_indx]);
+					gsl_rstat_add(vort_trans_increment, stats_data->w_incr_stats[1][r_indx]);			
+					#endif
 				}
-				#endif
 			}
 		}
 	}
@@ -244,62 +265,69 @@ void Precompute(void) {
 	// --------------------------------
 	// Initialize Gradient Histograms
 	// --------------------------------
-	#if defined(__GRAD_STATS)
 	for (int i = 0; i < SYS_DIM + 1; ++i) {
+		#if defined(__VEL_GRAD_STATS)
 		// Get the std of the gradients
-		std_u = gsl_rstat_sd(stats_data->r_stat_grad_u[i]);
-		std_w = gsl_rstat_sd(stats_data->r_stat_grad_w[i]);
-
+		std_u = gsl_rstat_sd(stats_data->u_grad_stats[i]);
 
 		// Velocity gradients
-		gsl_status = gsl_histogram_set_ranges_uniform(stats_data->vel_grad[i], -BIN_LIM * std_u, BIN_LIM * std_u);
+		gsl_status = gsl_histogram_set_ranges_uniform(stats_data->u_grad_hist[i], -BIN_LIM * std_u, BIN_LIM * std_u);
 		if (gsl_status != 0) {
 			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set bin ranges for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Velocity Gradient Increments");
 			exit(1);
 		}
+		#endif
+		
+		#if defined(__VORT_GRAD_STATS)
+		// Get the std of the gradients
+		std_w = gsl_rstat_sd(stats_data->w_grad_stats[i]);
+
 		// Vorticity gradients
-		gsl_status = gsl_histogram_set_ranges_uniform(stats_data->vort_grad[i], -BIN_LIM * std_w, BIN_LIM * std_w);
+		gsl_status = gsl_histogram_set_ranges_uniform(stats_data->w_grad_hist[i], -BIN_LIM * std_w, BIN_LIM * std_w);
 		if (gsl_status != 0) {
 			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set bin ranges for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Vorticity Gradient Increments");
 			exit(1);
 		}
+		#endif
 	}
-	#endif
 
 	// --------------------------------
 	// Initialize Increment Histograms
 	// --------------------------------
-	#if defined(__VEL_INC_STATS)
 	// Set the bin limits for the velocity increments
 	for (int i = 0; i < INCR_TYPES; ++i) {
 		for (int j = 0; j < NUM_INCR; ++j) {
+			#if defined(__VEL_INC_STATS)
 			// Get the std of the incrments
-			std_u = gsl_rstat_sd(stats_data->r_stat_vel_incr[i][j]);
-			std_w = gsl_rstat_sd(stats_data->r_stat_vort_incr[i][j]);
-
+			std_u_incr = gsl_rstat_sd(stats_data->u_incr_stats[i][j]);
 
 			// Velocity increments
-			gsl_status = gsl_histogram_set_ranges_uniform(stats_data->vel_incr[i][j], -BIN_LIM * std_u, BIN_LIM * std_u);
+			gsl_status = gsl_histogram_set_ranges_uniform(stats_data->u_incr_hist[i][j], -BIN_LIM * std_u_incr, BIN_LIM * std_u_incr);
 			if (gsl_status != 0) {
 				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set bin ranges for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Velocity Increments");
 				exit(1);
 			}
+			#endif
+
+			#if defined(__VORT_INC_STATS)						
+			// Get the std of the incrments
+			std_w_incr = gsl_rstat_sd(stats_data->w_incr_stats[i][j]);
+
 			// Vorticity increments
-			gsl_status = gsl_histogram_set_ranges_uniform(stats_data->w_incr[i][j], -BIN_LIM *std_w, BIN_LIM * std_w);
+			gsl_status = gsl_histogram_set_ranges_uniform(stats_data->w_incr_hist[i][j], -BIN_LIM *std_w_incr, BIN_LIM * std_w_incr);
 			if (gsl_status != 0) {
 				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set bin ranges for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Vorticity Increments");
 				exit(1);
 			}
+			#endif
 		}
 	}
-	#endif
 
 	printf("\n["YELLOW"NOTE"RESET"] --- Precomputation step complete!\n");
 
 	// Finish timing pre compute step and print to screen
 	gettimeofday(&end, NULL);
-	// PrintTime(begin.tv_sec, end.tv_sec);
-	
+	// PrintTime(begin.tv_sec, end.tv_sec);	
 }
 /**
  * Wrapper function used to allocate the nescessary data objects
@@ -312,6 +340,7 @@ void AllocateMemory(const long int* N) {
 	const long int Ny = N[0];
 	const long int Nx = N[1];
 	const long int Nx_Fourier = Nx / 2 + 1;
+
 
 	// --------------------------------
 	//  Allocate Field Data
@@ -335,6 +364,19 @@ void AllocateMemory(const long int* N) {
 		exit(1);
 	}
 
+	/// RHS
+	proc_data->dw_hat_dt = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * Ny * Nx_Fourier * SYS_DIM);
+	if (proc_data->dw_hat_dt == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "RHS");
+		exit(1);
+	}
+	// The gradient of the real stream function
+	proc_data->nabla_psi = (double* )fftw_malloc(sizeof(double) * Ny * Nx * SYS_DIM);
+	if (proc_data->nabla_psi == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Gradient of Real Space Vorticity");
+		exit(1);
+	}
+
 	// Initialize arrays
 	for (int i = 0; i < Ny; ++i) {
 		tmp2 = i * (Nx_Fourier);
@@ -342,12 +384,21 @@ void AllocateMemory(const long int* N) {
 			run_data->w_hat[tmp2 + j]     = 0.0 + 0.0 * I;
 			run_data->tmp_w_hat[tmp2 + j] = 0.0 + 0.0 * I;
 			run_data->psi_hat[tmp2 + j]   = 0.0 + 0.0 * I;
+			proc_data->dw_hat_dt[SYS_DIM * (tmp2 + j) + 0] = 0.0 + 0.0 * I; 
+			proc_data->dw_hat_dt[SYS_DIM * (tmp2 + j) + 1] = 0.0 + 0.0 * I; 
+		}
+	}
+
+	for (int i = 0; i < Ny; ++i) {
+		tmp2 = i * (Nx);
+		for (int j = 0; j < Nx; ++j) {
+			proc_data->nabla_psi[SYS_DIM * (tmp2 + j) + 0] = 0.0; 
+			proc_data->nabla_psi[SYS_DIM * (tmp2 + j) + 1] = 0.0; 
 		}
 	}
 
 	//  Allocate Stats Data
 	// --------------------------------
-	#if defined(__REAL_STATS) || defined(__ENST_FLUX) || defined(__ENRG_FLUX) || defined(__SEC_PHASE_SYNC) || defined(__VEL_INC_STATS) || defined(__STR_FUNC_STATS) || defined(__GRAD_STATS) || defined(__VORT_REAL) || defined(__MODES) || defined(__REALSPACE)
 	// Allocate current Fourier vorticity
 	run_data->w = (double* )fftw_malloc(sizeof(double) * Ny * Nx);
 	if (run_data->w == NULL) {
@@ -366,6 +417,16 @@ void AllocateMemory(const long int* N) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Fourier Velocity");
 		exit(1);
 	}
+	run_data->tmp_u_hat_x = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * Ny * Nx_Fourier);
+	if (run_data->tmp_u_hat_x == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Fourier Velocity");
+		exit(1);
+	}
+	run_data->tmp_u_hat_y = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * Ny * Nx_Fourier);
+	if (run_data->tmp_u_hat_y == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Fourier Velocity");
+		exit(1);
+	}
 
 	// Allocate current Fourier vorticity
 	run_data->u = (double* )fftw_malloc(sizeof(double) * Ny * Nx * SYS_DIM);
@@ -373,7 +434,17 @@ void AllocateMemory(const long int* N) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Velocity");
 		exit(1);
 	}
-	#if defined(__GRAD_STATS)
+	run_data->tmp_u_x = (double* )fftw_malloc(sizeof(double) * Ny * Nx);
+	if (run_data->tmp_u_x == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Velocity");
+		exit(1);
+	}
+	run_data->tmp_u_y = (double* )fftw_malloc(sizeof(double) * Ny * Nx);
+	if (run_data->tmp_u_y == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Velocity");
+		exit(1);
+	}
+	#if defined(__VEL_GRAD_STATS)
 	run_data->tmp_u = (double* )fftw_malloc(sizeof(double) * Ny * Nx * SYS_DIM);
 	if (run_data->tmp_u == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Temporary Velocity");
@@ -397,29 +468,32 @@ void AllocateMemory(const long int* N) {
 				run_data->u_hat[SYS_DIM * (tmp2 + j) + 1]     = 0.0 + 0.0 * I;
 				run_data->tmp_u_hat[SYS_DIM * (tmp2 + j) + 0] = 0.0 + 0.0 * I;
 				run_data->tmp_u_hat[SYS_DIM * (tmp2 + j) + 1] = 0.0 + 0.0 * I;
+				run_data->tmp_u_hat_x[tmp2 + j] = 0.0 + 0.0 * I;
+				run_data->tmp_u_hat_y[tmp2 + j] = 0.0 + 0.0 * I;
 			}
 			run_data->w[tmp1 + j] = 0.0;
+			run_data->tmp_u_x[tmp1 + j]               = 0.0;
+			run_data->tmp_u_y[tmp1 + j]               = 0.0;
 			run_data->u[SYS_DIM * (tmp1 + j) + 0] = 0.0;
 			run_data->u[SYS_DIM * (tmp1 + j) + 1] = 0.0;
-			#if defined(__GRAD_STATS)
+			#if defined(__VEL_GRAD_STATS)
 			run_data->tmp_u[SYS_DIM * (tmp1 + j) + 0] = 0.0;
 			run_data->tmp_u[SYS_DIM * (tmp1 + j) + 1] = 0.0;
 			#endif
 		}
 	}
-	#endif
 
 	// -------------------------------------
 	//  Allocate Full Field & Spectra Data
 	// -------------------------------------
-	#if defined(__FULL_FIELD) || defined(__SPECTRA) || defined(__ENST_FLUX) || defined(__ENRG_FLUX) || defined(__SEC_PHASE_SYNC)
+	#if defined(__FULL_FIELD) || defined(__SPECTRA) || defined(__ENST_FLUX) || defined(__ENRG_FLUX) || defined(__SEC_PHASE_SYNC) || defined(__SEC_PHASE_SYNC_STATS)
 	AllocateFullFieldMemory(N);
 	#endif
 
 	// --------------------------------	
 	//  Allocate Phase Sync Data
 	// --------------------------------
-	#if defined(__SEC_PHASE_SYNC)
+	#if defined(__SEC_PHASE_SYNC) || defined(__SEC_PHASE_SYNC_STATS)
 	AllocatePhaseSyncMemory(N);
 	#endif
 }
@@ -434,40 +508,32 @@ void InitializeFFTWPlans(const long int* N) {
 	const long int Nx = N[1];
 	const int N_batch[SYS_DIM] = {Ny, Nx};
 
-	#if defined(__REAL_STATS) || defined(__VEL_INC_STATS) || defined(__STR_FUNC_STATS) || defined(__GRAD_STATS) || defined(__VORT_REAL) || defined(__VORT_REAL)
 	// Initialize Fourier Transforms
 	sys_vars->fftw_2d_dft_c2r = fftw_plan_dft_c2r_2d(Ny, Nx, run_data->w_hat, run_data->w, FFTW_MEASURE);
 	if (sys_vars->fftw_2d_dft_c2r == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to initialize basic C2R FFTW Plan\n-->> Exiting!!!\n");
 		exit(1);
 	}
-	#endif
 
-	#if defined(__ENST_FLUX) || defined(__ENRG_FLUX) || defined(__SEC_PHASE_SYNC)
 	sys_vars->fftw_2d_dft_r2c = fftw_plan_dft_r2c_2d(Ny, Nx, run_data->w, run_data->w_hat, FFTW_MEASURE);
 	if (sys_vars->fftw_2d_dft_r2c == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to initialize basic R2C FFTW Plan\n-->> Exiting!!!\n");
 		exit(1);
 	}
-	#endif
 
-	#if defined(__ENST_FLUX) || defined(__ENRG_FLUX) || defined(__SEC_PHASE_SYNC) || defined(__REAL_STATS) || defined(__GRAD_STATS) || defined(__REALSPACE)
 	// Initialize Batch Fourier Transforms
 	sys_vars->fftw_2d_dft_batch_c2r = fftw_plan_many_dft_c2r(SYS_DIM, N_batch, SYS_DIM, run_data->u_hat, NULL, SYS_DIM, 1, run_data->u, NULL, SYS_DIM, 1, FFTW_MEASURE);
 	if (sys_vars->fftw_2d_dft_batch_c2r == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to initialize batch C2R FFTW Plan\n-->> Exiting!!!\n");
 		exit(1);
 	}
-	#endif
 
-	#if defined(__GRAD_STATS) || defined(__REALSPACE)
 	// Initialize Batch Fourier Transforms
 	sys_vars->fftw_2d_dft_batch_r2c = fftw_plan_many_dft_r2c(SYS_DIM, N_batch, SYS_DIM, run_data->u, NULL, SYS_DIM, 1, run_data->u_hat, NULL, SYS_DIM, 1, FFTW_MEASURE);
 	if (sys_vars->fftw_2d_dft_batch_r2c == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to initialize batch R2C FFTW Plan\n-->> Exiting!!!\n");
 		exit(1);
 	}
-	#endif
 }
 /**
  * Wrapper function to free memory and close any objects before exiting
@@ -486,25 +552,29 @@ void FreeMemoryAndCleanUp(void) {
 		fftw_free(run_data->x[i]);
 		fftw_free(run_data->k[i]);
 	}
-	#if defined(__REAL_STATS) || defined(__VEL_INC_STATS) || defined(__STR_FUNC_STATS) || defined(__ENST_FLUX) || defined(__ENRG_FLUX) || defined(__SEC_PHASE_SYNC) || defined(__GRAD_STATS) || defined(__VORT_REAL) || defined(__MODES) || defined(__REALSPACE)
+	fftw_free(proc_data->nabla_psi);
+	fftw_free(proc_data->dw_hat_dt);
 	fftw_free(run_data->w);
 	fftw_free(run_data->u);
 	fftw_free(run_data->u_hat);
 	fftw_free(run_data->tmp_u_hat);
+	fftw_free(run_data->tmp_u_hat_x);
+	fftw_free(run_data->tmp_u_hat_y);
+	fftw_free(run_data->tmp_u_x);
+	fftw_free(run_data->tmp_u_y);
 	#if defined(__GRAD_STATS)
 	fftw_free(run_data->tmp_u);
-	#endif
 	#endif
 
 	#if defined(__REAL_STATS) || defined(__VEL_INC_STATS) || defined(__STR_FUNC_STATS) || defined(__GRAD_STATS)
 	FreeStatsObjects();
 	#endif
 
-	#if defined(__SEC_PHASE_SYNC)
+	#if defined(__SEC_PHASE_SYNC) || defined(__SEC_PHASE_SYNC_STATS)
 	FreePhaseSyncObjects();
 	#endif
 	
-	#if defined(__FULL_FIELD) || defined(__SEC_PHASE_SYNC) || defined(__SPECTRA) || defined(__ENST_FLUX) || defined(__ENRG_FLUX)
+	#if defined(__FULL_FIELD) || defined(__SEC_PHASE_SYNC) || defined(__SEC_PHASE_SYNC_STATS) || defined(__SPECTRA) || defined(__ENST_FLUX) || defined(__ENRG_FLUX)
 	FreeFullFieldObjects();
 	#endif
 	
@@ -512,18 +582,13 @@ void FreeMemoryAndCleanUp(void) {
 	//  Free FFTW Plans
 	// --------------------------------
 	// Destroy FFTW plans
-	#if defined(__REAL_STATS) || defined(__VEL_INC_STATS) || defined(__STR_FUNC_STATS) || defined(__GRAD_STATS) || defined(__VORT_REAL) || defined(__VORT_REAL)
 	fftw_destroy_plan(sys_vars->fftw_2d_dft_c2r);
-	#endif
-	#if defined(__ENST_FLUX) || defined(__ENRG_FLUX) || defined(__SEC_PHASE_SYNC)
 	fftw_destroy_plan(sys_vars->fftw_2d_dft_r2c);
-	#endif
-	#if defined(__ENST_FLUX) || defined(__ENRG_FLUX) || defined(__SEC_PHASE_SYNC) || defined(__REAL_STATS) || defined(__GRAD_STATS) || defined(__REALSPACE)
 	fftw_destroy_plan(sys_vars->fftw_2d_dft_batch_c2r);
-	#endif
-	#if defined(__GRAD_STATS) || defined(__REALSPACE)
 	fftw_destroy_plan(sys_vars->fftw_2d_dft_batch_r2c);
-	#endif	
+
+	// Clean Up FFTW Objects
+	fftw_cleanup();
 
 	// --------------------------------
 	//  Close HDF5 Objects

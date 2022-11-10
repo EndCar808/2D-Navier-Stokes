@@ -17,6 +17,7 @@
 // ---------------------------------------------------------------------
 void AllocateStatsMemory(const long int* N);
 void RealSpaceStats(int s);
+void WriteStatsToFile(void);
 void FreeStatsObjects(void);
 // ---------------------------------------------------------------------
 //  End of File

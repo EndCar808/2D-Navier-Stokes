@@ -22,7 +22,7 @@
 #include "data_types.h"
 #include "hdf5_funcs.h"
 #include "utils.h"
-
+#include "solver.h"
 
 // ---------------------------------------------------------------------
 //  Function Definitions
@@ -108,9 +108,9 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 	#endif
 
 
-	////////////////////////////////
-	/// Write Initial Condtions
-	////////////////////////////////
+	// //////////////////////////////
+	// / Write Initial Condtions
+	// //////////////////////////////
 	if (sys_vars->TRANS_ITERS_FLAG != TRANSIENT_ITERS) {
 		// --------------------------------------
 		// Create Group for Initial Conditions
@@ -174,8 +174,8 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 		}
 
 		// Specify dataset dimensions
-		dset_dims2D[0] 	  = Ny;
-		dset_dims2D[1] 	  = Nx;
+		dset_dims2D[0]      = Ny;
+		dset_dims2D[1]      = Nx;
 		slab_dims2D[0]      = sys_vars->local_Ny;
 		slab_dims2D[1]      = Nx;
 		mem_space_dims2D[0] = sys_vars->local_Ny;
@@ -213,8 +213,8 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 					k_sqr = I / (double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 
 					// Fill the Fourier velocities
-					run_data->u_hat[SYS_DIM * indx + 0] = k_sqr * run_data->k[1][j] * run_data->w_hat[indx];
-					run_data->u_hat[SYS_DIM * indx + 1] = -k_sqr * run_data->k[0][i] * run_data->w_hat[indx];
+					run_data->u_hat[SYS_DIM * indx + 0] = k_sqr * run_data->k[0][i] * run_data->w_hat[indx];
+					run_data->u_hat[SYS_DIM * indx + 1] = -k_sqr * run_data->k[1][j] * run_data->w_hat[indx];
 				}
 				else {
 					run_data->u_hat[SYS_DIM * indx + 0] = 0.0 + 0.0 * I;
@@ -281,6 +281,20 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 
 		// Write the real space vorticity
 		WriteDataReal(0.0, 0, main_group_id, "u", H5T_NATIVE_DOUBLE, d_set_rank3D, dset_dims3D, slab_dims3D, mem_space_dims3D, sys_vars->local_Ny_start, run_data->u);
+		#endif
+
+		///--------------------------------------- Fourier Space Nonlinear Term
+		#if defined(__NONLIN)
+		// Create dimension arrays for the Fourier nonlinear term
+		dset_dims2D[0] 	  = Ny;
+		dset_dims2D[1] 	  = Nx_Fourier;
+		slab_dims2D[0] 	  = sys_vars->local_Ny;
+		slab_dims2D[1] 	  = Nx_Fourier;
+		mem_space_dims2D[0] = sys_vars->local_Ny;
+		mem_space_dims2D[1] = Nx_Fourier;
+
+		// Write the Fourier nonlinear term
+		WriteDataFourier(0.0, 0, main_group_id, "NonlinearTerm", file_info->COMPLEX_DTYPE, d_set_rank2D, dset_dims2D, slab_dims2D, mem_space_dims2D, sys_vars->local_Ny_start, run_data->nonlinterm);
 		#endif
 
 		///-------------------------------------- Fourier Phases & Amplitudes of the Vorticity
@@ -434,12 +448,11 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 	#if defined(__PHASE_SYNC)
 	if (sys_vars->TRANS_ITERS_FLAG != TRANSIENT_ITERS) {
 		if (!sys_vars->rank) {
-				status = H5Gclose(sync_group_id);
-				status = H5Fclose(file_info->sync_file_handle);
-				if (status < 0) {
-					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close output file ["CYAN"%s"RESET"] at: Iter = ["CYAN"%d"RESET"] t = ["CYAN"%lf"RESET"]\n-->> Exiting...\n", file_info->sync_file_name, 0, 0.0);
-					exit(1);		
-				}
+			status = H5Gclose(sync_group_id);
+			status = H5Fclose(file_info->sync_file_handle);
+			if (status < 0) {
+				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close output file ["CYAN"%s"RESET"] at: Iter = ["CYAN"%d"RESET"] t = ["CYAN"%lf"RESET"]\n-->> Exiting...\n", file_info->sync_file_name, 0, 0.0);
+				exit(1);		
 			}
 		}
 	}
@@ -471,7 +484,6 @@ void GetOutputDirPath(void) {
 				exit(1);
 			}
 		}
-
 	}
 
 	////////////////////////////////////////////
@@ -880,8 +892,8 @@ void WriteDataToFile(double t, double dt, long int iters) {
 				k_sqr = I / (double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 
 				// Fill the Fourier velocities
-				run_data->u_hat[SYS_DIM * indx + 0] = k_sqr * run_data->k[1][j] * run_data->w_hat[indx];
-				run_data->u_hat[SYS_DIM * indx + 1] = -k_sqr * run_data->k[0][i] * run_data->w_hat[indx];
+				run_data->u_hat[SYS_DIM * indx + 0] = k_sqr * run_data->k[0][i] * run_data->w_hat[indx];
+				run_data->u_hat[SYS_DIM * indx + 1] = -k_sqr * run_data->k[1][j] * run_data->w_hat[indx];
 			}
 			else {
 				run_data->u_hat[SYS_DIM * indx + 0] = 0.0 + 0.0 * I;
@@ -1446,9 +1458,13 @@ void FinalWriteAndCloseOutputFiles(const long int* N, int iters, int save_data_i
 	herr_t status;
 	static const hsize_t D1 = 1;
 	hsize_t dims1D[D1];
-	#if defined(__STATS) && (defined(__VEL_STR_FUNC) || defined(__VORT_STR_FUNC))
+	#if defined(__STATS) && defined(__VEL_STR_FUNC)
 	static const hsize_t D3 = 3;
 	hsize_t dims3D[D3];
+	#endif
+	#if defined(__STATS) && defined(__VEL_STR_FUNC)
+	static const hsize_t D2 = 2;
+	hsize_t dims2D[D2];
 	#endif
 
 	// Record total iterations
@@ -1573,32 +1589,34 @@ void FinalWriteAndCloseOutputFiles(const long int* N, int iters, int save_data_i
 	// -------------------------------
 	#if defined(__STATS)
 	// Get max scales
-	int num_r_scales = (int) GSL_MIN(Ny, Nx) / 2;
+	int Num_r_scales = (int) (GSL_MIN(Ny, Nx) / 2);
 
 	///------------------- Structure Functions
 	#if defined(__VEL_STR_FUNC)
 	// Allocate temporary memory for structure funcitons
-	double* tmp_vel_str_functions = (double*)fftw_malloc(sizeof(double ) * INCR_TYPES * NUM_POW * num_r_scales);
+	double* tmp_vel_str_functions     = (double*)fftw_malloc(sizeof(double ) * INCR_TYPES * NUM_POW * Num_r_scales);
+	double* tmp_vel_str_functions_abs = (double*)fftw_malloc(sizeof(double ) * INCR_TYPES * NUM_POW * Num_r_scales);
 
 	// Write record local (to each process) strucure functions to tmp memory
 	for (int p = 0; p < NUM_POW; ++p) {
-		for (int r_scale = 0; r_scale < num_r_scales; ++r_scale) {
+		for (int r_scale = 0; r_scale < Num_r_scales; ++r_scale) {
 			for (int type = 0; type < INCR_TYPES; ++type) {
-				tmp_vel_str_functions[INCR_TYPES * (p * num_r_scales + r_scale) + type] = stats_data->vel_str_func[type][p][r_scale] / stats_data->num_stats_steps;
+				tmp_vel_str_functions[INCR_TYPES * (p * Num_r_scales + r_scale) + type]     = stats_data->vel_str_func[type][p][r_scale] / stats_data->num_stats_steps;
+				tmp_vel_str_functions_abs[INCR_TYPES * (p * Num_r_scales + r_scale) + type] = stats_data->vel_str_func_abs[type][p][r_scale] / stats_data->num_stats_steps;
 			}
 		}
 	}
 	#endif
 	#if defined(__VORT_STR_FUNC)
 	// Allocate temporary memory for structure funcitons
-	double* tmp_vort_str_functions = (double*)fftw_malloc(sizeof(double ) * INCR_TYPES * NUM_POW * num_r_scales);
+	double* tmp_vort_str_functions     = (double*)fftw_malloc(sizeof(double ) * NUM_POW * Num_r_scales);
+	double* tmp_vort_str_functions_abs = (double*)fftw_malloc(sizeof(double ) * NUM_POW * Num_r_scales);
 
 	// Write record local (to each process) strucure functions to tmp memory
 	for (int p = 0; p < NUM_POW; ++p) {
-		for (int r_scale = 0; r_scale < num_r_scales; ++r_scale) {
-			for (int type = 0; type < INCR_TYPES; ++type) {
-				tmp_vort_str_functions[INCR_TYPES * (p * num_r_scales + r_scale) + type] = stats_data->vort_str_func[type][p][r_scale] / stats_data->num_stats_steps;
-			}
+		for (int r_scale = 0; r_scale < Num_r_scales; ++r_scale) {
+				tmp_vort_str_functions[p * Num_r_scales + r_scale]     = stats_data->vort_str_func[0][p][r_scale] / stats_data->num_stats_steps;
+				tmp_vort_str_functions_abs[p * Num_r_scales + r_scale] = stats_data->vort_str_func[0][p][r_scale] / stats_data->num_stats_steps;
 		}
 	}
 	#endif
@@ -1619,20 +1637,19 @@ void FinalWriteAndCloseOutputFiles(const long int* N, int iters, int save_data_i
 	}
 	#endif
 	#if defined(__VORT_INC)
-	double* vort_inc_counts = (double* )fftw_malloc(sizeof(double) * INCR_TYPES * NUM_INCR * VORT_NUM_BINS);
-	double* vort_inc_ranges = (double* )fftw_malloc(sizeof(double) * INCR_TYPES * NUM_INCR * (VORT_NUM_BINS + 1));
+	double* vort_inc_counts = (double* )fftw_malloc(sizeof(double) * NUM_INCR * VORT_NUM_BINS);
+	double* vort_inc_ranges = (double* )fftw_malloc(sizeof(double) * NUM_INCR * (VORT_NUM_BINS + 1));
 	for (int num_r = 0; num_r < NUM_INCR; ++num_r) {
 		for (int n = 0; n < VORT_NUM_BINS + 1; ++n) {
-			for (int type = 0; type < INCR_TYPES; ++type) {
-				if (n < VORT_NUM_BINS) {
-					vort_inc_counts[INCR_TYPES * (num_r * VORT_NUM_BINS + n) + type] += stats_data->vort_inc_hist[type][num_r]->bin[n];
-				}
-				vort_inc_ranges[INCR_TYPES * (num_r * (VORT_NUM_BINS + 1) + n) + type] += stats_data->vort_inc_hist[type][num_r]->range[n];
+			if (n < VORT_NUM_BINS) {
+				vort_inc_counts[num_r * VORT_NUM_BINS + n] += stats_data->vort_inc_hist[0][num_r]->bin[n];
 			}
+			vort_inc_ranges[num_r * (VORT_NUM_BINS + 1) + n] += stats_data->vort_inc_hist[0][num_r]->range[n];
 		}
 	}
 	#endif
 	#endif
+
 	// ----------------------------------------
 	// Reduce & Write System Measures & Stats
 	// ----------------------------------------
@@ -1661,20 +1678,22 @@ void FinalWriteAndCloseOutputFiles(const long int* N, int iters, int save_data_i
 		#if defined(__STATS)
 		///------------------ Structure functions
 		#if defined(__VEL_STR_FUNC)
-		MPI_Reduce(MPI_IN_PLACE, tmp_vel_str_functions, (int)(INCR_TYPES * NUM_POW * num_r_scales), MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(MPI_IN_PLACE, tmp_vel_str_functions, (int)(INCR_TYPES * NUM_POW * Num_r_scales), MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(MPI_IN_PLACE, tmp_vel_str_functions_abs, (int)(INCR_TYPES * NUM_POW * Num_r_scales), MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		#endif
 		#if defined(__VORT_STR_FUNC)
-		MPI_Reduce(MPI_IN_PLACE, tmp_vort_str_functions, (int)(INCR_TYPES * NUM_POW * num_r_scales), MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(MPI_IN_PLACE, tmp_vort_str_functions, (int)(NUM_POW * Num_r_scales), MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(MPI_IN_PLACE, tmp_vort_str_functions_abs, (int)(NUM_POW * Num_r_scales), MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		#endif
 		#if defined(__MIXED_VORT_STR_FUNC)
-		MPI_Reduce(MPI_IN_PLACE, stats_data->vort_mixed_str_func, (int)(num_r_scales), MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		for (int i = 0; i < num_r_scales; ++i) {
+		MPI_Reduce(MPI_IN_PLACE, stats_data->vort_mixed_str_func, (int)(Num_r_scales), MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		for (int i = 0; i < Num_r_scales; ++i) {
 			stats_data->vort_mixed_str_func[i] /= stats_data->num_stats_steps;
 		}
 		#endif
 		#if defined(__MIXED_VEL_STR_FUNC)
-		MPI_Reduce(MPI_IN_PLACE, stats_data->vel_mixed_str_func, (int)(num_r_scales), MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		for (int i = 0; i < num_r_scales; ++i) {
+		MPI_Reduce(MPI_IN_PLACE, stats_data->vel_mixed_str_func, (int)(Num_r_scales), MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		for (int i = 0; i < Num_r_scales; ++i) {
 			stats_data->vort_mixed_str_func[i] /= stats_data->num_stats_steps;
 		}
 		#endif
@@ -1683,7 +1702,7 @@ void FinalWriteAndCloseOutputFiles(const long int* N, int iters, int save_data_i
 		MPI_Reduce(MPI_IN_PLACE, vel_inc_counts, (int)(INCR_TYPES * NUM_INCR * VEL_NUM_BINS), MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		#endif
 		#if defined(__VORT_INC)
-		MPI_Reduce(MPI_IN_PLACE, vort_inc_counts, (int)(INCR_TYPES * NUM_INCR * VORT_NUM_BINS), MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(MPI_IN_PLACE, vort_inc_counts, (int)(NUM_INCR * VORT_NUM_BINS), MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		#endif
 		#endif
 
@@ -1749,39 +1768,46 @@ void FinalWriteAndCloseOutputFiles(const long int* N, int iters, int save_data_i
 		}
 		#endif
 		#if defined(__STATS)
+		#if defined(__VEL_STR_FUNC) 
+		// Define the dimensions of the velocity structure funciton array
+		dims3D[0] = NUM_POW;
+		dims3D[1] = Num_r_scales;
+		dims3D[2] = INCR_TYPES;
+		if ( (H5LTmake_dataset(file_info->stats_file_handle, "VelocityStructureFunctions", D3, dims3D, H5T_NATIVE_DOUBLE, tmp_vel_str_functions)) < 0) {
+			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "VelocityStructureFunctions");
+		}
+		if ( (H5LTmake_dataset(file_info->stats_file_handle, "AbsVelocityStructureFunctions", D3, dims3D, H5T_NATIVE_DOUBLE, tmp_vel_str_functions_abs)) < 0) {
+			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "AbsVelocityStructureFunctions");
+		}
+		fftw_free(tmp_vel_str_functions);
+		fftw_free(tmp_vel_str_functions_abs);
+		#endif
+		#if defined(__VORT_STR_FUNC) 
+		// Define the dimensions of the vorticity structure funciton array
+		dims2D[0] = NUM_POW;
+		dims2D[1] = Num_r_scales;
+		if ( (H5LTmake_dataset(file_info->stats_file_handle, "VorticityStructureFunctions", D2, dims2D, H5T_NATIVE_DOUBLE, tmp_vort_str_functions)) < 0) {
+			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "VorticityStructureFunctions");
+		}
+		if ( (H5LTmake_dataset(file_info->stats_file_handle, "AbsVorticityStructureFunctions", D2, dims2D, H5T_NATIVE_DOUBLE, tmp_vort_str_functions_abs)) < 0) {
+			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "AbsVorticityStructureFunctions");
+		}
+		fftw_free(tmp_vort_str_functions);
+		fftw_free(tmp_vort_str_functions_abs);
+		#endif
 		#if defined(__MIXED_VEL_STR_FUNC) 
 		// Define the dimensions of the mixed velocity structure funciton array
-		dims1D[0] = num_r_scales;
+		dims1D[0] = Num_r_scales;
 		if ( (H5LTmake_dataset(file_info->stats_file_handle, "MixedVelocityStructureFunctions", D1, dims1D, H5T_NATIVE_DOUBLE, stats_data->vel_mixed_str_func)) < 0) {
 			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "MixedVelocityStructureFunctions");
 		}
 		#endif
 		#if defined(__MIXED_VEL_STR_FUNC) 
 		// Define the dimensions of the mixed velocity structure funciton array
-		dims1D[0] = num_r_scales;
+		dims1D[0] = Num_r_scales;
 		if ( (H5LTmake_dataset(file_info->stats_file_handle, "MixedVorticityStructureFunctions", D1, dims1D, H5T_NATIVE_DOUBLE, stats_data->vort_mixed_str_func)) < 0) {
 			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "MixedVorticityStructureFunctions");
 		}
-		#endif
-		#if defined(__VEL_STR_FUNC) 
-		// Define the dimensions of the velocity structure funciton array
-		dims3D[0] = NUM_POW;
-		dims3D[1] = num_r_scales;
-		dims3D[2] = INCR_TYPES;
-		if ( (H5LTmake_dataset(file_info->stats_file_handle, "VelocityStructureFunctions", D3, dims3D, H5T_NATIVE_DOUBLE, tmp_vel_str_functions)) < 0) {
-			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "VelocityStructureFunctions");
-		}
-		fftw_free(tmp_vel_str_functions);
-		#endif
-		#if defined(__VORT_STR_FUNC) 
-		// Define the dimensions of the vorticity structure funciton array
-		dims3D[0] = NUM_POW;
-		dims3D[1] = num_r_scales;
-		dims3D[2] = INCR_TYPES;
-		if ( (H5LTmake_dataset(file_info->stats_file_handle, "VorticityStructureFunctions", D3, dims3D, H5T_NATIVE_DOUBLE, tmp_vort_str_functions)) < 0) {
-			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "VorticityStructureFunctions");
-		}
-		fftw_free(tmp_vort_str_functions);
 		#endif
 		#if defined(__VEL_INC) 
 		// Define the dimensions of the velocity increment arrays
@@ -1800,14 +1826,13 @@ void FinalWriteAndCloseOutputFiles(const long int* N, int iters, int save_data_i
 		#endif
 		#if defined(__VORT_INC) 
 		// Define the dimensions of the vorticity increment arrays
-		dims3D[0] = NUM_INCR;
-		dims3D[1] = VORT_NUM_BINS;
-		dims3D[2] = INCR_TYPES;
-		if ( (H5LTmake_dataset(file_info->stats_file_handle, "VorticityIncrementHist_Counts", D3, dims3D, H5T_NATIVE_DOUBLE, vort_inc_counts)) < 0) {
+		dims2D[0] = NUM_INCR;
+		dims2D[1] = VORT_NUM_BINS;
+		if ( (H5LTmake_dataset(file_info->stats_file_handle, "VorticityIncrementHist_Counts", D2, dims2D, H5T_NATIVE_DOUBLE, vort_inc_counts)) < 0) {
 			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "VorticityIncrementHist_Counts");
 		}
-		dims3D[1] = VORT_NUM_BINS + 1;
-		if ( (H5LTmake_dataset(file_info->stats_file_handle, "VorticityIncrementHist_Ranges", D3, dims3D, H5T_NATIVE_DOUBLE, vort_inc_ranges)) < 0) {
+		dims2D[1] = VORT_NUM_BINS + 1;
+		if ( (H5LTmake_dataset(file_info->stats_file_handle, "VorticityIncrementHist_Ranges", D2, dims2D, H5T_NATIVE_DOUBLE, vort_inc_ranges)) < 0) {
 			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "VorticityIncrementHist_Ranges");
 		}
 		fftw_free(vort_inc_counts);
@@ -1836,6 +1861,30 @@ void FinalWriteAndCloseOutputFiles(const long int* N, int iters, int save_data_i
 		MPI_Reduce(run_data->enrg_flux_sbst, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		MPI_Reduce(run_data->enrg_diss_sbst, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		#endif
+		#if defined(__STATS)
+		///------------------ Structure functions
+		#if defined(__VEL_STR_FUNC)
+		MPI_Reduce(tmp_vel_str_functions, NULL, (int)(INCR_TYPES * NUM_POW * Num_r_scales), MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(tmp_vel_str_functions_abs, NULL, (int)(INCR_TYPES * NUM_POW * Num_r_scales), MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		#endif
+		#if defined(__VORT_STR_FUNC)
+		MPI_Reduce(tmp_vort_str_functions, NULL, (int)(NUM_POW * Num_r_scales), MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(tmp_vort_str_functions_abs, NULL, (int)(NUM_POW * Num_r_scales), MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		#endif
+		#if defined(__MIXED_VORT_STR_FUNC)
+		MPI_Reduce(stats_data->vort_mixed_str_func, NULL,  (int)(Num_r_scales), MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		#endif
+		#if defined(__MIXED_VEL_STR_FUNC)
+		MPI_Reduce(stats_data->vel_mixed_str_func, NULL, (int)(Num_r_scales), MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		#endif
+		///---------------- Increment Histograms
+		#if defined(__VEL_INC)
+		MPI_Reduce(vel_inc_counts, NULL, (int)(INCR_TYPES * NUM_INCR * VEL_NUM_BINS), MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		#endif
+		#if defined(__VORT_INC)
+		MPI_Reduce(vort_inc_counts, NULL, (int)(NUM_INCR * VORT_NUM_BINS), MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		#endif
+		#endif
 	}
 
 	// -----------------------------------
@@ -1848,7 +1897,7 @@ void FinalWriteAndCloseOutputFiles(const long int* N, int iters, int save_data_i
 			exit(1);
 		}
 	}
-	#if defined(__PHASE_SYNC)
+	#if defined(__STATS)
 	if (!sys_vars->rank) {
 		status = H5Fclose(file_info->stats_file_handle);
 		if (status < 0) {

@@ -22,6 +22,7 @@
 #include "solver.h"
 #include "sys_msr.h"
 #include "force.h"
+#include "stats.h"
 // ---------------------------------------------------------------------
 //  Global Variables
 // ---------------------------------------------------------------------
@@ -66,6 +67,7 @@ void SpectralSolve(void) {
 	// Allocate memory
 	// -------------------------------
 	AllocateMemory(NBatch, Int_data);
+
 
 	// -------------------------------
 	// FFTW Plans Setup
@@ -169,6 +171,15 @@ void SpectralSolve(void) {
 		}
 		#endif
 
+		// -------------------------------
+		// Compute Stats
+		// -------------------------------
+		#if defined(__STATS)
+		if (iters % sys_vars->STATS_EVERY == 0) {
+			ComputeStats(iters);
+		}
+		#endif
+		
 		// -------------------------------
 		// Write To File
 		// -------------------------------
@@ -325,7 +336,6 @@ void AB4Step(const double dt, const long int* N, const int iters, const ptrdiff_
 						// No hyper viscosity or no ekman drag -> just normal viscosity
 						D_fac = dt * (sys_vars->NU * k_sqr); 
 					}
-					
 					// Complete the update step
 					run_data->w_hat[indx] = run_data->w_hat[indx] * ((2.0 - D_fac) / (2.0 + D_fac)) + (2.0 * dt / (2.0 + D_fac)) * ((AB4_1 * Int_data->AB_tmp[indx]) + (AB4_2 * Int_data->AB_tmp_nonlin[2][indx]) + (AB4_3 * Int_data->AB_tmp_nonlin[1][indx]) + (AB4_4 * Int_data->AB_tmp_nonlin[0][indx]));
 					#endif
@@ -530,15 +540,6 @@ void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdif
 			}
 		}
 	}
-	#if defined(__NONLIN)
-	// Record the nonlinear for the updated Fourier vorticity
-	NonlinearRHSBatch(run_data->w_hat, run_data->nonlinterm, Int_data->nonlin, Int_data->nabla_psi);
-	if (sys_vars->local_forcing_proc) {
-		for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
-			run_data->nonlinterm[run_data->forcing_indx[i]] -= run_data->forcing[i];
-		}
-	}
-	#endif
 	#if defined(__DPRK5CN)
 	if (iters > 1) {
 		// Reduce and sync the error sum across the processes
@@ -844,16 +845,6 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Ny, Int_d
 			}
 		}
 	}
-
-	#if defined(__NONLIN)
-	// Record the nonlinear term with the updated Fourier vorticity
-	NonlinearRHSBatch(run_data->w_hat, run_data->nonlinterm, Int_data->nonlin, Int_data->nabla_psi);
-	if (sys_vars->local_forcing_proc) {
-		for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
-			run_data->nonlinterm[run_data->forcing_indx[i]] -= run_data->forcing[i];
-		}
-	}
-	#endif
 }
 #endif
 /**
@@ -873,8 +864,6 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* non
 	const long int Nx         = sys_vars->N[1];
 	const long int Nx_Fourier = sys_vars->N[1] / 2 + 1;
 	double k_sqr;
-	double vel1;
-	double vel2;
 	double norm_fac = 1.0 / (Ny * Nx);
 
 
@@ -906,6 +895,8 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* non
 	}
 	// Ensure conjugacy in the kx = 0
     ForceConjugacy(dw_hat_dt, sys_vars->N, 2);
+    // PrintScalarFourier(w_hat, sys_vars->N, "wh");
+    // PrintVectorFourier(dw_hat_dt, sys_vars->N, "uh", "vh");
 
 	// ----------------------------------
 	// Transform to Real Space
@@ -1009,7 +1000,7 @@ void ApplyDealiasing(fftw_complex* array, int array_dim, const long int* N) {
 			k_sqr = (double) run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j];
 
 			#if defined(__DEALIAS_23)
-			if (sqrt(k_sqr) <= 0.0 || sqrt(k_sqr) > (int)(Ny / 3.0) - 0.5) {
+			if (k_sqr <= 0.0 || k_sqr > kmax_sqr) {
 				for (int l = 0; l < array_dim; ++l) {
 					// Set dealised modes to 0
 					array[indx + l] = 0.0 + 0.0 * I;	
@@ -2758,6 +2749,13 @@ void AllocateMemory(const long int* NBatch, Int_data_struct* Int_data) {
 			exit(1);
 		}
 	}
+	#endif
+
+	// -------------------------------
+	// Allocate Stats objects
+	// -------------------------------
+	#if defined(__STATS)
+	InitializeStats();
 	#endif
 
 	// -------------------------------

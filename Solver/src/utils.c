@@ -40,6 +40,7 @@ int GetCMLArgs(int argc, char** argv) {
 	int cfl_flag        = 0;
 	int visc_flag       = 0;
 	int drag_flag       = 0;
+	int every_flag      = 0;
 	int output_dir_flag = 0;
 	int trans_iter_flag = 0;
 	int time_step_flag  = 0;
@@ -83,6 +84,8 @@ int GetCMLArgs(int argc, char** argv) {
 	sys_vars->EKMN_DRAG_POW  = EKMN_POW;
 	// Write to file every 
 	sys_vars->SAVE_EVERY = 100;
+	// Compute stats
+	sys_vars->STATS_EVERY = 1000;
 	// Phase only amplitude slope
 	sys_vars->PO_SLOPE = sqrt(3.0);
 
@@ -386,8 +389,18 @@ int GetCMLArgs(int argc, char** argv) {
 				}
 				break;				
 			case 'p':
-				// Read in how often to print to file
-				sys_vars->SAVE_EVERY = atoi(optarg);
+				if (every_flag == 0) {
+					// Read in how often to print to file
+					sys_vars->SAVE_EVERY = atoi(optarg);
+					every_flag = 1;
+					break;
+				}
+				else if (every_flag == 1) {
+					// Read in how often to compute stats
+					sys_vars->STATS_EVERY = atoi(optarg);
+					every_flag = 2;
+					break;
+				}
 				break;
 			case 'f':
 				// Read in the forcing type

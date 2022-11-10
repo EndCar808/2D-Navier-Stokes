@@ -17,10 +17,10 @@
 #include <fftw3.h>
 #define __FFTW3
 #endif
-#ifndef __OPENMP
-#include <omp.h>
-#define __OPENMP
-#endif
+// #ifndef __OPENMP
+// #include <omp.h>
+// #define __OPENMP
+// #endif
 #include <gsl/gsl_histogram.h> 
 #include <gsl/gsl_statistics_double.h>
 #include <gsl/gsl_rstat.h>
@@ -53,13 +53,18 @@
 #define EKMN_POW -2.0 			// The power of the Eckman drag term -> 0.0 means no drag
 #define FORCING 1 				// Indicates if forcing was used in simulation
 // Post processing Modes
-#define __REAL_STATS
-#define __VEL_INC_STATS
-// #define __STR_FUNC_STATS
-#define __GRAD_STATS
+// #define __REAL_STATS
+// #define __VEL_INC_STATS
+// #define __VORT_INC_STATS
+// #define __VEL_STR_FUNC_STATS
+// #define __VORT_STR_FUNC_STATS
+// #define __MIXED_VEL_STR_FUNC_STATS
+// #define __MIXED_VORT_STR_FUNC_STATS
+// #define __VEL_GRAD_STATS
+// #define __VORT_GRAD_STATS
 #define __FULL_FIELD
-#define __SPECTRA
-// #define __SEC_PHASE_SYNC
+// #define __SPECTRA
+#define __SEC_PHASE_SYNC
 // #define __SEC_PHASE_SYNC_STATS
 #define __ENST_FLUX
 #define __ENRG_FLUX
@@ -67,10 +72,10 @@
 
 // Postprocessing data sets
 #define __VORT_FOUR
-// #define __VORT_REAL
-// #define __MODES
-// #define __REALSPACE
-// #define __NONLIN
+#define __VORT_REAL
+#define __MODES
+#define __REALSPACE
+#define __NONLIN
 #define __TIME
 #define __COLLOC_PTS
 #define __WAVELIST
@@ -84,7 +89,7 @@
 #define SYS_DIM 2 				// The system dimension i.e., 2D
 // Statistics definitions
 #define N_BINS 1000				// The number of histogram bins to use
-#define NUM_INCR 2              // The number of increment length scales
+#define NUM_INCR 5              // The number of increment length scales
 #define INCR_TYPES 2 			// The number of increment directions i.e., longitudinal and transverse
 #define STR_FUNC_MAX_POW 6      // The maximum pow of the structure functions to compute
 #define BIN_LIM 40              // The limit of the bins for the velocity increments
@@ -96,12 +101,12 @@
 #define NUM_TRIAD_TYPES 6 		// The number of triad types contributing to the flux
 #define NUM_K1_SECTORS 8		// The number of k1 sectors to search over in a reduced search @ +/- 30, 45, 60 & 90 degrees
 #define NUM_K_DATA 17           // The number of wavevector data to precompute and store
-#define	K1_X	  0 			// The index for the k1_x wavenuber
-#define	K1_Y	  1 			// The index for the k1_y wavenuber
-#define	K2_X 	  2 			// The index for the k2_x wavenuber
-#define	K2_Y  	  3 			// The index for the k2_y wavenuber
-#define	K3_X  	  4 			// The index for the k3_x wavenuber
-#define	K3_Y  	  5 			// The index for the k3_y wavenuber
+#define	K1_Y	  0 			// The index for the k1_y wavenuber
+#define	K1_X	  1 			// The index for the k1_x wavenuber
+#define	K2_Y  	  2 			// The index for the k2_y wavenuber
+#define	K2_X 	  3 			// The index for the k2_x wavenuber
+#define	K3_Y  	  4 			// The index for the k3_y wavenuber
+#define	K3_X  	  5 			// The index for the k3_x wavenuber
 #define	K1_SQR	  6 			// The index for the |k1|^2
 #define	K2_SQR	  7 			// The index for the |k2|^2
 #define	K3_SQR	  8 			// The index for the |k3|^2
@@ -165,7 +170,8 @@ typedef struct system_vars_struct {
 	double HYPER_VISC_POW;				// The pow of the hyper viscosity
 	int SAVE_EVERY; 					// For specifying how often to print
 	int REAL_VORT_FLAG;					// Flag to indicate if the Real space vorticity exists in solver data
-	int REAL_VEL_FLAG;					// Flag to indicate if the Real space velocity exists in solver data
+	int FOUR_VEL_FLAG;					// Flag to indicate if the Fourier space velocity exists in solver data or has already been calculated
+	int REAL_VEL_FLAG;					// Flag to indicate if the Real space velocity exists in solver data or has already been calculated
 	int num_threads;					// The number of OMP threads to use
 	int thread_id;						// The ID of the OMP threads
 	int num_triad_per_sec_est;          // The estimate number of triads per sector
@@ -174,21 +180,25 @@ typedef struct system_vars_struct {
 
 // Runtime data struct
 typedef struct runtime_data_struct {
-	double* x[SYS_DIM];      // Array to hold collocation pts
-	int* k[SYS_DIM];		 // Array to hold wavenumbers
-	fftw_complex* w_hat;     // Fourier space vorticity
-	fftw_complex* tmp_w_hat; // Temporary Fourier space vorticity
-	fftw_complex* u_hat;     // Fourier space velocity
-	fftw_complex* tmp_u_hat; // Fourier space velocity
-	double* tmp_u; 			 // Temporary array to read & write in velocities
-	double* w;				 // Real space vorticity
-	double* u;				 // Real space velocity
-	double* time;			 // Array to hold the simulation times
-	fftw_complex* psi_hat;   // Fourier stream function
-	fftw_complex* forcing;	 // Array to hold the forcing for the current timestep
-	double* forcing_scaling; // Array to hold the initial scaling for the forced modes
-	int* forcing_indx;		 // Array to hold the indices of the forced modes
-	int* forcing_k[SYS_DIM]; // Array containg the wavenumbers for the forced modes
+	double* x[SYS_DIM];      	// Array to hold collocation pts
+	int* k[SYS_DIM];		 	// Array to hold wavenumbers
+	fftw_complex* w_hat;     	// Fourier space vorticity
+	fftw_complex* tmp_w_hat; 	// Temporary Fourier space vorticity
+	fftw_complex* u_hat;     	// Fourier space velocity
+	fftw_complex* tmp_u_hat; 	// Fourier space velocity
+	fftw_complex* tmp_u_hat_x; 	// Fourier space velocity
+	fftw_complex* tmp_u_hat_y; 	// Fourier space velocity
+	double* tmp_u; 			 	// Temporary array to read & write in velocities
+	double* tmp_u_y;		 	// Temporary array to read & write in velocities
+	double* tmp_u_x;		 	// Temporary array to read & write in velocities
+	double* w;				 	// Real space vorticity
+	double* u;				 	// Real space velocity
+	double* time;			 	// Array to hold the simulation times
+	fftw_complex* psi_hat;   	// Fourier stream function
+	fftw_complex* forcing;	 	// Array to hold the forcing for the current timestep
+	double* forcing_scaling; 	// Array to hold the initial scaling for the forced modes
+	int* forcing_indx;		 	// Array to hold the indices of the forced modes
+	int* forcing_k[SYS_DIM]; 	// Array containg the wavenumbers for the forced modes
 } runtime_data_struct;
 
 // Post processing data struct
@@ -230,7 +240,6 @@ typedef struct postprocess_data_struct {
     double* grad_w;															 	// Array to hold the derivative of the vorticity in the x and y direction in Real space 
     double* grad_u;															 	// Array to hold the derivative of the vorticity in the x and y direction in Real space 
     double* nonlinterm;											 			 	// Array to hold the nonlinear term after multiplication in real space -> for nonlinear RHS funciotn
-    double* nabla_w;											 			 	// Array to hold the gradient of the real space vorticity -> for nonlinear RHS function
     double* nabla_psi;											 			 	// Array to hold the gradient of the real space stream function -> for nonlinear RHS function
 	double* theta_k3;                   							 		 	// Array to hold the angles for the sector mid points for k3
 	double* theta_k1;                   							 		 	// Array to hold the angles for the sector mid points for k1
@@ -279,32 +288,40 @@ typedef struct postprocess_data_struct {
 
 // Post processing stats data struct
 typedef struct stats_data_struct {
-	gsl_rstat_workspace* r_stat_grad_u[SYS_DIM + 1];		  		// Workplace for the running stats for the gradients of velocity (both for each direction and combined)
-	gsl_rstat_workspace* r_stat_grad_w[SYS_DIM + 1];		  		// Workplace for the running stats for the gradients of vorticity (both for each direction and combined)
-	gsl_rstat_workspace* r_stat_w;									// Workplace for the running stats for the velocity (both for each direction and combined)
-	gsl_rstat_workspace* r_stat_u[SYS_DIM + 1];						// Workplace for the running stats for the vorticity (both for each direction and combined)
-	gsl_rstat_workspace* r_stat_vel_incr[INCR_TYPES][NUM_INCR];		// Workplace for the running stats for the velocity increments
-	gsl_rstat_workspace* r_stat_vort_incr[INCR_TYPES][NUM_INCR];	// Workplace for the running stats for the vorticity increments
-	gsl_histogram* w_pdf;		 									// Histogram struct for the vorticity distribution
-	gsl_histogram* u_pdf;		  									// Histrogam struct for the velocity distribution
-	gsl_histogram* vel_grad[SYS_DIM + 1];		 					// Array to hold the PDFs of the longitudinal and transverse velocity gradients 
-	gsl_histogram* vort_grad[SYS_DIM + 1];		 					// Array to hold the PDFs of the longitudinal and transverse vorticity gradients 
-	gsl_histogram* vel_incr[INCR_TYPES][NUM_INCR]; 					// Array to hold the PDFs of the longitudinal and transverse velocity increments for each increment
-	gsl_histogram* w_incr[INCR_TYPES][NUM_INCR]; 					// Array to hold the PDFs of the longitudinal and transverse vorticity increments for each increment
-	double* str_func[INCR_TYPES][STR_FUNC_MAX_POW - 2];				// Array to hold the structure functions longitudinal and transverse velocity increments for each increment
-	double* str_func_abs[INCR_TYPES][STR_FUNC_MAX_POW - 2];			// Array to hold the structure functions longitudinal and transverse velocity increments for each absolute increment
+	gsl_rstat_workspace* u_grad_stats[SYS_DIM + 1];		  			// Workplace for the running stats for the gradients of velocity (both for each direction and combined)
+	gsl_rstat_workspace* w_grad_stats[SYS_DIM + 1];		  			// Workplace for the running stats for the gradients of vorticity (both for each direction and combined)
+	gsl_rstat_workspace* w_stats;									// Workplace for the running stats for the velocity (both for each direction and combined)
+	gsl_rstat_workspace* u_stats[SYS_DIM + 1];						// Workplace for the running stats for the vorticity (both for each direction and combined)
+	gsl_rstat_workspace* u_incr_stats[INCR_TYPES][NUM_INCR];		// Workplace for the running stats for the velocity increments
+	gsl_rstat_workspace* w_incr_stats[INCR_TYPES][NUM_INCR];	    // Workplace for the running stats for the vorticity increments
+	gsl_histogram* w_hist;		 									// Histogram struct for the vorticity distribution
+	gsl_histogram* u_hist;		  									// Histrogam struct for the velocity distribution
+	gsl_histogram* u_grad_hist[SYS_DIM + 1];		 				// Array to hold the PDFs of the longitudinal and transverse velocity gradients 
+	gsl_histogram* w_grad_hist[SYS_DIM + 1];		 				// Array to hold the PDFs of the longitudinal and transverse vorticity gradients 
+	gsl_histogram* u_incr_hist[INCR_TYPES][NUM_INCR];				// Array to hold the PDFs of the longitudinal and transverse velocity increments for each increment
+	gsl_histogram* w_incr_hist[INCR_TYPES][NUM_INCR];				// Array to hold the PDFs of the longitudinal and transverse vorticity increments for each increment
+	double* u_str_func[INCR_TYPES][STR_FUNC_MAX_POW];				// Array to hold the structure functions longitudinal and transverse velocity increments for each increment
+	double* u_str_func_abs[INCR_TYPES][STR_FUNC_MAX_POW];			// Array to hold the structure functions longitudinal and transverse velocity increments for each absolute increment
+	double* w_str_func[INCR_TYPES][STR_FUNC_MAX_POW];				// Array to hold the structure functions longitudinal and transverse vorticity increments for each increment
+	double* w_str_func_abs[INCR_TYPES][STR_FUNC_MAX_POW];			// Array to hold the structure functions longitudinal and transverse vorticity increments for each absolute increment
+	double* mxd_u_str_func;											// Array to hold the mixed velocity structure functions
+	double* mxd_w_str_func;											// Array to hold the mixed structure functions 
+	int* increments;												// Array to hold the increment sizes
+	int N_max_incr; 												// The maximum incremnet size
 } stats_data_struct;
 
 // HDF5 file info struct
 typedef struct HDF_file_info_struct {
-	char input_file_name[512];		// Array holding input file name
-	char output_file_name[512];     // Output file name array
-	char wave_vec_data_name[512];   // File path for the phase sync wavector data
-	char output_dir[512];			// Output directory
-	char input_dir[512];			// Input directory
+	char input_file_name[1024];		// Array holding main input file name
+	char sys_msr_file_name[1024];	// Array holding system measures file name
+	char output_file_name[1024];     // Output file name array
+	char wave_vec_data_name[1024];   // File path for the phase sync wavector data
+	char output_dir[1024];			// Output directory
+	char input_dir[1024];			// Input directory
 	char output_tag[64]; 			// Tag to be added to the output directory
 	hid_t output_file_handle;		// File handle for the output file 
 	hid_t input_file_handle;		// File handle for the input file 
+	hid_t sys_msr_file_handle;		// File handle for the system measures file 
 	hid_t wave_vec_file_handle;		// Wavevector file handle
 	hid_t COMPLEX_DTYPE;			// Complex datatype handle
 	int output_file_only;			// Indicates if output should be file only with no output folder created

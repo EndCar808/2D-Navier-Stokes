@@ -23,7 +23,7 @@ from subprocess import Popen, PIPE
 from numba import njit
 import pyfftw as fftw
 
-from functions import tc, sim_data, import_data, import_spectra_data, ZeroCentredField, import_post_processing_data
+from functions import tc, sim_data, import_data, import_spectra_data, ZeroCentredField, import_post_processing_data, import_sys_msr
 from plot_functions import plot_phase_snaps, plot_summary_snaps
 
 
@@ -74,6 +74,10 @@ def parse_cml(argv):
             ## Read input directory
             cargs.in_dir = str(arg)
             print("Input Folder: " + tc.C + "{}".format(cargs.in_dir) + tc.Rst)
+
+            ## Read in output directory
+            cargs.out_dir = str(arg)
+            print("Output Folder: " + tc.C + "{}".format(cargs.out_dir) + tc.Rst)
 
         elif opt in ['-o']:
             ## Read in output directory
@@ -260,6 +264,9 @@ if __name__ == '__main__':
     ## Read in solver data
     run_data = import_data(cmdargs.in_dir, sys_vars, method)
 
+    ## Read in solver data
+    sys_msr = import_sys_msr(cmdargs.in_dir, sys_vars, method)
+
     ## Read in spectra data
     if cmdargs.spec_file == None and os.path.isfile(cmdargs.in_dir + "Spectra_HDF_Data.h5") == True:
         spec_data = import_spectra_data(cmdargs.in_dir, sys_vars, method)
@@ -274,11 +281,11 @@ if __name__ == '__main__':
     ## --------  Data Prep
     # -----------------------------------------
     ## Compute real space vorticity if it does not exist in data 
-    if run_data.no_w:
-        print("\nPreparing real space vorticity...", end = " ")
-        for i in range(sys_vars.ndata):
-            run_data.w[i, :, :] = np.fft.irfft2(run_data.w_hat[i, :, :])
-        print("Finished!")
+    # if run_data.no_w:
+    #     print("\nPreparing real space vorticity...", end = " ")
+    #     for i in range(sys_vars.ndata):
+    #         run_data.w[i, :, :] = np.fft.irfft2(run_data.w_hat[i, :, :])
+    #     print("Finished!")
 
     ## Read in post data if indicated/it exists 
     if cmdargs.use_post:
@@ -346,13 +353,13 @@ if __name__ == '__main__':
                 ## Create tasks for the process pool
                 cmdlist = [(mprocs.Process(target = plot_summary_snaps, args = (cmdargs.out_dir, i, 
                                                                                 run_data.w[i, :, :], 
-                                                                                run_data.x, run_data.y, 
+                                                                                sys_msr.x, sys_msr.y, 
                                                                                 wmin, wmax, 
-                                                                                run_data.kx, run_data.ky, 
+                                                                                sys_msr.kx, sys_msr.ky, 
                                                                                 int(sys_vars.Nx / 3), 
-                                                                                run_data.tot_enrg[:i], 
-                                                                                run_data.tot_enst[:i], 
-                                                                                run_data.tot_palin[:i], 
+                                                                                sys_msr.tot_enrg[:i], 
+                                                                                sys_msr.tot_enst[:i], 
+                                                                                sys_msr.tot_palin[:i], 
                                                                                 spec_data.enrg_spectrum[i, :], 
                                                                                 spec_data.enst_spectrum[i, :], 
                                                                                 run_data.enrg_diss[:i], run_data.enst_diss[:i], 
@@ -368,13 +375,13 @@ if __name__ == '__main__':
                 for i in range(1, sys_vars.ndata):
                     plot_summary_snaps(cmdargs.out_dir, i, 
                                         run_data.w[i, :, :], 
-                                        run_data.x, run_data.y, 
+                                        sys_msr.x, sys_msr.y, 
                                         wmin, wmax, 
-                                        run_data.kx, run_data.ky, 
+                                        sys_msr.kx, sys_msr.ky, 
                                         int(sys_vars.Nx / 3), 
-                                        run_data.tot_enrg[:i], 
-                                        run_data.tot_enst[:i], 
-                                        run_data.tot_palin[:i], 
+                                        sys_msr.tot_enrg[:i], 
+                                        sys_msr.tot_enst[:i], 
+                                        sys_msr.tot_palin[:i], 
                                         spec_data.enrg_spectrum[i, :], 
                                         spec_data.enst_spectrum[i, :], 
                                         run_data.enrg_diss[:i], run_data.enst_diss[:i], 
@@ -392,16 +399,16 @@ if __name__ == '__main__':
 
                 ## Create tasks for the process pool
                 cmdlist = [(mprocs.Process(target = plot_phase_snaps, args = (cmdargs.phase_dir, i, 
-                                                                              run_data.w_hat[i, :, :], 
-                                                                              phases[i, :, :], 
-                                                                              enrg_spectrum[i, :, :], 
-                                                                              enst_spectrum[i, :, :], 
-                                                                              spec_limits, 
-                                                                              wmin, wmax, 
-                                                                              run_data.x, run_data.y, 
-                                                                              run_data.time, 
-                                                                              sys_vars.Nx, sys_vars.Nx, 
-                                                                              run_data.kx, run_data.ky)) for i in range(run_data.w.shape[0]))] * proc_lim
+                                                                                 run_data.w[i, :, :], 
+                                                                                 phases[i, :, :], 
+                                                                                 enrg_spectrum[i, :, :], 
+                                                                                 enst_spectrum[i, :, :], 
+                                                                                 spec_limits, 
+                                                                                 wmin, wmax, 
+                                                                                 sys_msr.x, sys_msr.y, 
+                                                                                 run_data.time, 
+                                                                                 sys_vars.Nx, sys_vars.Nx, 
+                                                                                 sys_msr.kx, sys_msr.ky)) for i in range(run_data.w.shape[0]))] * proc_lim
 
                 ## Run plotting command 
                 run_plot_cmd_par(cmdlist)
@@ -415,10 +422,10 @@ if __name__ == '__main__':
                                      enst_spectrum[i, :, :], 
                                      spec_limits, 
                                      wmin, wmax, 
-                                     run_data.x, run_data.y, 
+                                     sys_msr.x, sys_msr.y, 
                                      run_data.time, 
                                      sys_vars.Nx, sys_vars.Nx, 
-                                     run_data.kx, run_data.ky)
+                                     sys_msr.kx, sys_msr.ky)
 
         ## End timer
         end = TIME.perf_counter()

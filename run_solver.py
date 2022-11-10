@@ -98,7 +98,8 @@ if __name__ == '__main__':
     forcing     = "NONE"
     force_k     = 0
     force_scale = 1.0
-    save_every  = 2
+    save_every  = 100
+    stats_every = 100
     ## Directory/File parameters
     input_dir       = "NONE"
     output_dir      = "./Data/Tmp/"
@@ -180,6 +181,8 @@ if __name__ == '__main__':
                 force_scale = float(parser[section]['forcing_scale'])
             if 'save_data_every' in parser[section]:
                 save_every = int(parser[section]['save_data_every'])
+            if 'stats_data_every' in parser[section]:
+                stats_every = int(parser[section]['stats_data_every'])
         if section in ['TIME']:
             if 'end_time' in parser[section]:
                 for n in parser[section]['end_time'].lstrip('[').rstrip(']').split(', '):
@@ -267,7 +270,7 @@ if __name__ == '__main__':
             solver_error  = []
 
         ## Generate command list 
-        cmd_list = [["mpirun -n {} {} -o {} -n {} -n {} -s {:3.5f} -e {:3.5f} -T {} -c {} -c {:1.6f} -h {:1.6f} -h {} -v {:g} -v {} -v {:1.1f} -d {:g} -d {} -d {:1.1f} -i {} -t {} -f {} -f {} -f {} -p {}".format(
+        cmd_list = [["mpirun -n {} {} -o {} -n {} -n {} -s {:3.5f} -e {:3.5f} -T {} -c {} -c {:1.6f} -h {:1.6f} -h {} -v {:g} -v {} -v {:1.1f} -d {:g} -d {} -d {:1.1f} -i {} -t {} -f {} -f {} -f {} -p {} -p {}".format(
                                                                                                                                                                                     solver_procs, 
                                                                                                                                                                                     executable, 
                                                                                                                                                                                     output_dir, 
@@ -280,7 +283,7 @@ if __name__ == '__main__':
                                                                                                                                                                                     u0, 
                                                                                                                                                                                     s_tag, 
                                                                                                                                                                                     forcing, force_k, force_scale, 
-                                                                                                                                                                                    save_every)] for nx, ny in zip(Nx, Ny) for t in T for h in dt for u0 in ic for v in nu for hype in hyper_visc for c in cfl for s_tag in solver_tag]
+                                                                                                                                                                                    save_every, stats_every)] for nx, ny in zip(Nx, Ny) for t in T for h in dt for u0 in ic for v in nu for hype in hyper_visc for c in cfl for s_tag in solver_tag]
 
         if cmdargs.cmd_only:
             print(tc.C + "\nSolver Commands:\n" + tc.Rst)

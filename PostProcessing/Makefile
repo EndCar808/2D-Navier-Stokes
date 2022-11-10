@@ -17,15 +17,15 @@ ifeq ($(OS), Ubuntu)
 		# LAPTOP: WSL2
 		GCC := gcc
 		CCFLAG := -O3 -W -Wall -g
-		LIBFLAG := -lfftw3_mpi -lfftw3 -lm -lhdf5 -lhdf5_hl
+		LIBFLAG := -lfftw3_mpi -lfftw3 -lm -lhdf5 -lhdf5_hl -fopenmp -lpthread -lfftw3_omp
 		GSLFLAG := -lgsl -lgslcblas
 		INCDIR := -I/home/endacarroll/Downloads/hdf5-1.12.2/hdf5/include -I/usr/include/gsl/
 		LIBDIR := -L/home/endacarroll/Downloads/hdf5-1.12.2/hdf5/lib
 	else ifeq ($(MACH_NAME), turbo)
 		# TURBO
-		GCC := gcc
+		GCC := /usr/bin/gcc
 		CCFLAG := -O3 -W -Wall -g
-		LIBFLAG := -lfftw3_mpi -lfftw3 -lm -lhdf5 -lhdf5_hl
+		LIBFLAG := -lfftw3_mpi -lfftw3 -lm -lhdf5 -lhdf5_hl #-fopenmp -lpthread -lfftw3_omp
 		GSLFLAG := -lgsl -lgslcblas
 		INCDIR := -I/usr/include/hdf5/serial -I/opt/software/fftw-3.3.10/include/ -I/usr/include/gsl/ 
 		LIBDIR := -L/usr/lib/x86_64-linux-gnu/hdf5/serial -L/opt/software/fftw-3.3.10/lib/
@@ -42,14 +42,14 @@ else ifeq ($(OS), RedHatEnterpriseServer)
 	# SONIC
 	GCC     := gcc
 	CCFLAG  := -O3 -W -Wall -g
-	LIBFLAG := -lfftw3 -lm -lhdf5 -lhdf5_hl #-fopenmp -lpthread -lfftw3_omp
+	LIBFLAG := -lfftw3 -lm -lhdf5 -lhdf5_hl -fopenmp -lpthread -lfftw3_omp
 	INCDIR   = -I/opt/software/hdf5/1.10.5/include -I/opt/software/fftw/3.3.8/include
 	LIBDIR   = -L/opt/software/hdf5/1.10.5/lib -L/opt/software/fftw/3.3.8/lib
 else ifeq ($(OS), CentOS)
 	# KAY
 	GCC     := gcc
 	CCFLAG  := -O3 -W -Wall -g
-	LIBFLAG := -lfftw3 -lm -lhdf5 -lhdf5_hl #-fopenmp -lpthread -lfftw3_omp
+	LIBFLAG := -lfftw3 -lm -lhdf5 -lhdf5_hl -fopenmp -lpthread -lfftw3_omp
 	INCDIR   = -I/ichec/packages/hdf5/gcc/1.12.0/include -I/ichec/packages/fftw/3.3.8/gcc/double/include
 	LIBDIR   = -L/ichec/packages/hdf5/gcc/1.12.0/lib -L/ichec/packages/fftw/3.3.8/gcc/double/lib
 else

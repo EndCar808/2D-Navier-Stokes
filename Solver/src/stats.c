@@ -29,7 +29,7 @@
 void ComputeStats(int iters) {
 
 	// Initialize variables
-	int tmp, indx;	
+	int tmp, tmp_vec, tmp_scal, indx;	
 	int gsl_status;
 	const long int Ny = sys_vars->N[0];
 	const long int Nx = sys_vars->N[1];
@@ -42,8 +42,78 @@ void ComputeStats(int iters) {
 	double vort_long_increment_abs, vort_trans_increment_abs;
 	int N_max_incr = (int) (GSL_MIN(Ny, Nx) / 2);
 	int increment[NUM_INCR] = {1, N_max_incr};
-	double norm_fac = 1.0 / pow((Ny * Nx), 2.0);
-	double rms;
+	double norm_fac = 1.0 / (Ny * Nx);
+	double vel_rms[INCR_TYPES][NUM_INCR];
+	double vort_rms[INCR_TYPES][NUM_INCR];
+	double std, mean;
+	fftw_complex k_sqr;
+	#endif
+
+	// ------------------------------------
+	// Get Real Space Fields
+	// ------------------------------------
+	///------------------------------------Get the real space velocity field if needed
+	#if defined(__VEL_INC) || defined(__MIXED_VEL_STR_FUNC) || defined(__MIXED_VORT_STR_FUNC)
+	// Get the Fourier velocities
+	for (int i = 0; i < sys_vars->local_Ny; ++i) {
+		tmp = i * Nx_Fourier;
+		for (int j = 0; j < Nx_Fourier; ++j) {
+			indx = tmp + j;
+
+			if ((run_data->k[0][i] != 0) || (run_data->k[1][j] != 0)) {
+				// Compute the prefactor
+				k_sqr = I / (double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
+
+				// Fill the Fourier velocities
+				run_data->u_hat_tmp[SYS_DIM * indx + 0] = k_sqr * run_data->k[1][j] * run_data->w_hat[indx];
+				run_data->u_hat_tmp[SYS_DIM * indx + 1] = -k_sqr * run_data->k[0][i] * run_data->w_hat[indx];
+			}
+			else {
+				run_data->u_hat_tmp[SYS_DIM * indx + 0] = 0.0 + 0.0 * I;
+				run_data->u_hat_tmp[SYS_DIM * indx + 1] = 0.0 + 0.0 * I;
+			}
+		}
+	}
+	ApplyDealiasing(run_data->u_hat_tmp, 2, sys_vars->N);
+
+	// Transform velocities back to real space and normalize
+	fftw_mpi_execute_dft_c2r(sys_vars->fftw_2d_dft_batch_c2r, run_data->u_hat_tmp, run_data->u);
+	for (int i = 0; i < sys_vars->local_Ny; ++i) {
+		tmp = i * (Nx + 2);
+		for (int j = 0; j < Nx; ++j) {
+			indx = tmp + j;
+
+			// Normalize
+			run_data->u[SYS_DIM * indx + 0] *= 1.0; /// (double) (Ny * Nx);
+			run_data->u[SYS_DIM * indx + 1] *= 1.0; /// (double) (Ny * Nx);
+		}
+	}
+	#endif
+
+	///------------------------------------Get the real space vorticity field if needed
+	#if defined(__VORT_INC) || defined(__MIXED_VORT_STR_FUNC)
+	// Record the vorticity field in the temp array before transforming back to real space
+	for (int i = 0; i < sys_vars->local_Ny; ++i) {
+		tmp = i * Nx_Fourier;
+		for (int j = 0; j < Nx_Fourier; ++j) {
+			indx = tmp + j;
+
+			run_data->w_hat_tmp[indx] = run_data->w_hat[indx];
+		}
+	}
+	ApplyDealiasing(run_data->w_hat_tmp, 1, sys_vars->N);
+
+	// Transform vorticity back to real space and normalize
+	fftw_mpi_execute_dft_c2r(sys_vars->fftw_2d_dft_c2r, run_data->w_hat_tmp, run_data->w);
+	for (int i = 0; i < sys_vars->local_Ny; ++i) {
+		tmp = i * (Nx + 2);
+		for (int j = 0; j < Nx; ++j) {
+			indx = tmp + j;
+
+			// Normalize
+			run_data->w[indx] *= 1.0; /// (double) (Ny * Nx);
+		}
+	}
 	#endif
 
 	// ------------------------------------
@@ -54,7 +124,7 @@ void ComputeStats(int iters) {
 
 		// Loop over the field and compute the increments for adding to the running stats cal
 		#if defined(__VEL_INC) || defined(__VORT_INC)
-		for (int i = 0; i < Ny; ++i) {
+		for (int i = 0; i < sys_vars->local_Ny; ++i) {
 			tmp = i * Nx;
 			for (int j = 0; j < Nx; ++j) {
 				indx = tmp + j;
@@ -67,16 +137,20 @@ void ComputeStats(int iters) {
 					r = increment[r_indx];
 
 					//------------- Get the longitudinal and transverse Velocity increments
-					vel_long_increment  = run_data->u[SYS_DIM * (((i + r) % Ny) * Nx + j) + 0] - run_data->u[SYS_DIM * (i * Nx + j) + 0];
-					vel_trans_increment = run_data->u[SYS_DIM * (((i + r) % Ny) * Nx + j) + 1] - run_data->u[SYS_DIM * (i * Nx + j) + 1];
-
-					// Update to vel inc running stats
-					gsl_status = gsl_rstat_add(vel_long_increment, stats_data->vel_inc_stats[0][r_indx]);
-					gsl_status = gsl_rstat_add(vel_trans_increment, stats_data->vel_inc_stats[1][r_indx]);
-					stats_data->vel_inc_sqr[0][r] += vel_long_increment * vel_long_increment;
-					stats_data->vel_inc_sqr[1][r] += vel_trans_increment * vel_trans_increment;
-					stats_data->vel_inc_num_data[0][r]++;
-					stats_data->vel_inc_num_data[1][r]++;
+					vel_long_increment  = run_data->u[SYS_DIM * (i * (Nx + 2) + (j + r) % Nx) + 0] - run_data->u[SYS_DIM * (i * (Nx + 2) + j) + 0];
+					vel_trans_increment = run_data->u[SYS_DIM * (i * (Nx + 2) + (j + r) % Nx) + 1] - run_data->u[SYS_DIM * (i * (Nx + 2) + j) + 1];
+					
+					// Record the stats data
+					stats_data->vel_inc_stats[0][r].n++;
+					stats_data->vel_inc_stats[0][r].min           = fmin(vel_long_increment, stats_data->vel_inc_stats[0][r].min);
+					stats_data->vel_inc_stats[0][r].max           = fmax(vel_long_increment, stats_data->vel_inc_stats[0][r].max);
+					stats_data->vel_inc_stats[0][r].data_sqrd_sum += vel_long_increment * vel_long_increment;
+					stats_data->vel_inc_stats[0][r].data_sum      += vel_long_increment;
+					stats_data->vel_inc_stats[1][r].n++;
+					stats_data->vel_inc_stats[1][r].min           = fmin(vel_trans_increment, stats_data->vel_inc_stats[1][r].min);
+					stats_data->vel_inc_stats[1][r].max           = fmax(vel_trans_increment, stats_data->vel_inc_stats[1][r].max);
+					stats_data->vel_inc_stats[1][r].data_sqrd_sum += vel_trans_increment * vel_trans_increment;
+					stats_data->vel_inc_stats[1][r].data_sum      += vel_trans_increment;
 					#endif
 					
 					#if defined(__VORT_INC)
@@ -84,16 +158,15 @@ void ComputeStats(int iters) {
 					r = increment[r_indx];
 
 					//------------- Get the longitudinal and transverse Vorticity increments
-					vort_long_increment  = run_data->w[((i + r) % Ny) * Nx + j] - run_data->w[i * Nx + j];
-					vort_trans_increment = run_data->w[i * Nx + ((j + r) % Nx)] - run_data->w[i * Nx + j];
-
-					// Update to vel inc running stats
-					gsl_status = gsl_rstat_add(vort_long_increment, stats_data->vort_inc_stats[0][r_indx]);
-					gsl_status = gsl_rstat_add(vort_trans_increment, stats_data->vort_inc_stats[1][r_indx]);
-					stats_data->vort_inc_sqr[0][r] += vort_long_increment * vort_long_increment;
-					stats_data->vort_inc_sqr[1][r] += vort_trans_increment * vort_trans_increment;
-					stats_data->vort_inc_num_data[0][r]++;
-					stats_data->vort_inc_num_data[1][r]++;
+					vort_long_increment  = run_data->w[i * Nx + (j + r) % Nx] - run_data->w[i * Nx + j];
+					// vort_trans_increment = run_data->w[i * Nx + (j + r) % Nx] - run_data->w[i * Nx + j];
+					
+					// Record the stats data
+					stats_data->vort_inc_stats[0][r].n++;
+					stats_data->vort_inc_stats[0][r].min           = fmin(vort_long_increment, stats_data->vort_inc_stats[0][r].min);
+					stats_data->vort_inc_stats[0][r].max           = fmax(vort_long_increment, stats_data->vort_inc_stats[0][r].max);
+					stats_data->vort_inc_stats[0][r].data_sqrd_sum += vort_long_increment * vort_long_increment;
+					stats_data->vort_inc_stats[0][r].data_sum      += vort_long_increment;
 					#endif
 				}
 			}
@@ -115,34 +188,52 @@ void ComputeStats(int iters) {
 			for (int type = 0; type < INCR_TYPES; ++type) {
 				for (int r = 0; r < NUM_INCR; ++r) {
 					#if defined(__VEL_INC)
-					MPI_Allreduce(MPI_IN_PLACE, &(stats_data->vel_inc_sqr[type][r]), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-					MPI_Allreduce(MPI_IN_PLACE, &(stats_data->vel_inc_num_data[type][r]), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-					rms = sqrt(stats_data->vel_inc_sqr[type][r] / stats_data->vel_inc_num_data[type][r]);
+					// Reduce field stats data
+					MPI_Allreduce(MPI_IN_PLACE, &(stats_data->vel_inc_stats[type][r].data_sqrd_sum), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+					MPI_Allreduce(MPI_IN_PLACE, &(stats_data->vel_inc_stats[type][r].n), 1, MPI_LONG, MPI_SUM, MPI_COMM_WORLD);
+					MPI_Allreduce(MPI_IN_PLACE, &(stats_data->vel_inc_stats[type][r].data_sum), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+					MPI_Allreduce(MPI_IN_PLACE, &(stats_data->vel_inc_stats[type][r].min), 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
+					MPI_Allreduce(MPI_IN_PLACE, &(stats_data->vel_inc_stats[type][r].max), 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+
+					// Compute stats
+					mean             = stats_data->vel_inc_stats[type][r].data_sum / stats_data->vel_inc_stats[type][r].n;
+					std              = sqrt(stats_data->vel_inc_stats[type][r].data_sqrd_sum / stats_data->vel_inc_stats[type][r].n - mean * mean);
+					vel_rms[type][r] = sqrt(stats_data->vel_inc_stats[type][r].data_sqrd_sum / stats_data->vel_inc_stats[type][r].n);
+
+					printf("VELL, Type: %d\tIncr: %d\t -- Min: %lf\tMax: %lf\tRMS: %lf\tSTD: %lf\n", type, increment[r], stats_data->vel_inc_stats[type][r].min, stats_data->vel_inc_stats[type][r].max, vel_rms[type][r], std);
 
 					// Set bin ranges for the histograms -> Set (in units) of standard deviations
-					gsl_status = gsl_histogram_set_ranges_uniform(stats_data->vel_inc_hist[type][r], -VEL_BIN_LIM * rms, VEL_BIN_LIM * rms);
+					gsl_status = gsl_histogram_set_ranges_uniform(stats_data->vel_inc_hist[type][r], -VEL_BIN_LIM * vel_rms[type][r], VEL_BIN_LIM * vel_rms[type][r]);
 					if (gsl_status != 0) {
 						fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set bin ranges for: ["CYAN"%s"RESET"] \n-->> Exiting!!!\n", "Velocity Increment Histogram");
 						exit(1);
 					}
 					#endif
 
-					#if defined(__VORT_INC)
-					MPI_Allreduce(MPI_IN_PLACE, &(stats_data->vort_inc_sqr[type][r]), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-					MPI_Allreduce(MPI_IN_PLACE, &(stats_data->vort_inc_num_data[type][r]), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-					rms = sqrt(stats_data->vort_inc_sqr[type][r] / stats_data->vort_inc_num_data[type][r]);
+					if (type == 0) {
+						#if defined(__VORT_INC)
+						// Reduce field stats data
+						MPI_Allreduce(MPI_IN_PLACE, &(stats_data->vort_inc_stats[type][r].data_sqrd_sum), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+						MPI_Allreduce(MPI_IN_PLACE, &(stats_data->vort_inc_stats[type][r].n), 1, MPI_LONG, MPI_SUM, MPI_COMM_WORLD);
+						MPI_Allreduce(MPI_IN_PLACE, &(stats_data->vort_inc_stats[type][r].data_sum), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+						MPI_Allreduce(MPI_IN_PLACE, &(stats_data->vort_inc_stats[type][r].min), 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
+						MPI_Allreduce(MPI_IN_PLACE, &(stats_data->vort_inc_stats[type][r].max), 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
 
-					// Set bin ranges for the histograms -> Set (in units) of standard deviations
-					gsl_status = gsl_histogram_set_ranges_uniform(stats_data->vort_inc_hist[type][r], -VORT_BIN_LIM * rms, VORT_BIN_LIM * rms);
-					if (gsl_status != 0) {
-						fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set bin ranges for: ["CYAN"%s"RESET"] \n-->> Exiting!!!\n", "Velocity Increment Histogram");
-						exit(1);
+						// Compute stats
+						mean           = stats_data->vort_inc_stats[type][r].data_sum / stats_data->vort_inc_stats[type][r].n;
+						std            = sqrt(stats_data->vort_inc_stats[type][r].data_sqrd_sum / stats_data->vort_inc_stats[type][r].n - mean * mean);
+						vort_rms[type][r] = sqrt(stats_data->vort_inc_stats[type][r].data_sqrd_sum / stats_data->vort_inc_stats[type][r].n);
+
+						printf("VORT, Type: %d\tIncr: %d\t -- \tMin: %lf\tMax: %lf\tRMS: %lf\tSTD: %lf\n", type, increment[r], stats_data->vort_inc_stats[type][r].min, stats_data->vort_inc_stats[type][r].max, vort_rms[type][r], std);
+
+						// Set bin ranges for the histograms -> Set (in units) of standard deviations
+						gsl_status = gsl_histogram_set_ranges_uniform(stats_data->vort_inc_hist[type][r], -VORT_BIN_LIM * vort_rms[type][r], VORT_BIN_LIM * vort_rms[type][r]);
+						if (gsl_status != 0) {
+							fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set bin ranges for: ["CYAN"%s"RESET"] \n-->> Exiting!!!\n", "Velocity Increment Histogram");
+							exit(1);
+						}
+						#endif
 					}
-					#endif
-
-					// Reset the stats counters
-					gsl_status = gsl_rstat_reset(stats_data->vel_inc_stats[type][r]);
-					gsl_status = gsl_rstat_reset(stats_data->vort_inc_stats[type][r]);
 				}
 			}
 
@@ -154,7 +245,7 @@ void ComputeStats(int iters) {
 	    // Compute Stats
 	    // --------------------------------------------
 	    // Loop over the field and compute the increments, str funcs etc
-		for (int i = 0; i < Ny; ++i) {
+		for (int i = 0; i < sys_vars->local_Ny; ++i) {
 			tmp = i * Nx;
 			for (int j = 0; j < Nx; ++j) {
 				indx = tmp + j;
@@ -167,24 +258,21 @@ void ComputeStats(int iters) {
 					r = increment[r_indx];
 
 					// Get the longitudinal and transverse Velocity increments
-					vel_long_increment  = run_data->u[SYS_DIM * (((i + r) % Ny) * Nx + j) + 0] - run_data->u[SYS_DIM * (i * Nx + j) + 0];
-					vel_trans_increment = run_data->u[SYS_DIM * (((i + r) % Ny) * Nx + j) + 1] - run_data->u[SYS_DIM * (i * Nx + j) + 1];
+					vel_long_increment  = run_data->u[SYS_DIM * (i * (Nx + 2) + (j + r) % Nx) + 0] - run_data->u[SYS_DIM * (i * (Nx + 2) + j) + 0];
+					vel_trans_increment = run_data->u[SYS_DIM * (i * (Nx + 2) + (j + r) % Nx) + 1] - run_data->u[SYS_DIM * (i * (Nx + 2) + j) + 1];
 
 					// Update the histograms
-					gsl_status = gsl_histogram_increment(stats_data->vel_inc_hist[0][r_indx], vel_long_increment);
+					gsl_status = gsl_histogram_increment(stats_data->vel_inc_hist[0][r_indx], vel_long_increment / vel_rms[0][r_indx]);
 					if (gsl_status != 0) {
-						fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Longitudinal Velocity Increment", iters, gsl_status, vel_long_increment);
+						fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Iter ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET" - Bin Lims:("CYAN"%lf"RESET","CYAN"%lf"RESET")]\n-->> Exiting!!!\n", "Longitudinal Velocity Increment", iters, gsl_status, vel_long_increment, gsl_histogram_min(stats_data->vel_inc_hist[0][r_indx]), gsl_histogram_max(stats_data->vel_inc_hist[0][r_indx]));
 						exit(1);
 					}
-					gsl_status = gsl_histogram_increment(stats_data->vel_inc_hist[1][r_indx], vel_trans_increment);
+					gsl_status = gsl_histogram_increment(stats_data->vel_inc_hist[1][r_indx], vel_trans_increment / vel_rms[1][r_indx]);
 					if (gsl_status != 0) {
-						fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Transverse Velocity Increment", iters, gsl_status, vel_trans_increment);
+						fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Iter ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET" - Bin Lims:("CYAN"%lf"RESET","CYAN"%lf"RESET")]\n-->> Exiting!!!\n", "Transverse Velocity Increment", iters, gsl_status, vel_trans_increment, gsl_histogram_min(stats_data->vel_inc_hist[1][r_indx]), gsl_histogram_max(stats_data->vel_inc_hist[1][r_indx]));
 						exit(1);
 					}
 
-					// Update to vel inc running stats
-					gsl_status = gsl_rstat_add(vel_long_increment, stats_data->vel_inc_stats[0][r_indx]);
-					gsl_status = gsl_rstat_add(vel_trans_increment, stats_data->vel_inc_stats[1][r_indx]);
 					#endif
 					
 					#if defined(__VORT_INC)
@@ -192,30 +280,20 @@ void ComputeStats(int iters) {
 					r = increment[r_indx];
 
 					// Get the longitudinal and transverse Vorticity increments
-					vort_long_increment  = run_data->w[((i + r) % Ny) * Nx + j] - run_data->w[i * Nx + j];
-					vort_trans_increment = run_data->w[i * Nx + ((j + r) % Nx)] - run_data->w[i * Nx + j];
+					vort_long_increment  = run_data->w[i * Nx + (j + r) % Nx] - run_data->w[i * Nx + j];
 
 					// Update the histograms
-					gsl_status = gsl_histogram_increment(stats_data->vort_inc_hist[0][r_indx], vort_long_increment);
+					gsl_status = gsl_histogram_increment(stats_data->vort_inc_hist[0][r_indx], vort_long_increment / vort_rms[0][r_indx]);
 					if (gsl_status != 0) {
-						fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Longitudinal Vorticity Increment", iters, gsl_status, vort_long_increment);
+						fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Iter ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET" - Bin Lims:("CYAN" %lf"RESET","CYAN" %lf"RESET")]\n-->> Exiting!!!\n", "Longitudinal Vorticity Increment", iters, gsl_status, vort_long_increment, gsl_histogram_min(stats_data->vort_inc_hist[0][r_indx]), gsl_histogram_max(stats_data->vel_inc_hist[0][r_indx]));
 						exit(1);
 					}
-					gsl_status = gsl_histogram_increment(stats_data->vort_inc_hist[1][r_indx], vort_trans_increment);
-					if (gsl_status != 0) {
-						fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Transverse Vorticity Increment", iters, gsl_status, vort_trans_increment);
-						exit(1);
-					}		
-
-					// Update to vel inc running stats
-					gsl_status = gsl_rstat_add(vort_long_increment, stats_data->vort_inc_stats[0][r_indx]);
-					gsl_status = gsl_rstat_add(vort_trans_increment, stats_data->vort_inc_stats[1][r_indx]);
 					#endif
 				}
 			}
 		}
 
-		///--------------------------------- Compute velocity structure functions
+		///--------------------------------- Compute structure functions
 		#if defined(__VEL_STR_FUNC) || defined(__VORT_STR_FUNC)
 		for (int p = 1; p < NUM_POW; ++p) {
 			for (int r_inc = 1; r_inc <= N_max_incr; ++r_inc) {
@@ -228,12 +306,12 @@ void ComputeStats(int iters) {
 				#endif
 				#if defined(__VORT_STR_FUNC)
 				vort_long_increment      = 0.0;
-				vort_trans_increment     = 0.0;
+				// vort_trans_increment     = 0.0;
 				vort_long_increment_abs  = 0.0;
-				vort_trans_increment_abs = 0.0;
+				// vort_trans_increment_abs = 0.0;
 				#endif
 				if (p == 3) {
-					#if defined(__MIXED_VORT_STR_FUNC)
+					#if defined(__MIXED_VEL_STR_FUNC)
 					mixed_vel_increment = 0.0;
 					#endif
 					#if defined(__MIXED_VORT_STR_FUNC)
@@ -242,30 +320,30 @@ void ComputeStats(int iters) {
 				}
 							
 				// Loop over field
-				for (int i = 0; i < Ny; ++i) {
+				for (int i = 0; i < sys_vars->local_Ny; ++i) {
 					tmp = i * Nx;
 					for (int j = 0; j < Nx; ++j) {
 						indx = tmp + j;
 					
 						// Get increments
-						#if defined(__VEL_STR_FUNC) || defined(__MIXED_VEL_STR_FUNC) || defined(__MIXED_VORT_STR_FUNC)
-						vel_long_increment      += pow(run_data->u[SYS_DIM * (((i + r_inc) % Ny) * Nx + j) + 0] - run_data->u[SYS_DIM * (i * Nx + j) + 0], p);
-						vel_trans_increment     += pow(run_data->u[SYS_DIM * (((i + r_inc) % Ny) * Nx + j) + 1] - run_data->u[SYS_DIM * (i * Nx + j) + 1], p);
-						vel_long_increment_abs  += pow(fabs(run_data->u[SYS_DIM * (((i + r_inc) % Ny) * Nx + j) + 0] - run_data->u[SYS_DIM * (i * Nx + j) + 0]), p);
-						vel_trans_increment_abs += pow(fabs(run_data->u[SYS_DIM * (((i + r_inc) % Ny) * Nx + j) + 1] - run_data->u[SYS_DIM * (i * Nx + j) + 1]), p);
+						#if defined(__VEL_STR_FUNC)
+						vel_long_increment      += pow(run_data->u[SYS_DIM * (i * (Nx + 2) + (j + r_inc) % Nx) + 0] - run_data->u[SYS_DIM * (i * (Nx + 2) + j) + 0], p);
+						vel_trans_increment     += pow(run_data->u[SYS_DIM * (i * (Nx + 2) + (j + r_inc) % Nx) + 1] - run_data->u[SYS_DIM * (i * (Nx + 2) + j) + 1], p);
+						vel_long_increment_abs  += pow(fabs(run_data->u[SYS_DIM * (i * (Nx + 2) + (j + r_inc) % Nx) + 0] - run_data->u[SYS_DIM * (i * (Nx + 2) + j) + 0]), p);
+						vel_trans_increment_abs += pow(fabs(run_data->u[SYS_DIM * (i * (Nx + 2) + (j + r_inc) % Nx) + 1] - run_data->u[SYS_DIM * (i * (Nx + 2) + j) + 1]), p);
 						#endif
-						#if defined(__VORT_STR_FUNC) || defined(__MIXED_VORT_STR_FUNC)
-						vort_long_increment      += pow(run_data->w[((i + r) % Ny) * Nx + j] - run_data->w[i * Nx + j], p);
-						vort_trans_increment     += pow(run_data->w[i * Nx + ((j + r) % Nx)] - run_data->w[i * Nx + j], p);
-						vort_long_increment_abs  += pow(fabs(run_data->w[((i + r) % Ny) * Nx + j] - run_data->w[i * Nx + j]), p);
-						vort_trans_increment_abs += pow(fabs(run_data->w[i * Nx + ((j + r) % Nx)] - run_data->w[i * Nx + j]), p);
+						#if defined(__VORT_STR_FUNC) 
+						vort_long_increment      += pow(run_data->w[i * Nx + (j + r_inc) % Nx] - run_data->w[i * Nx + j], p);
+						// vort_trans_increment     += pow(run_data->w[i * Nx + ((j + r) % Nx)] - run_data->w[i * Nx + j], p);
+						vort_long_increment_abs  += pow(fabs(run_data->w[i * Nx + (j + r_inc) % Nx] - run_data->w[i * Nx + j]), p);
+						// vort_trans_increment_abs += pow(fabs(run_data->w[i * Nx + ((j + r) % Nx)] - run_data->w[i * Nx + j]), p);
 						#endif
 						if (p == 3) {
-							#if defined(__MIXED_VORT_STR_FUNC)
-							mixed_vel_increment += (run_data->u[SYS_DIM * (((i + r_inc) % Ny) * Nx + j) + 0] - run_data->u[SYS_DIM * (i * Nx + j) + 0]) * pow(run_data->u[SYS_DIM * (((i + r_inc) % Ny) * Nx + j) + 1] - run_data->u[SYS_DIM * (i * Nx + j) + 1], 2.0);
+							#if defined(__MIXED_VEL_STR_FUNC)
+							mixed_vel_increment += (run_data->u[SYS_DIM * (i * (Nx + 2) + (j + r_inc) % Nx) + 0] - run_data->u[SYS_DIM * (i * (Nx + 2) + j) + 0]) * pow(run_data->u[SYS_DIM * (i * (Nx + 2) + (j + r_inc) % Nx) + 1] - run_data->u[SYS_DIM * (i * (Nx + 2) + j) + 1], 2.0);
 							#endif
 							#if defined(__MIXED_VORT_STR_FUNC)
-							mixed_vort_increment += (run_data->u[SYS_DIM * (((i + r_inc) % Ny) * Nx + j) + 0] - run_data->u[SYS_DIM * (i * Nx + j) + 0]) * pow(run_data->w[((i + r) % Ny) * Nx + j] - run_data->w[i * Nx + j], 2.0);
+							mixed_vort_increment += (run_data->u[SYS_DIM * (i * (Nx + 2) + (j + r_inc) % Nx) + 0] - run_data->u[SYS_DIM * (i * (Nx + 2) + j) + 0]) * pow(run_data->w[i * Nx + (j + r_inc) % Nx] - run_data->w[i * Nx + j], 2.0);
 							#endif	
 						}
 					}
@@ -280,9 +358,9 @@ void ComputeStats(int iters) {
 				#if defined(__VORT_STR_FUNC)
 				// Compute vorticity str functions - normalize here
 				stats_data->vort_str_func[0][p - 1][r_inc - 1]     += vort_long_increment * norm_fac;	
-				stats_data->vort_str_func[1][p - 1][r_inc - 1]     += vort_trans_increment * norm_fac;
+				// stats_data->vort_str_func[1][p - 1][r_inc - 1]     += vort_trans_increment * norm_fac;
 				stats_data->vort_str_func_abs[0][p - 1][r_inc - 1] += vort_long_increment_abs * norm_fac;	
-				stats_data->vort_str_func_abs[1][p - 1][r_inc - 1] += vort_trans_increment_abs * norm_fac;
+				// stats_data->vort_str_func_abs[1][p - 1][r_inc - 1] += vort_trans_increment_abs * norm_fac;
 				#endif
 
 				if (p == 3) {
@@ -327,28 +405,45 @@ void InitializeStats(void) {
 			#if defined(__VEL_INC) 
 			// Initialize histogram and stats objects for the velocity increments
 			stats_data->vel_inc_hist[i][r]     = gsl_histogram_alloc(VEL_NUM_BINS);
-			stats_data->vel_inc_stats[i][r]    = gsl_rstat_alloc();
-			stats_data->vel_inc_sqr[i][r]      = 0.0;
-			stats_data->vel_inc_num_data[i][r] = 0.0;
+
+			// Initialize velocity increment stats struct
+			stats_data->vel_inc_stats[i][r].n             = 0;
+			stats_data->vel_inc_stats[i][r].min           = 1e10;
+			stats_data->vel_inc_stats[i][r].max           = 0.0;
+			stats_data->vel_inc_stats[i][r].data_sqrd_sum = 0.0;
+			stats_data->vel_inc_stats[i][r].data_sum      = 0.0;
+			stats_data->vel_inc_stats[i][r].var           = 0.0;
+			stats_data->vel_inc_stats[i][r].mean          = 0.0;
+			stats_data->vel_inc_stats[i][r].std           = 0.0;
+			stats_data->vel_inc_stats[i][r].skew          = 0.0;
+			stats_data->vel_inc_stats[i][r].kurt          = 0.0;
 			#endif
 
 			#if defined(__VORT_INC) 			
 			// Initialize histogram and stats objects for the vorticity increments
 			stats_data->vort_inc_hist[i][r]    = gsl_histogram_alloc(VORT_NUM_BINS);
-			stats_data->vort_inc_stats[i][r]   = gsl_rstat_alloc();
-			stats_data->vel_inc_sqr[i][r]      = 0.0;
-			stats_data->vel_inc_num_data[i][r] = 0.0;
+			
+			// Initialize velocity increment stats struct
+			stats_data->vort_inc_stats[i][r].n             = 0;
+			stats_data->vort_inc_stats[i][r].min           = 1e10;
+			stats_data->vort_inc_stats[i][r].max           = 0.0;
+			stats_data->vort_inc_stats[i][r].data_sqrd_sum = 0.0;
+			stats_data->vort_inc_stats[i][r].data_sum      = 0.0;
+			stats_data->vort_inc_stats[i][r].var           = 0.0;
+			stats_data->vort_inc_stats[i][r].mean          = 0.0;
+			stats_data->vort_inc_stats[i][r].std           = 0.0;
+			stats_data->vort_inc_stats[i][r].skew          = 0.0;
+			stats_data->vort_inc_stats[i][r].kurt          = 0.0;
 			#endif
 		}
 	}
-
 	// --------------------------------	
 	//  Initialize Str Func Stats
 	// --------------------------------
 	// Allocate memory for each structure function for each of the increment directions
 	#if defined(__VEL_STR_FUNC) || defined(__VORT_STR_FUNC)
 	for (int i = 0; i < INCR_TYPES; ++i) {
-		for (int p = 1; p < NUM_POW; ++p) {
+		for (int p = 1; p <= NUM_POW; ++p) {
 			#if defined(__VEL_STR_FUNC)
 			stats_data->vel_str_func[i][p - 1] = (double* )fftw_malloc(sizeof(double) * (N_max_incr));
 			if (stats_data->vel_str_func[i][p - 1] == NULL) {
@@ -389,6 +484,7 @@ void InitializeStats(void) {
 		}
 	}
 	#endif
+
 	#if defined(__MIXED_VEL_STR_FUNC)
 	stats_data->vel_mixed_str_func = (double* )fftw_malloc(sizeof(double) * (N_max_incr));
 	if (stats_data->vel_mixed_str_func == NULL) {
@@ -396,7 +492,7 @@ void InitializeStats(void) {
 		exit(1);
 	}
 	for (int r = 0; r < N_max_incr; ++r) {
-		stats_data->vort_mixed_str_func[r] = 0.0;
+		stats_data->vel_mixed_str_func[r] = 0.0;
 	}
 	#endif
 	#if defined(__MIXED_VORT_STR_FUNC)
@@ -409,8 +505,6 @@ void InitializeStats(void) {
 		stats_data->vort_mixed_str_func[r] = 0.0;
 	}
 	#endif
-
-
 }
 /**
  * Frees memory and GSL objects allocated to perform the stats computations.

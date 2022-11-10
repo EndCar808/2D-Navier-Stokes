@@ -148,6 +148,11 @@ void ComputeSystemMeasurables(double t, int iter, Int_data_struct* Int_data) {
 		for (int j = 0; j < Nx_Fourier; ++j) {
 			indx = tmp + j;
 
+			#if defined(__NONLIN)
+			// Record the nonlinear term
+			run_data->nonlinterm[indx] = Int_data->RK1[indx];
+			#endif
+
 			#if defined(__ENRG_SPECT) || defined(__ENST_SPECT) || defined(__ENRG_FLUX_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__PHASE_SYNC)
 			// Get spectrum index -> spectrum is computed by summing over the energy contained in concentric annuli in wavenumber space
 			spec_indx = (int) round( sqrt( (double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]) ) );

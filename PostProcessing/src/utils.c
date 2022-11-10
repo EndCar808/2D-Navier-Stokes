@@ -47,8 +47,8 @@ int GetCMLArgs(int argc, char** argv) {
 	// Initialize Default Values
 	// -------------------------------
 	// Output & Input file directory
-	strncpy(file_info->output_dir, "NONE", 512);  // Set default output directory to the Tmp folder
-	strncpy(file_info->input_dir, "NONE", 512);  // Set default output directory to the Tmp folder
+	strncpy(file_info->output_dir, "NONE", 1024);  // Set default output directory to the Tmp folder
+	strncpy(file_info->input_dir, "NONE", 1024);  // Set default output directory to the Tmp folder
 	strncpy(file_info->output_tag, "No-Tag", 64);
 	file_info->input_file_only = 0; // used to indicate if input file was file only i.e., not output folder
 	file_info->output_file_only = 0; // used to indicate if output file should be file only i.e., not output folder
@@ -86,7 +86,7 @@ int GetCMLArgs(int argc, char** argv) {
 			case 'o':
 				if (output_dir_flag == 0) {
 					// Read in location of output directory
-					strncpy(file_info->output_dir, optarg, 512);
+					strncpy(file_info->output_dir, optarg, 1024);
 					output_dir_flag++;
 				}
 				else if (output_dir_flag == 1) {
@@ -97,7 +97,7 @@ int GetCMLArgs(int argc, char** argv) {
 			case 'i':
 				if (input_dir_flag == 0) {
 					// Read in location of input directory
-					strncpy(file_info->input_dir, optarg, 512);
+					strncpy(file_info->input_dir, optarg, 1024);
 					input_dir_flag++;
 				}
 				else if (input_dir_flag == 1) {
@@ -299,32 +299,31 @@ double MyMod(double x, double y) {
 void InitializeSpaceVariables(double** x, int** k, const long int* N) {
 
 	// Initialize variables
-	const long int Nx = N[0];
-	const long int Ny = N[1];
-	const long int Ny_Fourier = N[1] / 2 + 1;
-
+	const long int Ny = N[0];
+	const long int Nx = N[1];
+	const long int Nx_Fourier = N[1] / 2 + 1;
 
 	// -------------------------------
 	// Fill the first dirction 
 	// -------------------------------
-	for (int i = 0; i < Nx; ++i) {
-		x[0][i] = (double) i * 2.0 * M_PI / (double) Nx;
-		if(i <= Nx / 2) {
+	for (int i = 0; i < Ny; ++i) {
+		x[0][i] = (double) i * 2.0 * M_PI / (double) Ny;
+		if(i <= Ny / 2) {
 			k[0][i] = i;
 		}
 		else {
-			k[0][i] = -Nx + i;
+			k[0][i] = -Ny + i;
 		}
 	}
 
 	// -------------------------------
 	// Fill the second dirction 
 	// -------------------------------
-	for (int i = 0; i < Ny; ++i) {
-		if (i < Ny_Fourier) {
+	for (int i = 0; i < Nx; ++i) {
+		x[1][i] = (double) i * 2.0 * M_PI / (double) Nx;
+		if (i < Nx_Fourier) {
 			k[1][i] = i;
 		}
-		x[1][i] = (double) i * 2.0 * M_PI / (double) Ny;
 	}
 }
 /**

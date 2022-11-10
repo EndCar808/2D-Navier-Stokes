@@ -519,23 +519,6 @@ def import_data(input_file, sim_data, method = "default"):
             self.w_hat     = np.ones((sim_data.ndata, sim_data.Nx, sim_data.Nk)) * np.complex(0.0, 0.0)
             self.nonlin    = np.ones((sim_data.ndata, sim_data.Nx, sim_data.Nk)) * np.complex(0.0, 0.0)
             self.time      = np.zeros((sim_data.ndata, ))
-            ## Allocate system measure arrays
-            self.tot_enrg  = np.zeros((int(sim_data.ndata * 2), ))
-            self.tot_enst  = np.zeros((int(sim_data.ndata * 2), ))
-            self.tot_palin = np.zeros((int(sim_data.ndata * 2), ))
-            self.enrg_diss = np.zeros((int(sim_data.ndata * 2), ))
-            self.enst_diss = np.zeros((int(sim_data.ndata * 2), ))
-            self.enrg_diss_sbst = np.zeros((int(sim_data.ndata * 2), ))
-            self.enst_diss_sbst = np.zeros((int(sim_data.ndata * 2), ))
-            self.enrg_flux_sbst = np.zeros((int(sim_data.ndata * 2), ))
-            self.enst_flux_sbst = np.zeros((int(sim_data.ndata * 2), ))
-            ## Allocate spatial arrays
-            self.kx    = np.zeros((sim_data.Nx, ))
-            self.ky    = np.zeros((sim_data.Nk, ))
-            self.x     = np.zeros((sim_data.Nx, ))
-            self.y     = np.zeros((sim_data.Ny, ))
-            self.k2    = np.zeros((sim_data.Nx, sim_data.Nk))
-            self.k2Inv = np.zeros((sim_data.Nx, sim_data.Nk))
             ## Data indicators
             self.no_w     = False
             self.no_w_hat = False
@@ -586,7 +569,7 @@ def import_data(input_file, sim_data, method = "default"):
                 continue
 
         if data.no_w:
-            print("\nPreparing real space vorticity...", end = " ")
+            print("\nPreparing real space vorticity from Solver Data...", end = " ")
             for i in range(sim_data.ndata):
                 data.w[i, :, :] = np.fft.irfft2(data.w_hat[i, :, :])
             print("Finished!")
@@ -628,12 +611,6 @@ def import_data(input_file, sim_data, method = "default"):
             data.mean_flow_x = f['MeanFlow_x'][:]
         if 'MeanFlow_y' in list(f.keys()):
             data.mean_flow_y = f['MeanFlow_y'][:]
-        
-
-    ## Get inv wavenumbers
-    data.k2 = data.ky**2 + data.kx[:, np.newaxis]**2
-    index   = data.k2 != 0.0
-    data.k2Inv[index] = 1. / data.k2[index]
 
     return data
 
@@ -715,7 +692,14 @@ def import_sys_msr(input_file, sim_data, method = "default"):
             data.mean_flow_y = f['MeanFlow_y'][:]
         if 'Time' in list(f.keys()):
             data.time = f['Time'][:]
-    
+
+        ## Get inv wavenumbers
+        if 'kx' in list(f.keys()) and 'ky' in list(f.keys()):
+            data.k2 = data.kx**2 + data.ky[:, np.newaxis]**2
+            index   = data.k2 != 0.0
+            data.k2Inv = np.zeros((sim_data.Nx, sim_data.Nk))
+            data.k2Inv[index] = 1. / data.k2[index]
+        
     return data
 
 def import_spectra_data(input_file, sim_data, method = "default"):
@@ -931,33 +915,54 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                     self.enrg_flux_C = f["EnergyFluxC"][:]
                 if 'EnergyDissC' in list(f.keys()):
                     self.enrg_diss_C = f["EnergyDissC"][:]
-                ## Get the increment histogram data
+
+                ############# STATS DATA
+                ## Get the Velocity increment histogram data
                 if 'LongitudinalVelIncrements_BinRanges' in list(f.keys()):
-                    self.long_vel_incr_ranges = f["LongitudinalVelIncrements_BinRanges"][:, :]
+                    self.vel_long_incr_ranges = f["LongitudinalVelIncrements_BinRanges"][:, :]
                 if 'LongitudinalVelIncrements_BinCounts' in list(f.keys()):
-                    self.long_vel_incr_counts = f["LongitudinalVelIncrements_BinCounts"][:, :]
+                    self.vel_long_incr_counts = f["LongitudinalVelIncrements_BinCounts"][:, :]
                 if 'TransverseVelIncrements_BinRanges' in list(f.keys()):
-                    self.trans_vel_incr_ranges = f["TransverseVelIncrements_BinRanges"][:, :]
+                    self.vel_trans_incr_ranges = f["TransverseVelIncrements_BinRanges"][:, :]
                 if 'TransverseVelIncrements_BinCounts' in list(f.keys()):
-                    self.trans_vel_incr_counts = f["TransverseVelIncrements_BinCounts"][:, :]
+                    self.vel_trans_incr_counts = f["TransverseVelIncrements_BinCounts"][:, :]
+                if 'VelocityIncrementStats' in list(f.keys()):
+                    self.vel_incr_stat = f["VelocityIncrementStats"][:, :, :]
+                ## Get the Vorticit increment histogram data
                 if 'LongitudinalVortIncrements_BinRanges' in list(f.keys()):
-                    self.long_vort_incr_ranges = f["LongitudinalVortIncrements_BinRanges"][:, :]
+                    self.vort_long_incr_ranges = f["LongitudinalVortIncrements_BinRanges"][:, :]
                 if 'LongitudinalVortIncrements_BinCounts' in list(f.keys()):
-                    self.long_vort_incr_counts = f["LongitudinalVortIncrements_BinCounts"][:, :]
+                    self.vort_long_incr_counts = f["LongitudinalVortIncrements_BinCounts"][:, :]
                 if 'TransverseVortIncrements_BinRanges' in list(f.keys()):
-                    self.trans_vort_incr_ranges = f["TransverseVortIncrements_BinRanges"][:, :]
+                    self.vort_trans_incr_ranges = f["TransverseVortIncrements_BinRanges"][:, :]
                 if 'TransverseVortIncrements_BinCounts' in list(f.keys()):
-                    self.trans_vort_incr_counts = f["TransverseVortIncrements_BinCounts"][:, :]
-                ## Get the structure function data
-                if 'LongitudinalStructureFunctions' in list(f.keys()):
-                    self.long_str_func = f["LongitudinalStructureFunctions"][:, :]
-                if 'TransverseStructureFunctions' in list(f.keys()):
-                    self.trans_str_func = f["TransverseStructureFunctions"][:, :]
-                if 'AbsoluteLongitudinalStructureFunctions' in list(f.keys()):
-                    self.long_str_func_abs = f["AbsoluteLongitudinalStructureFunctions"][:, :]
-                if 'AbsoluteTransverseStructureFunctions' in list(f.keys()):
-                    self.trans_str_func_abs = f["AbsoluteTransverseStructureFunctions"][:, :]
-                ## Get the gradient histograms
+                    self.vort_trans_incr_counts = f["TransverseVortIncrements_BinCounts"][:, :]
+                if 'VorticityIncrementStats' in list(f.keys()):
+                    self.vort_incr_stat = f["VorticityIncrementStats"][:, :, :]
+                ## Get the Velocity structure function data
+                if 'VelocityLongitudinalStructureFunctions' in list(f.keys()):
+                    self.vel_long_str_func = f["VelocityLongitudinalStructureFunctions"][:, :]
+                if 'AbsoluteVelocityLongitudinalStructureFunctions' in list(f.keys()):
+                    self.vel_long_str_func_abs = f["AbsoluteVelocityLongitudinalStructureFunctions"][:, :]
+                if 'VelocityTransverseStructureFunctions' in list(f.keys()):
+                    self.vel_trans_str_func = f["VelocityTransverseStructureFunctions"][:, :]
+                if 'AbsoluteVelocityTransverseStructureFunctions' in list(f.keys()):
+                    self.vel_trans_str_func_abs = f["AbsoluteVelocityTransverseStructureFunctions"][:, :]
+                ## Get the Velocity structure function data
+                if 'VorticityLongitudinalStructureFunctions' in list(f.keys()):
+                    self.vort_long_str_func = f["VorticityLongitudinalStructureFunctions"][:, :]
+                if 'AbsoluteVorticityLongitudinalStructureFunctions' in list(f.keys()):
+                    self.vort_long_str_func_abs = f["AbsoluteVorticityLongitudinalStructureFunctions"][:, :]
+                if 'VorticityTransverseStructureFunctions' in list(f.keys()):
+                    self.vort_trans_str_func = f["VorticityTransverseStructureFunctions"][:, :]
+                if 'AbsoluteVorticityTransverseStructureFunctions' in list(f.keys()):
+                    self.vort_trans_str_func_abs = f["AbsoluteVorticityTransverseStructureFunctions"][:, :]
+                ## Mixed structure funcitons
+                if 'MixedVelocityStructureFunctions' in list(f.keys()):
+                    self.mxd_vel_str_func = f["MixedVelocityStructureFunctions"][:]
+                if 'MixedVorticityStructureFunctions' in list(f.keys()):
+                    self.mxd_vort_str_func = f["MixedVorticityStructureFunctions"][:]
+                ## Get the Velocity gradient histograms
                 if 'VelocityGradient_x_BinRanges' in list(f.keys()):
                     self.grad_u_x_ranges = f["VelocityGradient_x_BinRanges"][:]
                 if 'VelocityGradient_x_BinCounts' in list(f.keys()):
@@ -966,6 +971,9 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                     self.grad_u_y_ranges = f["VelocityGradient_y_BinRanges"][:]
                 if 'VelocityGradient_y_BinCounts' in list(f.keys()):
                     self.grad_u_y_counts = f["VelocityGradient_y_BinCounts"][:]
+                if 'VelocityGradientStats' in list(f.keys()):
+                    self.grad_u_stats = f["VelocityGradientStats"][:, :]
+                ## Get the Vorticity gradient histograms
                 if 'VorticityGradient_x_BinRanges' in list(f.keys()):
                     self.grad_w_x_ranges = f["VorticityGradient_x_BinRanges"][:]
                 if 'VorticityGradient_x_BinCounts' in list(f.keys()):
@@ -974,6 +982,8 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                     self.grad_w_y_ranges = f["VorticityGradient_y_BinRanges"][:]
                 if 'VorticityGradient_y_BinCounts' in list(f.keys()):
                     self.grad_w_y_counts = f["VorticityGradient_y_BinCounts"][:]
+                if 'VorticityGradientStats' in list(f.keys()):
+                    self.grad_w_stats = f["VorticityGradientStats"][:, :]
 
             ## Get the max wavenumber
             self.kmax      = int((sim_data.Nx / 3))
@@ -1191,7 +1201,7 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                 continue
 
         if data.no_w:
-            print("\nPreparing real space vorticity...", end = " ")
+            print("\nPreparing real space vorticity from post data...", end = " ")
             for i in range(sim_data.ndata):
                 data.w[i, :, :] = np.fft.irfft2(data.w_hat[i, :, :])
             print("Finished!")
@@ -1399,22 +1409,24 @@ def energy_spectrum(w_h, kx, ky, Nx, Ny):
         for j in range(w_h.shape[1]):
 
             ## Compute the mode
-            spec_indx = int(np.round(np.sqrt(kx[i] * kx[i] + ky[j] * ky[j])))
+            spec_indx = int(np.round(np.sqrt(kx[j] * kx[j] + ky[i] * ky[i])))
 
-            if kx[i] == 0.0 and ky[i] == 0.0:
+            k_sqr = (kx[j] ** 2 + ky[i] ** 2)
+
+            if kx[j] == 0.0 and ky[i] == 0.0 or k_sqr == 0.0:
                 continue
             else:
                 ## Compute prefactor
-                k_sqr = 1.0 / (kx[i] ** 2 + ky[j] ** 2)
+                k_sqr_inv = 1.0 / k_sqr
 
                 if j == 0 or j == w_h.shape[0] - 1:
                     ## Update spectrum sum for current mode
-                    energy_spec[spec_indx] += np.absolute(w_h[i, j] * np.conjugate(w_h[i, j])) * k_sqr
+                    energy_spec[spec_indx] += np.absolute(w_h[i, j] * np.conjugate(w_h[i, j])) * k_sqr_inv
                 else: 
                     ## Update spectrum sum for current mode
-                    energy_spec[spec_indx] += 2. * np.absolute(w_h[i, j] * np.conjugate(w_h[i, j])) * k_sqr
+                    energy_spec[spec_indx] += 2. * np.absolute(w_h[i, j] * np.conjugate(w_h[i, j])) * k_sqr_inv
 
-    return 4. * np.pi * np.pi * energy_spec * 0.5 / ((Nx * Ny) ** 2), np.sum(4. * np.pi * np.pi * energy_spec * 0.5 / ((Nx * Ny) ** 2))
+    return 4. * np.pi * np.pi * energy_spec * 0.5 / ((Nx * Ny) ** 2)
 
 @njit
 def energy_spectrum_vel(w_h, kx, ky, Nx, Ny):
@@ -1444,19 +1456,21 @@ def energy_spectrum_vel(w_h, kx, ky, Nx, Ny):
     for i in range(w_h.shape[0]):
         for j in range(w_h.shape[1]):
 
-            if kx[i] == 0.0 & ky[i] == 0.0:
+            k_sqr = (kx[j] ** 2 + ky[i] ** 2)
+
+            if kx[j] == 0.0 and ky[i] == 0.0 or k_sqr == 0.0:
                 u_hat = np.complex(0.0 + 0.0)
                 v_hat = np.complex(0.0 + 0.0)
             else:
                 ## Compute prefactor
-                k_sqr = np.complex(0.0, 1.0) / (kx[i] ** 2 + ky[j] ** 2)
+                k_sqr_inv = 1j / k_sqr
 
                 ## Compute Fourier velocities
-                u_hat = ky[j] * k_sqr * w_h[i, j]
-                v_hat = -kx[i] * k_sqr * w_h[i, j]
+                u_hat = ky[i] * k_sqr * w_h[i, j]
+                v_hat = -kx[j] * k_sqr * w_h[i, j]
 
             ## Compute the mode
-            spec_indx = int(np.round(np.sqrt(kx[i] * kx[i] + ky[j] * ky[j])))
+            spec_indx = int(np.round(np.sqrt(kx[j] * kx[j] + ky[i] * ky[i])))
 
             if j == 0 or j == w_h.shape[0] - 1:
                 ## Update spectrum sum for current mode
@@ -1465,46 +1479,10 @@ def energy_spectrum_vel(w_h, kx, ky, Nx, Ny):
                 ## Update spectrum sum for current mode
                 energy_spec[spec_indx] += 2. * np.absolute(u_hat * np.conjugate(u_hat)) + np.absolute(v_hat * np.conjugate(v_hat))
 
-    return 4. * np.pi * np.pi * energy_spec * 0.5 / ((Nx * Ny) ** 2), np.sum(4. * np.pi * np.pi * energy_spec * 0.5 / ((Nx * Ny) ** 2))
+    return 4. * np.pi * np.pi * energy_spec * 0.5 / ((Nx * Ny) ** 2)
 
 @njit
 def enstrophy_spectrum(w_h, kx, ky, Nx, Ny):
-
-    # """
-    # Computes the enstrophy spectrum from the Fourier vorticity
-
-    # w_h : 2d complex array
-    #       - Contains the Fourier vorticity
-    # kx  : int array 
-    #       - The wavenumbers in the first dimension
-    # ky  : int array 
-    #       - The wavenumbers in the second dimension
-    # Nx  : int
-    #       - Number of collocations in the first dimension 
-    # Ny  : int
-    #       - Number of collocations in the second dimension
-    # """
-
-    # ## Spectrum size
-    # spec_size = int(np.sqrt((Nx / 2) * (Nx / 2) + (Ny / 2) * (Ny / 2)) + 1)
-
-     ## Velocity arrays
-    # enstrophy_spec = np.zeros(spec_size)
-
-    # for i in range(w_h.shape[0]):
-    #     for j in range(w_h.shape[1]):
-
-             ## Compute the indx
-     #        spec_indx = int(np.round(np.sqrt(kx[i] * kx[i] + ky[j] * ky[j])))
-
-      #       if j == 0 or j == w_h.shape[0] - 1:
-                 ## Update the spectrum sum for the current mode
-     #            enstrophy_spec[spec_indx] += np.absolute(w_h[i, j] * np.conjugate(w_h[i, j]))
-     #        else:
-     #            ## Update the spectrum sum for the current mode
-     #             enstrophy_spec[spec_indx] += 2. * np.absolute(w_h[i, j] * np.conjugate(w_h[i, j]))
-
-    # return 4. * np.pi * np.pi * enstrophy_spec * 0.5 / (Nx * Ny)**2, np.sum(4. * np.pi * np.pi * enstrophy_spec * 0.5 / (Nx * Ny)**2)
 
     ## Spectrum size
     spec_size = int(np.sqrt((Nx / 2) * (Nx / 2) + (Ny / 2) * (Ny / 2)) + 1)
@@ -1516,14 +1494,11 @@ def enstrophy_spectrum(w_h, kx, ky, Nx, Ny):
         for j in range(w_h.shape[1]):
 
             ## Compute the mode
-            spec_indx = int(np.round(np.sqrt(kx[i] * kx[i] + ky[j] * ky[j])))
+            spec_indx = int(np.round(np.sqrt(kx[j] * kx[j] + ky[i] * ky[i])))
 
-            if kx[i] == 0.0 and ky[i] == 0.0:
+            if kx[j] == 0.0 and ky[i] == 0.0:
                 continue
             else:
-                ## Compute prefactor
-                k_sqr = 1.0 / (kx[i] ** 2 + ky[j] ** 2)
-
                 if j == 0 or j == w_h.shape[0] - 1:
                     ## Update spectrum sum for current mode
                     energy_spec[spec_indx] += np.absolute(w_h[i, j] * np.conjugate(w_h[i, j]))
@@ -1531,7 +1506,7 @@ def enstrophy_spectrum(w_h, kx, ky, Nx, Ny):
                     ## Update spectrum sum for current mode
                     energy_spec[spec_indx] += 2. * np.absolute(w_h[i, j] * np.conjugate(w_h[i, j]))
 
-    return 4. * np.pi * np.pi * energy_spec * 0.5 / ((Nx * Ny) ** 2), np.sum(4. * np.pi * np.pi * energy_spec * 0.5 / ((Nx * Ny) ** 2))
+    return 4. * np.pi * np.pi * energy_spec * 0.5 / ((Nx * Ny) ** 2)
 
 
 
