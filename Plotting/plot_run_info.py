@@ -332,7 +332,7 @@ if __name__ == '__main__':
 
     ##------------------------ Time Averaged Spectra to Measure the Spectra Scaling Exponent
     k_range = np.arange(1, int(sys_vars.Nx/3))
-    inert_range = np.arange(9, 200)
+    inert_range = np.arange(9, 31)
     mean_enrg_spec = np.mean(spec_data.enrg_spectrum[:, 1:int(sys_vars.Nx/3)], axis = 0)
     mean_enst_spec = np.mean(spec_data.enst_spectrum[:, 1:int(sys_vars.Nx/3)], axis = 0)
     p_enrg = np.polyfit(np.log(k_range[inert_range]), np.log(mean_enrg_spec[inert_range]), 1)

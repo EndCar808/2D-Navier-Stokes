@@ -177,8 +177,8 @@ int GetCMLArgs(int argc, char** argv) {
 				else if (visc_flag == 2) {
 					// Read in the hyperviscosity power
 					sys_vars->HYPER_VISC_POW = atof(optarg);
-					if (sys_vars->HYPER_VISC_POW <= 0.0) {
-						fprintf(stderr, "\n["RED"ERROR"RESET"] Parsing of Command Line Arguements Failed: The provided hyperviscosity power: [%lf] must be strictly positive\n-->> Exiting!\n\n", sys_vars->HYPER_VISC_POW);		
+					if (sys_vars->HYPER_VISC_POW < 0.0) {
+						fprintf(stderr, "\n["RED"ERROR"RESET"] Parsing of Command Line Arguements Failed: The provided hyperviscosity power: [%lf] must be nonnegative\n-->> Exiting!\n\n", sys_vars->HYPER_VISC_POW);		
 						exit(1);
 					}
 					// visc_flag = 3;
@@ -211,8 +211,8 @@ int GetCMLArgs(int argc, char** argv) {
 				else if (drag_flag == 2) {
 					// Read in the hypodiffusivity power
 					sys_vars->EKMN_DRAG_POW = atof(optarg);
-					if (sys_vars->EKMN_DRAG_POW >= 0.0) {
-						fprintf(stderr, "\n["RED"ERROR"RESET"] Parsing of Command Line Arguements Failed: The provided Hypodiffusibity power: [%lf] must be strictly negative\n-->> Exiting!\n\n", sys_vars->EKMN_DRAG_POW);		
+					if (sys_vars->EKMN_DRAG_POW > 0.0) {
+						fprintf(stderr, "\n["RED"ERROR"RESET"] Parsing of Command Line Arguements Failed: The provided Hypodiffusibity power: [%lf] must be nonpositve\n-->> Exiting!\n\n", sys_vars->EKMN_DRAG_POW);		
 						exit(1);
 					}
 					// drag_flag = 3;

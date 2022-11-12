@@ -68,6 +68,7 @@
 #define VISC_POW 2.0            // The power of the hyperviscosity -> 1.0 means no hyperviscosity
 #define EKMN_DRAG 1   			// Turn on Ekman drag if called for at compilation time
 #define EKMN_POW -2.0 			// The power of the Eckman drag term -> 0.0 means no drag
+#define EKMN_DRAG_K 6 			// This is the shell wavenumber that divides the drag values for the system
 // For allow transient dynamics
 #define TRANSIENT_ITERS 1       // Indicator for transient iterations
 #define TRANSIENT_FRAC 0.2      // Fraction of total iteration = transient iterations
@@ -231,7 +232,8 @@ typedef struct system_vars_struct {
 	double NU;							// The viscosity
 	int HYPER_VISC_FLAG;				// Flag to indicate if hyperviscosity is to be used
 	double HYPER_VISC_POW;				// The power of the hyper viscosity to use
-	double EKMN_ALPHA; 					// The value of the Ekman drag coefficient
+	double EKMN_ALPHA_LOW_K; 			// The value of the Ekman drag coefficient for low wavenumbers
+	double EKMN_ALPHA_HIGH_K;			// The value of the Ekman drag coefficient for high wavenumbers
 	int EKMN_DRAG_FLAG;					// Flag for indicating if ekman drag is to be used
 	double EKMN_DRAG_POW;				// The power of the hyper drag to be used
 	int num_sys_msr_counts; 			// Counter for counting the number of system measures is called for averaging

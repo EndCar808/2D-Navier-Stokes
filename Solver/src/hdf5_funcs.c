@@ -536,12 +536,12 @@ void GetOutputDirPath(void) {
 											sys_vars->forcing, sys_vars->force_k, sys_vars->force_scale_var,
 											sys_vars->u0);
 		#else
-		sprintf(file_data, "_SIM[%s-%s-%s]_N[%ld,%ld]_T[%1.1lf,%g,%1.3lf]_NU[%g,%d,%1.1lf]_DRAG[%g,%d,%1.1lf]_CFL[%1.2lf]_FORC[%s,%d,%g]_u0[%s].h5", 
+		sprintf(file_data, "_SIM[%s-%s-%s]_N[%ld,%ld]_T[%1.1lf,%g,%1.3lf]_NU[%g,%d,%1.1lf]_DRAG[%g,%g,%d,%1.1lf]_CFL[%1.2lf]_FORC[%s,%d,%g]_u0[%s].h5", 
 											sys_type, solv_type, model_type, 
 											sys_vars->N[0], sys_vars->N[1], 
 											sys_vars->t0, sys_vars->dt, sys_vars->T, 
 											sys_vars->NU, sys_vars->HYPER_VISC_FLAG, sys_vars->HYPER_VISC_POW,
-											sys_vars->EKMN_ALPHA, sys_vars->EKMN_DRAG_FLAG, sys_vars->EKMN_DRAG_POW,
+											sys_vars->EKMN_ALPHA_LOW_K, sys_vars->EKMN_ALPHA_HIGH_K, sys_vars->EKMN_DRAG_FLAG, sys_vars->EKMN_DRAG_POW,
 											sys_vars->CFL_CONST,
 											sys_vars->forcing, sys_vars->force_k, sys_vars->force_scale_var,
 											sys_vars->u0);
@@ -626,12 +626,12 @@ void GetOutputDirPath(void) {
 											sys_vars->u0,
 											file_info->output_tag);
 		#else
-		sprintf(file_data, "SIM_DATA_%s_%s_%s_N[%ld,%ld]_T[%1.1lf,%g,%1.3lf]_NU[%g,%d,%1.1lf]_DRAG[%g,%d,%1.1lf]_CFL[%1.2lf]_FORC[%s,%d,%g]_u0[%s]_TAG[%s]/", 
+		sprintf(file_data, "SIM_DATA_%s_%s_%s_N[%ld,%ld]_T[%1.1lf,%g,%1.3lf]_NU[%g,%d,%1.1lf]_DRAG[%g,%g,%d,%1.1lf]_CFL[%1.2lf]_FORC[%s,%d,%g]_u0[%s]_TAG[%s]/", 
 											sys_type, solv_type, model_type, 
 											sys_vars->N[0], sys_vars->N[1], 
 											sys_vars->t0, sys_vars->dt, sys_vars->T, 
 											sys_vars->NU, sys_vars->HYPER_VISC_FLAG, sys_vars->HYPER_VISC_POW,
-											sys_vars->EKMN_ALPHA, sys_vars->EKMN_DRAG_FLAG, sys_vars->EKMN_DRAG_POW,
+											sys_vars->EKMN_ALPHA_LOW_K, sys_vars->EKMN_ALPHA_HIGH_K, sys_vars->EKMN_DRAG_FLAG, sys_vars->EKMN_DRAG_POW,
 											sys_vars->CFL_CONST,
 											sys_vars->forcing, sys_vars->force_k, sys_vars->force_scale_var,
 											sys_vars->u0,

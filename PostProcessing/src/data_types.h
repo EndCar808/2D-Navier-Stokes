@@ -54,28 +54,29 @@
 #define FORCING 1 				// Indicates if forcing was used in simulation
 // Post processing Modes
 // #define __REAL_STATS
-// #define __VEL_INC_STATS
-// #define __VORT_INC_STATS
-// #define __VEL_STR_FUNC_STATS
-// #define __VORT_STR_FUNC_STATS
-// #define __MIXED_VEL_STR_FUNC_STATS
-// #define __MIXED_VORT_STR_FUNC_STATS
-// #define __VEL_GRAD_STATS
-// #define __VORT_GRAD_STATS
-#define __FULL_FIELD
+#define __VEL_INC_STATS
+#define __VORT_INC_STATS
+#define __VEL_STR_FUNC_STATS
+#define __VORT_STR_FUNC_STATS
+#define __VORT_RADIAL_STR_FUNC_STATS
+#define __MIXED_VEL_STR_FUNC_STATS
+#define __MIXED_VORT_STR_FUNC_STATS
+#define __VEL_GRAD_STATS
+#define __VORT_GRAD_STATS
+// #define __FULL_FIELD
 // #define __SPECTRA
-#define __SEC_PHASE_SYNC
+// #define __SEC_PHASE_SYNC
 // #define __SEC_PHASE_SYNC_STATS
-#define __ENST_FLUX
-#define __ENRG_FLUX
+// #define __ENST_FLUX
+// #define __ENRG_FLUX
 
 
 // Postprocessing data sets
-#define __VORT_FOUR
-#define __VORT_REAL
-#define __MODES
-#define __REALSPACE
-#define __NONLIN
+// #define __VORT_FOUR
+// #define __VORT_REAL
+// #define __MODES
+// #define __REALSPACE
+// #define __NONLIN
 #define __TIME
 #define __COLLOC_PTS
 #define __WAVELIST
@@ -304,6 +305,8 @@ typedef struct stats_data_struct {
 	double* u_str_func_abs[INCR_TYPES][STR_FUNC_MAX_POW];			// Array to hold the structure functions longitudinal and transverse velocity increments for each absolute increment
 	double* w_str_func[INCR_TYPES][STR_FUNC_MAX_POW];				// Array to hold the structure functions longitudinal and transverse vorticity increments for each increment
 	double* w_str_func_abs[INCR_TYPES][STR_FUNC_MAX_POW];			// Array to hold the structure functions longitudinal and transverse vorticity increments for each absolute increment
+	double* w_radial_str_func[STR_FUNC_MAX_POW];					// Array to hold the structure functions longitudinal and transverse vorticity increments for each increment
+	double* w_radial_str_func_abs[STR_FUNC_MAX_POW];				// Array to hold the structure functions longitudinal and transverse vorticity increments for each absolute increment
 	double* mxd_u_str_func;											// Array to hold the mixed velocity structure functions
 	double* mxd_w_str_func;											// Array to hold the mixed structure functions 
 	int* increments;												// Array to hold the increment sizes

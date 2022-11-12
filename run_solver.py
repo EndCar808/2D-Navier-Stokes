@@ -80,7 +80,7 @@ if __name__ == '__main__':
     Nk = int(Ny / 2 + 1)
     ## System parameters
     nu             = 0.001
-    ekmn_alpha     = 1.
+    ekmn_alpha_low_k     = 1.
     hypervisc      = False
     hypervisc_pow  = 2.0 
     ekmn_hypo_diff = False
@@ -129,16 +129,17 @@ if __name__ == '__main__':
     parser.read(cmdargs.init_file)
 
     ## Create list objects
-    Nx         = []
-    Ny         = []
-    Nk         = []
-    nu         = []
-    ic         = []
-    T          = []
-    dt         = []
-    cfl        = []
-    solver_tag = []
-    hyper_visc = []
+    Nx                = []
+    Ny                = []
+    Nk                = []
+    nu                = []
+    ekmn_alpha_high_k = []
+    ic                = []
+    T                 = []
+    dt                = []
+    cfl               = []
+    solver_tag        = []
+    hyper_visc        = []
 
     ## Parse input parameters
     for section in parser.sections():
@@ -155,8 +156,11 @@ if __name__ == '__main__':
             if 'viscosity' in parser[section]:
                 for n in parser[section]['viscosity'].lstrip('[').rstrip(']').split(', '):
                     nu.append(float(n))
-            if 'drag_coefficient' in parser[section]:
-                ekmn_alpha = float(parser[section]['drag_coefficient'])
+            if 'drag_coefficient_low_k' in parser[section]:
+                ekmn_alpha_low_k = float(parser[section]['drag_coefficient_low_k'])
+            if 'drag_coefficient_high_k' in parser[section]:
+                for n in parser[section]['drag_coefficient_high_k'].lstrip('[').rstrip(']').split(', '):
+                    ekmn_alpha_high_k.append(float(n))
             if 'hyperviscosity' in parser[section]:
                 for n in parser[section]['hyperviscosity'].lstrip('[').rstrip(']').split(', '):
                     if n == "True":
@@ -252,8 +256,6 @@ if __name__ == '__main__':
         print("Making folder:" + tc.C + " ParallelRunsDump/" + tc.Rst)
         os.mkdir(par_runs_output_dir)
 
-    for i in hyper_visc:
-        print(i)
 
     #########################
     ##      RUN SOLVER     ##
@@ -270,7 +272,7 @@ if __name__ == '__main__':
             solver_error  = []
 
         ## Generate command list 
-        cmd_list = [["mpirun -n {} {} -o {} -n {} -n {} -s {:3.5f} -e {:3.5f} -T {} -c {} -c {:1.6f} -h {:1.6f} -h {} -v {:g} -v {} -v {:1.1f} -d {:g} -d {} -d {:1.1f} -i {} -t {} -f {} -f {} -f {} -p {} -p {}".format(
+        cmd_list = [["mpirun -n {} {} -o {} -n {} -n {} -s {:3.5f} -e {:3.5f} -T {} -c {} -c {:1.6f} -h {:1.6f} -h {} -v {:g} -v {} -v {:1.1f} -d {:g} -d {} -d {:1.1f} -d {:g} -i {} -t {} -f {} -f {} -f {} -p {} -p {}".format(
                                                                                                                                                                                     solver_procs, 
                                                                                                                                                                                     executable, 
                                                                                                                                                                                     output_dir, 
@@ -279,11 +281,11 @@ if __name__ == '__main__':
                                                                                                                                                                                     cfl_cond, c, 
                                                                                                                                                                                     h, step_type, 
                                                                                                                                                                                     v, int(hype), hypervisc_pow, 
-                                                                                                                                                                                    ekmn_alpha, ekmn_hypo_diff, ekmn_hypo_pow,
+                                                                                                                                                                                    ekmn_alpha_low_k, ekmn_hypo_diff, ekmn_hypo_pow, a_hk,
                                                                                                                                                                                     u0, 
                                                                                                                                                                                     s_tag, 
                                                                                                                                                                                     forcing, force_k, force_scale, 
-                                                                                                                                                                                    save_every, stats_every)] for nx, ny in zip(Nx, Ny) for t in T for h in dt for u0 in ic for v in nu for hype in hyper_visc for c in cfl for s_tag in solver_tag]
+                                                                                                                                                                                    save_every, stats_every)] for nx, ny in zip(Nx, Ny) for t in T for h in dt for a_hk in ekmn_alpha_high_k for u0 in ic for v in nu for hype in hyper_visc for c in cfl for s_tag in solver_tag]
 
         if cmdargs.cmd_only:
             print(tc.C + "\nSolver Commands:\n" + tc.Rst)
@@ -352,12 +354,12 @@ if __name__ == '__main__':
 
         ## Generate command list 
         cmd_list = [["PostProcessing/bin/main -i {} -o {} -v {:g} -v {} -v {:1.1f} -d {:g} -d {} -d {:1.1f} -f {} -f {} -f {} {}".format(
-                                                        post_input_dir + "N[{},{}]_T[{:1.1f},{},{:1.3f}]_NU[{:g},{},{:1.1f}]_DRAG[{:g},{},{:1.1f}]_CFL[{:1.2f}]_FORC[{},{},{:g}]_u0[{}]_TAG[{}]/".format(nx, ny, t0, h, t, v, int(hype), hypervisc_pow, ekmn_alpha, int(ekmn_hypo_diff), ekmn_hypo_pow, c, forcing, force_k, force_scale, u0, s_tag), 
-                                                        post_output_dir + "N[{},{}]_T[{:1.1f},{},{:1.3f}]_NU[{:g},{},{:1.1f}]_DRAG[{:g},{},{:1.1f}]_CFL[{:1.2f}]_FORC[{},{},{:g}]_u0[{}]_TAG[{}]/".format(nx, ny, t0, h, t, v, int(hype), hypervisc_pow, ekmn_alpha, int(ekmn_hypo_diff), ekmn_hypo_pow, c, forcing, force_k, force_scale, u0, s_tag),
+                                                        post_input_dir + "N[{},{}]_T[{:1.1f},{},{:1.3f}]_NU[{:g},{},{:1.1f}]_DRAG[{:g},{:g},{},{:1.1f}]_CFL[{:1.2f}]_FORC[{},{},{:g}]_u0[{}]_TAG[{}]/".format(nx, ny, t0, h, t, v, int(hype), hypervisc_pow, ekmn_alpha_low_k, a_hk, int(ekmn_hypo_diff), ekmn_hypo_pow, c, forcing, force_k, force_scale, u0, s_tag), 
+                                                        post_output_dir + "N[{},{}]_T[{:1.1f},{},{:1.3f}]_NU[{:g},{},{:1.1f}]_DRAG[{:g},{:g},{},{:1.1f}]_CFL[{:1.2f}]_FORC[{},{},{:g}]_u0[{}]_TAG[{}]/".format(nx, ny, t0, h, t, v, int(hype), hypervisc_pow, ekmn_alpha_low_k, a_hk, int(ekmn_hypo_diff), ekmn_hypo_pow, c, forcing, force_k, force_scale, u0, s_tag),
                                                         v, hypervisc, hypervisc_pow, 
-                                                        ekmn_alpha, ekmn_hypo_diff, ekmn_hypo_pow,
+                                                        ekmn_alpha_low_k, ekmn_hypo_diff, ekmn_hypo_pow,
                                                         forcing, force_k, force_scale,
-                                                        post_options)] for nx, ny in zip(Nx, Ny) for h in dt for t in T for v in nu for hype in hyper_visc for c in cfl for u0 in ic for s_tag in solver_tag]
+                                                        post_options)] for nx, ny in zip(Nx, Ny) for h in dt for t in T for a_hk in ekmn_alpha_high_k for v in nu for hype in hyper_visc for c in cfl for u0 in ic for s_tag in solver_tag]
 
         if cmdargs.cmd_only:
             print(tc.C + "\nPost Processing Commands:\n" + tc.Rst)
@@ -427,8 +429,8 @@ if __name__ == '__main__':
         ## Generate command list 
         cmd_list = [["python3 {} -i {} {}".format(
                                             plot_script, 
-                                            post_input_dir + "N[{},{}]_T[{:1.1f},{},{:1.3f}]_NU[{:g},{},{:1.1f}]_DRAG[{:g},{},{:1.1f}]_CFL[{:1.2f}]_FORC[{},{},{:g}]_u0[{}]_TAG[{}]/".format(nx, ny, t0, h, t, v, int(hype), hypervisc_pow, ekmn_alpha, int(ekmn_hypo_diff), ekmn_hypo_pow, c, forcing, force_k, force_scale, u0, s_tag), 
-                                            plot_options)] for nx, ny in zip(Nx, Ny) for h in dt for t in T for v in nu for hype in hyper_visc for c in cfl for u0 in ic for s_tag in solver_tag]
+                                            post_input_dir + "N[{},{}]_T[{:1.1f},{},{:1.3f}]_NU[{:g},{},{:1.1f}]_DRAG[{:g},{:g},{},{:1.1f}]_CFL[{:1.2f}]_FORC[{},{},{:g}]_u0[{}]_TAG[{}]/".format(nx, ny, t0, h, t, v, int(hype), hypervisc_pow, ekmn_alpha_low_k, a_hk, int(ekmn_hypo_diff), ekmn_hypo_pow, c, forcing, force_k, force_scale, u0, s_tag), 
+                                            plot_options)] for nx, ny in zip(Nx, Ny) for h in dt for t in T for v in nu for a_hk in ekmn_alpha_high_k for hype in hyper_visc for c in cfl for u0 in ic for s_tag in solver_tag]
 
         if cmdargs.cmd_only:
             print(tc.C + "\nPlotting Commands:\n" + tc.Rst)

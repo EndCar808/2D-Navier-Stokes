@@ -35,7 +35,7 @@ void RealSpaceStats(int s) {
 	int gsl_status;
 	const long int Ny = sys_vars->N[0];
 	const long int Nx = sys_vars->N[1];
-	#if defined(__VEL_INC_STATS) || defined(__VORT_INC_STATS) || defined(__VORT_STR_FUNC_STATS) || defined(__VEL_STR_FUNC_STATS) || defined(__VEL_GRAD_STATS) || defined(__VORT_GRAD_STATS)  || defined(__MIXED_VEL_STR_FUNC) || defined(__MIXED_VORT_STR_FUNC)
+	#if defined(__VEL_INC_STATS) || defined(__VORT_INC_STATS) || defined(__VORT_STR_FUNC_STATS) || defined(__VORT_RADIAL_STR_FUNC_STATS) || defined(__VEL_STR_FUNC_STATS) || defined(__VEL_GRAD_STATS) || defined(__VORT_GRAD_STATS)  || defined(__MIXED_VEL_STR_FUNC) || defined(__MIXED_VORT_STR_FUNC)
 	int r;
 	const long int Nx_Fourier = sys_vars->N[1] / 2 + 1;
 	double vel_long_increment, vel_trans_increment, mixed_vel_increment;;
@@ -44,6 +44,10 @@ void RealSpaceStats(int s) {
 	double vort_long_increment_abs, vort_trans_increment_abs;
 	int N_max_incr = (int) (GSL_MIN(Ny, Nx) / 2);
 	double norm_fac = 1.0 / (Ny * Nx);
+	#endif
+	#if defined(__VORT_RADIAL_STR_FUNC_STATS)
+	int indx_r;
+	double radial_pow[STR_FUNC_MAX_POW] = {0.1, 0.5, 1.0, 1.5, 1.75, 2.0};
 	#endif
 
 	// --------------------------------
@@ -327,6 +331,30 @@ void RealSpaceStats(int s) {
 				#endif
 			}
 		}
+
+		#if defined(__VORT_RADIAL_STR_FUNC_STATS)
+		// Compute the radial structure functions
+		for (int r_x = 0; r_x < N_max_incr; ++r_x) {
+			tmp = r_x * N_max_incr;
+			for (int r_y = 0; r_y < N_max_incr; ++r_y) {
+				indx_r = tmp + r_y;
+
+				for (int i = 0; i < Ny; ++i) {
+					tmp = i * Nx;
+					for (int j = 0; j < Nx; ++j) {
+						indx = tmp + j;
+
+						vort_long_increment      += pow(run_data->w[((i + r_y) % Ny) * Nx + ((j + r_x) % Nx)] - run_data->w[i * Nx + j], radial_pow[p - 1]);
+						vort_long_increment_abs  += pow(fabs(run_data->w[((i + r_y) % Ny) * Nx + ((j + r_x) % Nx)] - run_data->w[i * Nx + j]), radial_pow[p - 1]);
+					}
+				}
+
+				// Update radial vorticity the structure funcitons
+				stats_data->w_radial_str_func[p - 1][indx_r]     += vort_long_increment * norm_fac;	
+				stats_data->w_radial_str_func_abs[p - 1][indx_r] += vort_long_increment_abs * norm_fac;	
+			}
+		}
+		#endif
 	}
 	#endif	
 }
@@ -451,19 +479,19 @@ void AllocateStatsMemory(const long int* N) {
 	// --------------------------------
 	#if defined(__VEL_STR_FUNC_STATS) || defined(__VORT_STR_FUNC_STATS)	
 	// Allocate memory for each structure function for each of the increment directions
-	for (int i = 0; i < INCR_TYPES; ++i) {
-		for (int p = 1; p <= STR_FUNC_MAX_POW; ++p) {
+	for (int p = 1; p <= STR_FUNC_MAX_POW; ++p) {
+		for (int i = 0; i < INCR_TYPES; ++i) {
 
 			///----------------------------------- Velocity Structure functions
 			#if defined(__VEL_STR_FUNC_STATS)
 			stats_data->u_str_func[i][p - 1] = (double* )fftw_malloc(sizeof(double) * (N_max_incr));
 			if (stats_data->u_str_func[i][p - 1] == NULL) {
-				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Structure Functions");
+				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Velocity Structure Functions");
 				exit(1);
 			}
 			stats_data->u_str_func_abs[i][p - 1] = (double* )fftw_malloc(sizeof(double) * (N_max_incr));
 			if (stats_data->u_str_func_abs[i][p - 1] == NULL) {
-				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Structure Functions Absolute");
+				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Velocity Structure Functions Absolute");
 				exit(1);
 			}
 
@@ -474,16 +502,16 @@ void AllocateStatsMemory(const long int* N) {
 			}
 			#endif
 
-			///----------------------------------- Velocity Structure functions
+			///----------------------------------- Vorticity Structure functions
 			#if defined(__VORT_STR_FUNC_STATS)
 			stats_data->w_str_func[i][p - 1] = (double* )fftw_malloc(sizeof(double) * (N_max_incr));
 			if (stats_data->w_str_func[i][p - 1] == NULL) {
-				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Structure Functions");
+				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Vorticity Structure Functions");
 				exit(1);
 			}
 			stats_data->w_str_func_abs[i][p - 1] = (double* )fftw_malloc(sizeof(double) * (N_max_incr));
 			if (stats_data->w_str_func_abs[i][p - 1] == NULL) {
-				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Structure Functions Absolute");
+				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Vorticity Structure Functions Absolute");
 				exit(1);
 			}
 
@@ -493,7 +521,27 @@ void AllocateStatsMemory(const long int* N) {
 				stats_data->w_str_func_abs[i][p - 1][r] = 0.0;
 			}
 			#endif
+
 		}
+		///----------------------------------- Radial Vorticity Structure functions
+		#if defined(__VORT_RADIAL_STR_FUNC_STATS)
+		stats_data->w_radial_str_func[p - 1] = (double* )fftw_malloc(sizeof(double) * (N_max_incr) * (N_max_incr));
+		if (stats_data->w_radial_str_func[p - 1] == NULL) {
+			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Radial Structure Functions");
+			exit(1);
+		}
+		stats_data->w_radial_str_func_abs[p - 1] = (double* )fftw_malloc(sizeof(double) * (N_max_incr) * (N_max_incr));
+		if (stats_data->w_radial_str_func_abs[p - 1] == NULL) {
+			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Radial Structure Functions Absolute");
+			exit(1);
+		}
+
+		// Initialize array
+		for (int r = 0; r < N_max_incr * N_max_incr; ++r) {
+			stats_data->w_radial_str_func[p - 1][r]     = 0.0;
+			stats_data->w_radial_str_func_abs[p - 1][r] = 0.0;
+		}
+		#endif
 	}
 	#endif
 
@@ -978,6 +1026,59 @@ void WriteStatsToFile(void) {
     fftw_free(vort_str_funcs);
     #endif
 
+    ///----------------------------------- Write the Velocity Structure Functions
+    #if defined(__VORT_RADIAL_STR_FUNC_STATS)
+    // Get the max shell index for the radial averaging
+    int shell_indx, indx, tmp;
+    int max_shell_indx = (int) round(sqrt((N_max_incr) * (N_max_incr) + (N_max_incr) * (N_max_incr)));
+
+    // Allocate temporary memory to record the histogram data contiguously
+    double* vort_radial_str_funcs = (double*) fftw_malloc(sizeof(double) * STR_FUNC_MAX_POW * (max_shell_indx));
+
+    //----------------------- Write the longitudinal structure functions
+    // Normal Structure functions
+   	for (int p = 0; p < STR_FUNC_MAX_POW; ++p) {
+   		for (int r_x = 0; r_x < N_max_incr; ++r_x) {
+   			tmp = r_x * N_max_incr;
+   			for (int r_y = 0; r_y < N_max_incr; ++r_y) {
+   				indx = tmp + r_y;
+
+   				shell_indx = (int) round(sqrt(r_x * r_x + r_y * r_y));
+
+		   		vort_radial_str_funcs[p * (max_shell_indx) + shell_indx] += stats_data->w_radial_str_func[p][indx] / sys_vars->num_snaps / (2.0 * M_PI * shell_indx);
+		   	}
+   		}
+   	}
+   	dset_dims_2d[0] = STR_FUNC_MAX_POW;
+   	dset_dims_2d[1] = max_shell_indx;
+   	status = H5LTmake_dataset(file_info->output_file_handle, "RadialVorticityStructureFunctions", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, vort_radial_str_funcs);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Radial Vorticity  Structure Functions");
+        exit(1);
+    }			
+    // Absolute Structure functions
+   	for (int p = 0; p < STR_FUNC_MAX_POW; ++p) {
+   		for (int r_x = 0; r_x < N_max_incr; ++r_x) {
+   			tmp = r_x * N_max_incr;
+   			for (int r_y = 0; r_y < N_max_incr; ++r_y) {
+   				indx = tmp + r_y;
+
+   				shell_indx = (int) round(sqrt(r_x * r_x + r_y * r_y));
+
+		   		vort_radial_str_funcs[p * (max_shell_indx) + shell_indx] += stats_data->w_radial_str_func_abs[p][indx] / sys_vars->num_snaps / (2.0 * M_PI * shell_indx);
+		   	}
+   		}
+   	}
+	status = H5LTmake_dataset(file_info->output_file_handle, "AbsoluteRadialVorticityStructureFunctions", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, vort_radial_str_funcs);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Absolute Radial Vorticity  Structure Functions");
+        exit(1);
+    }		
+	
+    // Free temporary memory
+    fftw_free(vort_radial_str_funcs);
+    #endif
+
 	///----------------------------------- Write Mixed Structure Functions
     #if defined(__MIXED_VEL_STR_FUNC_STATS) 
     // Define the dimensions of the mixed velocity structure funciton array
@@ -1014,6 +1115,10 @@ void FreeStatsObjects(void) {
 		fftw_free(stats_data->w_str_func[1][p - 1]);
 		fftw_free(stats_data->w_str_func_abs[0][p - 1]);
 		fftw_free(stats_data->w_str_func_abs[1][p - 1]);
+		#endif
+		#if defined(__VORT_STR_FUNC_STATS)
+		fftw_free(stats_data->w_radial_str_func[p - 1]);
+		fftw_free(stats_data->w_radial_str_func_abs[p - 1]);
 		#endif
 	}
 	#if defined(__MIXED_VEL_STR_FUNC)
