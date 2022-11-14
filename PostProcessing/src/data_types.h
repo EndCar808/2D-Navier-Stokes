@@ -51,6 +51,7 @@
 #define VISC_POW 2.0            // The power of the hyperviscosity -> 1.0 means no hyperviscosity
 #define EKMN_DRAG 1   			// Turn on Ekman drag if called for at compilation time
 #define EKMN_POW -2.0 			// The power of the Eckman drag term -> 0.0 means no drag
+#define EKMN_DRAG_K 6 			// Wavenumber to split for determining low and high ekman drag variable
 #define FORCING 1 				// Indicates if forcing was used in simulation
 // Post processing Modes
 // #define __REAL_STATS
@@ -163,7 +164,8 @@ typedef struct system_vars_struct {
 	int num_forced_modes; 				// The number of modes to be forced on the local process
 	int print_every;                    // Records how many iterations are performed before printing to file
 	double CFL_CONST;					// The CFL constant for the adaptive step
-	double EKMN_ALPHA; 					// The value of the Ekman drag coefficient
+	double EKMN_ALPHA_LOW_K; 			// The value of the Ekman drag coefficient for low wavenumbers
+	double EKMN_ALPHA_HIGH_K; 			// The value of the Ekman drag coefficient for high wavenumbers
 	int EKMN_DRAG_FLAG; 				// Indicator for Ekman drag
 	double EKMN_DRAG_POW;				// Power of the hypo drag term
 	double NU;							// The viscosity

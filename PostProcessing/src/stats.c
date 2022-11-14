@@ -47,7 +47,8 @@ void RealSpaceStats(int s) {
 	#endif
 	#if defined(__VORT_RADIAL_STR_FUNC_STATS)
 	int indx_r;
-	double radial_pow[STR_FUNC_MAX_POW] = {0.1, 0.5, 1.0, 1.5, 1.75, 2.0};
+	double vort_rad_increment, vort_rad_increment_abs;
+	double radial_pow[STR_FUNC_MAX_POW] = {0.1, 0.5, 1.0, 1.5, 2.0, 2.5};
 	#endif
 
 	// --------------------------------
@@ -339,19 +340,22 @@ void RealSpaceStats(int s) {
 			for (int r_y = 0; r_y < N_max_incr; ++r_y) {
 				indx_r = tmp + r_y;
 
+				vort_rad_increment     = 0.0;
+				vort_rad_increment_abs = 0.0;
+
 				for (int i = 0; i < Ny; ++i) {
 					tmp = i * Nx;
 					for (int j = 0; j < Nx; ++j) {
 						indx = tmp + j;
 
-						vort_long_increment      += pow(run_data->w[((i + r_y) % Ny) * Nx + ((j + r_x) % Nx)] - run_data->w[i * Nx + j], radial_pow[p - 1]);
-						vort_long_increment_abs  += pow(fabs(run_data->w[((i + r_y) % Ny) * Nx + ((j + r_x) % Nx)] - run_data->w[i * Nx + j]), radial_pow[p - 1]);
+						vort_rad_increment      += pow(run_data->w[((i + r_y) % Ny) * Nx + ((j + r_x) % Nx)] - run_data->w[i * Nx + j], radial_pow[p - 1]);
+						vort_rad_increment_abs  += pow(fabs(run_data->w[((i + r_y) % Ny) * Nx + ((j + r_x) % Nx)] - run_data->w[i * Nx + j]), radial_pow[p - 1]);
 					}
 				}
 
 				// Update radial vorticity the structure funcitons
-				stats_data->w_radial_str_func[p - 1][indx_r]     += vort_long_increment * norm_fac;	
-				stats_data->w_radial_str_func_abs[p - 1][indx_r] += vort_long_increment_abs * norm_fac;	
+				stats_data->w_radial_str_func[p - 1][indx_r]     += vort_rad_increment * norm_fac;	
+				stats_data->w_radial_str_func_abs[p - 1][indx_r] += vort_rad_increment_abs * norm_fac;	
 			}
 		}
 		#endif
@@ -376,10 +380,6 @@ void AllocateStatsMemory(const long int* N) {
 	stats_data->increments = (int* )fftw_malloc(sizeof(int) * NUM_INCR);
 	int increment[NUM_INCR] = {1, 2, 4, 16, N_max_incr};
 	memcpy(stats_data->increments, increment, sizeof(increment));
-	for (int i = 0; i < NUM_INCR; ++i)
-	{
-		printf("i: %d \t Incr: %d\n", i, stats_data->increments[i]);
-	}
 
 	// --------------------------------	
 	//  Initialize Real Space Stats

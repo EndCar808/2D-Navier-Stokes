@@ -498,11 +498,21 @@ void FluxSpectra(int snap) {
 				// Get the appropriate prefactor
 				if((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {  
 					// Both Hyperviscosity and Ekman drag
-					pre_fac = sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW) + sys_vars->EKMN_ALPHA * pow(k_sqr, sys_vars->EKMN_DRAG_POW);
+					if (round(sqrt(k_sqr)) <= EKMN_DRAG_K) {
+						pre_fac = sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW) + sys_vars->EKMN_ALPHA_LOW_K * pow(k_sqr, sys_vars->EKMN_DRAG_POW);
+					}
+					else {
+						pre_fac = sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW) + sys_vars->EKMN_ALPHA_HIGH_K * pow(k_sqr, sys_vars->EKMN_DRAG_POW);
+					}
 				}
 				else if((sys_vars->HYPER_VISC_FLAG != HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
 					// No hyperviscosity but we have Ekman drag
-					pre_fac = sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA * pow(k_sqr, sys_vars->EKMN_DRAG_POW);
+					if (round(sqrt(k_sqr)) <= EKMN_DRAG_K) {
+						pre_fac = sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA_LOW_K * pow(k_sqr, sys_vars->EKMN_DRAG_POW);
+					}
+					else {
+						pre_fac = sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA_HIGH_K * pow(k_sqr, sys_vars->EKMN_DRAG_POW);						
+					}
 				}
 				else if ((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG != EKMN_DRAG)) {
 				 	// Hyperviscosity only

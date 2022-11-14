@@ -293,7 +293,7 @@ void ReadInData(int snap_indx) {
 	// --------------------------------
 	//  Read in Real Vorticity
 	// --------------------------------
-	#if defined(__REAL_STATS) || defined(__VORT_INC_STATS) || defined(__VORT_STR_FUNC_STATS) || defined(__VORT_GRAD_STATS)
+	#if defined(__REAL_STATS) || defined(__VORT_INC_STATS) || defined(__VORT_STR_FUNC_STATS) || defined(__VORT_RADIAL_STR_FUNC_STATS) || defined(__VORT_GRAD_STATS)
 	// If Real Space vorticity exists read it in
 	sprintf(group_string, "/Iter_%05d/w", snap_indx);	
 	if (H5Lexists(file_info->input_file_handle, group_string, H5P_DEFAULT) > 0 ) {

@@ -144,6 +144,8 @@ void Precompute(void) {
 	double norm_fac = 1.0 / (Ny * Nx);
 	double std_u, std_w;
 	double std_u_incr, std_w_incr;
+	double delta_x = 2.0 * M_PI / Nx;
+	double delta_y = 2.0 * M_PI / Ny;
 
 	// Print to screen that a pre computation step is need and begin timeing it
 	printf("\n["YELLOW"NOTE"RESET"] --- Performing a precomputation step...\n\n");
@@ -213,20 +215,20 @@ void Precompute(void) {
 					if (i < SYS_DIM) {
 						// Add to the individual directions accumulators
 						#if defined(__VORT_GRAD_STATS)
-						gsl_rstat_add(proc_data->grad_w[SYS_DIM * indx + i], stats_data->w_grad_stats[i]);
+						gsl_rstat_add(proc_data->grad_w[SYS_DIM * indx + i] * delta_x, stats_data->w_grad_stats[i]);
 						#endif
 						#if defined(__VEL_GRAD_STATS)
-						gsl_rstat_add(proc_data->grad_u[SYS_DIM * indx + i], stats_data->u_grad_stats[i]);
+						gsl_rstat_add(proc_data->grad_u[SYS_DIM * indx + i] * delta_x, stats_data->u_grad_stats[i]);
 						#endif
 					}
 					else {
 						// Add to the combined accumulator
 						for (int j = 0; j < SYS_DIM; ++j) {
 							#if defined(__VORT_GRAD_STATS)
-							gsl_rstat_add(proc_data->grad_w[SYS_DIM * indx + j], stats_data->w_grad_stats[SYS_DIM]);
+							gsl_rstat_add(proc_data->grad_w[SYS_DIM * indx + j] * delta_x * delta_y, stats_data->w_grad_stats[SYS_DIM]);
 							#endif
 							#if defined(__VEL_GRAD_STATS)
-							gsl_rstat_add(proc_data->grad_u[SYS_DIM * indx + j], stats_data->u_grad_stats[SYS_DIM]);
+							gsl_rstat_add(proc_data->grad_u[SYS_DIM * indx + j] * delta_x * delta_y, stats_data->u_grad_stats[SYS_DIM]);
 							#endif
 						}
 					}
@@ -289,6 +291,8 @@ void Precompute(void) {
 			exit(1);
 		}
 		#endif
+
+		printf("DIM: %d\tGrad_u: %lf\tGrad_w: %lf\n", i, std_u, std_w);
 	}
 
 	// --------------------------------
@@ -320,6 +324,9 @@ void Precompute(void) {
 				exit(1);
 			}
 			#endif
+
+			printf("Type: %d\tInc: %d\tu: %lf\tw: %lf\n", i, j, std_u_incr, std_w_incr);
+
 		}
 	}
 

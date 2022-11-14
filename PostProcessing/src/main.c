@@ -95,7 +95,6 @@ int main(int argc, char** argv) {
 	// int ss = time_spent - hh * 3600 - mm * 60;
 	// printf("\n\nTotal Execution Time: ["CYAN"%5.10lf"RESET"] --> "CYAN"%d"RESET" hrs : "CYAN"%d"RESET" mins : "CYAN"%d"RESET" secs\n\n", time_spent, hh, mm, ss);
 
-	printf("\n \nEND!!!\n \n");
 	return 0;
 }
 // ---------------------------------------------------------------------

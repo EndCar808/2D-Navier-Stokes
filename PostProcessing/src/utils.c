@@ -74,9 +74,10 @@ int GetCMLArgs(int argc, char** argv) {
 	sys_vars->HYPER_VISC_FLAG = 0;
 	sys_vars->HYPER_VISC_POW  = VISC_POW;
 	// Hypo drag
-	sys_vars->EKMN_ALPHA      = 0.1;
-	sys_vars->EKMN_DRAG_FLAG = 0;
-	sys_vars->EKMN_DRAG_POW  = EKMN_POW;
+	sys_vars->EKMN_ALPHA_LOW_K  = 0.1;
+	sys_vars->EKMN_ALPHA_HIGH_K = 0.1;
+	sys_vars->EKMN_DRAG_FLAG    = 0;
+	sys_vars->EKMN_DRAG_POW     = EKMN_POW;
 	
 	// -------------------------------
 	// Parse CML Arguments
@@ -188,9 +189,15 @@ int GetCMLArgs(int argc, char** argv) {
 			case 'd':
 				if (drag_flag == 0) {
 					// Read in the drag
-					sys_vars->EKMN_ALPHA = atof(optarg);
-					if (sys_vars->EKMN_ALPHA < 0) {
-						fprintf(stderr, "\n["RED"ERROR"RESET"] Parsing of Command Line Arguements Failed: The provided Ekman Drag: [%lf] must be positive\n-->> Exiting!\n\n", sys_vars->EKMN_ALPHA);		
+					sys_vars->EKMN_ALPHA_LOW_K = atof(optarg);
+					if (sys_vars->EKMN_ALPHA_LOW_K < 0) {
+						fprintf(stderr, "\n["RED"ERROR"RESET"] Parsing of Command Line Arguements Failed: The provided Ekman Drag: [%lf] must be positive\n-->> Exiting!\n\n", sys_vars->EKMN_ALPHA_LOW_K);		
+						exit(1);
+					}
+					// Set the high k drag coefficient to be the same as low k unless specified otherwise later
+					sys_vars->EKMN_ALPHA_HIGH_K = atof(optarg);
+					if (sys_vars->EKMN_ALPHA_HIGH_K < 0.0) {
+						fprintf(stderr, "\n["RED"ERROR"RESET"] Parsing of Command Line Arguements Failed: The provided high k ekman drag coefficient: [%lf] must be nonnegative\n-->> Exiting!\n\n", sys_vars->EKMN_ALPHA_HIGH_K);		
 						exit(1);
 					}
 					drag_flag = 1;
@@ -215,7 +222,16 @@ int GetCMLArgs(int argc, char** argv) {
 						fprintf(stderr, "\n["RED"ERROR"RESET"] Parsing of Command Line Arguements Failed: The provided Hypodiffusibity power: [%lf] must be nonpositve\n-->> Exiting!\n\n", sys_vars->EKMN_DRAG_POW);		
 						exit(1);
 					}
-					// drag_flag = 3;
+					drag_flag = 3;
+					break;
+				}
+				else if (drag_flag == 3) {
+					// Read in the hypodiffusivity power
+					sys_vars->EKMN_ALPHA_HIGH_K = atof(optarg);
+					if (sys_vars->EKMN_ALPHA_HIGH_K < 0.0) {
+						fprintf(stderr, "\n["RED"ERROR"RESET"] Parsing of Command Line Arguements Failed: The provided high k ekman drag coefficient: [%lf] must be nonnegative\n-->> Exiting!\n\n", sys_vars->EKMN_ALPHA_HIGH_K);		
+						exit(1);
+					}
 					break;
 				}
 				break;
