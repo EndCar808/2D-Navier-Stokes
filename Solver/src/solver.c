@@ -277,6 +277,9 @@ void AB4Step(const double dt, const long int* N, const int iters, const ptrdiff_
 	double D_fac;
 	#endif
 	const long int Nx_Fourier = N[1] / 2 + 1;
+	#if defined(PHASE_ONLY)
+	double tmp_a_k_norm;
+	#endif
 
 	/////////////////////
 	/// AB Pre Steps
@@ -313,6 +316,12 @@ void AB4Step(const double dt, const long int* N, const int iters, const ptrdiff_
 				indx = tmp + j;
 
 				if ((run_data->k[0][i] != 0) || (run_data->k[1][j]  != 0)) {
+					#if defined(PHASE_ONLY)
+					// Pre-record the amplitudes
+					tmp_a_k_norm = cabs(run_data->w_hat[indx]);
+					#endif
+
+
 					#if defined(__EULER)
 					// Update the Fourier space vorticity with the RHS
 					run_data->w_hat[indx] = run_data->w_hat[indx] + dt * (AB4_1 * Int_data->AB_tmp[indx]) + dt * (AB4_2 * Int_data->AB_tmp_nonlin[2][indx]) + dt * (AB4_3 * Int_data->AB_tmp_nonlin[1][indx]) + dt * (AB4_4 * Int_data->AB_tmp_nonlin[0][indx]);
@@ -320,34 +329,43 @@ void AB4Step(const double dt, const long int* N, const int iters, const ptrdiff_
 					// Compute the pre factors for the RK4CN update step
 					k_sqr = (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 					
-				if((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
-					// Both Hyperviscosity and Ekman drag
-					if (round(sqrt(k_sqr)) <= EKMN_DRAG_K) {
-						D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW) + sys_vars->EKMN_ALPHA_LOW_K * pow(k_sqr, sys_vars->EKMN_DRAG_POW)); 
+					if((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
+						// Both Hyperviscosity and Ekman drag
+						if (round(sqrt(k_sqr)) <= EKMN_DRAG_K) {
+							// Drag at low wavenumbers
+							D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW) + sys_vars->EKMN_ALPHA_LOW_K * pow(k_sqr, sys_vars->EKMN_DRAG_POW)); 
+						}
+						else {
+							// Drag at high wavenumbers
+							D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW) + sys_vars->EKMN_ALPHA_HIGH_K * pow(k_sqr, sys_vars->EKMN_DRAG_POW)); 					
+						}
+					}
+					else if((sys_vars->HYPER_VISC_FLAG != HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
+						// No hyperviscosity but we have Ekman drag
+						if (round(sqrt(k_sqr)) <= EKMN_DRAG_K) {
+							// Drag at low wavenumbers
+							D_fac = dt * (sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA_LOW_K * pow(k_sqr, sys_vars->EKMN_DRAG_POW));
+						}
+						else {
+							// Drag at high wavenumbers
+							D_fac = dt * (sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA_HIGH_K * pow(k_sqr, sys_vars->EKMN_DRAG_POW));					
+						}
+					}
+					else if((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG != EKMN_DRAG)) {
+						// Hyperviscosity only
+						D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW));
 					}
 					else {
-						D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW) + sys_vars->EKMN_ALPHA_HIGH_K * pow(k_sqr, sys_vars->EKMN_DRAG_POW)); 					
+						// No hyper viscosity or no ekman drag -> just normal viscosity
+						D_fac = dt * (sys_vars->NU * k_sqr);
 					}
-				}
-				else if((sys_vars->HYPER_VISC_FLAG != HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
-					// No hyperviscosity but we have Ekman drag
-					if (round(sqrt(k_sqr)) <= EKMN_DRAG_K) {
-						D_fac = dt * (sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA_LOW_K * pow(k_sqr, sys_vars->EKMN_DRAG_POW));
-					}
-					else {
-						D_fac = dt * (sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA_HIGH_K * pow(k_sqr, sys_vars->EKMN_DRAG_POW));					
-					}
-				}
-				else if((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG != EKMN_DRAG)) {
-					// Hyperviscosity only
-					D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW));
-				}
-				else {
-					// No hyper viscosity or no ekman drag -> just normal viscosity
-					D_fac = dt * (sys_vars->NU * k_sqr);
-				}
 					// Complete the update step
 					run_data->w_hat[indx] = run_data->w_hat[indx] * ((2.0 - D_fac) / (2.0 + D_fac)) + (2.0 * dt / (2.0 + D_fac)) * ((AB4_1 * Int_data->AB_tmp[indx]) + (AB4_2 * Int_data->AB_tmp_nonlin[2][indx]) + (AB4_3 * Int_data->AB_tmp_nonlin[1][indx]) + (AB4_4 * Int_data->AB_tmp_nonlin[0][indx]));
+					#endif
+
+					#if defined(PHASE_ONLY)
+					// Reset the amplitudes
+					run_data->w_hat[indx] *= (tmp_a_k_norm / cabs(run_data->w_hat[indx]));
 					#endif
 				}
 				else {
@@ -391,20 +409,8 @@ void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdif
 	double err_sum;
 	double err_denom;
 	#endif
-	
-	//------------------- Pre-record the amplitudes so they can be reset after update step
 	#if defined(PHASE_ONLY)
 	double tmp_a_k_norm;
-
-	for (int i = 0; i < local_Ny; ++i) {
-		tmp = i * Nx_Fourier;
-		for (int j = 0; j < Nx_Fourier; ++j) {
-			indx = tmp + j;
-
-			// record amplitudes
-			run_data->tmp_a_k[indx] = cabs(run_data->w_hat[indx]);
-		}
-	}
 	#endif
 
 	//------------------- Get the forcing
@@ -507,18 +513,22 @@ void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdif
 				if((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
 					// Both Hyperviscosity and Ekman drag
 					if (round(sqrt(k_sqr)) <= EKMN_DRAG_K) {
+						// Drag at low wavenumbers
 						D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW) + sys_vars->EKMN_ALPHA_LOW_K * pow(k_sqr, sys_vars->EKMN_DRAG_POW)); 
 					}
 					else {
+						// Drag at high wavenumbers
 						D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW) + sys_vars->EKMN_ALPHA_HIGH_K * pow(k_sqr, sys_vars->EKMN_DRAG_POW)); 					
 					}
 				}
 				else if((sys_vars->HYPER_VISC_FLAG != HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
 					// No hyperviscosity but we have Ekman drag
 					if (round(sqrt(k_sqr)) <= EKMN_DRAG_K) {
+						// Drag at low wavenumbers
 						D_fac = dt * (sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA_LOW_K * pow(k_sqr, sys_vars->EKMN_DRAG_POW));
 					}
 					else {
+						// Drag at high wavenumbers
 						D_fac = dt * (sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA_HIGH_K * pow(k_sqr, sys_vars->EKMN_DRAG_POW));					
 					}
 				}
@@ -648,20 +658,8 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Ny, Int_d
 	double k_sqr;
 	double D_fac;
 	const long int Nx_Fourier = N[1] / 2 + 1;
-
-	//------------------- Pre-record the amplitudes so they can be reset after update step
 	#if defined(PHASE_ONLY)
 	double tmp_a_k_norm;
-
-	for (int i = 0; i < local_Ny; ++i) {
-		tmp = i * Nx_Fourier;
-		for (int j = 0; j < Nx_Fourier; ++j) {
-			indx = tmp + j;
-
-			// record amplitudes
-			run_data->tmp_a_k[indx] = cabs(run_data->w_hat[indx]);
-		}
-	}
 	#endif
 
 	//------------------- Get the forcing
@@ -685,18 +683,22 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Ny, Int_d
 			if((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
 				// Both Hyperviscosity and Ekman drag
 				if (round(sqrt(k_sqr)) <= EKMN_DRAG_K) {
+					// Drag at low wavenumbers
 					D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW) + sys_vars->EKMN_ALPHA_LOW_K * pow(k_sqr, sys_vars->EKMN_DRAG_POW)); 
 				}
 				else {
+					// Drag at high wavenumbers
 					D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW) + sys_vars->EKMN_ALPHA_HIGH_K * pow(k_sqr, sys_vars->EKMN_DRAG_POW)); 					
 				}
 			}
 			else if((sys_vars->HYPER_VISC_FLAG != HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
 				// No hyperviscosity but we have Ekman drag
 				if (round(sqrt(k_sqr)) <= EKMN_DRAG_K) {
+					// Drag at low wavenumbers
 					D_fac = dt * (sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA_LOW_K * pow(k_sqr, sys_vars->EKMN_DRAG_POW));
 				}
 				else {
+					// Drag at high wavenumbers
 					D_fac = dt * (sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA_HIGH_K * pow(k_sqr, sys_vars->EKMN_DRAG_POW));					
 				}
 			}
@@ -734,18 +736,22 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Ny, Int_d
 			if((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
 				// Both Hyperviscosity and Ekman drag
 				if (round(sqrt(k_sqr)) <= EKMN_DRAG_K) {
+					// Drag at low wavenumbers
 					D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW) + sys_vars->EKMN_ALPHA_LOW_K * pow(k_sqr, sys_vars->EKMN_DRAG_POW)); 
 				}
 				else {
+					// Drag at high wavenumbers
 					D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW) + sys_vars->EKMN_ALPHA_HIGH_K * pow(k_sqr, sys_vars->EKMN_DRAG_POW)); 					
 				}
 			}
 			else if((sys_vars->HYPER_VISC_FLAG != HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
 				// No hyperviscosity but we have Ekman drag
 				if (round(sqrt(k_sqr)) <= EKMN_DRAG_K) {
+					// Drag at low wavenumbers
 					D_fac = dt * (sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA_LOW_K * pow(k_sqr, sys_vars->EKMN_DRAG_POW));
 				}
 				else {
+					// Drag at high wavenumbers
 					D_fac = dt * (sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA_HIGH_K * pow(k_sqr, sys_vars->EKMN_DRAG_POW));					
 				}
 			}
@@ -781,18 +787,22 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Ny, Int_d
 			if((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
 				// Both Hyperviscosity and Ekman drag
 				if (round(sqrt(k_sqr)) <= EKMN_DRAG_K) {
+					// Drag at low wavenumbers
 					D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW) + sys_vars->EKMN_ALPHA_LOW_K * pow(k_sqr, sys_vars->EKMN_DRAG_POW)); 
 				}
 				else {
+					// Drag at high wavenumbers
 					D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW) + sys_vars->EKMN_ALPHA_HIGH_K * pow(k_sqr, sys_vars->EKMN_DRAG_POW)); 					
 				}
 			}
 			else if((sys_vars->HYPER_VISC_FLAG != HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
 				// No hyperviscosity but we have Ekman drag
 				if (round(sqrt(k_sqr)) <= EKMN_DRAG_K) {
+					// Drag at low wavenumbers
 					D_fac = dt * (sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA_LOW_K * pow(k_sqr, sys_vars->EKMN_DRAG_POW));
 				}
 				else {
+					// Drag at high wavenumbers
 					D_fac = dt * (sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA_HIGH_K * pow(k_sqr, sys_vars->EKMN_DRAG_POW));					
 				}
 			}
@@ -824,18 +834,22 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Ny, Int_d
 			if((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
 				// Both Hyperviscosity and Ekman drag
 				if (round(sqrt(k_sqr)) <= EKMN_DRAG_K) {
+					// Drag at low wavenumbers
 					D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW) + sys_vars->EKMN_ALPHA_LOW_K * pow(k_sqr, sys_vars->EKMN_DRAG_POW)); 
 				}
 				else {
+					// Drag at high wavenumbers
 					D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW) + sys_vars->EKMN_ALPHA_HIGH_K * pow(k_sqr, sys_vars->EKMN_DRAG_POW)); 					
 				}
 			}
 			else if((sys_vars->HYPER_VISC_FLAG != HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
 				// No hyperviscosity but we have Ekman drag
 				if (round(sqrt(k_sqr)) <= EKMN_DRAG_K) {
+					// Drag at low wavenumbers
 					D_fac = dt * (sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA_LOW_K * pow(k_sqr, sys_vars->EKMN_DRAG_POW));
 				}
 				else {
+					// Drag at high wavenumbers
 					D_fac = dt * (sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA_HIGH_K * pow(k_sqr, sys_vars->EKMN_DRAG_POW));					
 				}
 			}
@@ -877,18 +891,22 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Ny, Int_d
 				if((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
 					// Both Hyperviscosity and Ekman drag
 					if (round(sqrt(k_sqr)) <= EKMN_DRAG_K) {
+						// Drag at low wavenumbers
 						D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW) + sys_vars->EKMN_ALPHA_LOW_K * pow(k_sqr, sys_vars->EKMN_DRAG_POW)); 
 					}
 					else {
+						// Drag at high wavenumbers
 						D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW) + sys_vars->EKMN_ALPHA_HIGH_K * pow(k_sqr, sys_vars->EKMN_DRAG_POW)); 					
 					}
 				}
 				else if((sys_vars->HYPER_VISC_FLAG != HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
 					// No hyperviscosity but we have Ekman drag
 					if (round(sqrt(k_sqr)) <= EKMN_DRAG_K) {
+						// Drag at low wavenumbers
 						D_fac = dt * (sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA_LOW_K * pow(k_sqr, sys_vars->EKMN_DRAG_POW));
 					}
 					else {
+						// Drag at high wavenumbers
 						D_fac = dt * (sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA_HIGH_K * pow(k_sqr, sys_vars->EKMN_DRAG_POW));					
 					}
 				}
