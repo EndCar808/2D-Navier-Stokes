@@ -330,7 +330,7 @@ typedef struct stats_data_struct {
 	double* vort_str_func_abs[INCR_TYPES][NUM_POW];				// Array to hold the structure functions of the absolute value of flux Vorticity increments
 	double* vel_mixed_str_func;									// Array to hold the mixed velocity structure function, this should be the same as 1/3 of the third order velocity structre function
 	double* vort_mixed_str_func;								// Array to hold the mixed vorticity structure function, this should be the same as the third order vorticity structre function
-	struct field_stats vel_inc_stats[INCR_TYPES][NUM_INCR];      // Struct to hold the running stats for the velocity increments
+	struct field_stats vel_inc_stats[INCR_TYPES][NUM_INCR];     // Struct to hold the running stats for the velocity increments
 	struct field_stats vort_inc_stats[INCR_TYPES][NUM_INCR];	// Struct to hold the running stats for the vorticity increments
 	struct field_stats vel_stats[INCR_TYPES];					// Struct to hold the running stats for the velocity field
 	struct field_stats vort_stats[INCR_TYPES];				    // Struct to hold the running stats for the vorticity field

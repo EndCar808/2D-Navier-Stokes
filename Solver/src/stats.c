@@ -505,6 +505,18 @@ void InitializeStats(void) {
 		stats_data->vort_mixed_str_func[r] = 0.0;
 	}
 	#endif
+
+
+	#if defined(__MIXED_VORT_STR_FUNC)
+	stats_data->vort_mixed_str_func = (double* )fftw_malloc(sizeof(double) * (N_max_incr));
+	if (stats_data->vort_mixed_str_func == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Mixed Vorticity Structure Functions");
+		exit(1);
+	}
+	for (int r = 0; r < N_max_incr; ++r) {
+		stats_data->vort_mixed_str_func[r] = 0.0;
+	}
+	#endif
 }
 /**
  * Frees memory and GSL objects allocated to perform the stats computations.

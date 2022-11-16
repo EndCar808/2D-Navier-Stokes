@@ -359,50 +359,54 @@ if __name__ == '__main__':
     gs  = GridSpec(2, 2, hspace = 0.3) 
     r = np.arange(1, np.minimum(sys_vars.Nx, sys_vars.Ny) / 2 + 1)
     L = np.minimum(sys_vars.Nx, sys_vars.Ny) / 2
-
+    powers = [0.1, 0.5, 1.0, 1.5, 2.0, 2.5]
     ax1 = fig.add_subplot(gs[0, 0])
     for i in range(post_data.vel_long_str_func.shape[0]):
-        ax1.plot(r / L, np.absolute(post_data.vel_long_str_func[i, :]))
-    ax1.set_xlabel(r"$r / L$")
+        # ax1.plot(r / L, np.absolute(post_data.vel_long_str_func[i, :]))
+        ax1.plot(np.log2(r), np.log2(np.absolute(post_data.vel_long_str_func[i, :])))
+    ax1.set_xlabel(r"$r$")
     ax1.set_ylabel(r"$|S^p(r)|$")
-    ax1.set_xscale('log')
-    ax1.set_yscale('log')
+    # ax1.set_xscale('log')
+    # ax1.set_yscale('log')
     ax1.grid(color = 'k', linewidth = .5, linestyle = ':')
     ax1.set_title(r"Longitudinal Structure Functions")
-    ax1.legend([r"$p = {}$".format(p) for p in range(1, post_data.vel_long_str_func.shape[0] + 1)])
+    ax1.legend([r"$p = {}$".format(p) for p in powers]) ## range(1, post_data.vel_long_str_func.shape[0] + 1)
 
     ax2 = fig.add_subplot(gs[0, 1])
     for i in range(post_data.vel_trans_str_func.shape[0]):
-        ax2.plot(r / L, np.absolute(post_data.vel_trans_str_func[i, :]))
-    ax2.set_xlabel(r"$r / L$")
+        # ax2.plot(r, np.absolute(post_data.vel_trans_str_func[i, :]))
+        ax2.plot(np.log2(r), np.log2(np.absolute(post_data.vel_trans_str_func[i, :])))
+    ax2.set_xlabel(r"$r$")
     ax2.set_ylabel(r"$|S^p(r)|$")
-    ax2.set_xscale('log')
-    ax2.set_yscale('log')
+    # ax2.set_xscale('log')
+    # ax2.set_yscale('log')
     ax2.grid(color = 'k', linewidth = .5, linestyle = ':')
     ax2.set_title(r"Transverse Structure Functions")
-    ax2.legend([r"$p = {}$".format(p) for p in range(1, post_data.vel_trans_str_func.shape[0] + 1)])
+    ax2.legend([r"$p = {}$".format(p) for p in powers]) ## range(1, post_data.vel_trans_str_func.shape[0] + 1)
 
     ax3 = fig.add_subplot(gs[1, 0])
     for i in range(post_data.vel_long_str_func_abs.shape[0]):
-        ax3.plot(r / L, np.absolute(post_data.vel_long_str_func_abs[i, :]))
-    ax3.set_xlabel(r"$r / L$")
+        # ax3.plot(r, np.absolute(post_data.vel_long_str_func_abs[i, :]))
+        ax3.plot(np.log2(r), np.log2(np.absolute(post_data.vel_long_str_func_abs[i, :])))
+    ax3.set_xlabel(r"$r$")
     ax3.set_ylabel(r"$|S^p_{abs}(r)|$")
-    ax3.set_xscale('log')
-    ax3.set_yscale('log')
+    # ax3.set_xscale('log')
+    # ax3.set_yscale('log')
     ax3.grid(color = 'k', linewidth = .5, linestyle = ':')
     ax3.set_title(r"Absolute Longitudinal Structure Functions")
-    ax3.legend([r"$p = {}$".format(p) for p in range(1, post_data.vel_long_str_func_abs.shape[0] + 1)])
+    ax3.legend([r"$p = {}$".format(p) for p in powers]) ## range(1, post_data.vel_long_str_func_abs.shape[0] + 1)
 
     ax4 = fig.add_subplot(gs[1, 1])
     for i in range(post_data.vel_trans_str_func_abs.shape[0]):
-        ax4.plot(r / L, np.absolute(post_data.vel_trans_str_func_abs[i, :]))
-    ax4.set_xlabel(r"$r / L$")
+        # ax4.plot(r, np.absolute(post_data.vel_trans_str_func_abs[i, :]))
+        ax4.plot(np.log2(r), np.log2(np.absolute(post_data.vel_trans_str_func_abs[i, :])))
+    ax4.set_xlabel(r"$r$")
     ax4.set_ylabel(r"$|S^p_{abs}(r)|$")
-    ax4.set_xscale('log')
-    ax4.set_yscale('log')
+    # ax4.set_xscale('log')
+    # ax4.set_yscale('log')
     ax4.grid(color = 'k', linewidth = .5, linestyle = ':')
     ax4.set_title(r"Absolute Transverse Structure Functions")
-    ax4.legend([r"$p = {}$".format(p) for p in range(1, post_data.vel_trans_str_func_abs.shape[0] + 1)])
+    ax4.legend([r"$p = {}$".format(p) for p in powers]) ## range(1, post_data.vel_trans_str_func_abs.shape[0] + 1)
 
     plt.suptitle(r"Veloocity Structure Functions")
     
@@ -417,53 +421,277 @@ if __name__ == '__main__':
     fig = plt.figure(figsize = (16, 8))
     gs  = GridSpec(2, 2, hspace = 0.3) 
     r = np.arange(1, np.minimum(sys_vars.Nx, sys_vars.Ny) / 2 + 1)
-    L = np.minimum(sys_vars.Nx, sys_vars.Ny) / 2
-
+    # L = np.minimum(sys_vars.Nx, sys_vars.Ny) / 2
+    powers = [0.1, 0.5, 1.0, 1.5, 2.0, 2.5]
     ax1 = fig.add_subplot(gs[0, 0])
     for i in range(post_data.vort_long_str_func.shape[0]):
-        ax1.plot(r / L, np.absolute(post_data.vort_long_str_func[i, :]))
-    ax1.set_xlabel(r"$r / L$")
+        # ax1.plot(r / , np.absolute(post_data.vort_long_str_func[i, :]))
+        ax1.plot(np.log2(r), np.log2(np.absolute(post_data.vort_long_str_func[i, :])))
+    ax1.set_xlabel(r"$r$")
     ax1.set_ylabel(r"$|S^p(r)|$")
-    ax1.set_xscale('log')
-    ax1.set_yscale('log')
+    # ax1.set_xscale('log')
+    # ax1.set_yscale('log')
     ax1.grid(color = 'k', linewidth = .5, linestyle = ':')
     ax1.set_title(r"Longitudinal Structure Functions")
-    ax1.legend([r"$p = {}$".format(p) for p in range(1, post_data.vort_long_str_func.shape[0] + 1)])
+    ax1.legend([r"$p = {}$".format(p) for p in powers]) ## range(1, post_data.vort_long_str_func.shape[0] + 1)
 
     ax2 = fig.add_subplot(gs[0, 1])
     for i in range(post_data.vort_trans_str_func.shape[0]):
-        ax2.plot(r / L, np.absolute(post_data.vort_trans_str_func[i, :]))
-    ax2.set_xlabel(r"$r / L$")
+        # ax2.plot(r / L, np.absolute(post_data.vort_trans_str_func[i, :]))
+        ax2.plot(np.log2(r) , np.log2(np.absolute(post_data.vort_trans_str_func[i, :])))
+    ax2.set_xlabel(r"$r$")
     ax2.set_ylabel(r"$|S^p(r)|$")
-    ax2.set_xscale('log')
-    ax2.set_yscale('log')
+    # ax2.set_xscale('log')
+    # ax2.set_yscale('log')
     ax2.grid(color = 'k', linewidth = .5, linestyle = ':')
     ax2.set_title(r"Transverse Structure Functions")
-    ax2.legend([r"$p = {}$".format(p) for p in range(1, post_data.vort_trans_str_func.shape[0] + 1)])
+    ax2.legend([r"$p = {}$".format(p) for p in powers]) ## range(1, post_data.vort_trans_str_func.shape[0] + 1)
 
     ax3 = fig.add_subplot(gs[1, 0])
     for i in range(post_data.vort_long_str_func_abs.shape[0]):
-        ax3.plot(r / L, np.absolute(post_data.vort_long_str_func_abs[i, :]))
-    ax3.set_xlabel(r"$r / L$")
+        # ax3.plot(r / L, np.absolute(post_data.vort_long_str_func_abs[i, :]))
+        ax3.plot(np.log2(r) , np.log2(np.absolute(post_data.vort_long_str_func_abs[i, :])))
+    ax3.set_xlabel(r"$r$")
     ax3.set_ylabel(r"$|S^p_{abs}(r)|$")
-    ax3.set_xscale('log')
-    ax3.set_yscale('log')
+    # ax3.set_xscale('log')
+    # ax3.set_yscale('log')
     ax3.grid(color = 'k', linewidth = .5, linestyle = ':')
     ax3.set_title(r"Absolute Longitudinal Structure Functions")
-    ax3.legend([r"$p = {}$".format(p) for p in range(1, post_data.vort_long_str_func_abs.shape[0] + 1)])
+    ax3.legend([r"$p = {}$".format(p) for p in powers]) ## range(1, post_data.vort_long_str_func_abs.shape[0] + 1)
 
     ax4 = fig.add_subplot(gs[1, 1])
     for i in range(post_data.vort_trans_str_func_abs.shape[0]):
-        ax4.plot(r / L, np.absolute(post_data.vort_trans_str_func_abs[i, :]))
-    ax4.set_xlabel(r"$r / L$")
+        # ax4.plot(r / L, np.absolute(post_data.vort_trans_str_func_abs[i, :]))
+        ax4.plot(np.log2(r) , np.log2(np.absolute(post_data.vort_trans_str_func_abs[i, :])))
+    ax4.set_xlabel(r"$r$")
     ax4.set_ylabel(r"$|S^p_{abs}(r)|$")
-    ax4.set_xscale('log')
-    ax4.set_yscale('log')
+    # ax4.set_xscale('log')
+    # ax4.set_yscale('log')
     ax4.grid(color = 'k', linewidth = .5, linestyle = ':')
     ax4.set_title(r"Absolute Transverse Structure Functions")
-    ax4.legend([r"$p = {}$".format(p) for p in range(1, post_data.vort_trans_str_func_abs.shape[0] + 1)])
+    ax4.legend([r"$p = {}$".format(p) for p in powers]) ## range(1, post_data.vort_trans_str_func_abs.shape[0] + 1)
 
     plt.suptitle(r"Vorticity Structure Functions")
     
     plt.savefig(cmdargs.out_dir_stats + "/Vorticity_Structure_Functions.png")
+    plt.close()
+
+
+
+    # -----------------------------------------------------------------------------
+    # # --------  Plot Vorticity Structure Functions w/ Fit & Anomonlous Exponent
+    # -----------------------------------------------------------------------------
+    indx_shift = 1
+
+    inert_lim_low  = 9
+    inert_lim_high = 30
+
+    mark_style = ['o','s','^','x','D','p']
+
+    zeta_p_long = []
+    powers = np.array([0.1, 0.5, 1.0, 1.5, 2.0, 2.5])
+    r      = np.arange(1, np.minimum(sys_vars.Nx, sys_vars.Ny) / 2 + 1)
+
+    x0     = 0.85 
+    y0     = 0.85
+    width  = 0.3
+    height = 0.2
+    fig   = plt.figure(figsize = (16, 8))
+    gs    = GridSpec(2, 2, hspace = 0.3)
+
+    ax1   = fig.add_subplot(gs[0, 0])
+    ## Add insert
+    # ax1in = fig.add_axes([x0, y0, width, height])
+    for i in range(post_data.vort_long_str_func_abs.shape[0]):
+        ## Plot strucure function
+        p, = ax1.plot(np.log2(r), np.log2(post_data.vort_long_str_func_abs[i, :]), label = "$p = {}$".format(powers[i])) # marker = mark_style[i], markerfacecolor = 'None', markersize = 5.0, markevery = 2**4
+        ## Find polynomial fit and plot
+        pfit_info  = np.polyfit(np.log2(r[inert_lim_low:inert_lim_high]), np.log2(post_data.vort_long_str_func_abs[i, inert_lim_low:inert_lim_high]), 1)
+        pfit_slope = pfit_info[0]
+        pfit_c     = pfit_info[1]
+        zeta_p_long.append(np.absolute(pfit_slope))
+        # print(i + indx_shift, (i +indx_shift) / 3, pfit_slope, pfit_c)
+        ax1.plot(np.log2(r[inert_lim_low:inert_lim_high]), np.log2(r[inert_lim_low:inert_lim_high])*pfit_slope + pfit_c + 0.25, '--', color = p.get_color())
+        ## Compute the local derivative and plot in insert
+        # d_str_func  = np.diff(np.log2(post_data.vort_long_str_func_abs[i, :]))
+        # d_r         = np.diff(np.log2(r))
+        # local_deriv = d_str_func / d_r
+        # local_deriv = np.concatenate((local_deriv, [(np.log2(post_data.vort_long_str_func_abs[-1, i]) - np.log2(post_data.vort_long_str_func_abs[-2, i])) / (np.log2(r[-1] - np.log2(r[-2])))]))
+        # ax1in.plot(np.log2(r), local_deriv, color = p.get_color(), marker = mark_style[i], markerfacecolor = 'None', markersize = 5.0, markevery = 2)
+        # ax1in.set_ylabel(r"$\zeta_p$", labelpad = -40)
+        # ax1in.set_xlabel(r"$log2(r)$", labelpad = -30)
+    ax1.set_xlabel(r"$log_2 (r)$")
+    ax1.set_ylabel(r"$log_2 (S_{2p}(r))$")
+    ax1.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+    # ax1in.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+    ax1.set_title(r"Longitudinal Structure Function")
+    ax1.legend()
+
+    # # --------  Plot Anomalous Exponent
+    ax2   = fig.add_subplot(gs[1, 0])
+    p = powers
+    zeta_2_theory = 1.0
+    if hasattr(sys_vars, "alpha_high_k"):
+        if sys_vars.alpha_high_k == 0.1:
+            zeta_2_theory = 0.63
+        elif sys_vars.alpha_high_k == 0.2:
+            zeta_2_theory = 1.10
+        else:
+            zeta_2_theory = 1.0
+    ns_zeta_p = [0.72, 1, 1.273, 1.534, 1.786]
+    ax2.plot(p, np.array(zeta_p_long[:]) / zeta_2_theory, marker = mark_style[0], markerfacecolor = 'None', markersize = 5.0, markevery = 1, label = "DNS")
+    ax2.plot(p, p / zeta_2_theory, 'b--', label = "K41")
+    ax2.set_xlabel(r"$p$")
+    ax2.set_ylabel(r"$\zeta_{2p} / \zeta_{2, th}$")
+    # ax2.set_xlim(0, 2)
+    ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+    ax2.set_title(r"Longitudinal $\zeta_{2p}$")
+    ax2.legend()
+
+    zeta_p_trans = []
+    ax3   = fig.add_subplot(gs[0, 1])
+    ## Add insert
+    # ax3in = fig.add_axes([x0, y0, width, height])
+    for i in range(post_data.vort_trans_str_func_abs.shape[0]):
+        ## Plot strucure function
+        p, = ax3.plot(np.log2(r), np.log2(post_data.vort_trans_str_func_abs[i, :]), label = "$p = {}$".format(powers[i])) # marker = mark_style[i], markerfacecolor = 'None', markersize = 5.0, markevery = 2**4
+        ## Find polynomial fit and plot
+        pfit_info  = np.polyfit(np.log2(r[inert_lim_low:inert_lim_high]), np.log2(post_data.vort_trans_str_func_abs[i, inert_lim_low:inert_lim_high]), 1)
+        pfit_slope = pfit_info[0]
+        pfit_c     = pfit_info[1]
+        zeta_p_trans.append(np.absolute(pfit_slope))
+        # print(i + indx_shift, (i +indx_shift) / 3, pfit_slope, pfit_c)
+        ax3.plot(np.log2(r[inert_lim_low:inert_lim_high]), np.log2(r[inert_lim_low:inert_lim_high])*pfit_slope + pfit_c + 0.25, '--', color = p.get_color())
+        ## Compute the local derivative and plot in insert
+        # d_str_func  = np.diff(np.log2(post_data.vort_trans_str_func_abs[i, :]))
+        # d_r         = np.diff(np.log2(r))
+        # local_deriv = d_str_func / d_r
+        # local_deriv = np.concatenate((local_deriv, [(np.log2(post_data.vort_trans_str_func_abs[-1, i]) - np.log2(post_data.vort_trans_str_func_abs[-2, i])) / (np.log2(r[-1] - np.log2(r[-2])))]))
+        # ax3in.plot(np.log2(r), local_deriv, color = p.get_color(), marker = mark_style[i], markerfacecolor = 'None', markersize = 5.0, markevery = 2)
+        # ax3in.set_ylabel(r"$\zeta_p$", labelpad = -40)
+        # ax3in.set_xlabel(r"$log2(r)$", labelpad = -30)
+    ax3.set_xlabel(r"$log_2 (r)$")
+    ax3.set_ylabel(r"$log_2 (S_{2p}(r))$")
+    ax3.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+    # ax3in.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+    ax3.set_title(r"Transverse $\zeta_{2p}$")
+    ax3.legend()
+
+    # # --------  Plot Anomalous Exponent
+    ax4   = fig.add_subplot(gs[1, 1])
+    p = powers
+    zeta_2_theory = 1.0
+    if hasattr(sys_vars, "alpha_high_k"):
+        if sys_vars.alpha_high_k == 0.1:
+            zeta_2_theory = 0.63
+        elif sys_vars.alpha_high_k == 0.2:
+            zeta_2_theory = 1.10
+        else:
+            zeta_2_theory = 1.0
+    ns_zeta_p = [0.72, 1, 1.273, 1.534, 1.786]
+    ax4.plot(p, np.array(zeta_p_trans[:]) / zeta_2_theory, marker = mark_style[0], markerfacecolor = 'None', markersize = 5.0, markevery = 1, label = "DNS")
+    ax4.plot(p, p / zeta_2_theory, 'b--', label = "K41")
+    ax4.set_xlabel(r"$p$")
+    ax4.set_ylabel(r"$\zeta_{2p} / \zeta_{2, th}$")
+    # ax4.set_xlim(0, 2)
+    ax4.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+    ax4.legend()
+    ax4.set_title(r"Transverse $\zeta_{2p}$")
+
+    plt.savefig(cmdargs.out_dir_stats + "Vorticity_Structure_Func_Anonalous_Exponent_Zeta_p.png", bbox_inches='tight')
+    plt.close()
+
+
+
+
+
+
+    # ---------------------------------------------
+    # # --------  Plot Radial Vorticity Structure Functions
+    # ---------------------------------------------
+    fig = plt.figure(figsize = (16, 8))
+    gs  = GridSpec(1, 2, hspace = 0.3) 
+    max_incr = np.minimum(sys_vars.Nx, sys_vars.Ny) / 2
+    r = np.arange(1, np.round(np.sqrt(max_incr**2 + max_incr**2)) + 1)
+
+    powers = [0.1, 0.5, 1.0, 1.5, 2.0, 2.5]
+
+    ax1 = fig.add_subplot(gs[0, 0])
+    for i in range(post_data.vort_rad_str_func.shape[0]):
+        ax1.plot(np.log2(r), np.log2(np.absolute(post_data.vort_rad_str_func[i, :])))
+    ax1.set_xlabel(r"$r$")
+    ax1.set_ylabel(r"$|S^p(r)|$")
+    ax1.grid(color = 'k', linewidth = .5, linestyle = ':')
+    ax1.set_title(r"Radial Structure Functions")
+    ax1.legend([r"$p = {}$".format(p) for p in powers])
+
+    ax2 = fig.add_subplot(gs[0, 1])
+    for i in range(post_data.vort_rad_str_func_abs.shape[0]):
+        ax2.plot(np.log2(r), np.log2(np.absolute(post_data.vort_rad_str_func_abs[i, :])))
+    ax2.set_xlabel(r"$r$")
+    ax2.set_ylabel(r"$|S_abs^p(r)|$")
+    ax2.grid(color = 'k', linewidth = .5, linestyle = ':')
+    ax2.set_title(r"Absolute Radial Structure Functions")
+    ax2.legend([r"$p = {}$".format(p) for p in powers])
+    
+    plt.suptitle(r"Radial Vorticity Structure Functions")
+
+    plt.savefig(cmdargs.out_dir_stats + "/Radial_Vorticity_Structure_Functions.png")
+    plt.close()
+
+
+    inert_lim_low  = 9
+    inert_lim_high = 30
+
+    mark_style = ['o','s','^','x','D','p']
+
+    zeta_p_long = []
+    powers = np.array([0.1, 0.5, 1.0, 1.5, 2.0, 2.5])
+    max_incr = np.minimum(sys_vars.Nx, sys_vars.Ny) / 2
+    r      = np.arange(1, np.round(np.sqrt(max_incr**2 + max_incr**2)) + 1)
+
+    x0     = 0.85 
+    y0     = 0.85
+    width  = 0.3
+    height = 0.2
+    fig   = plt.figure(figsize = (16, 8))
+    gs    = GridSpec(1, 2)
+
+    ax1   = fig.add_subplot(gs[0, 0])
+    for i in range(post_data.vort_rad_str_func_abs.shape[0]):
+        ## Plot strucure function
+        p, = ax1.plot(np.log2(r), np.log2(post_data.vort_rad_str_func_abs[i, :]), label = "$p = {}$".format(powers[i])) # marker = mark_style[i], markerfacecolor = 'None', markersize = 5.0, markevery = 2**4
+        ## Find polynomial fit and plot
+        pfit_info  = np.polyfit(np.log2(r[inert_lim_low:inert_lim_high]), np.log2(post_data.vort_rad_str_func_abs[i, inert_lim_low:inert_lim_high]), 1)
+        pfit_slope = pfit_info[0]
+        pfit_c     = pfit_info[1]
+        zeta_p_long.append(np.absolute(pfit_slope))
+        ax1.plot(np.log2(r[inert_lim_low:inert_lim_high]), np.log2(r[inert_lim_low:inert_lim_high])*pfit_slope + pfit_c + 0.25, '--', color = p.get_color())
+    ax1.set_xlabel(r"$log_2 (r)$")
+    ax1.set_ylabel(r"$log_2 (S_{2p}(r))$")
+    ax1.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+    ax1.set_title(r"Absolute Radial Vorticity Structure Function")
+    ax1.legend()
+
+    ax4   = fig.add_subplot(gs[0, 1])
+    p = powers
+    zeta_2_theory = 1.0
+    if hasattr(sys_vars, "alpha_high_k"):
+        if sys_vars.alpha_high_k == 0.1:
+            zeta_2_theory = 0.63
+        elif sys_vars.alpha_high_k == 0.2:
+            zeta_2_theory = 1.10
+        else:
+            zeta_2_theory = 1.0
+    ns_zeta_p = [0.72, 1, 1.273, 1.534, 1.786]
+    ax4.plot(p, np.array(zeta_p_trans[:]) / zeta_2_theory, marker = mark_style[0], markerfacecolor = 'None', markersize = 5.0, markevery = 1, label = "DNS")
+    ax4.plot(p, p / zeta_2_theory, 'b--', label = "K41")
+    ax4.set_xlabel(r"$p$")
+    ax4.set_ylabel(r"$\zeta_{2p} / \zeta_{2, th}$")
+    # ax4.set_xlim(0, 2)
+    ax4.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+    ax4.legend()
+    ax4.set_title(r"Radial $\zeta_{2p}$")
+
+    plt.savefig(cmdargs.out_dir_stats + "Radial_Vorticity_Structure_Func_Anonalous_Exponent_Zeta_p.png", bbox_inches='tight')
     plt.close()

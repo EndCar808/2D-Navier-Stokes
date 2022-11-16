@@ -291,8 +291,6 @@ void Precompute(void) {
 			exit(1);
 		}
 		#endif
-
-		printf("DIM: %d\tGrad_u: %lf\tGrad_w: %lf\n", i, std_u, std_w);
 	}
 
 	// --------------------------------
@@ -324,9 +322,6 @@ void Precompute(void) {
 				exit(1);
 			}
 			#endif
-
-			printf("Type: %d\tInc: %d\tu: %lf\tw: %lf\n", i, j, std_u_incr, std_w_incr);
-
 		}
 	}
 

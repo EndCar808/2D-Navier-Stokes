@@ -38,16 +38,18 @@ void RealSpaceStats(int s) {
 	#if defined(__VEL_INC_STATS) || defined(__VORT_INC_STATS) || defined(__VORT_STR_FUNC_STATS) || defined(__VORT_RADIAL_STR_FUNC_STATS) || defined(__VEL_STR_FUNC_STATS) || defined(__VEL_GRAD_STATS) || defined(__VORT_GRAD_STATS)  || defined(__MIXED_VEL_STR_FUNC) || defined(__MIXED_VORT_STR_FUNC)
 	int r;
 	const long int Nx_Fourier = sys_vars->N[1] / 2 + 1;
-	double vel_long_increment, vel_trans_increment, mixed_vel_increment;;
+	double vel_long_increment, vel_trans_increment, mixed_vel_increment;
 	double vel_long_increment_abs, vel_trans_increment_abs;
-	double vort_long_increment, vort_trans_increment, mixed_vort_increment;;
+	double vort_long_increment, vort_trans_increment, mixed_vort_increment;
 	double vort_long_increment_abs, vort_trans_increment_abs;
 	int N_max_incr = (int) (GSL_MIN(Ny, Nx) / 2);
 	double norm_fac = 1.0 / (Ny * Nx);
 	double radial_pow[STR_FUNC_MAX_POW] = {0.1, 0.5, 1.0, 1.5, 2.0, 2.5};
+	double delta_x = 2.0 * M_PI / Nx;
+	double delta_y = 2.0 * M_PI / Ny;
 	#endif
 	#if defined(__VORT_RADIAL_STR_FUNC_STATS)
-	int indx_r;
+	int tmp_r, indx_r;
 	double vort_rad_increment, vort_rad_increment_abs;
 	#endif
 
@@ -177,28 +179,28 @@ void RealSpaceStats(int s) {
 			///-------------------------------- Gradient Fields
 			#if defined(__VEL_GRAD_STATS)
 			// Update Velocity gradient histograms
-			gsl_status = gsl_histogram_increment(stats_data->u_grad_hist[0], proc_data->grad_u[SYS_DIM * indx + 0] * (norm_fac));
+			gsl_status = gsl_histogram_increment(stats_data->u_grad_hist[0], proc_data->grad_u[SYS_DIM * indx + 0] * delta_x);
 			if (gsl_status != 0) {
-				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "X Velocity Gradient", s, gsl_status, proc_data->grad_u[SYS_DIM * indx + 0] * (norm_fac));
+				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "X Velocity Gradient", s, gsl_status, proc_data->grad_u[SYS_DIM * indx + 0] * delta_x);
 				exit(1);
 			}
-			gsl_status = gsl_histogram_increment(stats_data->u_grad_hist[1], proc_data->grad_u[SYS_DIM * indx + 1] * (norm_fac));
+			gsl_status = gsl_histogram_increment(stats_data->u_grad_hist[1], proc_data->grad_u[SYS_DIM * indx + 1] * delta_y);
 			if (gsl_status != 0) {
-				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Y Velocity Gradient", s, gsl_status, proc_data->grad_u[SYS_DIM * indx + 1] * (norm_fac));
+				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Y Velocity Gradient", s, gsl_status, proc_data->grad_u[SYS_DIM * indx + 1] * delta_y);
 				exit(1);
 			}
 			#endif
 
 			#if defined(__VORT_GRAD_STATS)
 			// Update Vorticity gradient histograms
-			gsl_status = gsl_histogram_increment(stats_data->w_grad_hist[0], proc_data->grad_w[SYS_DIM * indx + 0] * (norm_fac));
+			gsl_status = gsl_histogram_increment(stats_data->w_grad_hist[0], proc_data->grad_w[SYS_DIM * indx + 0] * delta_x);
 			if (gsl_status != 0) {
-				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "X Vorticity Gradient", s, gsl_status, proc_data->grad_w[SYS_DIM * indx + 0] * (norm_fac));
+				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "X Vorticity Gradient", s, gsl_status, proc_data->grad_w[SYS_DIM * indx + 0] * delta_x);
 				exit(1);
 			}
-			gsl_status = gsl_histogram_increment(stats_data->w_grad_hist[1], proc_data->grad_w[SYS_DIM * indx + 1] * (norm_fac));
+			gsl_status = gsl_histogram_increment(stats_data->w_grad_hist[1], proc_data->grad_w[SYS_DIM * indx + 1] * delta_y);
 			if (gsl_status != 0) {
-				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Y Vorticity Gradient", s, gsl_status, proc_data->grad_w[SYS_DIM * indx + 1] * (norm_fac));
+				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Y Vorticity Gradient", s, gsl_status, proc_data->grad_w[SYS_DIM * indx + 1] * delta_y);
 				exit(1);
 			}
 			#endif
@@ -253,7 +255,7 @@ void RealSpaceStats(int s) {
 	// --------------------------------
 	// Compute Structure Functions
 	// --------------------------------
-	#if defined(__VEL_STR_FUNC_STATS) || defined(__VORT_STR_FUNC_STATS)
+	#if defined(__VEL_STR_FUNC_STATS) || defined(__VORT_STR_FUNC_STATS) || defined(__VORT_RAD_STR_FUNC_STATS)
 	for (int p = 1; p <= STR_FUNC_MAX_POW; ++p) {
 		for (int r_inc = 1; r_inc <= N_max_incr; ++r_inc) {
 			
@@ -265,7 +267,7 @@ void RealSpaceStats(int s) {
 			vel_trans_increment_abs = 0.0;
 			#endif
 			// Initialize vorticit increments
-			#if defined(__VEL_STR_FUNC_STATS)
+			#if defined(__VORT_STR_FUNC_STATS)
 			vort_long_increment      = 0.0;
 			vort_trans_increment     = 0.0;
 			vort_long_increment_abs  = 0.0;
@@ -280,11 +282,9 @@ void RealSpaceStats(int s) {
 				#endif	
 			}
 
+			// Loop over space and average 
 			for (int i = 0; i < Ny; ++i) {
-				tmp = i * Nx;
-				for (int j = 0; j < Nx; ++j) {
-					indx = tmp + j;
-				
+				for (int j = 0; j < Nx; ++j) {				
 					// Get velocity increments
 					#if defined(__VEL_STR_FUNC_STATS)
 					vel_long_increment      += pow(run_data->u[SYS_DIM * (i * Nx + (j + r_inc) % Nx) + 0] - run_data->u[SYS_DIM * (i * Nx + j) + 0], 2 * radial_pow[p - 1]);
@@ -336,20 +336,18 @@ void RealSpaceStats(int s) {
 		#if defined(__VORT_RADIAL_STR_FUNC_STATS)
 		// Compute the radial structure functions
 		for (int r_x = 0; r_x < N_max_incr; ++r_x) {
-			tmp = r_x * N_max_incr;
+			tmp_r = r_x * N_max_incr;
 			for (int r_y = 0; r_y < N_max_incr; ++r_y) {
-				indx_r = tmp + r_y;
+				indx_r = tmp_r + r_y;
 
 				vort_rad_increment     = 0.0;
 				vort_rad_increment_abs = 0.0;
 
+				// Loop over space and average 
 				for (int i = 0; i < Ny; ++i) {
-					tmp = i * Nx;
 					for (int j = 0; j < Nx; ++j) {
-						indx = tmp + j;
-
-						vort_rad_increment      += pow(run_data->w[((i + r_y) % Ny) * Nx + ((j + r_x) % Nx)] - run_data->w[i * Nx + j], 2 * radial_pow[p - 1]);
-						vort_rad_increment_abs  += pow(fabs(run_data->w[((i + r_y) % Ny) * Nx + ((j + r_x) % Nx)] - run_data->w[i * Nx + j]), 2 * radial_pow[p - 1]);
+						vort_rad_increment     += pow(run_data->w[((i + r_y) % Ny) * Nx + ((j + r_x) % Nx)] - run_data->w[i * Nx + j], 2 * radial_pow[p - 1]);
+						vort_rad_increment_abs += pow(fabs(run_data->w[((i + r_y) % Ny) * Nx + ((j + r_x) % Nx)] - run_data->w[i * Nx + j]), 2 * radial_pow[p - 1]);
 					}
 				}
 
@@ -477,7 +475,7 @@ void AllocateStatsMemory(const long int* N) {
 	// --------------------------------	
 	//  Initialize Str Func Stats
 	// --------------------------------
-	#if defined(__VEL_STR_FUNC_STATS) || defined(__VORT_STR_FUNC_STATS)	
+	#if defined(__VEL_STR_FUNC_STATS) || defined(__VORT_STR_FUNC_STATS)	|| defined(__VORT_RAD_STR_FUNC_STATS)
 	// Allocate memory for each structure function for each of the increment directions
 	for (int p = 1; p <= STR_FUNC_MAX_POW; ++p) {
 		for (int i = 0; i < INCR_TYPES; ++i) {
@@ -527,12 +525,12 @@ void AllocateStatsMemory(const long int* N) {
 		#if defined(__VORT_RADIAL_STR_FUNC_STATS)
 		stats_data->w_radial_str_func[p - 1] = (double* )fftw_malloc(sizeof(double) * (N_max_incr) * (N_max_incr));
 		if (stats_data->w_radial_str_func[p - 1] == NULL) {
-			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Radial Structure Functions");
+			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Radial Vorticity Structure Functions");
 			exit(1);
 		}
 		stats_data->w_radial_str_func_abs[p - 1] = (double* )fftw_malloc(sizeof(double) * (N_max_incr) * (N_max_incr));
 		if (stats_data->w_radial_str_func_abs[p - 1] == NULL) {
-			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Radial Structure Functions Absolute");
+			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Radial Vorticity Structure Functions Absolute");
 			exit(1);
 		}
 

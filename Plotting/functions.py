@@ -379,8 +379,10 @@ def sim_data(input_dir, method = "default"):
                     data.hyper_pow = float(line.split()[-1])
 
                 ## Parse drag
-                if line.startswith('Ekman Alpha'):
-                    data.alpha = float(line.split()[-1])
+                if line.startswith('Ekman Alpha Low k'):
+                    data.alpha_low_k = float(line.split()[-1])
+                if line.startswith('Ekman Alpha High k'):
+                    data.alpha_high_k = float(line.split()[-1])
                 ## Parse Ekman Flag
                 if line.startswith('Ekman Drag'):
                     if str(line.split()[-1]) == "YES":
@@ -928,7 +930,7 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                     self.vel_trans_incr_counts = f["TransverseVelIncrements_BinCounts"][:, :]
                 if 'VelocityIncrementStats' in list(f.keys()):
                     self.vel_incr_stat = f["VelocityIncrementStats"][:, :, :]
-                ## Get the Vorticit increment histogram data
+                ## Get the Vorticity increment histogram data
                 if 'LongitudinalVortIncrements_BinRanges' in list(f.keys()):
                     self.vort_long_incr_ranges = f["LongitudinalVortIncrements_BinRanges"][:, :]
                 if 'LongitudinalVortIncrements_BinCounts' in list(f.keys()):
@@ -948,7 +950,7 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                     self.vel_trans_str_func = f["VelocityTransverseStructureFunctions"][:, :]
                 if 'AbsoluteVelocityTransverseStructureFunctions' in list(f.keys()):
                     self.vel_trans_str_func_abs = f["AbsoluteVelocityTransverseStructureFunctions"][:, :]
-                ## Get the Velocity structure function data
+                ## Get the Vorticity structure function data
                 if 'VorticityLongitudinalStructureFunctions' in list(f.keys()):
                     self.vort_long_str_func = f["VorticityLongitudinalStructureFunctions"][:, :]
                 if 'AbsoluteVorticityLongitudinalStructureFunctions' in list(f.keys()):
@@ -957,6 +959,10 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                     self.vort_trans_str_func = f["VorticityTransverseStructureFunctions"][:, :]
                 if 'AbsoluteVorticityTransverseStructureFunctions' in list(f.keys()):
                     self.vort_trans_str_func_abs = f["AbsoluteVorticityTransverseStructureFunctions"][:, :]
+                if 'RadialVorticityStructureFunctions' in list(f.keys()):
+                    self.vort_rad_str_func = f["RadialVorticityStructureFunctions"][:, :]
+                if 'AbsoluteRadialVorticityStructureFunctions' in list(f.keys()):
+                    self.vort_rad_str_func_abs = f["AbsoluteRadialVorticityStructureFunctions"][:, :]
                 ## Mixed structure funcitons
                 if 'MixedVelocityStructureFunctions' in list(f.keys()):
                     self.mxd_vel_str_func = f["MixedVelocityStructureFunctions"][:]

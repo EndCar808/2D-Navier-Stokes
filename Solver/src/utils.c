@@ -570,25 +570,22 @@ void PrintSimulationDetails(int argc, char** argv, double sim_time) {
 	// System Params
 	fprintf(sim_file, "Viscosity: %g\n", sys_vars->NU);
 	fprintf(sim_file, "Re: %g\n", 1.0 / sys_vars->NU);
-	#if defined(__EKMN_DRAG)
-	fprintf(sim_file, "Ekman Drag: YES\n");
-	if (sys_vars->EKMN_ALPHA_LOW_K == sys_vars->EKMN_ALPHA_HIGH_K) {
-		fprintf(sim_file, "Ekman Alpha: %g\n", sys_vars->EKMN_ALPHA_LOW_K);		
-	}
-	else {
+	if (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG) {
+		fprintf(sim_file, "Ekman Drag: YES\n");
 		fprintf(sim_file, "Ekman Alpha Low k: %g\n", sys_vars->EKMN_ALPHA_LOW_K);
 		fprintf(sim_file, "Ekman Alpha High k: %g\n", sys_vars->EKMN_ALPHA_HIGH_K);
+		fprintf(sim_file, "Ekman Power: %1.1lf\n", sys_vars->EKMN_DRAG_POW);
 	}
-	fprintf(sim_file, "Ekman Power: %1.1lf\n", EKMN_POW);
-	#else
-	fprintf(sim_file, "Ekman Drag: NO\n");
-	#endif
-	#if defined(__HYPER)
-	fprintf(sim_file, "Hyperviscosity: YES\n");
-	fprintf(sim_file, "Hyperviscosity Power: %1.1lf\n", VIS_POW);	
-	#else
-	fprintf(sim_file, "Hyperviscosity: NO\n");
-	#endif
+	else {
+		fprintf(sim_file, "Ekman Drag: NO\n");
+	}
+	if (sys_vars->HYPER_VISC_FLAG == HYPER_VISC) {
+		fprintf(sim_file, "Hyperviscosity: YES\n");
+		fprintf(sim_file, "Hyperviscosity Power: %1.1lf\n", sys_vars->HYPER_VISC_POW);
+	}
+	else {
+		fprintf(sim_file, "Hyperviscosity: NO\n");
+	}
 	#if defined(__PHASE_ONLY)
 	fprintf(sim_file, "Phase Only Amplitude Slope: %lf\n", sys_vars->PO_SLOPE);
 	#endif
