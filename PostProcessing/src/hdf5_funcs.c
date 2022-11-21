@@ -248,6 +248,8 @@ void ReadInData(int snap_indx) {
 	const long int Nx 		  = sys_vars->N[1];
 	const long int Nx_Fourier = sys_vars->N[1] / 2 + 1;
 	char group_string[64];
+	char phase_group_string[64];
+	char amp_group_string[64];
 	hid_t dset;
 	herr_t status;
 
@@ -273,7 +275,10 @@ void ReadInData(int snap_indx) {
 	// --------------------------------
 	// Open Fourier space vorticity
 	sprintf(group_string, "/Iter_%05d/w_hat", snap_indx);	
+	sprintf(phase_group_string, "/Iter_%05d/phi_k", snap_indx);	
+	sprintf(amp_group_string, "/Iter_%05d/a_k", snap_indx);	
 	if (H5Lexists(file_info->input_file_handle, group_string, H5P_DEFAULT) > 0 ) {
+		// Read in the Fourier space vorticity
 		dset = H5Dopen (file_info->input_file_handle, group_string, H5P_DEFAULT);
 		if (dset < 0 ) {
 			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to open dataset for ["CYAN"%s"RESET"] at Snap = ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", "w_hat", snap_indx);
@@ -285,8 +290,40 @@ void ReadInData(int snap_indx) {
 			exit(1);	
 		}
 	}
+	else if ((H5Lexists(file_info->input_file_handle, phase_group_string, H5P_DEFAULT) > 0) && (H5Lexists(file_info->input_file_handle, amp_group_string, H5P_DEFAULT) > 0)){
+		// Read in the Fourier phases
+		dset = H5Dopen (file_info->input_file_handle, phase_group_string, H5P_DEFAULT);
+		if (dset < 0 ) {
+			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to open dataset for ["CYAN"%s"RESET"] at Snap = ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", "phi_k", snap_indx);
+			exit(1);
+		} 
+		if(H5LTread_dataset(file_info->input_file_handle, phase_group_string, H5T_NATIVE_DOUBLE, run_data->phi_k) < 0) {
+			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to read in data for ["CYAN"%s"RESET"] at Snap = ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", "phi_k", snap_indx);
+			exit(1);	
+		}
+
+		// Read in the Fourier amplitudes
+		dset = H5Dopen (file_info->input_file_handle, amp_group_string, H5P_DEFAULT);
+		if (dset < 0 ) {
+			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to open dataset for ["CYAN"%s"RESET"] at Snap = ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", "a_k", snap_indx);
+			exit(1);		
+		} 
+		if(H5LTread_dataset(file_info->input_file_handle, amp_group_string, H5T_NATIVE_DOUBLE, run_data->a_k) < 0) {
+			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to read in data for ["CYAN"%s"RESET"] at Snap = ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", "a_k", snap_indx);
+			exit(1);	
+		}
+
+		// Create the Fourier space vorticity from the amplitudes and phases
+		for (int i = 0; i < Ny; ++i) {
+			tmp = i * Nx_Fourier;
+			for (int j = 0; j < Nx_Fourier; ++j) {
+				indx = tmp + j;
+				run_data->w_hat[indx] = run_data->a_k[indx] * cexp(I * run_data->phi_k[indx]);
+			}
+		}
+	}
 	else {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to find ["CYAN"%s"RESET"] in file ["CYAN"%s"RESET"]. Please check input file\n-->> Exiting...\n", "w_hat", file_info->input_file_name);
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to find ["CYAN"%s"RESET"] or ["CYAN"%s"RESET"] and ["CYAN"%s"RESET"] in file ["CYAN"%s"RESET"]. Please check input file\n-->> Exiting...\n", "w_hat", "a_k", "phi_k", file_info->input_file_name);
 		exit(1);
 	}
 

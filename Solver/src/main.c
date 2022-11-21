@@ -44,6 +44,11 @@ int main(int argc, char** argv) {
 	file_info = &HDF_file_info;
 	stats_data = &statistics_data;
 
+	// Set up pointer to CML arguements
+	sys_vars->argc = argc;
+	sys_vars->argv = argv;
+
+
 	//////////////////////////////////
 	// Initialize MPI section
 	MPI_Init(&argc, &argv);

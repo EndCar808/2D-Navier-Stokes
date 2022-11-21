@@ -59,7 +59,7 @@
 #define __VORT_INC_STATS
 #define __VEL_STR_FUNC_STATS
 #define __VORT_STR_FUNC_STATS
-#define __VORT_RADIAL_STR_FUNC_STATS
+// #define __VORT_RADIAL_STR_FUNC_STATS
 #define __MIXED_VEL_STR_FUNC_STATS
 #define __MIXED_VORT_STR_FUNC_STATS
 #define __VEL_GRAD_STATS
@@ -196,6 +196,8 @@ typedef struct runtime_data_struct {
 	double* tmp_u_x;		 	// Temporary array to read & write in velocities
 	double* w;				 	// Real space vorticity
 	double* u;				 	// Real space velocity
+	double* phi_k; 				// Fourier phases
+	double* a_k; 				// Fourier Amplitudes
 	double* time;			 	// Array to hold the simulation times
 	fftw_complex* psi_hat;   	// Fourier stream function
 	fftw_complex* forcing;	 	// Array to hold the forcing for the current timestep

@@ -52,7 +52,7 @@
 // Choose which integrator to use
 // #define __RK4
 // #define __RK4CN
-#define __AB4CN
+// #define __AB4CN
 // #define __RK5CN
 // #define __DPRK5CN
 // Choose which filter to use
@@ -72,9 +72,13 @@
 // For allow transient dynamics
 #define TRANSIENT_ITERS 1       // Indicator for transient iterations
 #define TRANSIENT_FRAC 0.2      // Fraction of total iteration = transient iterations
-// Allow for Phase Only mode
+// Allow for Phase Only mode via direct integration
 #if defined(__PHASE_ONLY)		// Turn on phase only mode if called for at compilation
 #define PHASE_ONLY
+#endif
+// Allow for Phase Only mode by fixing the amplitudes
+#if defined(__PHASE_ONLY_FXD_AMP) // Turn on phase only mode if called for at compilation
+#define PHASE_ONLY_FXD_AMP
 #endif
 // Testing the solver will be decided at compilation
 #if defined(__TESTING)
@@ -110,6 +114,10 @@
 // #define __ENRG_SPECT
 // #define __ENST_FLUX_SPECT
 // #define __ENRG_FLUX_SPECT
+// #define __ENST_SPECT_T_AVG
+// #define __ENRG_SPECT_T_AVG
+// #define __ENST_FLUX_SPECT_T_AVG
+// #define __ENRG_FLUX_SPECT_T_AVG
 // Choose whether to compute the phase sync data
 // #define __PHASE_SYNC
 // If Stats is called for at compile time
@@ -128,6 +136,7 @@
 #define __TIME
 #define __COLLOC_PTS
 #define __WAVELIST
+#define __AMPS_T_AVG
 // ---------------------------------------------------------------------
 //  Global Variables
 // ---------------------------------------------------------------------
@@ -238,6 +247,8 @@ typedef struct system_vars_struct {
 	double EKMN_DRAG_POW;				// The power of the hyper drag to be used
 	int num_sys_msr_counts; 			// Counter for counting the number of system measures is called for averaging
 	double PO_SLOPE;					// Slope of the amplitudes for the phase only model
+	int argc;							// The number of CML arguements used to call the sovler
+	char** argv;						// The array of CML arguements used to call the solver
 } system_vars_struct;
 
 // Runtime data struct
@@ -253,7 +264,7 @@ typedef struct runtime_data_struct {
 	double* w;				  			// Real space vorticity
 	double* u;				  			// Real space velocity
 	double* a_k;			  			// Fourier vorticity amplitudes
-	double* tmp_a_k;		  			// Array to hold the amplitudes of the fourier vorticity before marching forward in time
+	double* a_k_t_avg;					// Time averaged Fourier vorticity amplitudes
 	double* phi_k;			  			// Fourier vorticity phases
 	double* tot_div;		  			// Array to hold the total diverence
 	double* tot_forc;		  			// Array to hold the total forcing input into the sytem over the simulation
@@ -271,11 +282,15 @@ typedef struct runtime_data_struct {
 	double* enrg_diss_sbst;   			// Array to hold the energy dissipation for a subset of modes
 	double* enrg_spect;		  			// Array to hold the energy spectrum of the system 
 	double* enst_spect;       			// Array to hold the enstrophy spectrum of the system
+	double* enrg_spect_t_avg;			// Array to hold the time averaged energy spectrum of the system 
+	double* enst_spect_t_avg;  			// Array to hold the time averaged enstrophy spectrum of the system
 	double* d_enst_dt_spect;  			// Array to hold the spectrum of the time derivative of the enstorphy
 	double* enst_flux_spect;  			// Array to hold the spectrum of enstrophy flux of the system
+	double* enst_flux_spect_t_avg;		// Array to hold the time averaged spectrum of enstrophy flux of the system
 	double* enst_diss_spect;  			// Array to hold the spectrum enstrophy dissipation of the system
 	double* d_enrg_dt_spect;  			// Array to hold the spectrum of the time derivative  of energy
 	double* enrg_flux_spect;  			// Array to hold the energy flux spectrum
+	double* enrg_flux_spect_t_avg;		// Array to hold the time averaged energy flux spectrum
 	double* enrg_diss_spect;  			// Array to hold the energy dissiaption spectrum
 	double* mean_flow_x;				// Array to hold the mean flow of the velocity field in the x direction
 	double* mean_flow_y;				// Array to hold the mean flow of the velocity field in the x direction

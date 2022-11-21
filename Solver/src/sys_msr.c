@@ -43,11 +43,11 @@ void ComputeSystemMeasurables(double t, int iter, Int_data_struct* Int_data) {
 	fftw_complex u_z, v_z, div_u_z;
 	double norm_fac  = 0.5 / pow(Ny * Nx, 2.0);
     double const_fac = 4.0 * pow(M_PI, 2.0);
-    #if defined(__ENRG_FLUX_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__ENRG_FLUX) || defined(__ENST_FLUX)
+    #if defined(__ENRG_FLUX) || defined(__ENST_FLUX)
     double lwr_sbst_lim_sqr = pow(LWR_SBST_LIM, 2.0);
     double upr_sbst_lim_sqr = pow(UPR_SBST_LIM, 2.0);
     #endif
-    #if defined(__ENRG_FLUX) || defined(__ENST_FLUX) || defined(__ENRG_FLUX_SPECT) || defined(__ENST_FLUX_SPECT) 
+    #if defined(__ENRG_FLUX) || defined(__ENST_FLUX) || defined(__ENRG_FLUX_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__ENRG_FLUX_T_AVG) || defined(__ENST_FLUX_T_AVG) || defined(__ENRG_FLUX_SPECT_T_AVG) || defined(__ENST_FLUX_SPECT_T_AVG) 
     double tmp_deriv, tmp_diss;
     #endif
     #if defined(__PHASE_SYNC)
@@ -96,7 +96,7 @@ void ComputeSystemMeasurables(double t, int iter, Int_data_struct* Int_data) {
 		#endif
 	}
 	#endif 
-	#if defined(__ENRG_SPECT) || defined(__ENST_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__ENRG_FLUX_SPECT)
+	#if defined(__ENRG_SPECT) || defined(__ENST_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__ENRG_FLUX_SPECT) || defined(__PHASE_SYNC)
 	// Initialize spectra
 	for (int i = 0; i < sys_vars->n_spect; ++i) {
 		#if defined(__ENRG_SPECT)
@@ -122,9 +122,23 @@ void ComputeSystemMeasurables(double t, int iter, Int_data_struct* Int_data) {
 	}
 	#endif
 
-	#if defined(__ENRG_FLUX) || defined(__ENST_FLUX) || defined(__ENRG_FLUX_SPECT) || defined(__ENST_FLUX_SPECT)
+	//------------------- Compute the Fourier vorticity if in Phase Only Mode
+	#if defined(PHASE_ONLY)
+	for (int i = 0; i < local_Ny; ++i) {
+		tmp = i * Nx_Fourier;
+		for (int j = 0; j < Nx_Fourier; ++j) {
+			indx = tmp + j;
+
+			// Get the Fourier vorticity from the Fourier phases and amplitudes
+			run_data->w_hat[indx] = run_data->a_k[indx] * cexp(I * run_data->phi_k[indx]);			
+		}
+	}
+	#endif
+
+	//------------------- Compute the nonlinear term (without forcing) for the flux 
+	#if defined(__ENRG_FLUX) || defined(__ENST_FLUX) || defined(__ENRG_FLUX_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__NONLIN) || defined(__ENRG_FLUX_SPECT_T_AVG) || defined(__ENST_FLUX_SPECT_T_AVG)
 	// Compute the nonlinear term & subtract the forcing as the flux computation should ignore focring
-	NonlinearRHSBatch(run_data->w_hat, Int_data->RK1, Int_data->nonlin, Int_data->nabla_psi);
+	NonlinearRHSBatch(run_data->w_hat, Int_data->RK1, Int_data->nabla_psi);
 	if (sys_vars->local_forcing_proc) {
 		for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
 			Int_data->RK1[run_data->forcing_indx[i]] -= run_data->forcing[i];
@@ -132,7 +146,7 @@ void ComputeSystemMeasurables(double t, int iter, Int_data_struct* Int_data) {
 	}
 	#endif
 
-	// Compute the total forcing input
+	//------------------- Compute the total forcing input
 	if (sys_vars->local_forcing_proc) {
 		for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
 			run_data->tot_forc[iter] += cabs(run_data->forcing[i] * run_data->w_hat[run_data->forcing_indx[i]]);
@@ -148,12 +162,17 @@ void ComputeSystemMeasurables(double t, int iter, Int_data_struct* Int_data) {
 		for (int j = 0; j < Nx_Fourier; ++j) {
 			indx = tmp + j;
 
-			#if defined(__NONLIN)
 			// Record the nonlinear term
+			#if defined(__NONLIN)
 			run_data->nonlinterm[indx] = Int_data->RK1[indx];
 			#endif
 
-			#if defined(__ENRG_SPECT) || defined(__ENST_SPECT) || defined(__ENRG_FLUX_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__PHASE_SYNC)
+			// Record the time averaged amplitudes
+			#if defined(__AMPS_T_AVG)
+			run_data->a_k_t_avg[indx] += cabs(run_data->w_hat[indx]);
+			#endif
+
+			#if defined(__ENRG_SPECT) || defined(__ENST_SPECT) || defined(__ENRG_FLUX_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__PHASE_SYNC) || defined(__ENRG_SPECT_T_AVG) || defined(__ENST_SPECT_T_AVG) || defined(__ENRG_FLUX_SPECT_T_AVG) || defined(__ENST_FLUX_SPECT_T_AVG)
 			// Get spectrum index -> spectrum is computed by summing over the energy contained in concentric annuli in wavenumber space
 			spec_indx = (int) round( sqrt( (double)(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]) ) );
 			#endif
@@ -266,9 +285,9 @@ void ComputeSystemMeasurables(double t, int iter, Int_data_struct* Int_data) {
 			#endif
 
 			///--------------------------------- Spectra
-			#if defined(__ENRG_SPECT) || defined(__ENST_SPECT) || defined(__ENRG_FLUX_SPECT) || defined(__ENST_FLUX_SPECT)
+			#if defined(__ENRG_SPECT) || defined(__ENST_SPECT) || defined(__ENRG_FLUX_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__ENRG_SPECT_T_AVG) || defined(__ENST_SPECT_T_AVG) || defined(__ENRG_FLUX_SPECT_T_AVG) || defined(__ENST_FLUX_SPECT_T_AVG)
 			if ((run_data->k[0][i] != 0) || (run_data->k[1][j] != 0)) {
-				#if defined(__ENRG_FLUX_SPECT) || defined(__ENST_FLUX_SPECT)
+				#if defined(__ENRG_FLUX_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__ENRG_FLUX_SPECT_T_AVG) || defined(__ENST_FLUX_SPECT_T_AVG)
 				// Get the derivative and dissipation terms
 				tmp_deriv = creal(run_data->w_hat[indx] * conj(Int_data->RK1[indx]) + conj(run_data->w_hat[indx]) * Int_data->RK1[indx]) * const_fac * norm_fac;
 				tmp_diss  = pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * const_fac * norm_fac;
@@ -282,6 +301,12 @@ void ComputeSystemMeasurables(double t, int iter, Int_data_struct* Int_data) {
 					#if defined(__ENST_SPECT)
 					run_data->enst_spect[spec_indx] += const_fac * norm_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
 					#endif
+					#if defined(__ENRG_SPECT_T_AVG)
+					run_data->enrg_spect_t_avg[spec_indx] += const_fac * norm_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * (1.0 / k_sqr);
+					#endif
+					#if defined(__ENST_SPECT_T_AVG)
+					run_data->enst_spect_t_avg[spec_indx] += const_fac * norm_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+					#endif
 					#if defined(__ENST_FLUX_SPECT)
 					run_data->d_enst_dt_spect[spec_indx] += tmp_deriv + tmp_diss;
 					run_data->enst_diss_spect[spec_indx] += tmp_diss;
@@ -292,6 +317,12 @@ void ComputeSystemMeasurables(double t, int iter, Int_data_struct* Int_data) {
 					run_data->enrg_diss_spect[spec_indx] += tmp_diss / k_sqr;
 					run_data->enrg_flux_spect[spec_indx] += tmp_deriv / k_sqr;
 					#endif
+					#if defined(__ENST_FLUX_SPECT_T_AVG)
+					run_data->enst_flux_spect_t_avg[spec_indx] += tmp_deriv;
+					#endif
+					#if defined(__ENRG_FLUX_SPECT_T_AVG)
+					run_data->enrg_flux_spect_t_avg[spec_indx] += tmp_deriv / k_sqr;
+					#endif
 				}
 				else {
 					// Update the spectra sums for the current mode
@@ -300,6 +331,12 @@ void ComputeSystemMeasurables(double t, int iter, Int_data_struct* Int_data) {
 					#endif
 					#if defined(__ENST_SPECT)
 					run_data->enst_spect[spec_indx] += 2.0 * const_fac * norm_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+					#endif
+					#if defined(__ENRG_SPECT_T_AVG)
+					run_data->enrg_spect_t_avg[spec_indx] += 2.0 * const_fac * norm_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * (1.0 / k_sqr);
+					#endif
+					#if defined(__ENST_SPECT_T_AVG)
+					run_data->enst_spect_t_avg[spec_indx] += 2.0 * const_fac * norm_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
 					#endif
 					#if defined(__ENST_FLUX_SPECT)
 					run_data->d_enst_dt_spect[spec_indx] += 2.0 * (tmp_deriv + tmp_diss);
@@ -310,6 +347,12 @@ void ComputeSystemMeasurables(double t, int iter, Int_data_struct* Int_data) {
 					run_data->d_enrg_dt_spect[spec_indx] += 2.0 * (tmp_deriv + tmp_diss) / k_sqr;
 					run_data->enrg_diss_spect[spec_indx] += 2.0 * tmp_diss / k_sqr;
 					run_data->enrg_flux_spect[spec_indx] += 2.0 * tmp_deriv / k_sqr;
+					#endif
+					#if defined(__ENST_FLUX_SPECT_T_AVG)
+					run_data->enst_flux_spect_t_avg[spec_indx] += 2.0 * tmp_deriv;
+					#endif
+					#if defined(__ENRG_FLUX_SPECT_T_AVG)
+					run_data->enrg_flux_spect_t_avg[spec_indx] += 2.0 * tmp_deriv / k_sqr;
 					#endif
 				}
 			}
@@ -401,7 +444,7 @@ void InitializeSystemMeasurables(Int_data_struct* Int_data) {
 	int print_steps = sys_vars->num_print_steps;
 
 	// Get the size of the spectrum arrays
-	#if defined(__ENST_SPECT) || defined(__ENRG_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__ENRG_FLUX_SPECT) || defined(__PHASE_SYNC)
+	#if defined(__ENST_SPECT) || defined(__ENRG_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__ENRG_FLUX_SPECT) || defined(__PHASE_SYNC) || defined(__ENST_SPECT_T_AVG) || defined(__ENRG_SPECT_T_AVG) || defined(__ENST_FLUX_SPECT_T_AVG) || defined(__ENRG_FLUX_SPECT_T_AVG)
 	const long int Ny = sys_vars->N[0];
 	const long int Nx = sys_vars->N[1];
 
@@ -508,6 +551,14 @@ void InitializeSystemMeasurables(Int_data_struct* Int_data) {
 		exit(1);
 	}	
 	#endif
+	#if defined(__ENST_SPECT_T_AVG)
+	// Time Averaged Enstrophy Spectrum
+	run_data->enst_spect_t_avg = (double* )fftw_malloc(sizeof(double) * n_spect);
+	if (run_data->enst_spect_t_avg == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Time Averaged Enstrophy Spectrum");
+		exit(1);
+	}	
+	#endif
 
 	// --------------------------------
 	// Allocate Energy Spec Memory
@@ -520,6 +571,15 @@ void InitializeSystemMeasurables(Int_data_struct* Int_data) {
 		exit(1);
 	}	
 	#endif
+	#if defined(__ENRG_SPECT_T_AVG)
+	// Time Averaged Energy Spectrum
+	run_data->enrg_spect_t_avg = (double* )fftw_malloc(sizeof(double) * n_spect);
+	if (run_data->enrg_spect_t_avg == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Time Averaged Energy Spectrum");
+		exit(1);
+	}	
+	#endif
+
 	
 	// --------------------------------
 	// Allocate Enstrophy Flux Memory
@@ -566,9 +626,17 @@ void InitializeSystemMeasurables(Int_data_struct* Int_data) {
 		exit(1);
 	}
 	#endif
+	#if defined(__ENST_FLUX_SPECT_T_AVG)
+	// Enstrophy Spectrum
+	run_data->enst_flux_spect_t_avg = (double* )fftw_malloc(sizeof(double) * n_spect);
+	if (run_data->enst_flux_spect == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Time Averaged Enstrophy Flux Spectrum");
+		exit(1);
+	}
+	#endif
 
 	// --------------------------------
-	// Allocate Energy Spec Memory
+	// Allocate Energy Flux Spec Memory
 	// --------------------------------
 	#if defined(__ENRG_FLUX)
 	// Time derivative of energy 
@@ -612,6 +680,14 @@ void InitializeSystemMeasurables(Int_data_struct* Int_data) {
 		exit(1);
 	}	
 	#endif
+	#if defined(__ENRG_FLUX_SPECT_T_AVG)
+	// Energy Flux Spectrum
+	run_data->enrg_flux_spect_t_avg = (double* )fftw_malloc(sizeof(double) * n_spect);
+	if (run_data->enrg_flux_spect_t_avg == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Time Averaged Energy Flux Spectrum");
+		exit(1);
+	}	
+	#endif
 
 	// Time
 	#if defined(__TIME)
@@ -624,6 +700,23 @@ void InitializeSystemMeasurables(Int_data_struct* Int_data) {
 	}
 	#endif
 
+	// Initialize average arrays
+	#if defined(__ENST_SPECT_T_AVG) || defined(__ENRG_SPECT_T_AVG) || defined(__ENST_FLUX_SPECT_T_AVG) || defined(__ENRG_FLUX_SPECT_T_AVG)
+	for (int i = 0; i < n_spect; ++i) {
+		#if defined(__ENRG_FLUX_SPECT_T_AVG)
+		run_data->enrg_flux_spect_t_avg[i] = 0.0;
+		#endif
+		#if defined(__ENST_FLUX_SPECT_T_AVG)
+		run_data->enst_flux_spect_t_avg[i] = 0.0;
+		#endif
+		#if defined(__ENRG_SPECT_T_AVG)
+		run_data->enrg_spect_t_avg[i] = 0.0;
+		#endif
+		#if defined(__ENST_SPECT_T_AVG)
+		run_data->enst_spect_t_avg[i] = 0.0;
+		#endif
+	}
+	#endif
 
 	// ----------------------------
 	// Get Measurables of the ICs
@@ -1142,8 +1235,21 @@ void EnstrophyFlux(double* d_e_dt, double* enst_flux, double* enst_diss, Int_dat
 		exit(1);
 	}
 
+	//------------------- Compute the Fourier vorticity if in Phase Only Mode
+	#if defined(PHASE_ONLY)
+	for (int i = 0; i < local_Ny; ++i) {
+		tmp = i * Nx_Fourier;
+		for (int j = 0; j < Nx_Fourier; ++j) {
+			indx = tmp + j;
+
+			// Get the Fourier vorticity from the Fourier phases and amplitudes
+			run_data->w_hat[indx] = run_data->a_k[indx] * cexp(I * run_data->phi_k[indx]);			
+		}
+	}
+	#endif
+
 	// Compute the nonlinear term & subtract the forcing as the flux computation should ignore focring
-	NonlinearRHSBatch(run_data->w_hat, dwhat_dt, Int_data->nonlin, Int_data->nabla_psi);
+	NonlinearRHSBatch(run_data->w_hat, dwhat_dt, Int_data->nabla_psi);
 	if (sys_vars->local_forcing_proc) {
 		for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
 			dwhat_dt[run_data->forcing_indx[i]] -= run_data->forcing[i];
@@ -1276,8 +1382,21 @@ void EnergyFlux(double* d_e_dt, double* enrg_flux, double* enrg_diss, Int_data_s
 		exit(1);
 	}
 
+	//------------------- Compute the Fourier vorticity if in Phase Only Mode
+	#if defined(PHASE_ONLY)
+	for (int i = 0; i < local_Ny; ++i) {
+		tmp = i * Nx_Fourier;
+		for (int j = 0; j < Nx_Fourier; ++j) {
+			indx = tmp + j;
+
+			// Get the Fourier vorticity from the Fourier phases and amplitudes
+			run_data->w_hat[indx] = run_data->a_k[indx] * cexp(I * run_data->phi_k[indx]);			
+		}
+	}
+	#endif
+
 	// Compute the nonlinear term & subtract the forcing as the flux computation should ignore focring
-	NonlinearRHSBatch(run_data->w_hat, dwhat_dt, Int_data->nonlin, Int_data->nabla_psi);
+	NonlinearRHSBatch(run_data->w_hat, dwhat_dt, Int_data->nabla_psi);
 	if (sys_vars->local_forcing_proc) {
 		for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
 			dwhat_dt[run_data->forcing_indx[i]] -= run_data->forcing[i];
@@ -1421,8 +1540,21 @@ void EnergyFluxSpectrum(Int_data_struct* Int_data) {
 		exit(1);
 	}
 
+	//------------------- Compute the Fourier vorticity if in Phase Only Mode
+	#if defined(PHASE_ONLY)
+	for (int i = 0; i < local_Ny; ++i) {
+		tmp = i * Nx_Fourier;
+		for (int j = 0; j < Nx_Fourier; ++j) {
+			indx = tmp + j;
+
+			// Get the Fourier vorticity from the Fourier phases and amplitudes
+			run_data->w_hat[indx] = run_data->a_k[indx] * cexp(I * run_data->phi_k[indx]);			
+		}
+	}
+	#endif
+
 	// Compute the nonlinear term & subtract the forcing as the flux computation should ignore focring
-	NonlinearRHSBatch(run_data->w_hat, dwhat_dt, Int_data->nonlin, Int_data->nabla_psi);
+	NonlinearRHSBatch(run_data->w_hat, dwhat_dt, Int_data->nabla_psi);
 	if (sys_vars->local_forcing_proc) {
 		for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
 			dwhat_dt[run_data->forcing_indx[i]] -= run_data->forcing[i];
@@ -1535,8 +1667,21 @@ void EnstrophyFluxSpectrum(Int_data_struct* Int_data) {
 		exit(1);
 	}
 
+	//------------------- Compute the Fourier vorticity if in Phase Only Mode
+	#if defined(PHASE_ONLY)
+	for (int i = 0; i < local_Ny; ++i) {
+		tmp = i * Nx_Fourier;
+		for (int j = 0; j < Nx_Fourier; ++j) {
+			indx = tmp + j;
+
+			// Get the Fourier vorticity from the Fourier phases and amplitudes
+			run_data->w_hat[indx] = run_data->a_k[indx] * cexp(I * run_data->phi_k[indx]);			
+		}
+	}
+	#endif
+
 	// Compute the nonlinear term & subtract the forcing as the flux computation should ignore focring
-	NonlinearRHSBatch(run_data->w_hat, dwhat_dt, Int_data->nonlin, Int_data->nabla_psi);
+	NonlinearRHSBatch(run_data->w_hat, dwhat_dt, Int_data->nabla_psi);
 	if (sys_vars->local_forcing_proc) {
 		for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
 			dwhat_dt[run_data->forcing_indx[i]] -= run_data->forcing[i];

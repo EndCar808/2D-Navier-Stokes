@@ -36,9 +36,11 @@ void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdif
 double DPMax(double a, double b);
 double DPMin(double a, double b);
 #endif
-void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* nonlinear, double* u);
+void NonlinearTermAndForcing(fftw_complex* input_array, fftw_complex* output_array, double* nabla_psi) ;
+void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* u);
 void ApplyDealiasing(fftw_complex* array, int array_dim, const long int* N);
 void ForceConjugacy(fftw_complex* array, const long int* N, const int dim);
+void GetDissipativeTerm(double* diss, double* k_sqr);
 // Initialize the system functions
 void InitializeSpaceVariables(double** x, int** k, const long int* N);
 void InitializeIntegrationVariables(double* t0, double* t, double* dt, double* T, long int* trans_steps);

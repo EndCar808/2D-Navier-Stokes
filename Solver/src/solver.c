@@ -72,8 +72,7 @@ void SpectralSolve(void) {
 	// -------------------------------
 	// FFTW Plans Setup
 	// -------------------------------
-	InitializeFFTWPlans(N);
-
+	InitializeFFTWPlans(N);	
 
 	// -------------------------------
 	// Initialize the System
@@ -115,7 +114,6 @@ void SpectralSolve(void) {
 	// Inialize system measurables
 	InitializeSystemMeasurables(Int_data);
 
-
 	// Create and open the output file - also write initial conditions to file
 	CreateOutputFilesWriteICs(N, dt);
 
@@ -127,6 +125,8 @@ void SpectralSolve(void) {
 	PrintUpdateToTerminal(0, t0, dt, T, 0);
 	#endif	
 	
+
+
 	//////////////////////////////
 	// Begin Integration
 	//////////////////////////////
@@ -277,7 +277,7 @@ void AB4Step(const double dt, const long int* N, const int iters, const ptrdiff_
 	double D_fac;
 	#endif
 	const long int Nx_Fourier = N[1] / 2 + 1;
-	#if defined(PHASE_ONLY)
+	#if defined(PHASE_ONLY_FXD_AMP)
 	double tmp_a_k_norm;
 	#endif
 
@@ -304,8 +304,24 @@ void AB4Step(const double dt, const long int* N, const int iters, const ptrdiff_
 		// -----------------------------------
 		// Compute Nonlinear Term
 		// -----------------------------------
+		// Compute the Fourier vorticity
+		for (int i = 0; i < local_Ny; ++i) {
+			tmp = i * Nx_Fourier;
+			for (int j = 0; j < Nx_Fourier; ++j) {
+				indx = tmp + j;
+
+				#if defined(PHASE_ONLY)
+				// Get the Fourier vorticity from the Fourier phases and amplitudes
+				Int_data->RK_tmp[indx] = run_data->a_k[indx] * cexp(I * run_data->phi_k[indx]);
+				#else
+				// Get the Fourier vorticity
+				Int_data->RK_tmp[indx] = run_data->w_hat[indx];
+				#endif
+			}
+		}
+
 		// Get the nonlinear term for the current step
-		NonlinearRHSBatch(run_data->w_hat, Int_data->AB_tmp, Int_data->nonlin, Int_data->nabla_psi);
+		NonlinearTermAndForcing(Int_data->RK_tmp, Int_data->AB_tmp, Int_data->nabla_psi);
 
 		/////////////////////
 		/// AB Update Step
@@ -316,56 +332,35 @@ void AB4Step(const double dt, const long int* N, const int iters, const ptrdiff_
 				indx = tmp + j;
 
 				if ((run_data->k[0][i] != 0) || (run_data->k[1][j]  != 0)) {
-					#if defined(PHASE_ONLY)
+					#if defined(PHASE_ONLY_FXD_AMP)
 					// Pre-record the amplitudes
 					tmp_a_k_norm = cabs(run_data->w_hat[indx]);
 					#endif
 
-
-					#if defined(__EULER)
+					#if defined(__EULER) && !defined(PHASE_ONLY)
 					// Update the Fourier space vorticity with the RHS
 					run_data->w_hat[indx] = run_data->w_hat[indx] + dt * (AB4_1 * Int_data->AB_tmp[indx]) + dt * (AB4_2 * Int_data->AB_tmp_nonlin[2][indx]) + dt * (AB4_3 * Int_data->AB_tmp_nonlin[1][indx]) + dt * (AB4_4 * Int_data->AB_tmp_nonlin[0][indx]);
-					#elif defined(__NAVIER)
+					#elif defined(__NAVIER) && !defined(PHASE_ONLY)
 					// Compute the pre factors for the RK4CN update step
 					k_sqr = (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 					
-					if((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
-						// Both Hyperviscosity and Ekman drag
-						if (round(sqrt(k_sqr)) <= EKMN_DRAG_K) {
-							// Drag at low wavenumbers
-							D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW) + sys_vars->EKMN_ALPHA_LOW_K * pow(k_sqr, sys_vars->EKMN_DRAG_POW)); 
-						}
-						else {
-							// Drag at high wavenumbers
-							D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW) + sys_vars->EKMN_ALPHA_HIGH_K * pow(k_sqr, sys_vars->EKMN_DRAG_POW)); 					
-						}
-					}
-					else if((sys_vars->HYPER_VISC_FLAG != HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
-						// No hyperviscosity but we have Ekman drag
-						if (round(sqrt(k_sqr)) <= EKMN_DRAG_K) {
-							// Drag at low wavenumbers
-							D_fac = dt * (sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA_LOW_K * pow(k_sqr, sys_vars->EKMN_DRAG_POW));
-						}
-						else {
-							// Drag at high wavenumbers
-							D_fac = dt * (sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA_HIGH_K * pow(k_sqr, sys_vars->EKMN_DRAG_POW));					
-						}
-					}
-					else if((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG != EKMN_DRAG)) {
-						// Hyperviscosity only
-						D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW));
-					}
-					else {
-						// No hyper viscosity or no ekman drag -> just normal viscosity
-						D_fac = dt * (sys_vars->NU * k_sqr);
-					}
+					// Compute the dissipative term
+					GetDissipativeTerm(&D_fac, &k_sqr);
+					D_fac *= dt;
+
 					// Complete the update step
 					run_data->w_hat[indx] = run_data->w_hat[indx] * ((2.0 - D_fac) / (2.0 + D_fac)) + (2.0 * dt / (2.0 + D_fac)) * ((AB4_1 * Int_data->AB_tmp[indx]) + (AB4_2 * Int_data->AB_tmp_nonlin[2][indx]) + (AB4_3 * Int_data->AB_tmp_nonlin[1][indx]) + (AB4_4 * Int_data->AB_tmp_nonlin[0][indx]));
+					#elif defined(PHASE_ONLY)
+					run_data->phi_k[indx] = run_data->phi_k[indx] + dt * (AB4_1 * Int_data->AB_tmp[indx]) + dt * (AB4_2 * Int_data->AB_tmp_nonlin[2][indx]) + dt * (AB4_3 * Int_data->AB_tmp_nonlin[1][indx]) + dt * (AB4_4 * Int_data->AB_tmp_nonlin[0][indx]);
 					#endif
 
-					#if defined(PHASE_ONLY)
+					#if defined(PHASE_ONLY_FXD_AMP)
 					// Reset the amplitudes
-					run_data->w_hat[indx] *= (tmp_a_k_norm / cabs(run_data->w_hat[indx]));
+					if (cabs(run_data->w_hat[indx]) != 0.0)
+						run_data->w_hat[indx] *= (tmp_a_k_norm / cabs(run_data->w_hat[indx]));
+					else {
+						run_data->w_hat[indx] = 0.0 + 0.0 * I;					
+					}
 					#endif
 				}
 				else {
@@ -409,73 +404,111 @@ void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdif
 	double err_sum;
 	double err_denom;
 	#endif
-	#if defined(PHASE_ONLY)
+	#if defined(PHASE_ONLY_FXD_AMP)
 	double tmp_a_k_norm;
 	#endif
 
 	//------------------- Get the forcing
 	ComputeForcing(dt);
+
+	//------------------- Compute the Fourier vorticity
+	for (int i = 0; i < local_Ny; ++i) {
+		tmp = i * Nx_Fourier;
+		for (int j = 0; j < Nx_Fourier; ++j) {
+			indx = tmp + j;
+
+			#if defined(PHASE_ONLY)
+			// Get the Fourier vorticity from the Fourier phases and amplitudes
+			Int_data->RK_tmp[indx] = run_data->a_k[indx] * cexp(I * run_data->phi_k[indx]);
+			#else
+			// Get the Fourier vorticity
+			Int_data->RK_tmp[indx] = run_data->w_hat[indx];
+			#endif
+		}
+	}
+
 	
 	/////////////////////
 	/// RK STAGES
 	/////////////////////
 	// ----------------------- Stage 1
-	NonlinearRHSBatch(run_data->w_hat, Int_data->RK1, Int_data->nonlin, Int_data->nabla_psi);
+	NonlinearTermAndForcing(Int_data->RK_tmp, Int_data->RK1, Int_data->nabla_psi);
 	for (int i = 0; i < local_Ny; ++i) {
 		tmp = i * Nx_Fourier;
 		for (int j = 0; j < Nx_Fourier; ++j) {
 			indx = tmp + j;
 
+
 			// Update temporary input for nonlinear term
+			#if defined(PHASE_ONLY)
+			Int_data->RK_tmp[indx] = run_data->a_k[indx] * cexp(I * (run_data->phi_k[indx] + RK5_A21 * (dt * Int_data->RK1[indx])));
+			#else
 			Int_data->RK_tmp[indx] = run_data->w_hat[indx] + dt * RK5_A21 * Int_data->RK1[indx];
+			#endif
 		}
 	}
 	// ----------------------- Stage 2
-	NonlinearRHSBatch(Int_data->RK_tmp, Int_data->RK2, Int_data->nonlin, Int_data->nabla_psi);
+	NonlinearTermAndForcing(Int_data->RK_tmp, Int_data->RK2, Int_data->nabla_psi);
 	for (int i = 0; i < local_Ny; ++i) {
 		tmp = i * Nx_Fourier;
 		for (int j = 0; j < Nx_Fourier; ++j) {
 			indx = tmp + j;
 
 			// Update temporary input for nonlinear term
+			#if defined(PHASE_ONLY)
+			Int_data->RK_tmp[indx] = run_data->a_k[indx] * cexp(I * (run_data->phi_k[indx] + dt * RK5_A31 * Int_data->RK1[indx] + dt * RK5_A32 * Int_data->RK2[indx]));
+			#else
 			Int_data->RK_tmp[indx] = run_data->w_hat[indx] + dt * RK5_A31 * Int_data->RK1[indx] + dt * RK5_A32 * Int_data->RK2[indx];
+			#endif
 		}
 	}
 	// ----------------------- Stage 3
-	NonlinearRHSBatch(Int_data->RK_tmp, Int_data->RK3, Int_data->nonlin, Int_data->nabla_psi);
+	NonlinearTermAndForcing(Int_data->RK_tmp, Int_data->RK3, Int_data->nabla_psi);
 	for (int i = 0; i < local_Ny; ++i) {
 		tmp = i * Nx_Fourier;
 		for (int j = 0; j < Nx_Fourier; ++j) {
 			indx = tmp + j;
 
 			// Update temporary input for nonlinear term
+			#if defined(PHASE_ONLY)
+			Int_data->RK_tmp[indx] = run_data->a_k[indx] * cexp(I * (run_data->phi_k[indx] + dt * RK5_A41 * Int_data->RK1[indx] + dt * RK5_A42 * Int_data->RK2[indx] + dt * RK5_A43 * Int_data->RK3[indx]));
+			#else
 			Int_data->RK_tmp[indx] = run_data->w_hat[indx] + dt * RK5_A41 * Int_data->RK1[indx] + dt * RK5_A42 * Int_data->RK2[indx] + dt * RK5_A43 * Int_data->RK3[indx];
+			#endif
 		}
 	}
 	// ----------------------- Stage 4
-	NonlinearRHSBatch(Int_data->RK_tmp, Int_data->RK4, Int_data->nonlin, Int_data->nabla_psi);
+	NonlinearTermAndForcing(Int_data->RK_tmp, Int_data->RK4, Int_data->nabla_psi);
 	for (int i = 0; i < local_Ny; ++i) {
 		tmp = i * Nx_Fourier;
 		for (int j = 0; j < Nx_Fourier; ++j) {
 			indx = tmp + j;
 
 			// Update temporary input for nonlinear term
+			#if defined(PHASE_ONLY)
+			Int_data->RK_tmp[indx] = run_data->a_k[indx] * cexp(I * (run_data->phi_k[indx] + dt * RK5_A51 * Int_data->RK1[indx] + dt * RK5_A52 * Int_data->RK2[indx] + dt * RK5_A53 * Int_data->RK3[indx] + dt * RK5_A54 * Int_data->RK4[indx]));
+			#else
 			Int_data->RK_tmp[indx] = run_data->w_hat[indx] + dt * RK5_A51 * Int_data->RK1[indx] + dt * RK5_A52 * Int_data->RK2[indx] + dt * RK5_A53 * Int_data->RK3[indx] + dt * RK5_A54 * Int_data->RK4[indx];
+			#endif
 		}
 	}
 	// ----------------------- Stage 5
-	NonlinearRHSBatch(Int_data->RK_tmp, Int_data->RK5, Int_data->nonlin, Int_data->nabla_psi);
+	NonlinearTermAndForcing(Int_data->RK_tmp, Int_data->RK5, Int_data->nabla_psi);
 	for (int i = 0; i < local_Ny; ++i) {
 		tmp = i * Nx_Fourier;
 		for (int j = 0; j < Nx_Fourier; ++j) {
 			indx = tmp + j;
 
 			// Update temporary input for nonlinear term
+			#if defined(PHASE_ONLY)
+			Int_data->RK_tmp[indx] = run_data->a_k[indx] * cexp(I * (run_data->phi_k[indx] + dt * RK5_A61 * Int_data->RK1[indx] + dt * RK5_A62 * Int_data->RK2[indx] + dt * RK5_A63 * Int_data->RK3[indx] + dt * RK5_A64 * Int_data->RK4[indx] + dt * RK5_A65 * Int_data->RK5[indx]));
+			#else
 			Int_data->RK_tmp[indx] = run_data->w_hat[indx] + dt * RK5_A61 * Int_data->RK1[indx] + dt * RK5_A62 * Int_data->RK2[indx] + dt * RK5_A63 * Int_data->RK3[indx] + dt * RK5_A64 * Int_data->RK4[indx] + dt * RK5_A65 * Int_data->RK5[indx];
+			#endif
 		}
 	}
 	// ----------------------- Stage 6
-	NonlinearRHSBatch(Int_data->RK_tmp, Int_data->RK6, Int_data->nonlin, Int_data->nabla_psi);
+	NonlinearTermAndForcing(Int_data->RK_tmp, Int_data->RK6, Int_data->nabla_psi);
 	#if defined(__DPRK5CN)
 	for (int i = 0; i < local_Ny; ++i) {
 		tmp = i * Nx_Fourier;
@@ -483,11 +516,15 @@ void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdif
 			indx = tmp + j;
 
 			// Update temporary input for nonlinear term
+			#if defined(PHASE_ONLY)
+			Int_data->RK_tmp[indx] = run_data->a_k[indx] * cexp(I * (run_data->phi_k[indx] + dt * RK5_A71 * Int_data->RK1[indx] + dt * RK5_A73 * Int_data->RK3[indx] + dt * RK5_A74 * Int_data->RK4[indx] + dt * RK5_A75 * Int_data->RK5[indx] + dt * RK5_A76 * Int_data->RK6[indx]));
+			#else
 			Int_data->RK_tmp[indx] = run_data->w_hat[indx] + dt * RK5_A71 * Int_data->RK1[indx] + dt * RK5_A73 * Int_data->RK3[indx] + dt * RK5_A74 * Int_data->RK4[indx] + dt * RK5_A75 * Int_data->RK5[indx] + dt * RK5_A76 * Int_data->RK6[indx];
+			#endif
 		}
 	}
 	// ----------------------- Stage 7
-	NonlinearRHSBatch(Int_data->RK_tmp, Int_data->RK7, Int_data->nonlin, Int_data->nabla_psi);
+	NonlinearTermAndForcing(Int_data->RK_tmp, Int_data->RK7, Int_data->nabla_psi);
 	#endif
 
 	/////////////////////
@@ -499,60 +536,46 @@ void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdif
 			indx = tmp + j;
 
 			if ((run_data->k[0][i] != 0) || (run_data->k[1][j]  != 0)) {
-				#if defined(PHASE_ONLY)
+				#if defined(PHASE_ONLY_FXD_AMP)
 				tmp_a_k_norm = cabs(run_data->w_hat[indx]);
 				#endif
 
-				#if defined(__EULER)
+				#if defined(__EULER) && !defined(PHASE_ONLY)
 				// Update the Fourier space vorticity with the RHS
 				run_data->w_hat[indx] = run_data->w_hat[indx] + (dt * (RK5_B1 * Int_data->RK1[indx]) + dt * (RK5_B3 * Int_data->RK3[indx]) + dt * (RK5_B4 * Int_data->RK4[indx]) + dt * (RK5_B5 * Int_data->RK5[indx]) + dt * (RK5_B6 * Int_data->RK6[indx]));
-				#elif defined(__NAVIER)
+				#elif defined(__NAVIER) && !defined(PHASE_ONLY)
 				// Compute the pre factors for the RK4CN update step
 				k_sqr = (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 				
-				if((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
-					// Both Hyperviscosity and Ekman drag
-					if (round(sqrt(k_sqr)) <= EKMN_DRAG_K) {
-						// Drag at low wavenumbers
-						D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW) + sys_vars->EKMN_ALPHA_LOW_K * pow(k_sqr, sys_vars->EKMN_DRAG_POW)); 
-					}
-					else {
-						// Drag at high wavenumbers
-						D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW) + sys_vars->EKMN_ALPHA_HIGH_K * pow(k_sqr, sys_vars->EKMN_DRAG_POW)); 					
-					}
-				}
-				else if((sys_vars->HYPER_VISC_FLAG != HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
-					// No hyperviscosity but we have Ekman drag
-					if (round(sqrt(k_sqr)) <= EKMN_DRAG_K) {
-						// Drag at low wavenumbers
-						D_fac = dt * (sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA_LOW_K * pow(k_sqr, sys_vars->EKMN_DRAG_POW));
-					}
-					else {
-						// Drag at high wavenumbers
-						D_fac = dt * (sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA_HIGH_K * pow(k_sqr, sys_vars->EKMN_DRAG_POW));					
-					}
-				}
-				else if((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG != EKMN_DRAG)) {
-					// Hyperviscosity only
-					D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW));
-				}
-				else {
-					// No hyper viscosity or no ekman drag -> just normal viscosity
-					D_fac = dt * (sys_vars->NU * k_sqr);
-				}
-				
+				// Compute the dissipative term
+				GetDissipativeTerm(&D_fac, &k_sqr);
+				D_fac *= dt; 
+					
 				// Complete the update step
 				run_data->w_hat[indx] = run_data->w_hat[indx] * ((2.0 - D_fac) / (2.0 + D_fac)) + (2.0 * dt / (2.0 + D_fac)) * (RK5_B1 * Int_data->RK1[indx] + RK5_B3 * Int_data->RK3[indx] + RK5_B4 * Int_data->RK4[indx] + RK5_B5 * Int_data->RK5[indx] + RK5_B6 * Int_data->RK6[indx]);
+				#elif defined(PHASE_ONLY)
+				run_data->phi_k[indx] = run_data->phi_k[indx] + (dt * (RK5_B1 * Int_data->RK1[indx]) + dt * (RK5_B3 * Int_data->RK3[indx]) + dt * (RK5_B4 * Int_data->RK4[indx]) + dt * (RK5_B5 * Int_data->RK5[indx]) + dt * (RK5_B6 * Int_data->RK6[indx]));
 				#endif
-				#if defined(PHASE_ONLY)
+
+				#if defined(PHASE_ONLY_FXD_AMP)
 				// Reset the amplitudes
-				run_data->w_hat[indx] *= (tmp_a_k_norm / cabs(run_data->w_hat[indx]));
+				if (cabs(run_data->w_hat[indx]) != 0.0)
+					run_data->w_hat[indx] *= (tmp_a_k_norm / cabs(run_data->w_hat[indx]));
+				else {
+					run_data->w_hat[indx] = 0.0 + 0.0 * I;					
+				}
 				#endif
+				
 				#if defined(__DPRK5CN)
 				if (iters > 1) {
 					// Get the higher order update step
-					dp_ho_step = run_data->w_hat[indx] + dt * (RK5_Bs1 * Int_data->RK1[indx]) + dt * (RK5_Bs3 * Int_data->RK3[indx]) + dt * (RK5_Bs4 * Int_data->RK4[indx]) + dt * (RK5_Bs5 * Int_data->RK5[indx]) + dt * (RK5_Bs6 * Int_data->RK6[indx]) + dt * (RK5_Bs7 * Int_data->RK7[indx]);
 					#if defined(PHASE_ONLY)
+					dp_ho_step = run_data->a_k[indx] * cexp(I * (run_data->phi_k[indx] + dt * (RK5_Bs1 * Int_data->RK1[indx]) + dt * (RK5_Bs3 * Int_data->RK3[indx]) + dt * (RK5_Bs4 * Int_data->RK4[indx]) + dt * (RK5_Bs5 * Int_data->RK5[indx]) + dt * (RK5_Bs6 * Int_data->RK6[indx]) + dt * (RK5_Bs7 * Int_data->RK7[indx])));
+					#else
+					dp_ho_step = run_data->w_hat[indx] + dt * (RK5_Bs1 * Int_data->RK1[indx]) + dt * (RK5_Bs3 * Int_data->RK3[indx]) + dt * (RK5_Bs4 * Int_data->RK4[indx]) + dt * (RK5_Bs5 * Int_data->RK5[indx]) + dt * (RK5_Bs6 * Int_data->RK6[indx]) + dt * (RK5_Bs7 * Int_data->RK7[indx]);
+					#endif
+
+					#if defined(PHASE_ONLY_FXD_AMP)
 					// Reset the amplitudes
 					dp_ho_step *= (tmp_a_k_norm / cabs(run_data->w_hat[indx]))
 					#endif
@@ -566,7 +589,11 @@ void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdif
 				#endif
 			}
 			else {
+				#if defined(PHASE_ONLY)
+				run_data->phi_k[indx] = 0.0;
+				#else
 				run_data->w_hat[indx] = 0.0 + 0.0 * I;
+				#endif
 			}
 		}
 	}
@@ -586,10 +613,18 @@ void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdif
 
 				if ((run_data->k[0][i] != 0) || (run_data->k[1][j]  != 0)) {
 					// Record the vorticity
+					#if defined(PHASE_ONLY)
+					Int_data->w_hat_last[indx] = run_data->phi_k[indx];
+					#else
 					Int_data->w_hat_last[indx] = run_data->w_hat[indx];
+					#endif
 				}
 				else {
+					#if defined(PHASE_ONLY)
+					Int_data->w_hat_last[indx] = 0.0;
+					#else
 					run_data->w_hat_last[indx] = 0.0 + 0.0 * I;
+					#endif
 				}
 			}
 		}
@@ -658,7 +693,7 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Ny, Int_d
 	double k_sqr;
 	double D_fac;
 	const long int Nx_Fourier = N[1] / 2 + 1;
-	#if defined(PHASE_ONLY)
+	#if defined(PHASE_ONLY_FXD_AMP)
 	double tmp_a_k_norm;
 	#endif
 
@@ -666,201 +701,124 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Ny, Int_d
 	ComputeForcing(dt);
 
 
+	//------------------- Compute the Fourier vorticity
+	for (int i = 0; i < local_Ny; ++i) {
+		tmp = i * Nx_Fourier;
+		for (int j = 0; j < Nx_Fourier; ++j) {
+			indx = tmp + j;
+
+			#if defined(PHASE_ONLY)
+			// Get the Fourier vorticity from the Fourier phases and amplitudes
+			Int_data->RK_tmp[indx] = run_data->a_k[indx] * cexp(I * run_data->phi_k[indx]);
+			#else
+			// Get the Fourier vorticity
+			Int_data->RK_tmp[indx] = run_data->w_hat[indx];
+			#endif
+		}
+	}
+
 	/////////////////////
 	/// RK STAGES
 	/////////////////////
 	// ----------------------- Stage 1
-	NonlinearRHSBatch(run_data->w_hat, Int_data->RK1, Int_data->nonlin, Int_data->nabla_psi);
+	NonlinearTermAndForcing(Int_data->RK_tmp, Int_data->RK1, Int_data->nabla_psi);
 	for (int i = 0; i < local_Ny; ++i) {
 		tmp = i * Nx_Fourier;
 		for (int j = 0; j < Nx_Fourier; ++j) {
 			indx = tmp + j;
 
-			// Add linear term to RHS
-			#if defined(__RK4)
+			// Add linear term to RHS if full RK4 is selected -> obviously no dissipative term in Phase Only equation
+			#if defined(__RK4) && !defined(PHASE_ONLY)
 			k_sqr = (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 			
-			if((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
-				// Both Hyperviscosity and Ekman drag
-				if (round(sqrt(k_sqr)) <= EKMN_DRAG_K) {
-					// Drag at low wavenumbers
-					D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW) + sys_vars->EKMN_ALPHA_LOW_K * pow(k_sqr, sys_vars->EKMN_DRAG_POW)); 
-				}
-				else {
-					// Drag at high wavenumbers
-					D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW) + sys_vars->EKMN_ALPHA_HIGH_K * pow(k_sqr, sys_vars->EKMN_DRAG_POW)); 					
-				}
-			}
-			else if((sys_vars->HYPER_VISC_FLAG != HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
-				// No hyperviscosity but we have Ekman drag
-				if (round(sqrt(k_sqr)) <= EKMN_DRAG_K) {
-					// Drag at low wavenumbers
-					D_fac = dt * (sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA_LOW_K * pow(k_sqr, sys_vars->EKMN_DRAG_POW));
-				}
-				else {
-					// Drag at high wavenumbers
-					D_fac = dt * (sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA_HIGH_K * pow(k_sqr, sys_vars->EKMN_DRAG_POW));					
-				}
-			}
-			else if((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG != EKMN_DRAG)) {
-				// Hyperviscosity only
-				D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW));
-			}
-			else {
-				// No hyper viscosity or no ekman drag -> just normal viscosity
-				D_fac = dt * (sys_vars->NU * k_sqr);
-			}
+			// Compute the dissipative term
+			GetDissipativeTerm(&D_fac, &k_sqr);
+			D_fac *= dt; 
 
 			Int_data->RK1[indx] += D_fac * run_data->w_hat[indx];
 			#endif
 
-
 			// Update temporary input for nonlinear term
+			#if defined(PHASE_ONLY)
+			Int_data->RK_tmp[indx] = run_data->a_k[indx] * cexp(I * (run_data->phi_k[indx] + RK4_A21 * (dt * Int_data->RK1[indx])));
+			#else
 			Int_data->RK_tmp[indx] = run_data->w_hat[indx] + RK4_A21 * (dt * Int_data->RK1[indx]);
+			#endif
 		}
 	}
+	// PrintAmps(run_data->a_k, sys_vars->N, "a");
+	// PrintPhases(run_data->phi_k, sys_vars->N, "p");
 	// PrintScalarFourier(Int_data->RK1, N, "RK1");
 	// PrintScalarFourier(Int_data->RK_tmp, N, "wh");
+	
 
 	// ----------------------- Stage 2
-	NonlinearRHSBatch(Int_data->RK_tmp, Int_data->RK2, Int_data->nonlin, Int_data->nabla_psi);
+	NonlinearTermAndForcing(Int_data->RK_tmp, Int_data->RK2, Int_data->nabla_psi);
 	for (int i = 0; i < local_Ny; ++i) {
 		tmp = i * Nx_Fourier;
 		for (int j = 0; j < Nx_Fourier; ++j) {
 			indx = tmp + j;
 
-			// Add linear term to RHS
-			#if defined(__RK4)
+			// Add linear term to RHS if full RK4 is selected -> obviously no dissipative term in Phase Only equation
+			#if defined(__RK4) && !defined(PHASE_ONLY)
 			k_sqr = (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 			
-			if((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
-				// Both Hyperviscosity and Ekman drag
-				if (round(sqrt(k_sqr)) <= EKMN_DRAG_K) {
-					// Drag at low wavenumbers
-					D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW) + sys_vars->EKMN_ALPHA_LOW_K * pow(k_sqr, sys_vars->EKMN_DRAG_POW)); 
-				}
-				else {
-					// Drag at high wavenumbers
-					D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW) + sys_vars->EKMN_ALPHA_HIGH_K * pow(k_sqr, sys_vars->EKMN_DRAG_POW)); 					
-				}
-			}
-			else if((sys_vars->HYPER_VISC_FLAG != HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
-				// No hyperviscosity but we have Ekman drag
-				if (round(sqrt(k_sqr)) <= EKMN_DRAG_K) {
-					// Drag at low wavenumbers
-					D_fac = dt * (sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA_LOW_K * pow(k_sqr, sys_vars->EKMN_DRAG_POW));
-				}
-				else {
-					// Drag at high wavenumbers
-					D_fac = dt * (sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA_HIGH_K * pow(k_sqr, sys_vars->EKMN_DRAG_POW));					
-				}
-			}
-			else if((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG != EKMN_DRAG)) {
-				// Hyperviscosity only
-				D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW));
-			}
-			else {
-				// No hyper viscosity or no ekman drag -> just normal viscosity
-				D_fac = dt * (sys_vars->NU * k_sqr);
-			}
+			// Compute the dissipative term
+			GetDissipativeTerm(&D_fac, &k_sqr);
+			D_fac *= dt; 
 
 			Int_data->RK2[indx] += D_fac * Int_data->RK_tmp[indx];
 			#endif
 
 			// Update temporary input for nonlinear term
+			#if defined(PHASE_ONLY)
+			Int_data->RK_tmp[indx] = run_data->a_k[indx] * cexp(I * (run_data->phi_k[indx] + RK4_A32 * (dt * Int_data->RK2[indx])));
+			#else
 			Int_data->RK_tmp[indx] = run_data->w_hat[indx] + RK4_A32 * (dt * Int_data->RK2[indx]);
+			#endif
 		}
 	}
 
 
 	// ----------------------- Stage 3
-	NonlinearRHSBatch(Int_data->RK_tmp, Int_data->RK3, Int_data->nonlin, Int_data->nabla_psi);
+	NonlinearTermAndForcing(Int_data->RK_tmp, Int_data->RK3, Int_data->nabla_psi);
 	for (int i = 0; i < local_Ny; ++i) {
 		tmp = i * Nx_Fourier;
 		for (int j = 0; j < Nx_Fourier; ++j) {
 			indx = tmp + j;
 
-			// Add linear term to RHS
-			#if defined(__RK4)
+			// Add linear term to RHS if full RK4 is selected -> obviously no dissipative term in Phase Only equation
+			#if defined(__RK4) && !defined(PHASE_ONLY)
 			k_sqr = (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 			
-			if((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
-				// Both Hyperviscosity and Ekman drag
-				if (round(sqrt(k_sqr)) <= EKMN_DRAG_K) {
-					// Drag at low wavenumbers
-					D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW) + sys_vars->EKMN_ALPHA_LOW_K * pow(k_sqr, sys_vars->EKMN_DRAG_POW)); 
-				}
-				else {
-					// Drag at high wavenumbers
-					D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW) + sys_vars->EKMN_ALPHA_HIGH_K * pow(k_sqr, sys_vars->EKMN_DRAG_POW)); 					
-				}
-			}
-			else if((sys_vars->HYPER_VISC_FLAG != HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
-				// No hyperviscosity but we have Ekman drag
-				if (round(sqrt(k_sqr)) <= EKMN_DRAG_K) {
-					// Drag at low wavenumbers
-					D_fac = dt * (sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA_LOW_K * pow(k_sqr, sys_vars->EKMN_DRAG_POW));
-				}
-				else {
-					// Drag at high wavenumbers
-					D_fac = dt * (sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA_HIGH_K * pow(k_sqr, sys_vars->EKMN_DRAG_POW));					
-				}
-			}
-			else if((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG != EKMN_DRAG)) {
-				// Hyperviscosity only
-				D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW));
-			}
-			else {
-				// No hyper viscosity or no ekman drag -> just normal viscosity
-				D_fac = dt * (sys_vars->NU * k_sqr);
-			}
+			// Compute the dissipative term
+			GetDissipativeTerm(&D_fac, &k_sqr);
+			D_fac *= dt; 
 
 			Int_data->RK3[indx] += D_fac * Int_data->RK_tmp[indx];
 			#endif
 
 			// Update temporary input for nonlinear term
+			#if defined(PHASE_ONLY)
+			Int_data->RK_tmp[indx] = run_data->a_k[indx] * cexp(I * (run_data->phi_k[indx] + RK4_A43 * (dt * Int_data->RK4[indx])));
+			#else
+			// Update temporary input for nonlinear term
 			Int_data->RK_tmp[indx] = run_data->w_hat[indx] + RK4_A43 * (dt * Int_data->RK3[indx]);
+			#endif
 		}
 	}
 
 	// ----------------------- Stage 4
-	NonlinearRHSBatch(Int_data->RK_tmp, Int_data->RK4, Int_data->nonlin, Int_data->nabla_psi);
-	#if defined(__RK4)
+	NonlinearTermAndForcing(Int_data->RK_tmp, Int_data->RK4, Int_data->nabla_psi);
+	#if defined(__RK4) && !defined(PHASE_ONLY)
 	for (int i = 0; i < local_Ny; ++i) {
 		tmp = i * Nx_Fourier;
 		for (int j = 0; j < Nx_Fourier; ++j) {
 			indx = tmp + j;
 
-			if((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
-				// Both Hyperviscosity and Ekman drag
-				if (round(sqrt(k_sqr)) <= EKMN_DRAG_K) {
-					// Drag at low wavenumbers
-					D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW) + sys_vars->EKMN_ALPHA_LOW_K * pow(k_sqr, sys_vars->EKMN_DRAG_POW)); 
-				}
-				else {
-					// Drag at high wavenumbers
-					D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW) + sys_vars->EKMN_ALPHA_HIGH_K * pow(k_sqr, sys_vars->EKMN_DRAG_POW)); 					
-				}
-			}
-			else if((sys_vars->HYPER_VISC_FLAG != HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
-				// No hyperviscosity but we have Ekman drag
-				if (round(sqrt(k_sqr)) <= EKMN_DRAG_K) {
-					// Drag at low wavenumbers
-					D_fac = dt * (sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA_LOW_K * pow(k_sqr, sys_vars->EKMN_DRAG_POW));
-				}
-				else {
-					// Drag at high wavenumbers
-					D_fac = dt * (sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA_HIGH_K * pow(k_sqr, sys_vars->EKMN_DRAG_POW));					
-				}
-			}
-			else if((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG != EKMN_DRAG)) {
-				// Hyperviscosity only
-				D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW));
-			}
-			else {
-				// No hyper viscosity or no ekman drag -> just normal viscosity
-				D_fac = dt * (sys_vars->NU * k_sqr);
-			}
+			// Compute the dissipative term
+			GetDissipativeTerm(&D_fac, &k_sqr);
+			D_fac *= dt; 
 
 			Int_data->RK4[indx] += D_fac * Int_data->RK_tmp[indx];
 		}
@@ -876,7 +834,7 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Ny, Int_d
 			indx = tmp + j;
 
 			if ((run_data->k[0][i] != 0) || (run_data->k[1][j]  != 0)) {
-				#if defined(PHASE_ONLY)
+				#if defined(PHASE_ONLY_FXD_AMP)
 				// Pre-record the amplitudes
 				tmp_a_k_norm = cabs(run_data->w_hat[indx]);
 				#endif
@@ -884,54 +842,85 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Ny, Int_d
 				#if defined(__EULER) || (defined(__NAVIER) && defined(__RK4))
 				// Update Fourier vorticity with the RHS
 				run_data->w_hat[indx] = run_data->w_hat[indx] + (dt * (RK4_B1 * Int_data->RK1[indx]) + dt * (RK4_B2 * Int_data->RK2[indx]) + dt * (RK4_B3 * Int_data->RK3[indx]) + dt * (RK4_B4 * Int_data->RK4[indx]));
-				#elif defined(__NAVIER) && (defined(__RK4CN) || defined(__AB4CN))
+				
+				#elif defined(__NAVIER) && (defined(__RK4CN) || defined(__AB4CN)) && !defined(PHASE_ONLY)
 				// Compute the pre factors for the RK4CN update step
 				k_sqr = (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 				
-				if((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
-					// Both Hyperviscosity and Ekman drag
-					if (round(sqrt(k_sqr)) <= EKMN_DRAG_K) {
-						// Drag at low wavenumbers
-						D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW) + sys_vars->EKMN_ALPHA_LOW_K * pow(k_sqr, sys_vars->EKMN_DRAG_POW)); 
-					}
-					else {
-						// Drag at high wavenumbers
-						D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW) + sys_vars->EKMN_ALPHA_HIGH_K * pow(k_sqr, sys_vars->EKMN_DRAG_POW)); 					
-					}
-				}
-				else if((sys_vars->HYPER_VISC_FLAG != HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
-					// No hyperviscosity but we have Ekman drag
-					if (round(sqrt(k_sqr)) <= EKMN_DRAG_K) {
-						// Drag at low wavenumbers
-						D_fac = dt * (sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA_LOW_K * pow(k_sqr, sys_vars->EKMN_DRAG_POW));
-					}
-					else {
-						// Drag at high wavenumbers
-						D_fac = dt * (sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA_HIGH_K * pow(k_sqr, sys_vars->EKMN_DRAG_POW));					
-					}
-				}
-				else if((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG != EKMN_DRAG)) {
-					// Hyperviscosity only
-					D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW));
-				}
-				else {
-					// No hyper viscosity or no ekman drag -> just normal viscosity
-					D_fac = dt * (sys_vars->NU * k_sqr);
-				}
+				// Compute the dissipative term
+				GetDissipativeTerm(&D_fac, &k_sqr);
+				D_fac *= dt; 
+
 				// Update Fourier vorticity
 				run_data->w_hat[indx] = run_data->w_hat[indx] * ((2.0 - D_fac) / (2.0 + D_fac)) + (2.0 * dt / (2.0 + D_fac)) * (RK4_B1 * Int_data->RK1[indx] + RK4_B2 * Int_data->RK2[indx] + RK4_B3 * Int_data->RK3[indx] + RK4_B4 * Int_data->RK4[indx]);
+				#elif defined(PHASE_ONLY)
+				// Update Fourier vorticity
+				run_data->phi_k[indx] = run_data->phi_k[indx] + (dt * (RK4_B1 * Int_data->RK1[indx]) + dt * (RK4_B2 * Int_data->RK2[indx]) + dt * (RK4_B3 * Int_data->RK3[indx]) + dt * (RK4_B4 * Int_data->RK4[indx]));
 				#endif
-				#if defined(PHASE_ONLY)
-				run_data->w_hat[indx] *= (tmp_a_k_norm / cabs(run_data->w_hat[indx]));
+					
+				#if defined(PHASE_ONLY_FXD_AMP)
+				if (cabs(run_data->w_hat[indx]) != 0.0)
+					run_data->w_hat[indx] *= (tmp_a_k_norm / cabs(run_data->w_hat[indx]));
+				else {
+					run_data->w_hat[indx] = 0.0 + 0.0 * I;					
+				}
 				#endif
 			}
 			else {
+				#if defined(PHASE_ONLY)
+				run_data->phi_k[indx] = 0.0;
+				#else
 				run_data->w_hat[indx] = 0.0 + 0.0 * I;
+				#endif
 			}
 		}
 	}
 }
 #endif
+/**
+ * Wrapper function for computing the Nonlinear term with forcing
+ * @param input_array  Input array to the NonlinearRHSBatch function will be the complex Fourier vorticities
+ * @param output_array Output array. Will either be the Nonlinear term with forcing of the Fourier vorticity or the Fourier phases
+ */
+void NonlinearTermAndForcing(fftw_complex* input_array, fftw_complex* output_array, double* nabla_psi) {
+
+	// Initialize variables
+	int tmp, indx;	
+	fftw_complex tmp_output;
+	const ptrdiff_t local_Ny  = sys_vars->local_Ny;
+	const long int Nx_Fourier = sys_vars->N[1] / 2 + 1;
+
+	// ----------------------------------------
+	// Compute the Nonlinear Term with Forcing
+	// ----------------------------------------
+	NonlinearRHSBatch(input_array, output_array, nabla_psi);
+
+    // ----------------------------------------
+    // Get the Output Array
+    // ----------------------------------------
+    for (int i = 0; i < local_Ny; ++i) {
+    	tmp = i * Nx_Fourier;
+    	for (int j = 0; j < Nx_Fourier; ++j) {
+    		indx = tmp + j;
+
+    		// Temporarily record the output of the nonlinear term
+    		tmp_output = output_array[indx];
+
+			#if defined(PHASE_ONLY)
+    		// Get the Phase only RHS
+    		if (run_data->a_k[indx] != 0.0) {
+    			output_array[indx] = cimag(tmp_output * cexp(-I * run_data->phi_k[indx])) / run_data->a_k[indx];
+    		}
+    		else {
+    			output_array[indx] = 0.0;
+    		}
+    		#else
+    		// Get the fully systems Nonlinear term and forcing
+    		output_array[indx] = tmp_output;
+			#endif
+    	}
+    }
+}
 /**
  * Function that performs the evluation of the nonlinear term by transforming back to real space where 
  * multiplication is perform before transforming back to Fourier space. Dealiasing is applied to the result
@@ -940,7 +929,7 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Ny, Int_d
  * @param dw_hat_dt Output array: Contains the result of the dealiased nonlinear term. Also used as an intermediate array to save memory
  * @param u         Array to hold the real space velocities
  */
-void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* nonlinear, double* u) {
+void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* u) {
 
 	// Initialize variables
 	int tmp, indx;
@@ -1036,7 +1025,7 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* non
 		}
 	}
 
- 	// ----------------------------------------
+	// ----------------------------------------
  	// Add Forcing Apply Dealiasing & Conjugacy
  	// ----------------------------------------
  	// Add the forcing
@@ -1052,6 +1041,47 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* non
 
 	// Ensure conjugacy in the ky = 0 modes of the intial condition
     ForceConjugacy(dw_hat_dt, sys_vars->N, 1);
+}
+/**
+ * Wrapper function for computing the dissipative terms in the equation of motion
+ * @param diss  The result of computing the dissipative terms
+ * @param k_sqr The input which is |k|^2
+ */
+void GetDissipativeTerm(double* diss, double* k_sqr) {
+
+	// ----------------------------------------
+ 	// Compute Dissipative Term 
+ 	// ----------------------------------------
+	if((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
+		// Both Hyperviscosity and Ekman drag
+		if (round(sqrt((*k_sqr))) <= EKMN_DRAG_K) {
+			// Drag at low wavenumbers
+			(*diss) = (sys_vars->NU * pow((*k_sqr), sys_vars->HYPER_VISC_POW) + sys_vars->EKMN_ALPHA_LOW_K * pow((*k_sqr), sys_vars->EKMN_DRAG_POW)); 
+		}
+		else {
+			// Drag at high wavenumbers
+			(*diss) = (sys_vars->NU * pow((*k_sqr), sys_vars->HYPER_VISC_POW) + sys_vars->EKMN_ALPHA_HIGH_K * pow((*k_sqr), sys_vars->EKMN_DRAG_POW)); 					
+		}
+	}
+	else if((sys_vars->HYPER_VISC_FLAG != HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
+		// No hyperviscosity but we have Ekman drag
+		if (round(sqrt((*k_sqr))) <= EKMN_DRAG_K) {
+			// Drag at low wavenumbers
+			(*diss) = (sys_vars->NU * (*k_sqr) + sys_vars->EKMN_ALPHA_LOW_K * pow((*k_sqr), sys_vars->EKMN_DRAG_POW));
+		}
+		else {
+			// Drag at high wavenumbers
+			(*diss) = (sys_vars->NU * (*k_sqr) + sys_vars->EKMN_ALPHA_HIGH_K * pow((*k_sqr), sys_vars->EKMN_DRAG_POW));					
+		}
+	}
+	else if((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG != EKMN_DRAG)) {
+		// Hyperviscosity only
+		(*diss) = (sys_vars->NU * pow((*k_sqr), sys_vars->HYPER_VISC_POW));
+	}
+	else {
+		// No hyper viscosity or no ekman drag -> just normal viscosity
+		(*diss) = (sys_vars->NU * (*k_sqr));
+	}
 }
 /**
  * Function to apply the selected dealiasing filter to the input array. Can be Fourier vorticity or velocity
@@ -1918,10 +1948,18 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 					r1 = (double)rand() / (double) RAND_MAX;
 
 					// Fill vorticity
+					#if defined(PHASE_ONLY)
+					run_data->a_k[indx]   = sqrt(enst_k / enrg_k);
+					run_data->phi_k[indx] = r1 * 2.0 * M_PI;
+					#endif
 					w_hat[indx] = sqrt(enst_k / enrg_k) * cexp(r1 * 2.0 * M_PI * I);
 				}
 				else {
 					// Set Vorticity to 0
+					#if defined(PHASE_ONLY)
+					run_data->a_k[indx]   = 0.0;
+					run_data->phi_k[indx] = 0.0;
+					#endif
 					w_hat[indx] = 0.0 + 0.0 * I;
 				}
 
@@ -1947,10 +1985,16 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 
 				// Fill vorticity
 				if ((run_data->k[0][i] != 0) || (run_data->k[1][j] != 0)){
-					w_hat[indx] *= sqrt(RAND_ENST0 / enst_norm) ;
+					#if defined(PHASE_ONLY)
+					run_data->a_k[indx] *= sqrt(RAND_ENST0 / enst_norm);
+					#endif
+					w_hat[indx] *= sqrt(RAND_ENST0 / enst_norm);
 				}
 				else {
 					// Zero mode is always 0 + 0 * I
+					#if defined(PHASE_ONLY)
+					run_data->a_k[indx] = 0.0;
+					#endif
 					w_hat[indx] = 0.0 + 0.0 * I;
 				}			
 			}
@@ -2014,6 +2058,25 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
     ForceConjugacy(w_hat, N, 1);
     ForceConjugacy(u_hat, N, 2);
  	
+
+    // -------------------------------------------------
+    // Get Phase and Amplitudes in Phase Only Mode
+    // -------------------------------------------------
+    #if defined(PHASE_ONLY)
+    for (int i = 0; i < local_Ny; ++i) {
+    	tmp = i * Nx_Fourier;
+    	for (int j = 0; j < Nx_Fourier; ++j) {
+    		indx = tmp + j;
+
+			run_data->a_k[indx]   = cabs(w_hat[indx]);
+			run_data->phi_k[indx] = carg(w_hat[indx]);
+    	}
+    }
+    #endif
+
+    PrintScalarFourier(run_data->w_hat, sys_vars->N, "wh");
+    PrintAmps(run_data->a_k, sys_vars->N, "a");
+    PrintPhases(run_data->phi_k, sys_vars->N, "p");
 
    	// -------------------------------------------------
    	// Get Max of Initial Condition
@@ -2200,6 +2263,19 @@ double GetMaxData(char* dtype) {
 	int indx;
 	fftw_complex I_over_k_sqr;
 
+	//------------------- Compute the Fourier vorticity if in Phase Only Mode
+	#if defined(PHASE_ONLY)
+	for (int i = 0; i < sys_vars->local_Ny; ++i) {
+		tmp = i * Nx_Fourier;
+		for (int j = 0; j < Nx_Fourier; ++j) {
+			indx = tmp + j;
+
+			// Get the Fourier vorticity from the Fourier phases and amplitudes
+			run_data->w_hat[indx] = run_data->a_k[indx] * cexp(I * run_data->phi_k[indx]);			
+		}
+	}
+	#endif
+
 	// -------------------------------
 	// Compute the Data 
 	// -------------------------------
@@ -2344,14 +2420,17 @@ void SystemCheck(double dt, int iters) {
 	// -------------------------------
 	if (w_max >= MAX_VORT_LIM)	{
 		fprintf(stderr, "\n["YELLOW"SOVLER FAILURE"RESET"] --- System has reached maximum Vorticity limt at Iter: ["CYAN"%d"RESET"]\n-->> Exiting!!!n", iters);
+		FinalWriteAndCloseOutputFiles(sys_vars->N, iters, iters);
 		exit(1);
 	}
 	else if (dt <= MIN_STEP_SIZE) {
 		fprintf(stderr, "\n["YELLOW"SOVLER FAILURE"RESET"]--- Timestep has become too small to continue at Iter: ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", iters);
+		FinalWriteAndCloseOutputFiles(sys_vars->N, iters, iters);
 		exit(1);		
 	}
 	else if (iters >= MAX_ITERS) {
 		fprintf(stderr, "\n["YELLOW"SOVLER FAILURE"RESET"]--- The maximum number of iterations has been reached at Iter: ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", iters);
+		FinalWriteAndCloseOutputFiles(sys_vars->N, iters, iters);
 		exit(1);		
 	}
 }
@@ -2405,6 +2484,20 @@ void PrintUpdateToTerminal(int iters, double t, double dt, double T, int save_da
  * @param dt The current timestep
  */
 void GetTimestep(double* dt) {
+
+	//------------------- Compute the Fourier vorticity if in Phase Only Mode
+	#if defined(PHASE_ONLY)
+	int tmp, indx;
+	for (int i = 0; i < sys_vars->local_Ny; ++i) {
+		tmp = i * (sys_vars->N[1] / 2 + 1);
+		for (int j = 0; j < (sys_vars->N[1] / 2 + 1); ++j) {
+			indx = tmp + j;
+
+			// Get the Fourier vorticity from the Fourier phases and amplitudes
+			run_data->w_hat[indx] = run_data->a_k[indx] * cexp(I * run_data->phi_k[indx]);			
+		}
+	}
+	#endif
 
 	// -------------------------------
 	// Compute New Timestep
@@ -2570,7 +2663,6 @@ void TestTaylorGreenVortex(const double t, const long int* N, double* norms) {
 				// Compute the exact solution
 				tg_exact = 2.0 * KAPPA * cos(KAPPA * run_data->x[0][i]) * cos(KAPPA * run_data->x[1][j]) * exp(-2.0 * pow(KAPPA, 2.0) * sys_vars->NU * t);
 			}
-			
 
 			// Get the absolute error
 			abs_err = fabs(run_data->w[indx] * norm_const - tg_exact);
@@ -2713,7 +2805,7 @@ void AllocateMemory(const long int* NBatch, Int_data_struct* Int_data) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Temporary Fourier Space Velocities");
 		exit(1);
 	}
-	#if defined(PHASE_ONLY)
+	#if defined(PHASE_ONLY) || defined(PHASE_ONLY_FXD_AMP)
 	// Allocate array for the Fourier amplitudes
 	run_data->a_k = (double* )fftw_malloc(sizeof(double) * sys_vars->alloc_local_batch);
 	if (run_data->a_k == NULL) {
@@ -2724,12 +2816,6 @@ void AllocateMemory(const long int* NBatch, Int_data_struct* Int_data) {
 	run_data->phi_k = (double* )fftw_malloc(sizeof(double) * sys_vars->alloc_local_batch);
 	if (run_data->phi_k == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Fourier Phases");
-		exit(1);
-	}
-	// Allocate array for the Fourier phases
-	run_data->tmp_a_k = (double* )fftw_malloc(sizeof(double) * sys_vars->alloc_local_batch);
-	if (run_data->tmp_a_k == NULL) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Fourier Tmp Amplitudes");
 		exit(1);
 	}
 	#endif
@@ -2749,8 +2835,13 @@ void AllocateMemory(const long int* NBatch, Int_data_struct* Int_data) {
 		exit(1);
 	}
 	#endif
-	#if defined(__RHS)
-	// Allocate memory for recording the RHS
+	#if defined(__AMPS_T_AVG)
+	// Allocate memory for recording the time averaged amplitudes
+	run_data->a_k_t_avg = (double* )fftw_malloc(sizeof(double) * sys_vars->alloc_local_batch);
+	if (run_data->a_k_t_avg == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Time Averaged Fourier Amplitudes");
+		exit(1);
+	}
 	#endif
 
 
@@ -2761,11 +2852,6 @@ void AllocateMemory(const long int* NBatch, Int_data_struct* Int_data) {
 	Int_data->nabla_psi = (double* )fftw_malloc(sizeof(double) * 2 * sys_vars->alloc_local_batch);
 	if (Int_data->nabla_psi == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for Integration Array ["CYAN"%s"RESET"] \n-->> Exiting!!!\n", "nabla_psi");
-		exit(1);
-	}
-	Int_data->nonlin   = (double* )fftw_malloc(sizeof(double) * 2 * sys_vars->alloc_local);
-	if (Int_data->nonlin == NULL) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for Integration Array ["CYAN"%s"RESET"] \n-->> Exiting!!!\n", "nonlin");
 		exit(1);
 	}
 	Int_data->RK1       = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->alloc_local_batch);
@@ -2856,7 +2942,6 @@ void AllocateMemory(const long int* NBatch, Int_data_struct* Int_data) {
 			indx_real = tmp_real + j;
 			indx_four = tmp_four + j;
 			
-			Int_data->nonlin[indx_real]                  = 0.0;
 			run_data->u[SYS_DIM * indx_real + 0]         = 0.0;
 			run_data->u[SYS_DIM * indx_real + 1]         = 0.0;
 			Int_data->nabla_psi[SYS_DIM * indx_real + 0] = 0.0;
@@ -2866,10 +2951,9 @@ void AllocateMemory(const long int* NBatch, Int_data_struct* Int_data) {
 			#endif
 			run_data->w[indx_real]                      = 0.0;
 			if (j < Nx_Fourier) {
-				#if defined(PHASE_ONLY)
+				#if defined(PHASE_ONLY) || defined(PHASE_ONLY_FXD_AMP)
 				run_data->a_k[indx_four] 				= 0.0;
 				run_data->phi_k[indx_four]			    = 0.0;
-				run_data->tmp_a_k[indx_four] 			= 0.0;
 				#endif
 				run_data->w_hat[indx_four]               	  = 0.0 + 0.0 * I;
 				run_data->w_hat_tmp[indx_four]             	  = 0.0 + 0.0 * I;
@@ -2984,10 +3068,9 @@ void FreeMemory(Int_data_struct* Int_data) {
 		fftw_free(run_data->forcing_indx);
 		fftw_free(run_data->forcing_scaling);
 	}
-	#if defined(PHASE_ONLY)
+	#if defined(PHASE_ONLY) || defined(PHASE_ONLY_FXD_AMP)
 	fftw_free(run_data->a_k);
 	fftw_free(run_data->phi_k);
-	fftw_free(run_data->tmp_a_k);
 	#endif
 	#if defined(__NONLIN)
 	fftw_free(run_data->nonlinterm);
@@ -3020,6 +3103,9 @@ void FreeMemory(Int_data_struct* Int_data) {
 	#if defined(__ENRG_SPECT)
 	fftw_free(run_data->enrg_spect);
 	#endif
+	#if defined(__ENRG_SPECT_T_AVG)
+	fftw_free(run_data->enrg_spect_t_avg);
+	#endif
 	#if defined(__ENRG_FLUX_SPECT)
 	fftw_free(run_data->enrg_flux_spect);
 	fftw_free(run_data->enrg_diss_spect);
@@ -3028,10 +3114,19 @@ void FreeMemory(Int_data_struct* Int_data) {
 	#if defined(__ENST_SPECT)
 	fftw_free(run_data->enst_spect);
 	#endif
+	#if defined(__ENST_SPECT_T_AVG)
+	fftw_free(run_data->enst_spect_t_avg);
+	#endif
 	#if defined(__ENST_FLUX_SPECT)
 	fftw_free(run_data->enst_flux_spect);
 	fftw_free(run_data->enst_diss_spect);
 	fftw_free(run_data->d_enst_dt_spect);
+	#endif
+	#if defined(__ENST_FLUX_SPECT_T_AVG)
+	fftw_free(run_data->enst_flux_spect_t_avg);
+	#endif
+	#if defined(__ENRG_FLUX_SPECT_T_AVG)
+	fftw_free(run_data->enrg_flux_spect_t_avg);
 	#endif
 	#if defined(TESTING)
 	fftw_free(run_data->tg_soln);
@@ -3040,6 +3135,9 @@ void FreeMemory(Int_data_struct* Int_data) {
 	if (!(sys_vars->rank)){
 		fftw_free(run_data->time);
 	}
+	#endif
+	#if defined(__AMPS_T_AVG)
+	fftw_free(run_data->a_k_t_avg);
 	#endif
 
 	// Free integration variables
@@ -3062,7 +3160,6 @@ void FreeMemory(Int_data_struct* Int_data) {
 	}
 	#endif
 	fftw_free(Int_data->RK_tmp);
-	fftw_free(Int_data->nonlin);
 	fftw_free(Int_data->nabla_psi);
 
 	#if defined(__STATS)

@@ -19,6 +19,7 @@
 // ---------------------------------------------------------------------
 #include "data_types.h"
 #include "utils.h"
+#include "hdf5_funcs.h"
 // ---------------------------------------------------------------------
 //  Function Definitions
 // ---------------------------------------------------------------------
@@ -47,6 +48,20 @@ void ComputeStats(int iters) {
 	double vort_rms[INCR_TYPES][NUM_INCR];
 	double std, mean;
 	fftw_complex k_sqr;
+	#endif
+
+
+	//------------------- Compute the Fourier vorticity if in Phase Only Mode
+	#if defined(PHASE_ONLY)
+	for (int i = 0; i < sys_vars->local_Ny; ++i) {
+		tmp = i * (sys_vars->N[1] / 2 + 1);
+		for (int j = 0; j < (sys_vars->N[1] / 2 + 1); ++j) {
+			indx = tmp + j;
+
+			// Get the Fourier vorticity from the Fourier phases and amplitudes
+			run_data->w_hat[indx] = run_data->a_k[indx] * cexp(I * run_data->phi_k[indx]);			
+		}
+	}
 	#endif
 
 	// ------------------------------------
@@ -206,6 +221,7 @@ void ComputeStats(int iters) {
 					gsl_status = gsl_histogram_set_ranges_uniform(stats_data->vel_inc_hist[type][r], -VEL_BIN_LIM * vel_rms[type][r], VEL_BIN_LIM * vel_rms[type][r]);
 					if (gsl_status != 0) {
 						fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set bin ranges for: ["CYAN"%s"RESET"] \n-->> Exiting!!!\n", "Velocity Increment Histogram");
+						FinalWriteAndCloseOutputFiles(sys_vars->N, iters, iters);
 						exit(1);
 					}
 					#endif
@@ -230,6 +246,7 @@ void ComputeStats(int iters) {
 						gsl_status = gsl_histogram_set_ranges_uniform(stats_data->vort_inc_hist[type][r], -VORT_BIN_LIM * vort_rms[type][r], VORT_BIN_LIM * vort_rms[type][r]);
 						if (gsl_status != 0) {
 							fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set bin ranges for: ["CYAN"%s"RESET"] \n-->> Exiting!!!\n", "Velocity Increment Histogram");
+							FinalWriteAndCloseOutputFiles(sys_vars->N, iters, iters);
 							exit(1);
 						}
 						#endif
@@ -265,11 +282,13 @@ void ComputeStats(int iters) {
 					gsl_status = gsl_histogram_increment(stats_data->vel_inc_hist[0][r_indx], vel_long_increment / vel_rms[0][r_indx]);
 					if (gsl_status != 0) {
 						fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Iter ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET" - Bin Lims:("CYAN"%lf"RESET","CYAN"%lf"RESET")]\n-->> Exiting!!!\n", "Longitudinal Velocity Increment", iters, gsl_status, vel_long_increment, gsl_histogram_min(stats_data->vel_inc_hist[0][r_indx]), gsl_histogram_max(stats_data->vel_inc_hist[0][r_indx]));
+						FinalWriteAndCloseOutputFiles(sys_vars->N, iters, iters);
 						exit(1);
 					}
 					gsl_status = gsl_histogram_increment(stats_data->vel_inc_hist[1][r_indx], vel_trans_increment / vel_rms[1][r_indx]);
 					if (gsl_status != 0) {
 						fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Iter ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET" - Bin Lims:("CYAN"%lf"RESET","CYAN"%lf"RESET")]\n-->> Exiting!!!\n", "Transverse Velocity Increment", iters, gsl_status, vel_trans_increment, gsl_histogram_min(stats_data->vel_inc_hist[1][r_indx]), gsl_histogram_max(stats_data->vel_inc_hist[1][r_indx]));
+						FinalWriteAndCloseOutputFiles(sys_vars->N, iters, iters);
 						exit(1);
 					}
 
@@ -286,6 +305,7 @@ void ComputeStats(int iters) {
 					gsl_status = gsl_histogram_increment(stats_data->vort_inc_hist[0][r_indx], vort_long_increment / vort_rms[0][r_indx]);
 					if (gsl_status != 0) {
 						fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Iter ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET" - Bin Lims:("CYAN" %lf"RESET","CYAN" %lf"RESET")]\n-->> Exiting!!!\n", "Longitudinal Vorticity Increment", iters, gsl_status, vort_long_increment, gsl_histogram_min(stats_data->vort_inc_hist[0][r_indx]), gsl_histogram_max(stats_data->vel_inc_hist[0][r_indx]));
+						FinalWriteAndCloseOutputFiles(sys_vars->N, iters, iters);
 						exit(1);
 					}
 					#endif

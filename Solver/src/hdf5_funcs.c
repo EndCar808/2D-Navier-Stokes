@@ -43,7 +43,7 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 	#if defined(__PHASE_SYNC)
 	hid_t sync_group_id = (hid_t) NULL;
 	#endif
-	#if defined(__VORT_REAL) || defined(__MODES) || defined(__REALSPACE) || defined(__PHASE_ONLY)
+	#if defined(__VORT_REAL) || defined(__MODES) || defined(__REALSPACE) || defined(__PHASE_ONLY_FXD_AMP) 
 	int tmp;
 	int indx;
 	#endif
@@ -298,7 +298,7 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 		#endif
 
 		///-------------------------------------- Fourier Phases & Amplitudes of the Vorticity
-		#if defined(PHASE_ONLY)
+		#if defined(PHASE_ONLY_FXD_AMP)
 		// Record the Fourier amplitudes and phases
 		for (int i = 0; i < sys_vars->local_Ny; ++i) {
 			tmp = i * Nx_Fourier;
@@ -311,7 +311,9 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 				run_data->phi_k[i] = carg(run_data->w_hat[indx]);
 			}
 		}
+		#endif
 		
+		#if defined(PHASE_ONLY_FXD_AMP) || defined(PHASE_ONLY)
 		// Create dimension arrays for the Fourier amplitudes and phases
 		dset_dims2D[0] 	  = Ny;
 		dset_dims2D[1] 	  = Nx_Fourier;
@@ -350,27 +352,27 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 			// Gather spectra data on master process & write to file
 			#if defined(__ENST_SPECT)
 			MPI_Reduce(MPI_IN_PLACE, run_data->enst_spect, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-			WriteDataSerial(0.0, 0, spectra_group_id, sys_vars->n_spect, "EnstrophySpectrum", run_data->enst_spect);
+			WriteDataSerial(0.0, 0, spectra_group_id, sys_vars->n_spect, "EnstrophySpectrum", run_data->enst_spect, 0);
 			#endif 
 			#if defined(__ENRG_SPECT)
 			MPI_Reduce(MPI_IN_PLACE, run_data->enrg_spect, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-			WriteDataSerial(0.0, 0, spectra_group_id, sys_vars->n_spect, "EnergySpectrum", run_data->enrg_spect);
+			WriteDataSerial(0.0, 0, spectra_group_id, sys_vars->n_spect, "EnergySpectrum", run_data->enrg_spect, 0);
 			#endif
 			#if defined(__ENST_FLUX_SPECT)
 			MPI_Reduce(MPI_IN_PLACE, run_data->d_enst_dt_spect, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 			MPI_Reduce(MPI_IN_PLACE, run_data->enst_diss_spect, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 			MPI_Reduce(MPI_IN_PLACE, run_data->enst_flux_spect, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-			WriteDataSerial(0.0, 0, spectra_group_id, sys_vars->n_spect, "TimeDerivativeEnstrophySpectrum", run_data->d_enst_dt_spect);
-			WriteDataSerial(0.0, 0, spectra_group_id, sys_vars->n_spect, "EnstrophyDissipationSpectrum", run_data->enst_diss_spect);
-			WriteDataSerial(0.0, 0, spectra_group_id, sys_vars->n_spect, "EnstrophyFluxSpectrum", run_data->enst_flux_spect);
+			WriteDataSerial(0.0, 0, spectra_group_id, sys_vars->n_spect, "TimeDerivativeEnstrophySpectrum", run_data->d_enst_dt_spect, 0);
+			WriteDataSerial(0.0, 0, spectra_group_id, sys_vars->n_spect, "EnstrophyDissipationSpectrum", run_data->enst_diss_spect, 0);
+			WriteDataSerial(0.0, 0, spectra_group_id, sys_vars->n_spect, "EnstrophyFluxSpectrum", run_data->enst_flux_spect, 0);
 			#endif
 			#if defined(__ENRG_FLUX_SPECT)
 			MPI_Reduce(MPI_IN_PLACE, run_data->d_enrg_dt_spect, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 			MPI_Reduce(MPI_IN_PLACE, run_data->enrg_diss_spect, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 			MPI_Reduce(MPI_IN_PLACE, run_data->enrg_flux_spect, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-			WriteDataSerial(0.0, 0, spectra_group_id, sys_vars->n_spect, "TimeDerivativeEnergySpectrum", run_data->d_enrg_dt_spect);
-			WriteDataSerial(0.0, 0, spectra_group_id, sys_vars->n_spect, "EnergyDissipationSpectrum", run_data->enrg_diss_spect);
-			WriteDataSerial(0.0, 0, spectra_group_id, sys_vars->n_spect, "EnergyFluxSpectrum", run_data->enrg_flux_spect);
+			WriteDataSerial(0.0, 0, spectra_group_id, sys_vars->n_spect, "TimeDerivativeEnergySpectrum", run_data->d_enrg_dt_spect, 0);
+			WriteDataSerial(0.0, 0, spectra_group_id, sys_vars->n_spect, "EnergyDissipationSpectrum", run_data->enrg_diss_spect, 0);
+			WriteDataSerial(0.0, 0, spectra_group_id, sys_vars->n_spect, "EnergyFluxSpectrum", run_data->enrg_flux_spect, 0);
 			#endif
 			#if defined(__PHASE_SYNC)
 			MPI_Reduce(MPI_IN_PLACE, run_data->phase_order_k, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
@@ -387,10 +389,10 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 				normed_amp_k[i]   = cabs(run_data->normed_phase_order_k[i]);
 				normed_phase_k[i] = carg(run_data->normed_phase_order_k[i]);
 			}
-			WriteDataSerial(0.0, 0, sync_group_id, sys_vars->n_spect, "PhaseOrder_Theta_k", phase_k);
-			WriteDataSerial(0.0, 0, sync_group_id, sys_vars->n_spect, "PhaseOrder_R_k", amp_k);
-			WriteDataSerial(0.0, 0, sync_group_id, sys_vars->n_spect, "NormedPhaseOrder_Theta_k", normed_phase_k);
-			WriteDataSerial(0.0, 0, sync_group_id, sys_vars->n_spect, "NormedPhaseOrder_R_k", normed_amp_k);
+			WriteDataSerial(0.0, 0, sync_group_id, sys_vars->n_spect, "PhaseOrder_Theta_k", phase_k, 0);
+			WriteDataSerial(0.0, 0, sync_group_id, sys_vars->n_spect, "PhaseOrder_R_k", amp_k, 0);
+			WriteDataSerial(0.0, 0, sync_group_id, sys_vars->n_spect, "NormedPhaseOrder_Theta_k", normed_phase_k, 0);
+			WriteDataSerial(0.0, 0, sync_group_id, sys_vars->n_spect, "NormedPhaseOrder_R_k", normed_amp_k, 0);
 			#endif
 		}
 		else {
@@ -526,7 +528,7 @@ void GetOutputDirPath(void) {
 		// Get File Label from Simulation Data
 		// -------------------------------------
 		// Construct file label from simulation data
-		#if defined(__PHASE_ONLY)
+		#if defined(PHASE_ONLY) || defined(PHASE_ONLY_FXD_AMP)
 		sprintf(file_data, "_SIM[%s-%s-%s]_N[%ld,%ld]_T[%1.1lf,%g,%1.3lf]_SLOPE[%1.3lf]_CFL[%1.2lf]_FORC[%s,%d,%g]_u0[%s].h5", 
 											sys_type, solv_type, model_type, 
 											sys_vars->N[0], sys_vars->N[1], 
@@ -606,7 +608,7 @@ void GetOutputDirPath(void) {
 		sprintf(solv_type, "%s", "SOLV_UKN");
 		#endif
 		#if defined(__PHASE_ONLY)
-		sprintf(model_type, "%s", "PHAEONLY");
+		sprintf(model_type, "%s", "PHASEONLY");
 		#else
 		sprintf(model_type, "%s", "FULL");
 		#endif
@@ -615,7 +617,7 @@ void GetOutputDirPath(void) {
 		// Construct Output folder
 		// ----------------------------------
 		// Construct file label from simulation data
-		#if defined(__PHASE_ONLY)
+		#if defined(PHASE_ONLY) || defined(PHASE_ONLY_FXD_AMP)
 		sprintf(file_data, "SIM_DATA_%s_%s_%s_N[%ld,%ld]_T[%1.1lf,%g,%1.3lf]_SLOPE[%1.3lf]_CFL[%1.2lf]_FORC[%s,%d,%g]_u0[%s]_TAG[%s]/", 
 											sys_type, solv_type, model_type, 
 											sys_vars->N[0], sys_vars->N[1], 
@@ -708,7 +710,7 @@ void GetOutputDirPath(void) {
 void WriteDataToFile(double t, double dt, long int iters) {
 
 	// Initialize Variables
-	#if defined(__VORT_REAL) || defined(__MODES) || defined(__REALSPACE) || defined(__PHASE_ONLY)
+	#if defined(__VORT_REAL) || defined(__MODES) || defined(__REALSPACE) || defined(__PHASE_ONLY_FXD_AMP)
 	int tmp;
 	int indx;
 	#endif
@@ -751,6 +753,7 @@ void WriteDataToFile(double t, double dt, long int iters) {
 		file_info->output_file_handle = H5Fcreate(file_info->output_file_name, H5F_ACC_TRUNC, H5P_DEFAULT, plist_id);
 		if (file_info->output_file_handle < 0) {
 			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to create output file ["CYAN"%s"RESET"] at: Iter = ["CYAN"%ld"RESET"] t = ["CYAN"%lf"RESET"]\n-->> Exiting...\n", file_info->output_file_name, iters, t);
+			FinalWriteAndCloseOutputFiles(sys_vars->N, iters, iters);
 			exit(1);
 		}
 	}
@@ -759,6 +762,7 @@ void WriteDataToFile(double t, double dt, long int iters) {
 		file_info->output_file_handle = H5Fopen(file_info->output_file_name, H5F_ACC_RDWR, plist_id);
 		if (file_info->output_file_handle < 0) {
 			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to open output file ["CYAN"%s"RESET"] at: Iter = ["CYAN"%ld"RESET"] t = ["CYAN"%lf"RESET"]\n-->> Exiting...\n", file_info->output_file_name, iters, t);
+			FinalWriteAndCloseOutputFiles(sys_vars->N, iters, iters);
 			exit(1);
 		}
 	}
@@ -771,6 +775,7 @@ void WriteDataToFile(double t, double dt, long int iters) {
 			file_info->spectra_file_handle = H5Fcreate(file_info->spectra_file_name, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
 			if (file_info->spectra_file_handle < 0) {
 				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to create spectra file ["CYAN"%s"RESET"] at: Iter = ["CYAN"%ld"RESET"] t = ["CYAN"%lf"RESET"]\n-->> Exiting...\n", file_info->spectra_file_name, iters, t);
+				FinalWriteAndCloseOutputFiles(sys_vars->N, iters, iters);
 				exit(1);
 			}
 		}
@@ -779,6 +784,7 @@ void WriteDataToFile(double t, double dt, long int iters) {
 			file_info->spectra_file_handle = H5Fopen(file_info->spectra_file_name, H5F_ACC_RDWR, H5P_DEFAULT);
 			if (file_info->spectra_file_handle < 0) {
 				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to open spectra file ["CYAN"%s"RESET"] at: Iter = ["CYAN"%ld"RESET"] t = ["CYAN"%lf"RESET"]\n-->> Exiting...\n", file_info->spectra_file_name, iters, t);
+				FinalWriteAndCloseOutputFiles(sys_vars->N, iters, iters);
 				exit(1);
 			}
 		}
@@ -791,6 +797,7 @@ void WriteDataToFile(double t, double dt, long int iters) {
 			file_info->sync_file_handle = H5Fcreate(file_info->sync_file_name, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
 			if (file_info->sync_file_handle < 0) {
 				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to create sync file ["CYAN"%s"RESET"] at: Iter = ["CYAN"%ld"RESET"] t = ["CYAN"%lf"RESET"]\n-->> Exiting...\n", file_info->sync_file_name, iters, t);
+				FinalWriteAndCloseOutputFiles(sys_vars->N, iters, iters);
 				exit(1);
 			}
 		}
@@ -799,6 +806,7 @@ void WriteDataToFile(double t, double dt, long int iters) {
 			file_info->sync_file_handle = H5Fopen(file_info->sync_file_name, H5F_ACC_RDWR, H5P_DEFAULT);
 			if (file_info->sync_file_handle < 0) {
 				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to open sync file ["CYAN"%s"RESET"] at: Iter = ["CYAN"%ld"RESET"] t = ["CYAN"%lf"RESET"]\n-->> Exiting...\n", file_info->sync_file_name, iters, t);
+				FinalWriteAndCloseOutputFiles(sys_vars->N, iters, iters);
 				exit(1);
 			}
 		}
@@ -977,20 +985,22 @@ void WriteDataToFile(double t, double dt, long int iters) {
 	#endif
 
 	///--------------------------------------- Foureir Phases & Amplitudes of the Vorticity
-	#if defined(PHASE_ONLY)
+	#if defined(PHASE_ONLY_FXD_AMP)
 	// Record the Fourier amplitudes and phases
 	for (int i = 0; i < sys_vars->local_Ny; ++i) {
 		tmp = i * Nx_Fourier;
 		for (int j = 0; j < Nx_Fourier; ++j) {
 			indx = tmp + j;
 
-			// Record the amplitudes
-			run_data->a_k[indx] = cabs(run_data->w_hat[indx]);
-			// Record the phases 
-			run_data->phi_k[indx] = carg(run_data->w_hat[indx]);
+			//record the amplitudes
+			run_data->a_k[i] = cabs(run_data->w_hat[indx]);
+			// record the phases 
+			run_data->phi_k[i] = carg(run_data->w_hat[indx]);
 		}
 	}
-
+	#endif
+	
+	#if defined(PHASE_ONLY_FXD_AMP) || defined(PHASE_ONLY)
 	// Create dimension arrays for the Fourier amplitudes and phases
 	dset_dims2D[0] 	  = Ny;
 	dset_dims2D[1] 	  = Nx_Fourier;
@@ -1029,27 +1039,27 @@ void WriteDataToFile(double t, double dt, long int iters) {
 		// Gather spectra data on master process & write to file
 		#if defined(__ENST_SPECT)
 		MPI_Reduce(MPI_IN_PLACE, run_data->enst_spect, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		WriteDataSerial(t, iters, spectra_group_id, sys_vars->n_spect, "EnstrophySpectrum", run_data->enst_spect);
+		WriteDataSerial(t, iters, spectra_group_id, sys_vars->n_spect, "EnstrophySpectrum", run_data->enst_spect, iters);
 		#endif 
 		#if defined(__ENRG_SPECT)
 		MPI_Reduce(MPI_IN_PLACE, run_data->enrg_spect, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		WriteDataSerial(t, iters, spectra_group_id, sys_vars->n_spect, "EnergySpectrum", run_data->enrg_spect);
+		WriteDataSerial(t, iters, spectra_group_id, sys_vars->n_spect, "EnergySpectrum", run_data->enrg_spect, iters);
 		#endif
 		#if defined(__ENST_FLUX_SPECT)
 		MPI_Reduce(MPI_IN_PLACE, run_data->d_enst_dt_spect, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		MPI_Reduce(MPI_IN_PLACE, run_data->enst_diss_spect, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		MPI_Reduce(MPI_IN_PLACE, run_data->enst_flux_spect, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		WriteDataSerial(t, iters, spectra_group_id, sys_vars->n_spect, "TimeDerivativeEnstrophySpectrum", run_data->d_enst_dt_spect);
-		WriteDataSerial(t, iters, spectra_group_id, sys_vars->n_spect, "EnstrophyDissipationSpectrum", run_data->enst_diss_spect);
-		WriteDataSerial(t, iters, spectra_group_id, sys_vars->n_spect, "EnstrophyFluxSpectrum", run_data->enst_flux_spect);
+		WriteDataSerial(t, iters, spectra_group_id, sys_vars->n_spect, "TimeDerivativeEnstrophySpectrum", run_data->d_enst_dt_spect, iters);
+		WriteDataSerial(t, iters, spectra_group_id, sys_vars->n_spect, "EnstrophyDissipationSpectrum", run_data->enst_diss_spect, iters);
+		WriteDataSerial(t, iters, spectra_group_id, sys_vars->n_spect, "EnstrophyFluxSpectrum", run_data->enst_flux_spect, iters);
 		#endif
 		#if defined(__ENRG_FLUX_SPECT)
 		MPI_Reduce(MPI_IN_PLACE, run_data->d_enrg_dt_spect, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		MPI_Reduce(MPI_IN_PLACE, run_data->enrg_diss_spect, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		MPI_Reduce(MPI_IN_PLACE, run_data->enrg_flux_spect, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		WriteDataSerial(t, iters, spectra_group_id, sys_vars->n_spect, "TimeDerivativeEnergySpectrum", run_data->d_enrg_dt_spect);
-		WriteDataSerial(t, iters, spectra_group_id, sys_vars->n_spect, "EnergyDissipationSpectrum", run_data->enrg_diss_spect);
-		WriteDataSerial(t, iters, spectra_group_id, sys_vars->n_spect, "EnergyFluxSpectrum", run_data->enrg_flux_spect);
+		WriteDataSerial(t, iters, spectra_group_id, sys_vars->n_spect, "TimeDerivativeEnergySpectrum", run_data->d_enrg_dt_spect, iters);
+		WriteDataSerial(t, iters, spectra_group_id, sys_vars->n_spect, "EnergyDissipationSpectrum", run_data->enrg_diss_spect, iters);
+		WriteDataSerial(t, iters, spectra_group_id, sys_vars->n_spect, "EnergyFluxSpectrum", run_data->enrg_flux_spect, iters);
 		#endif
 		#if defined(__PHASE_SYNC)
 		MPI_Reduce(MPI_IN_PLACE, run_data->phase_order_k, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
@@ -1066,10 +1076,10 @@ void WriteDataToFile(double t, double dt, long int iters) {
 			normed_amp_k[i]   = cabs(run_data->normed_phase_order_k[i]);
 			normed_phase_k[i] = carg(run_data->normed_phase_order_k[i]);
 		}
-		WriteDataSerial(t, iters, sync_group_id, sys_vars->n_spect, "PhaseOrder_Theta_k", phase_k);
-		WriteDataSerial(t, iters, sync_group_id, sys_vars->n_spect, "PhaseOrder_R_k", amp_k);
-		WriteDataSerial(t, iters, sync_group_id, sys_vars->n_spect, "NormedPhaseOrder_Theta_k", normed_phase_k);
-		WriteDataSerial(t, iters, sync_group_id, sys_vars->n_spect, "NormedPhaseOrder_R_k", normed_amp_k);
+		WriteDataSerial(t, iters, sync_group_id, sys_vars->n_spect, "PhaseOrder_Theta_k", phase_k, iters);
+		WriteDataSerial(t, iters, sync_group_id, sys_vars->n_spect, "PhaseOrder_R_k", amp_k, iters);
+		WriteDataSerial(t, iters, sync_group_id, sys_vars->n_spect, "NormedPhaseOrder_Theta_k", normed_phase_k, iters);
+		WriteDataSerial(t, iters, sync_group_id, sys_vars->n_spect, "NormedPhaseOrder_R_k", normed_amp_k, iters);
 		#endif
 	}
 	else {
@@ -1105,6 +1115,7 @@ void WriteDataToFile(double t, double dt, long int iters) {
 	status = H5Fclose(file_info->output_file_handle);
 	if (status < 0) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close output file ["CYAN"%s"RESET"] at: Iter = ["CYAN"%ld"RESET"] t = ["CYAN"%lf"RESET"]\n-->> Exiting...\n", file_info->output_file_name, iters, t);
+		FinalWriteAndCloseOutputFiles(sys_vars->N, iters, iters);
 		exit(1);
 	}
 	#if defined(__ENST_SPECT) || defined(__ENRG_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__ENRG_FLUX_SPECT)
@@ -1113,6 +1124,7 @@ void WriteDataToFile(double t, double dt, long int iters) {
 		status = H5Fclose(file_info->spectra_file_handle);
 		if (status < 0) {
 			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close output file ["CYAN"%s"RESET"] at: Iter = ["CYAN"%ld"RESET"] t = ["CYAN"%lf"RESET"]\n-->> Exiting...\n", file_info->spectra_file_name, iters, t);
+			FinalWriteAndCloseOutputFiles(sys_vars->N, iters, iters);
 			exit(1);		
 		}
 	}
@@ -1123,6 +1135,7 @@ void WriteDataToFile(double t, double dt, long int iters) {
 		status = H5Fclose(file_info->sync_file_handle);
 		if (status < 0) {
 			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close output file ["CYAN"%s"RESET"] at: Iter = ["CYAN"%ld"RESET"] t = ["CYAN"%lf"RESET"]\n-->> Exiting...\n", file_info->sync_file_name, iters, t);
+			FinalWriteAndCloseOutputFiles(sys_vars->N, iters, iters);
 			exit(1);		
 		}
 	}
@@ -1169,17 +1182,20 @@ hid_t CreateGroup(hid_t file_handle, char* filename, char* group_name, double t,
 		attr_id = H5Acreate(group_id, "TimeValue", H5T_NATIVE_DOUBLE, attr_space, H5P_DEFAULT, H5P_DEFAULT);
 		if ((H5Awrite(attr_id, H5T_NATIVE_DOUBLE, &t)) < 0) {
 			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Could not write current time as attribute to group in file ["CYAN"%s"RESET"] at: t = ["CYAN"%lf"RESET"] Iter = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", filename, t, iters);
+			FinalWriteAndCloseOutputFiles(sys_vars->N, iters, iters);
 			exit(1);
 		}
 		status = H5Aclose(attr_id);
 		if (status < 0 ) {
 			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close attribute Idenfiers for file ["CYAN"%s"RESET"] at: t = ["CYAN"%lf"RESET"] Iter = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", filename, t, iters);
+			FinalWriteAndCloseOutputFiles(sys_vars->N, iters, iters);
 			exit(1);
 		}
 		// Create attribute for the current timestep
 		attr_id = H5Acreate(group_id, "TimeStep", H5T_NATIVE_DOUBLE, attr_space, H5P_DEFAULT, H5P_DEFAULT);
 		if ((H5Awrite(attr_id, H5T_NATIVE_DOUBLE, &dt)) < 0) {
 			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Could not write current timestep as attribute to group in file ["CYAN"%s"RESET"] at: t = ["CYAN"%lf"RESET"] Iter = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", filename, t, iters);
+			FinalWriteAndCloseOutputFiles(sys_vars->N, iters, iters);
 			exit(1);
 		}
 
@@ -1190,11 +1206,13 @@ hid_t CreateGroup(hid_t file_handle, char* filename, char* group_name, double t,
 		status = H5Aclose(attr_id);
 		if (status < 0 ) {
 			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close attribute Idenfiers for ["CYAN"%s"RESET"] at: t = ["CYAN"%lf"RESET"] Iter = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", filename, t, iters);
+			FinalWriteAndCloseOutputFiles(sys_vars->N, iters, iters);
 			exit(1);
 		}
 		status = H5Sclose(attr_space);
 		if (status < 0 ) {
 			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close attribute Idenfiers for file ["CYAN"%s"RESET"] at: t = ["CYAN"%lf"RESET"] Iter = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", filename, t, iters);
+			FinalWriteAndCloseOutputFiles(sys_vars->N, iters, iters);
 			exit(1);
 		}
 	}
@@ -1237,6 +1255,7 @@ void WriteDataFourier(double t, int iters, hid_t group_id, char* dset_name, hid_
 	dset_space = H5Screate_simple(Dims, dims, NULL); 
 	if (dset_space < 0) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set dataspace for dataset ["CYAN"%s"RESET"] at: Iter = ["CYAN"%d"RESET"] t = ["CYAN"%lf"RESET"]\n-->> Exiting...\n", dset_name, iters, t);
+		FinalWriteAndCloseOutputFiles(sys_vars->N, iters, iters);
 		exit(1);
 	}
 
@@ -1259,6 +1278,7 @@ void WriteDataFourier(double t, int iters, hid_t group_id, char* dset_name, hid_
 	// Select local hyperslab from the memoryspace (slab size adjusted to ignore 0 padding) - local to each process
 	if ((H5Sselect_hyperslab(mem_space, H5S_SELECT_SET, mem_offset, NULL, slabsize, NULL)) < 0 ) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- unable to select local hyperslab for datset ["CYAN"%s"RESET"] at: Iter = ["CYAN"%d"RESET"] t = ["CYAN"%lf"RESET"]\n-->> Exiting...\n", dset_name, iters, t);
+		FinalWriteAndCloseOutputFiles(sys_vars->N, iters, iters);
 		exit(1);		
 	}
 
@@ -1275,6 +1295,7 @@ void WriteDataFourier(double t, int iters, hid_t group_id, char* dset_name, hid_
 	// Select the hyperslab in the dataset on file to write to
 	if ((H5Sselect_hyperslab(dset_space, H5S_SELECT_SET, dset_offset, NULL, dset_slabsize, NULL)) < 0 ) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to select hyperslab in file for datset ["CYAN"%s"RESET"] at: Iter = ["CYAN"%d"RESET"] t = ["CYAN"%lf"RESET"]\n-->> Exiting...\n", dset_name, iters, t);
+		FinalWriteAndCloseOutputFiles(sys_vars->N, iters, iters);
 		exit(1);		
 	}
 
@@ -1288,6 +1309,7 @@ void WriteDataFourier(double t, int iters, hid_t group_id, char* dset_name, hid_
 	// Write data to file
 	if ((H5Dwrite(file_space, dtype, mem_space, dset_space, plist_id, data)) < 0 ) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write data to datset ["CYAN"%s"RESET"] at: Iter = ["CYAN"%d"RESET"] t = ["CYAN"%lf"RESET"]\n-->> Exiting...\n", dset_name, iters, t);
+		FinalWriteAndCloseOutputFiles(sys_vars->N, iters, iters);
 		exit(1);		
 	}
 
@@ -1335,6 +1357,7 @@ void WriteDataReal(double t, int iters, hid_t group_id, char* dset_name, hid_t d
 	dset_space = H5Screate_simple(Dims, dims, NULL); 
 	if (dset_space < 0) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set dataspace for dataset: ["CYAN"%s"RESET"] at: Iter = ["CYAN"%d"RESET"] t = ["CYAN"%lf"RESET"]\n-->> Exiting...\n", dset_name, iters, t);
+		FinalWriteAndCloseOutputFiles(sys_vars->N, iters, iters);
 		exit(1);
 	}	
 
@@ -1357,6 +1380,7 @@ void WriteDataReal(double t, int iters, hid_t group_id, char* dset_name, hid_t d
 	// Select local hyperslab from the memoryspace (slab size adjusted to ignore 0 padding) - local to each process
 	if ((H5Sselect_hyperslab(mem_space, H5S_SELECT_SET, mem_offset, NULL, slabsize, NULL)) < 0 ) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- unable to select local hyperslab for datset ["CYAN"%s"RESET"] at: Iter = ["CYAN"%d"RESET"] t = ["CYAN"%lf"RESET"]\n-->> Exiting...\n", dset_name, iters, t);
+		FinalWriteAndCloseOutputFiles(sys_vars->N, iters, iters);
 		exit(1);		
 	}
 
@@ -1373,6 +1397,7 @@ void WriteDataReal(double t, int iters, hid_t group_id, char* dset_name, hid_t d
 	// Select the hyperslab in the dataset on file to write to
 	if ((H5Sselect_hyperslab(dset_space, H5S_SELECT_SET, dset_offset, NULL, dset_slabsize, NULL)) < 0 ) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to select hyperslab in file for datset ["CYAN"%s"RESET"] at: Iter = ["CYAN"%d"RESET"] t = ["CYAN"%lf"RESET"]\n-->> Exiting...\n", dset_name, iters, t);
+		FinalWriteAndCloseOutputFiles(sys_vars->N, iters, iters);
 		exit(1);		
 	}
 
@@ -1386,6 +1411,7 @@ void WriteDataReal(double t, int iters, hid_t group_id, char* dset_name, hid_t d
 	// Write data to file
 	if ((H5Dwrite(file_space, dtype, mem_space, dset_space, plist_id, data)) < 0 ) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write data to datset ["CYAN"%s"RESET"] at: Iter = ["CYAN"%d"RESET"] t = ["CYAN"%lf"RESET"]\n-->> Exiting...\n", dset_name, iters, t);
+		FinalWriteAndCloseOutputFiles(sys_vars->N, iters, iters);
 		exit(1);		
 	}
 
@@ -1406,7 +1432,7 @@ void WriteDataReal(double t, int iters, hid_t group_id, char* dset_name, hid_t d
  * @param dset_name The name of the dataset that is being written
  * @param data      The data that is to be written to file
  */
-void WriteDataSerial(double t, int iters, hid_t group_id, int dims, char* dset_name, double* data) {
+void WriteDataSerial(double t, int iters, hid_t group_id, int dims, char* dset_name, double* data, int save_data_indx) {
 
 	// Initialize Variables
 	hid_t dset_space;
@@ -1422,6 +1448,7 @@ void WriteDataSerial(double t, int iters, hid_t group_id, int dims, char* dset_n
 	dset_space = H5Screate_simple(Dims1D, dims1d, NULL);
 	if (dset_space < 0) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set dataspace for dataset: ["CYAN"%s"RESET"] at: Iter = ["CYAN"%d"RESET"] t = ["CYAN"%lf"RESET"]\n-->> Exiting...\n", dset_name, iters, t);
+		FinalWriteAndCloseOutputFiles(sys_vars->N, iters, save_data_indx);
 		exit(1);
 	}
 
@@ -1433,6 +1460,7 @@ void WriteDataSerial(double t, int iters, hid_t group_id, int dims, char* dset_n
 	// --------------------------------------
 	if ((H5Dwrite(file_space, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, data)) < 0 ) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write data to datset ["CYAN"%s"RESET"] at: Iter = ["CYAN"%d"RESET"] t = ["CYAN"%lf"RESET"]\n-->> Exiting...\n", dset_name, iters, t);
+		FinalWriteAndCloseOutputFiles(sys_vars->N, iters, save_data_indx);
 		exit(1);		
 	}
 
@@ -1668,12 +1696,27 @@ void FinalWriteAndCloseOutputFiles(const long int* N, int iters, int save_data_i
 		#if defined(__ENST_FLUX)
 		MPI_Reduce(MPI_IN_PLACE, run_data->d_enst_dt_sbst, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		MPI_Reduce(MPI_IN_PLACE, run_data->enst_flux_sbst, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		MPI_Reduce(MPI_IN_PLACE, run_data->enst_flux_sbst, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(MPI_IN_PLACE, run_data->enst_diss_sbst, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		#endif
 		#if defined(__ENRG_FLUX)
 		MPI_Reduce(MPI_IN_PLACE, run_data->d_enrg_dt_sbst, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		MPI_Reduce(MPI_IN_PLACE, run_data->enrg_flux_sbst, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		MPI_Reduce(MPI_IN_PLACE, run_data->enrg_flux_sbst, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(MPI_IN_PLACE, run_data->enrg_diss_sbst, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		#endif
+		#if defined(__ENRG_FLUX_SPECT_T_AVG)
+		MPI_Reduce(MPI_IN_PLACE, run_data->enrg_flux_spect_t_avg, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		#endif
+		#if defined(__ENST_FLUX_SPECT_T_AVG)
+		MPI_Reduce(MPI_IN_PLACE, run_data->enst_flux_spect_t_avg, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		#endif
+		#if defined(__ENRG_SPECT_T_AVG)
+		MPI_Reduce(MPI_IN_PLACE, run_data->enrg_spect_t_avg, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		#endif
+		#if defined(__ENST_SPECT_T_AVG)
+		MPI_Reduce(MPI_IN_PLACE, run_data->enst_spect_t_avg, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		#endif
+		#if defined(__AMP_T_AVG)
+		MPI_Reduce(MPI_IN_PLACE, run_data->a_k_t_avg, sys_vars->N[0] * (sys_vars->N[1] / 2 + 1), MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		#endif
 		#if defined(__STATS)
 		///------------------ Structure functions
@@ -1839,6 +1882,56 @@ void FinalWriteAndCloseOutputFiles(const long int* N, int iters, int save_data_i
 		fftw_free(vort_inc_ranges);
 		#endif
 		#endif
+
+
+		#if defined(__ENRG_FLUX_SPECT_T_AVG)
+		for (int i = 0; i < sys_vars->n_spect; ++i) {
+			run_data->enrg_flux_spect_t_avg[i] /= sys_vars->num_sys_msr_counts;
+		}
+		dims1D[0] = sys_vars->n_spect;
+		if ( (H5LTmake_dataset(file_info->sys_msr_file_handle, "TimeAveragedEnergyFluxSpectrum", D1, dims1D, H5T_NATIVE_DOUBLE, run_data->enrg_flux_spect_t_avg)) < 0) {
+			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "TimeAveragedEnergyFluxSpectrum");
+		}
+		#endif
+		#if defined(__ENST_FLUX_SPECT_T_AVG)
+		for (int i = 0; i < sys_vars->n_spect; ++i) {
+			run_data->enst_flux_spect_t_avg[i] /= sys_vars->num_sys_msr_counts;
+		}
+		dims1D[0] = sys_vars->n_spect;
+		if ( (H5LTmake_dataset(file_info->sys_msr_file_handle, "TimeAveragedEnstrophyFluxSpectrum", D1, dims1D, H5T_NATIVE_DOUBLE, run_data->enst_flux_spect_t_avg)) < 0) {
+			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "TimeAveragedEnstrophyFluxSpectrum");
+		}
+		#endif
+		#if defined(__ENRG_SPECT_T_AVG)
+		for (int i = 0; i < sys_vars->n_spect; ++i) {
+			run_data->enrg_spect_t_avg[i] /= sys_vars->num_sys_msr_counts;
+		}
+		dims1D[0] = sys_vars->n_spect;
+		if ( (H5LTmake_dataset(file_info->sys_msr_file_handle, "TimeAveragedEnergySpectrum", D1, dims1D, H5T_NATIVE_DOUBLE, run_data->enrg_spect_t_avg)) < 0) {
+			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "TimeAveragedEnergySpectrum");
+		}
+		#endif
+		#if defined(__ENST_SPECT_T_AVG)
+		for (int i = 0; i < sys_vars->n_spect; ++i) {
+			run_data->enst_spect_t_avg[i] /= sys_vars->num_sys_msr_counts;
+		}
+		dims1D[0] = sys_vars->n_spect;
+		if ( (H5LTmake_dataset(file_info->sys_msr_file_handle, "TimeAveragedEnstrophySpectrum", D1, dims1D, H5T_NATIVE_DOUBLE, run_data->enst_spect_t_avg)) < 0) {
+			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "TimeAveragedEnstrophySpectrum");
+		}
+		#endif
+		#if defined(__AMP_T_AVG)
+		for (int i = 0; i < sys_vars->N[0]; ++i) {
+			for (int j = 0; j < sys_vars->N[1] / 2 + 1; ++j) {
+				run_data->a_k_t_avg[i * (sys_vars->N[1] / 2 + 1) + j] /= sys_vars->num_sys_msr_counts;
+			}
+		}
+		dims2D[0] = sys_vars->N[0];
+		dims2D[1] = sys_vars->N[1] / 2 + 1;
+		if ( (H5LTmake_dataset(file_info->stats_file_handle, "TimeAveragedAmplitudes", D2, dims2D, H5T_NATIVE_DOUBLE, run_data->a_k_t_avg)) < 0) {
+			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "TimeAveragedAmplitudes");
+		}
+		#endif
 	}
 	else {
 		// Reduce all other process to rank 0
@@ -1885,6 +1978,31 @@ void FinalWriteAndCloseOutputFiles(const long int* N, int iters, int save_data_i
 		MPI_Reduce(vort_inc_counts, NULL, (int)(NUM_INCR * VORT_NUM_BINS), MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		#endif
 		#endif
+		#if defined(__ENRG_FLUX_SPECT_T_AVG)
+		MPI_Reduce(run_data->enrg_flux_spect_t_avg, NULL, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		#endif
+		#if defined(__ENST_FLUX_SPECT_T_AVG)
+		MPI_Reduce(run_data->enst_flux_spect_t_avg, NULL, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		#endif
+		#if defined(__ENRG_SPECT_T_AVG)
+		MPI_Reduce(run_data->enrg_spect_t_avg, NULL, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		#endif
+		#if defined(__ENST_SPECT_T_AVG)
+		MPI_Reduce(run_data->enst_spect_t_avg, NULL, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		#endif
+		#if defined(__AMP_T_AVG)
+		MPI_Reduce(run_data->a_k_t_avg, NULL, sys_vars->N[0] * (sys_vars->N[1] / 2 + 1), MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		#endif
+	}
+
+	// -----------------------------------
+	// Print Simulation Details
+	// -----------------------------------
+	if (!(sys_vars->rank)) {
+		// Print simulation details to .txt file in default output mode
+		if (!file_info->file_only) {
+			PrintSimulationDetails(sys_vars->argc, sys_vars->argv, -1e5);
+		}
 	}
 
 	// -----------------------------------

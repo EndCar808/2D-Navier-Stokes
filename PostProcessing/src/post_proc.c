@@ -358,6 +358,17 @@ void AllocateMemory(const long int* N) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Fourier Vorticity");
 		exit(1);
 	}
+	// Allocate the Fourier phases and amplitudes
+	run_data->phi_k = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * Ny * Nx_Fourier);
+	if (run_data->phi_k == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Fourier Phases");
+		exit(1);
+	}
+	run_data->a_k = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * Ny * Nx_Fourier);
+	if (run_data->a_k == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Fourier Amplitudes");
+		exit(1);
+	}
 
 	// Allocate the Fourier stream funciton
 	run_data->psi_hat = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * Ny * Nx_Fourier);
@@ -547,6 +558,8 @@ void FreeMemoryAndCleanUp(void) {
 	//  Free memory
 	// --------------------------------
 	fftw_free(run_data->w_hat);
+	fftw_free(run_data->phi_k);
+	fftw_free(run_data->a_k);
 	fftw_free(run_data->tmp_w_hat);
 	fftw_free(run_data->time);
 	fftw_free(run_data->psi_hat);

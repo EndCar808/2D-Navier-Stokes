@@ -560,7 +560,7 @@ void PrintSimulationDetails(int argc, char** argv, double sim_time) {
 	#else 
 	sprintf(solv_type, "%s", "SOLV_UKN");
 	#endif
-	#if defined(__PHASE_ONLY)
+	#if defined(PHASE_ONLY) || defined(PHASE_ONLY_FXD_AMP)
 	sprintf(model_type, "%s", "PHASEONLY");
 	#else
 	sprintf(model_type, "%s", "FULL");
@@ -586,7 +586,7 @@ void PrintSimulationDetails(int argc, char** argv, double sim_time) {
 	else {
 		fprintf(sim_file, "Hyperviscosity: NO\n");
 	}
-	#if defined(__PHASE_ONLY)
+	#if defined(PHASE_ONLY) || defined(PHASE_ONLY_FXD_AMP)
 	fprintf(sim_file, "Phase Only Amplitude Slope: %lf\n", sys_vars->PO_SLOPE);
 	#endif
 
@@ -647,10 +647,13 @@ void PrintSimulationDetails(int argc, char** argv, double sim_time) {
 	// -------------------------------
 	// Print Execution Time to File
 	// -------------------------------
-	int hh = (int) sim_time / 3600;
-	int mm = ((int )sim_time - hh * 3600) / 60;
-	int ss = sim_time - hh * 3600 - mm * 60;
-	fprintf(sim_file, "\n\nTotal Execution Time: %5.10lf --> %d hrs : %d mins : %d secs\n\n", sim_time, hh, mm, ss);
+	// Only print the simulation time at the end
+	if (sim_time >= 0.0) {
+		int hh = (int) sim_time / 3600;
+		int mm = ((int )sim_time - hh * 3600) / 60;
+		int ss = sim_time - hh * 3600 - mm * 60;
+		fprintf(sim_file, "\n\nTotal Execution Time: %5.10lf --> %d hrs : %d mins : %d secs\n\n", sim_time, hh, mm, ss);		
+	}
 
 	// -------------------------------
 	// Close File
@@ -979,6 +982,87 @@ void PrintVectorFourier(fftw_complex* data, const long int* N, char* arr_name1, 
 	// Free temporary memory
 	fftw_free(k0);
 	fftw_free(u_hat0);
+}
+/**
+ * Function to print Fourier amplitudes
+ * @param data The data to be printed
+ * @param N    The size of the dimensions
+ */
+void PrintAmps(double* data, const long int* N, char* arr_name) {
+
+	// Initialize variables
+	const long int Ny 		  = N[0];
+	const long int Nx_Fourier = N[1] / 2 + 1;
+
+	// Allocate memory to recieve lcoal vorticity arrays
+	double* w_hat0 = (double* )fftw_malloc(sizeof(double) * Ny * (Nx_Fourier));
+	for (int i = 0; i < Ny; ++i) {
+		for (int j = 0; j < Nx_Fourier; ++j) {
+			w_hat0[(i * (Nx_Fourier) + j)] = 0.0 + 0.0 * I;
+		}
+	}
+	int* k0    = (int* )fftw_malloc(sizeof(int) * Ny);
+	// Gather the data from each process onto master rank for printing
+	MPI_Gather(run_data->k[0], sys_vars->local_Ny, MPI_INT, k0, sys_vars->local_Ny, MPI_INT, 0, MPI_COMM_WORLD);
+
+	// Gather all the local arrays into w0
+	MPI_Gather(data, sys_vars->local_Ny * Nx_Fourier, MPI_DOUBLE, w_hat0, sys_vars->local_Ny * Nx_Fourier, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+	// On the master rank print the result
+	if ( !(sys_vars->rank) ) {
+		for (int i = 0; i < Ny; ++i) {
+			for (int j = 0; j < Nx_Fourier; ++j) {
+				printf("%s[%d,%d]: %1.16lf ", arr_name, k0[i], run_data->k[1][j], w_hat0[i * Nx_Fourier + j]);
+			}
+			printf("\n");
+		}
+		printf("\n\n");
+	}
+
+	// Free temporary memory
+	fftw_free(w_hat0);
+	fftw_free(k0);
+}
+/**
+ * Function to print Fourier Phases
+ * @param data The data to be printed
+ * @param N    The size of the dimensions
+ */
+void PrintPhases(double* data, const long int* N, char* arr_name) {
+
+	// Initialize variables
+	const long int Ny 		  = N[0];
+	const long int Nx_Fourier = N[1] / 2 + 1;
+
+	// Allocate memory to recieve lcoal vorticity arrays
+	double* w_hat0 = (double* )fftw_malloc(sizeof(double) * Ny * (Nx_Fourier));
+	for (int i = 0; i < Ny; ++i) {
+		for (int j = 0; j < Nx_Fourier; ++j) {
+			w_hat0[(i * (Nx_Fourier) + j)] = 0.0 + 0.0 * I;
+		}
+	}
+	int* k0    = (int* )fftw_malloc(sizeof(int) * Ny);
+
+	// Gather the data from each process onto master rank for printing
+	MPI_Gather(run_data->k[0], sys_vars->local_Ny, MPI_INT, k0, sys_vars->local_Ny, MPI_INT, 0, MPI_COMM_WORLD);
+
+	// Gather all the local arrays into w0
+	MPI_Gather(data, sys_vars->local_Ny * Nx_Fourier, MPI_DOUBLE, w_hat0, sys_vars->local_Ny * Nx_Fourier, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+	// On the master rank print the result
+	if ( !(sys_vars->rank) ) {
+		for (int i = 0; i < Ny; ++i) {
+			for (int j = 0; j < Nx_Fourier; ++j) {
+				printf("%s[%d,%d]: %1.16lf ", arr_name, k0[i], run_data->k[1][j], w_hat0[i * Nx_Fourier + j]);
+			}
+			printf("\n");
+		}
+		printf("\n\n");
+	}
+
+	// Free temporary memory
+	fftw_free(w_hat0);
+	fftw_free(k0);
 }
 /**
  * Function to print the Real and Fourier space variables
