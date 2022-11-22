@@ -2000,6 +2000,88 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 			}
 		}		
 	}
+	else if (!(strcmp(sys_vars->u0, "PO_RANDOM")) || !(strcmp(sys_vars->u0, "PO_ZERO"))) {
+		// ---------------------------------------
+		// Phase Only Initial Conditions
+		// ---------------------------------------
+		// Initialize variables
+		double amp_k, energy_k;
+		double sqrt_k;
+		double energy_norm;
+		double r1;
+
+		for (int i = 0; i < local_Ny; ++i) {	
+			tmp = i * (Nx_Fourier);
+			for (int j = 0; j < Nx_Fourier; ++j) {
+				indx = tmp + j;
+
+				// Get the |k|
+				sqrt_k = sqrt(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
+
+				// Get the energy for this mode
+				if (sqrt_k == 0.0) {
+					// Set Vorticity, phases and amplitudes to 0
+					w_hat[indx]           = 0.0 + 0.0 * I;
+					run_data->a_k[indx]   = 0.0;
+					run_data->phi_k[indx] = 0.0;
+				}
+				else {
+					// Get the amplitude
+					amp_k = 1.0 / pow(sqrt_k, sys_vars->PO_SLOPE);
+
+					if (!(strcmp(sys_vars->u0, "PO_RANDOM"))) {
+						// Get random uniform number
+						r1 = (double)rand() / (double) RAND_MAX;
+
+						run_data->a_k[indx]   = amp_k;
+						run_data->phi_k[indx] = r1 * 2.0 * M_PI;
+						
+						// Fill vorticity
+						w_hat[indx] = run_data->a_k[indx] * cexp(I * run_data->phi_k[indx]);
+					}
+					else if (!(strcmp(sys_vars->u0, "PO_ZERO"))) {
+						run_data->a_k[indx]   = amp_k;
+						run_data->phi_k[indx] = 0.0;
+						
+						// Fill vorticity
+						w_hat[indx] = run_data->a_k[indx] * cexp(I * run_data->phi_k[indx]);
+					}
+
+					// Compute the enstrophy norm
+					energy_norm += pow(cabs(w_hat[indx]), 2.0) * (1.0 / pow(sqrt_k, 2.0));
+				}
+
+			}
+		}
+
+		// ---------------------------------------
+		// Sync Norm Factor
+		// ---------------------------------------
+		// Synchronize normalization factor amongst the processes
+		MPI_Allreduce(MPI_IN_PLACE, &energy_norm, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+		energy_norm *= 2.0;
+
+		// ---------------------------------------
+		// Normalize
+		// ---------------------------------------
+		for (int i = 0; i < local_Ny; ++i) {	
+			tmp = i * (Nx_Fourier);
+			for (int j = 0; j < Nx_Fourier; ++j) {
+				indx = tmp + j;
+
+				// Fill vorticity
+				if ((run_data->k[0][i] != 0) || (run_data->k[1][j] != 0)){
+					run_data->a_k[indx] *= sqrt(PO_ENRG0 / energy_norm);
+					w_hat[indx]         *= sqrt(PO_ENRG0 / energy_norm);
+				}
+				else {
+					// Zero mode is always 0 + 0 * I
+					run_data->a_k[indx] = 0.0;
+					w_hat[indx]         = 0.0 + 0.0 * I;
+				}			
+			}
+		}		
+	}
 	else if (!(strcmp(sys_vars->u0, "TESTING"))) {
 		// ---------------------------------------
 		// Powerlaw Amplitude & Fixed Phase
@@ -2057,21 +2139,30 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
     // Ensure conjugacy in the ky = 0 modes of the intial condition
     ForceConjugacy(w_hat, N, 1);
     ForceConjugacy(u_hat, N, 2);
- 	
+
 
     // -------------------------------------------------
     // Get Phase and Amplitudes in Phase Only Mode
     // -------------------------------------------------
-    #if defined(PHASE_ONLY)
-    for (int i = 0; i < local_Ny; ++i) {
-    	tmp = i * Nx_Fourier;
-    	for (int j = 0; j < Nx_Fourier; ++j) {
-    		indx = tmp + j;
+    #if defined(PHASE_ONLY) || defined(PHASE_ONLY_FXD_AMP)
+    if (strcmp(sys_vars->u0, "PO_RANDOM") || strcmp(sys_vars->u0, "PO_ZERO")) {
+	    for (int i = 0; i < local_Ny; ++i) {
+	    	tmp = i * Nx_Fourier;
+	    	for (int j = 0; j < Nx_Fourier; ++j) {
+	    		indx = tmp + j;
 
-			run_data->a_k[indx]   = cabs(w_hat[indx]);
-			run_data->phi_k[indx] = carg(w_hat[indx]);
-    	}
-    }
+				run_data->a_k[indx]   = cabs(w_hat[indx]);
+				run_data->phi_k[indx] = carg(w_hat[indx]);
+	    	}
+	    }
+	}
+
+	// Apply dealiasing to the phase and amplitudes
+	ApplyDealiasing(run_data->phi_k, 1, N);
+	ApplyDealiasing(run_data->a_k, 1, N);
+
+	// Force conjugacy to the phases
+	ForceConjugacy(run_data->phi_k, N, 1);
     #endif
 
     PrintScalarFourier(run_data->w_hat, sys_vars->N, "wh");
@@ -2178,11 +2269,11 @@ void ForceConjugacy(fftw_complex* array, const long int* N, const int dim) {
 
 	// Now ensure the 
 	for (int i = 0; i < local_Ny; ++i) {
-		if (run_data->k[0][i] > 0) {
+		if (run_data->k[0][i] < 0) {
 			tmp = i * Nx_Fourier;
 			for (int d = 0; d < dim; ++d) {
 				// Fill the conjugate modes with the conjugate of the postive k modes
-				array[dim * tmp + d] = conj(conj_data[dim * (Ny - run_data->k[0][i]) + d]);
+				array[dim * tmp + d] = conj(conj_data[dim * abs(run_data->k[0][i]) + d]);
 			}
 		}
 	}

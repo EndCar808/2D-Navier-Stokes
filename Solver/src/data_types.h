@@ -170,6 +170,7 @@
 #define UNIF_MIN_K 2.5 			// The lower bound of sqrt(k) for initializing the vorticity with random phases
 #define UNIF_MAX_K 9.5 			// The upper bound of sqrt(k) for initializing the vorticity with random phases
 #define RAND_ENST0 1.0 			// The initial enstrophy for the random initial condition
+#define PO_ENRG0 1.0 			// The initial energy for the phase only zero and random initial conditions
 // Forcing parameters
 #define STOC_FORC_GAUSS_K_MIN 2.5		// The minimum value of the modulus forced wavevectors for the stochasitc (Gaussian) forcing
 #define STOC_FORC_GAUSS_K_MAX 6.5    	// The maximum value of the modulus forced wavevectors for the stochastic (Gaussian) forcing

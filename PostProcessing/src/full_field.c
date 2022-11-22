@@ -188,11 +188,11 @@ void ForceConjugacy(fftw_complex* array, const long int* N, const int dim) {
 
 	// Now ensure the 
 	for (int i = 0; i < Ny; ++i) {
-		if (run_data->k[0][i] > 0) {
+		if (run_data->k[0][i] < 0) {
 			tmp = i * Nx_Fourier;
 			for (int d = 0; d < dim; ++d) {
 				// Fill the conjugate modes with the conjugate of the postive k modes
-				array[dim * tmp + d] = conj(conj_data[dim * (Ny - run_data->k[0][i]) + d]);
+				array[dim * tmp + d] = conj(conj_data[dim * abs(run_data->k[0][i]) + d]);
 				// array[dim * tmp + d] = conj(array[dim * (Ny - run_data->k[0][i]) + d]);
 			}
 		}
