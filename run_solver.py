@@ -249,9 +249,9 @@ if __name__ == '__main__':
                 file_only_mode = bool(utils.strtobool(parser[section]['solver_file_only_mode']))
             if 'system_tag' in parser[section]:
                 system_tag = str(parser[section]['system_tag'])
-                if system_tag.split('_')[-1] == "FULL":
+                if system_tag.split('_')[-2] == "FULL":
                     solver_mode = "FULL"
-                elif system_tag.split('_')[-1] == "PHASEONLY":
+                elif system_tag.split('_')[-2] == "PHASEONLY":
                     solver_mode = "PHASEONLY"
                 else:
                     solver_mode = None 
@@ -319,7 +319,7 @@ if __name__ == '__main__':
                                                                                                                                                                                     u0, 
                                                                                                                                                                                     s_tag, 
                                                                                                                                                                                     forcing, force_k, force_scale, 
-                                                                                                                                                                                    po_s
+                                                                                                                                                                                    po_s,
                                                                                                                                                                                     save_every, stats_every)] for nx, ny in zip(Nx, Ny) for t in T for h in dt for a_hk in ekmn_alpha_high_k for u0 in ic for v in nu for hype in hyper_visc for c in cfl for po_s in po_slope for s_tag in solver_tag]
 
         if cmdargs.cmd_only:
@@ -386,7 +386,7 @@ if __name__ == '__main__':
             post_output = []
             post_error  = []
         
-
+        print(solver_mode)
         ## Generate command list 
         if solver_mode == "FULL":
             cmd_list = [["PostProcessing/bin/main -i {} -o {} -v {:g} -v {} -v {:1.1f} -d {:g} -d {} -d {:1.1f} -d {:g} -f {} -f {} -f {} -a {} -a {} -k {} -p {} -t {} {}".format(
@@ -401,11 +401,9 @@ if __name__ == '__main__':
                                                         post_tag,
                                                         post_options)] for nx, ny in zip(Nx, Ny) for h in dt for t in T for a_hk in ekmn_alpha_high_k for n_k3 in num_k3_sectors for n_k1 in num_k1_sectors for k_f in k_frac for v in nu for hype in hyper_visc for c in cfl for u0 in ic for s_tag in solver_tag]
         elif solver_mode == "PHASEONLY":
-            cmd_list = [["PostProcessing/bin/main -i {} -o {} -v {:g} -v {} -v {:1.1f} -d {:g} -d {} -d {:1.1f} -d {:g} -f {} -f {} -f {} -a {} -a {} -k {} -p {} -t {} {}".format(
-                                                        post_input_dir + "N[{},{}]_T[{:1.1f},{},{:1.3f}]_SLOPE[{:1.3f}]_CFL[{:1.2f}]_FORC[{},{},{:g}]_u0[{}]_TAG[{}]/".format(nx, ny, t0, h, t, po_s c, forcing, force_k, force_scale, u0, s_tag), 
-                                                        post_output_dir + "N[{},{}]_T[{:1.1f},{},{:1.3f}]_SLOPE[{:1.3f}]_CFL[{:1.2f}]_FORC[{},{},{:g}]_u0[{}]_TAG[{}]/".format(nx, ny, t0, h, t, po_s c, forcing, force_k, force_scale, u0, s_tag),
-                                                        v, hypervisc, hypervisc_pow, 
-                                                        ekmn_alpha_low_k, ekmn_hypo_diff, ekmn_hypo_pow, a_hk,
+            cmd_list = [["PostProcessing/bin/main -i {} -o {} -f {} -f {} -f {} -a {} -a {} -k {} -p {} -t {} {}".format(
+                                                        post_input_dir + "N[{},{}]_T[{:1.1f},{},{:1.3f}]_SLOPE[{:1.3f}]_CFL[{:1.2f}]_FORC[{},{},{:g}]_u0[{}]_TAG[{}]/".format(nx, ny, t0, h, t, po_s, c, forcing, force_k, force_scale, u0, s_tag), 
+                                                        post_output_dir + "N[{},{}]_T[{:1.1f},{},{:1.3f}]_SLOPE[{:1.3f}]_CFL[{:1.2f}]_FORC[{},{},{:g}]_u0[{}]_TAG[{}]/".format(nx, ny, t0, h, t, po_s, c, forcing, force_k, force_scale, u0, s_tag),                                
                                                         forcing, force_k, force_scale,
                                                         n_k3, n_k1, 
                                                         k_f, 

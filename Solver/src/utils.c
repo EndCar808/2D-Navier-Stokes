@@ -371,6 +371,11 @@ int GetCMLArgs(int argc, char** argv) {
 					strncpy(sys_vars->u0, "PO_RANDOM", 64);
 					break;
 				}
+				else if (!(strcmp(optarg,"PO_AMP_FILE"))) {
+					// Phase Only - Amplitudes From File
+					strncpy(sys_vars->u0, "PO_AMP_FILE", 64);
+					break;
+				}
 				else {
 					// No initial conditions specified -> this will default to random initial conditions
 					strncpy(sys_vars->u0, "NONE", 64);
@@ -448,7 +453,7 @@ int GetCMLArgs(int argc, char** argv) {
 					break;
 				}
 				else if (!(strcmp(optarg,"BODY_FORC"))  && (force_flag == 0)) {
-					// Body Forcing: f_omeage(x, y) = cos(2 x) -> see Y.-K. Tsang, E. Ott, T. M. Antonsen, and P. N. Guzdar, Phys. Rev E, 2005
+					// Body Forcing: f_omeage(x, y) = sin(2 y) -> see Keeyeol Nam,  Edward Ott, Thomas M. Antonsen, Jr., and Parvez N. Guzdar, Phys. Rev Letters, 2000
 					strncpy(sys_vars->forcing, "BODY_FORC", 64);
 					force_flag = 1;
 					break;

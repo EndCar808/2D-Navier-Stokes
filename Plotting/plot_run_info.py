@@ -153,7 +153,8 @@ if __name__ == '__main__':
     for i in range(2):
         for j in range(2):
             ax1.append(fig.add_subplot(gs[i, j]))
-    for j, i in enumerate([0, 50, 100, -1]):
+    indx_list = [0, sys_vars.ndata//4, sys_vars.ndata//2, -1]
+    for j, i in enumerate(indx_list):
         im1 = ax1[j].imshow(run_data.w[i, :], extent = (sys_msr_data.y[0], sys_msr_data.y[-1], sys_msr_data.x[-1], sys_msr_data.x[0]), cmap = "jet") #, vmin = w_min, vmax = w_max 
         ax1[j].set_xlabel(r"$y$")
         ax1[j].set_ylabel(r"$x$")

@@ -107,7 +107,7 @@ void InitializeForcing(void) {
 			}
 		}
 	}
-	//--------------------------------- Apply Body Forcing -> f_omega(x, y) = cos(2x) -> see Y.-K. Tsang, E. Ott, T. M. Antonsen, and P. N. Guzdar, Phys. Rev E, 2005
+	//--------------------------------- Apply Body Forcing -> f_omega(x, y) = sin(2y) -> see Keeyeol Nam,  Edward Ott, Thomas M. Antonsen, Jr., and Parvez N. Guzdar, Phys. Rev Letters, 2000
 	else if(!(strcmp(sys_vars->forcing, "BODY_FORC"))) {
 		// Loop through modes to identify local process(es) containing the modes to be forced
 		for (int i = 0; i < sys_vars->local_Ny; ++i) {
@@ -607,7 +607,7 @@ void ComputeForcing(double dt) {
 				run_data->forcing[i] = -0.5 * sys_vars->force_scale_var * (sys_vars->force_k + 0.0 * I);
 			}
 		}
-		//---------------------------- Compute Body Forcing -> f_omega(x, y) = cos(2x); -> f_k = 1/2 * scale * \delta(n - 2); scale = 1 to match the paper
+		//---------------------------- Compute Body Forcing -> f_omega(x, y) = sin(2y); -> f_k = 1/2 * scale * \delta(n - 2); scale = 1 to match the paper
 		else if(!(strcmp(sys_vars->forcing, "BODY_FORC"))) {
 			// Compute the Body Forcing
 			for (int i = 0; i < sys_vars->num_forced_modes; ++i) {

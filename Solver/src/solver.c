@@ -1166,7 +1166,8 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
     // ------------------------------------------------
     // Set Seed for RNG
     // ------------------------------------------------
-    srand(123456789);
+    // Set the seed for the random number generation -> process has its own chain
+    srand(123456789 * (sys_vars->rank + 1));
 
 	if(!(strcmp(sys_vars->u0, "TG_VEL"))) {
 		// ------------------------------------------------
