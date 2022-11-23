@@ -361,6 +361,17 @@ void PrintTime(time_t start, time_t end) {
 	printf("Time taken: ["CYAN"%5.10lf"RESET"] --> "CYAN"%d"RESET" hrs : "CYAN"%d"RESET" mins : "CYAN"%d"RESET" secs\n\n", time_spent, hh, mm, ss);
 
 }
+/**
+ * Function to carry out the signum function 
+ * @param  x double Input value
+ * @return   Output of performing the signum function on the input
+ */
+double sgn(double x) {
+
+	if (x < 0.0) return -1.0;
+	if (x > 0.0) return 1.0;
+	return 0.0;
+}
 // ---------------------------------------------------------------------
 //  Function Definitions
 // ---------------------------------------------------------------------

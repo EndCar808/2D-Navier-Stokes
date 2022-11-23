@@ -18,6 +18,7 @@
 //  User Libraries and Headers
 // ---------------------------------------------------------------------
 #include "data_types.h"
+#include "utils.h"
 
 
 // ---------------------------------------------------------------------
@@ -287,24 +288,24 @@ void RealSpaceStats(int s) {
 				for (int j = 0; j < Nx; ++j) {				
 					// Get velocity increments
 					#if defined(__VEL_STR_FUNC_STATS)
-					vel_long_increment      += pow(run_data->u[SYS_DIM * (i * Nx + (j + r_inc) % Nx) + 0] - run_data->u[SYS_DIM * (i * Nx + j) + 0], 2 * radial_pow[p - 1]);
-					vel_trans_increment     += pow(run_data->u[SYS_DIM * (i * Nx + (j + r_inc) % Nx) + 1] - run_data->u[SYS_DIM * (i * Nx + j) + 1], 2 * radial_pow[p - 1]);
-					vel_long_increment_abs  += pow(fabs(run_data->u[SYS_DIM * (i * Nx + (j + r_inc) % Nx) + 0] - run_data->u[SYS_DIM * (i * Nx + j) + 0]), 2 * radial_pow[p - 1]);
-					vel_trans_increment_abs += pow(fabs(run_data->u[SYS_DIM * (i * Nx + (j + r_inc) % Nx) + 1] - run_data->u[SYS_DIM * (i * Nx + j) + 1]), 2 * radial_pow[p - 1]);
+					vel_long_increment      += pow(sgn(run_data->u[SYS_DIM * (i * Nx + ((j + r_inc) % Nx)) + 0] - run_data->u[SYS_DIM * (i * Nx + j) + 0]), 2.0 * radial_pow[p - 1]) * pow(fabs(run_data->u[SYS_DIM * (i * Nx + ((j + r_inc) % Nx)) + 0] - run_data->u[SYS_DIM * (i * Nx + j) + 0]), 2.0 * radial_pow[p - 1]);
+					vel_trans_increment     += pow(sgn(run_data->u[SYS_DIM * (i * Nx + ((j + r_inc) % Nx)) + 1] - run_data->u[SYS_DIM * (i * Nx + j) + 1]), 2.0 * radial_pow[p - 1]) * pow(fabs(run_data->u[SYS_DIM * (i * Nx + ((j + r_inc) % Nx)) + 1] - run_data->u[SYS_DIM * (i * Nx + j) + 1]), 2.0 * radial_pow[p - 1]);
+					vel_long_increment_abs  += pow(fabs(run_data->u[SYS_DIM * (i * Nx + ((j + r_inc) % Nx)) + 0] - run_data->u[SYS_DIM * (i * Nx + j) + 0]), 2.0 * radial_pow[p - 1]);
+					vel_trans_increment_abs += pow(fabs(run_data->u[SYS_DIM * (i * Nx + ((j + r_inc) % Nx)) + 1] - run_data->u[SYS_DIM * (i * Nx + j) + 1]), 2.0 * radial_pow[p - 1]);
 					#endif
 					// Get vorticity increments
 					#if defined(__VORT_STR_FUNC_STATS)
-					vort_long_increment      += pow(run_data->w[i * Nx + (j + r_inc) % Nx] - run_data->w[i * Nx + j], 2 * radial_pow[p - 1]);
-					vort_trans_increment     += pow(run_data->w[((i + r_inc) % Ny) * Nx + j] - run_data->w[i * Nx + j], 2 * radial_pow[p - 1]);
-					vort_long_increment_abs  += pow(fabs(run_data->w[i * Nx + (j + r_inc) % Nx] - run_data->w[i * Nx + j]), 2 * radial_pow[p - 1]);
-					vort_trans_increment_abs += pow(fabs(run_data->w[((i + r_inc) % Ny) * Nx + j] - run_data->w[i * Nx + j]), 2 * radial_pow[p - 1]);
+					vort_long_increment      += pow(sgn(run_data->w[i * Nx + ((j + r_inc) % Nx)] - run_data->w[i * Nx + j]), 2.0 * radial_pow[p - 1]) * pow(fabs(run_data->w[i * Nx + ((j + r_inc) % Nx)] - run_data->w[i * Nx + j]), 2.0 * radial_pow[p - 1]);
+					vort_trans_increment     += pow(sgn(run_data->w[((i + r_inc) % Ny) * Nx + j] - run_data->w[i * Nx + j]), 2.0 * radial_pow[p - 1]) * pow(fabs(run_data->w[((i + r_inc) % Ny) * Nx + j] - run_data->w[i * Nx + j]), 2.0 * radial_pow[p - 1]);
+					vort_long_increment_abs  += pow(fabs(run_data->w[i * Nx + ((j + r_inc) % Nx)] - run_data->w[i * Nx + j]), 2.0 * radial_pow[p - 1]);
+					vort_trans_increment_abs += pow(fabs(run_data->w[((i + r_inc) % Ny) * Nx + j] - run_data->w[i * Nx + j]), 2.0 * radial_pow[p - 1]);
 					#endif
 					if (p == 3) {
 						#if defined(__MIXED_VEL_STR_FUNC)
-						mixed_vel_increment += (run_data->u[SYS_DIM * (i * (Nx + 2) + (j + r_inc) % Nx) + 0] - run_data->u[SYS_DIM * (i * (Nx + 2) + j) + 0]) * pow(run_data->u[SYS_DIM * (i * (Nx + 2) + (j + r_inc) % Nx) + 1] - run_data->u[SYS_DIM * (i * (Nx + 2) + j) + 1], 2.0);
+						mixed_vel_increment += (run_data->u[SYS_DIM * (i * (Nx + 2) + ((j + r_inc) % Nx)) + 0] - run_data->u[SYS_DIM * (i * (Nx + 2) + j) + 0]) * pow(run_data->u[SYS_DIM * (i * (Nx + 2) + ((j + r_inc) % Nx)) + 1] - run_data->u[SYS_DIM * (i * (Nx + 2) + j) + 1], 2.0);
 						#endif
 						#if defined(__MIXED_VORT_STR_FUNC)
-						mixed_vort_increment += (run_data->u[SYS_DIM * (i * (Nx + 2) + (j + r_inc) % Nx) + 0] - run_data->u[SYS_DIM * (i * (Nx + 2) + j) + 0]) * pow(run_data->w[i * Nx + (j + r_inc) % Nx] - run_data->w[i * Nx + j], 2.0);
+						mixed_vort_increment += (run_data->u[SYS_DIM * (i * (Nx + 2) + ((j + r_inc) % Nx)) + 0] - run_data->u[SYS_DIM * (i * (Nx + 2) + j) + 0]) * pow(run_data->w[i * Nx + ((j + r_inc) % Nx)] - run_data->w[i * Nx + j], 2.0);
 						#endif	
 					}
 				}
@@ -346,8 +347,8 @@ void RealSpaceStats(int s) {
 				// Loop over space and average 
 				for (int i = 0; i < Ny; ++i) {
 					for (int j = 0; j < Nx; ++j) {
-						vort_rad_increment     += pow(run_data->w[((i + r_y) % Ny) * Nx + ((j + r_x) % Nx)] - run_data->w[i * Nx + j], 2 * radial_pow[p - 1]);
-						vort_rad_increment_abs += pow(fabs(run_data->w[((i + r_y) % Ny) * Nx + ((j + r_x) % Nx)] - run_data->w[i * Nx + j]), 2 * radial_pow[p - 1]);
+						vort_rad_increment     += pow(sgn(run_data->w[((i + r_y) % Ny) * Nx + ((j + r_x) % Nx)] - run_data->w[i * Nx + j]), 2.0 * radial_pow[p - 1]) * pow(fabs(run_data->w[((i + r_y) % Ny) * Nx + ((j + r_x) % Nx)] - run_data->w[i * Nx + j]), 2.0 * radial_pow[p - 1]);
+						vort_rad_increment_abs += pow(fabs(run_data->w[((i + r_y) % Ny) * Nx + ((j + r_x) % Nx)] - run_data->w[i * Nx + j]), 2.0 * radial_pow[p - 1]);
 					}
 				}
 
@@ -1032,6 +1033,11 @@ void WriteStatsToFile(void) {
 
     // Allocate temporary memory to record the histogram data contiguously
     double* vort_radial_str_funcs = (double*) fftw_malloc(sizeof(double) * STR_FUNC_MAX_POW * (max_shell_indx));
+    for (int p = 0; p < STR_FUNC_MAX_POW; ++p) {
+    	for (int i = 0; i < max_shell_indx; ++i) {
+    		vort_radial_str_funcs[p * (max_shell_indx) + i] = 0.0;
+    	}
+    }
 
     //----------------------- Write the longitudinal structure functions
     // Normal Structure functions
@@ -1047,13 +1053,36 @@ void WriteStatsToFile(void) {
 		   	}
    		}
    	}
+
+   	// Save the radially averaged raidal structure function
    	dset_dims_2d[0] = STR_FUNC_MAX_POW;
    	dset_dims_2d[1] = max_shell_indx;
    	status = H5LTmake_dataset(file_info->output_file_handle, "RadialVorticityStructureFunctions", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, vort_radial_str_funcs);
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Radial Vorticity  Structure Functions");
         exit(1);
-    }			
+    }
+    // Save the raidal structure function field
+   	dset_dims_3d[0] = STR_FUNC_MAX_POW;
+   	dset_dims_3d[1] = N_max_incr;
+   	dset_dims_3d[2] = N_max_incr;
+   	status = H5LTmake_dataset(file_info->output_file_handle, "RadialVorticityStructureFunctionsField", Dims3D, dset_dims_3d, H5T_NATIVE_DOUBLE, stats_data->w_radial_str_func[0]);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Radial Vorticity  Structure Functions Field");
+        exit(1);
+    }
+
+    // Free memory
+    fftw_free(vort_radial_str_funcs);
+
+    // Allocate temporary memory to record the histogram data contiguously
+    double* vort_radial_str_funcs_abs = (double*) fftw_malloc(sizeof(double) * STR_FUNC_MAX_POW * (max_shell_indx));
+    for (int p = 0; p < STR_FUNC_MAX_POW; ++p) {
+    	for (int i = 0; i < max_shell_indx; ++i) {
+    		vort_radial_str_funcs_abs[p * (max_shell_indx) + i] = 0.0;
+    	}
+    }
+		
     // Absolute Structure functions
    	for (int p = 0; p < STR_FUNC_MAX_POW; ++p) {
    		for (int r_x = 0; r_x < N_max_incr; ++r_x) {
@@ -1063,18 +1092,28 @@ void WriteStatsToFile(void) {
 
    				shell_indx = (int) round(sqrt(r_x * r_x + r_y * r_y));
 
-		   		vort_radial_str_funcs[p * (max_shell_indx) + shell_indx] += stats_data->w_radial_str_func_abs[p][indx] / sys_vars->num_snaps / (2.0 * M_PI * shell_indx);
+		   		vort_radial_str_funcs_abs[p * (max_shell_indx) + shell_indx] += stats_data->w_radial_str_func_abs[p][indx] / sys_vars->num_snaps / (2.0 * M_PI * shell_indx);
 		   	}
    		}
    	}
-	status = H5LTmake_dataset(file_info->output_file_handle, "AbsoluteRadialVorticityStructureFunctions", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, vort_radial_str_funcs);
+	status = H5LTmake_dataset(file_info->output_file_handle, "AbsoluteRadialVorticityStructureFunctions", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, vort_radial_str_funcs_abs);
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Absolute Radial Vorticity  Structure Functions");
         exit(1);
-    }		
+    }	
+
+    // Save the raidal structure function field
+   	dset_dims_3d[0] = STR_FUNC_MAX_POW;
+   	dset_dims_3d[1] = N_max_incr;
+   	dset_dims_3d[2] = N_max_incr;
+   	status = H5LTmake_dataset(file_info->output_file_handle, "AbsoluteRadialVorticityStructureFunctionsField", Dims3D, dset_dims_3d, H5T_NATIVE_DOUBLE, stats_data->w_radial_str_func_abs[0]);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Absolute Radial Vorticity  Structure Functions Field");
+        exit(1);
+    }	
 	
     // Free temporary memory
-    fftw_free(vort_radial_str_funcs);
+    fftw_free(vort_radial_str_funcs_abs);
     #endif
 
 	///----------------------------------- Write Mixed Structure Functions

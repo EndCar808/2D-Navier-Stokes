@@ -521,7 +521,7 @@ void InitializeFFTWPlans(const long int* N) {
 	const long int Nx = N[1];
 	const int N_batch[SYS_DIM] = {Ny, Nx};
 
-	// Initialize Fourier Transforms
+	// Initialize Fourier Transforms -> only on a single thread as plan creation and destruction are not thread safe -> plan execution is thread safe
 	sys_vars->fftw_2d_dft_c2r = fftw_plan_dft_c2r_2d(Ny, Nx, run_data->w_hat, run_data->w, FFTW_MEASURE);
 	if (sys_vars->fftw_2d_dft_c2r == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to initialize basic C2R FFTW Plan\n-->> Exiting!!!\n");
@@ -596,14 +596,12 @@ void FreeMemoryAndCleanUp(void) {
 	// --------------------------------
 	//  Free FFTW Plans
 	// --------------------------------
-	// Destroy FFTW plans
+	// Destroy FFTW plans -> only on a single thread as plan creation and destruction are not thread safe -> plan execution is thread safe
 	fftw_destroy_plan(sys_vars->fftw_2d_dft_c2r);
 	fftw_destroy_plan(sys_vars->fftw_2d_dft_r2c);
 	fftw_destroy_plan(sys_vars->fftw_2d_dft_batch_c2r);
 	fftw_destroy_plan(sys_vars->fftw_2d_dft_batch_r2c);
 
-	// Clean Up FFTW Objects
-	fftw_cleanup();
 
 	// --------------------------------
 	//  Close HDF5 Objects

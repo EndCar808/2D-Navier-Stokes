@@ -144,6 +144,8 @@ if __name__ == '__main__':
     ## Read in post processing data
     post_data = import_post_processing_data(post_file_path, sys_vars, method)
     
+    ## Read in spectra data
+    spec_data = import_spectra_data(cmdargs.in_dir, sys_vars)
 
     # -----------------------------------------
     # # --------  Make Output Folder
@@ -152,10 +154,52 @@ if __name__ == '__main__':
     if os.path.isdir(cmdargs.out_dir_stats) != True:
         print("Making folder:" + tc.C + " STATS_PLOTS/" + tc.Rst)
         os.mkdir(cmdargs.out_dir_stats)
+    snaps_output_dir = cmdargs.out_dir + "RUN_SNAPS/"
+    if os.path.isdir(snaps_output_dir) != True:
+        print("Making folder:" + tc.C + " RUN_SNAPS/" + tc.Rst)
+        os.mkdir(snaps_output_dir)
 
 
     # -----------------------------------------
-    # # --------  Plot Velocity Increment PDFs
+    # # --------  Time Averaged Spectra to Measure the Spectra Scaling Exponent
+    # ----------------------------------------- 
+    inert_range = np.arange(4, 25)
+    k_range = np.arange(1, int(sys_vars.Nx/3))
+    mean_enrg_spec = np.mean(spec_data.enrg_spectrum[:, 1:int(sys_vars.Nx/3)], axis = 0)
+    mean_enst_spec = np.mean(spec_data.enst_spectrum[:, 1:int(sys_vars.Nx/3)], axis = 0)
+    p_enrg = np.polyfit(np.log(k_range[inert_range]), np.log(mean_enrg_spec[inert_range]), 1)
+    p_enst = np.polyfit(np.log(k_range[inert_range]), np.log(mean_enst_spec[inert_range]), 1)
+
+    fig = plt.figure(figsize = (21, 8))
+    gs  = GridSpec(1, 2)
+    ax2 = fig.add_subplot(gs[0, 0])
+    ax2.plot(k_range, mean_enrg_spec, 'k')
+    ax2.plot(k_range[inert_range], np.exp(p_enrg[1]) * k_range[inert_range]**p_enrg[0], '--', color='orangered',label="$E(k) \propto k^{:.2f}$".format(p_enrg[0])) ## \Rightarrow \propto$ k^{-(3 + \qi)} \Rightarrow \qi = {:.2f} , np.absolute(np.absolute(p_enrg[0]) - 3))
+    ax2.set_xlabel(r"$k$")
+    ax2.set_xscale('log')
+    ax2.set_yscale('log')
+    ax2.legend()
+    ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+    ax2.set_title(r"$\mathcal{K}(|\mathbf{k}|)$: Energy Spectrum")
+    print("Energy Spectrum Slope - 3: {}".format(np.absolute(np.absolute(p_enrg[0]) - 3)))
+    zeta_2_theory = np.absolute(np.absolute(p_enrg[0]) - 3)
+
+    ax2 = fig.add_subplot(gs[0, 1])
+    ax2.plot(k_range, mean_enst_spec, 'k')
+    ax2.plot(k_range[inert_range], np.exp(p_enst[1]) * k_range[inert_range]**p_enst[0], '--', color='orangered',label="$E(k) \propto k^{:.2f}$".format(p_enst[0])) ## \propto$ k^{-(1 + \qi)} \Rightarrow , \qi = {:.2f} np.absolute(np.absolute(p_enst[0]) - 3))
+    ax2.set_xlabel(r"$k$")
+    ax2.set_xscale('log')
+    ax2.set_yscale('log')
+    ax2.legend()
+    ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+    ax2.set_title(r"$\mathcal{E}(|\mathbf{k}|)$: Enstrophy Spectrum")
+    
+    plt.savefig(snaps_output_dir + "SpectraScaling.png")
+    plt.close()
+
+
+    # -----------------------------------------
+    # # --------  Plot Longitudinal Increment PDFs
     # -----------------------------------------
     ## Create Figure
     fig = plt.figure(figsize = (16, 8))
@@ -193,6 +237,47 @@ if __name__ == '__main__':
     plt.suptitle(r"Longitudinal Increment PDFs")
     
     plt.savefig(cmdargs.out_dir_stats + "/Longitudinal_Incrmenents_PDFs.png")
+    plt.close()
+
+    # -----------------------------------------
+    # # --------  Plot Transverse Increment PDFs
+    # -----------------------------------------
+    ## Create Figure
+    fig = plt.figure(figsize = (16, 8))
+    gs  = GridSpec(1, 2) 
+
+    if post_data.vel_trans_incr_ranges.shape[0] == 2:
+        plot_legend = [r"$r = \frac{\pi}{N}$", r"$r = \pi$"]
+    else:
+        plot_legend = [r"$r = \frac{\pi}{N}$", r"$r = \frac{2\pi}{N}$", r"$r = \frac{4\pi}{N}$", r"$r = \frac{16\pi}{N}$",  r"$r = \pi$"]
+
+    ## Transverse PDFs
+    ax1 = fig.add_subplot(gs[0, 0])
+    for i in range(post_data.vel_trans_incr_ranges.shape[0]):
+        bin_centres, pdf = compute_pdf(post_data.vel_trans_incr_ranges[i, :], post_data.vel_trans_incr_counts[i, :], normalized = True)
+        ax1.plot(bin_centres, pdf, label = plot_legend[i])
+    ax1.set_xlabel(r"$\delta_r \mathbf{u}_{\perp} / \langle (\delta_r \mathbf{u}_{\perp})^2 \rangle^{1/2}$")
+    ax1.set_ylabel(r"PDF")
+    ax1.set_yscale('log')
+    ax1.grid(color = 'k', linewidth = .5, linestyle = ':')
+    ax1.set_title("Velocity Transverse Increments")
+    ax1.legend()
+
+    ## Transverse PDFs
+    ax2 = fig.add_subplot(gs[0, 1])
+    for i in range(post_data.vort_trans_incr_ranges.shape[0]):
+        bin_centres, pdf = compute_pdf(post_data.vort_trans_incr_ranges[i, :], post_data.vort_trans_incr_counts[i, :], normalized = True)        
+        ax2.plot(bin_centres, pdf, label = plot_legend[i])
+    ax2.set_xlabel(r"$\delta_r \omega_{\perp} / \langle (\delta_r \omega_{\perp})^2 \rangle^{1/2}$")
+    ax2.set_ylabel(r"PDF")
+    ax2.set_yscale('log')
+    ax2.grid(color = 'k', linewidth = .5, linestyle = ':')
+    ax2.set_title("Vorticity Transverse Incrments")
+    ax2.legend()
+
+    plt.suptitle(r"Transverse Increment PDFs")
+    
+    plt.savefig(cmdargs.out_dir_stats + "/Transverse_Incrmenents_PDFs.png")
     plt.close()
 
     # -----------------------------------------
@@ -235,12 +320,10 @@ if __name__ == '__main__':
     p, = ax3.plot(bin_centres, pdf, '-.', label = r"Long; $r = \frac{\pi}{N}$")
     bin_centres, pdf = compute_pdf(post_data.vel_trans_incr_ranges[0, :], post_data.vel_trans_incr_counts[0, :], normalized = True)
     ax3.plot(bin_centres, pdf, color = p.get_color(), label = r"Trans; $r = \frac{\pi}{N}$")
-    bin_centres, pdf = compute_pdf(post_data.vel_long_incr_ranges[1, :], post_data.vel_long_incr_counts[1, :], normalized = True)
+    bin_centres, pdf = compute_pdf(post_data.vel_long_incr_ranges[-1, :], post_data.vel_long_incr_counts[-1, :], normalized = True)
     p, = ax3.plot(bin_centres, pdf, '-.', label = r"Long; $r = \pi$")
-    bin_centres, pdf = compute_pdf(post_data.vel_trans_incr_ranges[1, :], post_data.vel_trans_incr_counts[1, :], normalized = True)
+    bin_centres, pdf = compute_pdf(post_data.vel_trans_incr_ranges[-1, :], post_data.vel_trans_incr_counts[-1, :], normalized = True)
     ax3.plot(bin_centres, pdf, color = p.get_color(), label = r"Trans; $r = \pi$")
-    # bin_centres, pdf = compute_pdf(post_data.grad_w_y_ranges[:], post_data.grad_w_y_counts[:], normalized = True, label = r"$\partial \omega /\partial y$")
-    # ax3.plot(bin_centres, pdf)
     ax3.set_xlabel(r"$\delta_r \mathbf{u} / \langle (\delta_r \mathbf{u})^2 \rangle^{1/2}$")
     ax3.set_ylabel(r"PDF")
     ax3.set_yscale('log')
@@ -293,12 +376,10 @@ if __name__ == '__main__':
     p, = ax3.plot(bin_centres, pdf, label = r"Long; $r = \frac{\pi}{N}$")
     bin_centres, pdf = compute_pdf(post_data.vort_trans_incr_ranges[0, :], post_data.vort_trans_incr_counts[0, :], normalized = True)
     ax3.plot(bin_centres, pdf, '-.', color = p.get_color(), label = r"Trans; $r = \frac{\pi}{N}$")
-    bin_centres, pdf = compute_pdf(post_data.vort_long_incr_ranges[1, :], post_data.vort_long_incr_counts[1, :], normalized = True)
+    bin_centres, pdf = compute_pdf(post_data.vort_long_incr_ranges[-1, :], post_data.vort_long_incr_counts[-1, :], normalized = True)
     p, = ax3.plot(bin_centres, pdf, label = r"Long; $r = \pi$")
-    bin_centres, pdf = compute_pdf(post_data.vort_trans_incr_ranges[1, :], post_data.vort_trans_incr_counts[1, :], normalized = True)
+    bin_centres, pdf = compute_pdf(post_data.vort_trans_incr_ranges[-1, :], post_data.vort_trans_incr_counts[-1, :], normalized = True)
     ax3.plot(bin_centres, pdf, '-.', color = p.get_color(), label = r"Trans; $r = \pi$")
-    # bin_centres, pdf = compute_pdf(post_data.grad_w_y_ranges[:], post_data.grad_w_y_counts[:], normalized = True, label = r"$\partial \omega /\partial y$")
-    # ax3.plot(bin_centres, pdf)
     ax3.set_xlabel(r"$\delta_r w / \langle (\delta_r w)^2 \rangle^{1/2}$")
     ax3.set_ylabel(r"PDF")
     ax3.set_yscale('log')
@@ -361,6 +442,7 @@ if __name__ == '__main__':
     L = np.minimum(sys_vars.Nx, sys_vars.Ny) / 2
     powers = [0.1, 0.5, 1.0, 1.5, 2.0, 2.5]
     ax1 = fig.add_subplot(gs[0, 0])
+    print(post_data.vel_long_str_func[0, :])
     for i in range(post_data.vel_long_str_func.shape[0]):
         # ax1.plot(r / L, np.absolute(post_data.vel_long_str_func[i, :]))
         ax1.plot(np.log2(r), np.log2(np.absolute(post_data.vel_long_str_func[i, :])))
@@ -424,6 +506,7 @@ if __name__ == '__main__':
     # L = np.minimum(sys_vars.Nx, sys_vars.Ny) / 2
     powers = [0.1, 0.5, 1.0, 1.5, 2.0, 2.5]
     ax1 = fig.add_subplot(gs[0, 0])
+    print(post_data.vort_long_str_func[0, :])
     for i in range(post_data.vort_long_str_func.shape[0]):
         # ax1.plot(r / , np.absolute(post_data.vort_long_str_func[i, :]))
         ax1.plot(np.log2(r), np.log2(np.absolute(post_data.vort_long_str_func[i, :])))
@@ -483,8 +566,8 @@ if __name__ == '__main__':
     # -----------------------------------------------------------------------------
     indx_shift = 1
 
-    inert_lim_low  = 9
-    inert_lim_high = 30
+    inert_lim_low  = inert_range[0]
+    inert_lim_high = inert_range[-1]
 
     mark_style = ['o','s','^','x','D','p']
 
@@ -496,7 +579,7 @@ if __name__ == '__main__':
     y0     = 0.85
     width  = 0.3
     height = 0.2
-    fig   = plt.figure(figsize = (16, 8))
+    fig   = plt.figure(figsize = (10, 10))
     gs    = GridSpec(2, 2, hspace = 0.3)
 
     ax1   = fig.add_subplot(gs[0, 0])
@@ -510,7 +593,7 @@ if __name__ == '__main__':
         pfit_slope = pfit_info[0]
         pfit_c     = pfit_info[1]
         zeta_p_long.append(np.absolute(pfit_slope))
-        # print(i + indx_shift, (i +indx_shift) / 3, pfit_slope, pfit_c)
+        print(i, pfit_slope, pfit_c)
         ax1.plot(np.log2(r[inert_lim_low:inert_lim_high]), np.log2(r[inert_lim_low:inert_lim_high])*pfit_slope + pfit_c + 0.25, '--', color = p.get_color())
         ## Compute the local derivative and plot in insert
         # d_str_func  = np.diff(np.log2(post_data.vort_long_str_func_abs[i, :]))
@@ -530,20 +613,23 @@ if __name__ == '__main__':
     # # --------  Plot Anomalous Exponent
     ax2   = fig.add_subplot(gs[1, 0])
     p = powers
-    zeta_2_theory = 1.0
-    if hasattr(sys_vars, "alpha_high_k"):
-        if sys_vars.alpha_high_k == 0.1:
-            zeta_2_theory = 0.63
-        elif sys_vars.alpha_high_k == 0.2:
-            zeta_2_theory = 1.10
-        else:
-            zeta_2_theory = 1.0
+    # zeta_2_theory = 
+    # if hasattr(sys_vars, "alpha_high_k"):
+    #     if sys_vars.alpha_high_k == 0.1:
+    #         zeta_2_theory = 0.63
+    #     elif sys_vars.alpha_high_k == 0.2:
+    #         zeta_2_theory = 1.10
+    #     else:
+    #         zeta_2_theory = 1.0
+    print("Long: {}".format(zeta_p_long[2]), np.array(zeta_p_long[:]) / zeta_2_theory, zeta_2_theory)
     ns_zeta_p = [0.72, 1, 1.273, 1.534, 1.786]
     ax2.plot(p, np.array(zeta_p_long[:]) / zeta_2_theory, marker = mark_style[0], markerfacecolor = 'None', markersize = 5.0, markevery = 1, label = "DNS")
-    ax2.plot(p, p / zeta_2_theory, 'b--', label = "K41")
+    ax2.plot(p, np.array(zeta_p_long[:]) / zeta_p_long[2], marker = mark_style[0], markerfacecolor = 'None', markersize = 5.0, markevery = 1, label = "DNS / $\zeta_2,DNS$")
+    ax2.plot(p, p, 'k--', label = "K41")
     ax2.set_xlabel(r"$p$")
     ax2.set_ylabel(r"$\zeta_{2p} / \zeta_{2, th}$")
-    # ax2.set_xlim(0, 2)
+    ax2.set_xlim(0, 2)
+    ax2.set_ylim(0, 2)
     ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
     ax2.set_title(r"Longitudinal $\zeta_{2p}$")
     ax2.legend()
@@ -560,7 +646,7 @@ if __name__ == '__main__':
         pfit_slope = pfit_info[0]
         pfit_c     = pfit_info[1]
         zeta_p_trans.append(np.absolute(pfit_slope))
-        # print(i + indx_shift, (i +indx_shift) / 3, pfit_slope, pfit_c)
+        print(i, pfit_slope, pfit_c)
         ax3.plot(np.log2(r[inert_lim_low:inert_lim_high]), np.log2(r[inert_lim_low:inert_lim_high])*pfit_slope + pfit_c + 0.25, '--', color = p.get_color())
         ## Compute the local derivative and plot in insert
         # d_str_func  = np.diff(np.log2(post_data.vort_trans_str_func_abs[i, :]))
@@ -580,31 +666,30 @@ if __name__ == '__main__':
     # # --------  Plot Anomalous Exponent
     ax4   = fig.add_subplot(gs[1, 1])
     p = powers
-    zeta_2_theory = 1.0
-    if hasattr(sys_vars, "alpha_high_k"):
-        if sys_vars.alpha_high_k == 0.1:
-            zeta_2_theory = 0.63
-        elif sys_vars.alpha_high_k == 0.2:
-            zeta_2_theory = 1.10
-        else:
-            zeta_2_theory = 1.0
+    # zeta_2_theory = 1.0
+    # if hasattr(sys_vars, "alpha_high_k"):
+    #     if sys_vars.alpha_high_k == 0.1:
+    #         zeta_2_theory = 0.63
+    #     elif sys_vars.alpha_high_k == 0.2:
+    #         zeta_2_theory = 1.10
+    #     else:
+    #         zeta_2_theory = 1.0
+    print("Trans: {}".format(zeta_p_trans[2]), np.array(zeta_p_trans[:]) / zeta_2_theory, zeta_2_theory)
     ns_zeta_p = [0.72, 1, 1.273, 1.534, 1.786]
     ax4.plot(p, np.array(zeta_p_trans[:]) / zeta_2_theory, marker = mark_style[0], markerfacecolor = 'None', markersize = 5.0, markevery = 1, label = "DNS")
-    ax4.plot(p, p / zeta_2_theory, 'b--', label = "K41")
+    ax4.plot(p, np.array(zeta_p_trans[:]) / zeta_p_trans[2], marker = mark_style[0], markerfacecolor = 'None', markersize = 5.0, markevery = 1, label = "DNS / $\zeta_2,DNS$")
+    ax4.plot(p, p, 'k--', label = "K41")
     ax4.set_xlabel(r"$p$")
     ax4.set_ylabel(r"$\zeta_{2p} / \zeta_{2, th}$")
-    # ax4.set_xlim(0, 2)
+    ax4.set_xlim(0, 2)
+    ax4.set_ylim(0, 2)
+
     ax4.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
     ax4.legend()
     ax4.set_title(r"Transverse $\zeta_{2p}$")
 
     plt.savefig(cmdargs.out_dir_stats + "Vorticity_Structure_Func_Anonalous_Exponent_Zeta_p.png", bbox_inches='tight')
     plt.close()
-
-
-
-
-
 
     # ---------------------------------------------
     # # --------  Plot Radial Vorticity Structure Functions
@@ -642,8 +727,8 @@ if __name__ == '__main__':
 
 
     if hasattr(post_data, "vort_rad_str_func_abs"):
-        inert_lim_low  = 9
-        inert_lim_high = 30
+        inert_lim_low  = inert_range[0]
+        inert_lim_high = inert_range[-1]
 
         mark_style = ['o','s','^','x','D','p']
 
@@ -677,17 +762,17 @@ if __name__ == '__main__':
 
         ax4   = fig.add_subplot(gs[0, 1])
         p = powers
-        zeta_2_theory = 1.0
-        if hasattr(sys_vars, "alpha_high_k"):
-            if sys_vars.alpha_high_k == 0.1:
-                zeta_2_theory = 0.63
-            elif sys_vars.alpha_high_k == 0.2:
-                zeta_2_theory = 1.10
-            else:
-                zeta_2_theory = 1.0
+        # zeta_2_theory = 1.0
+        # if hasattr(sys_vars, "alpha_high_k"):
+        #     if sys_vars.alpha_high_k == 0.1:
+        #         zeta_2_theory = 0.63
+        #     elif sys_vars.alpha_high_k == 0.2:
+        #         zeta_2_theory = 1.10
+        #     else:
+        #         zeta_2_theory = 1.0
         ns_zeta_p = [0.72, 1, 1.273, 1.534, 1.786]
         ax4.plot(p, np.array(zeta_p_trans[:]) / zeta_2_theory, marker = mark_style[0], markerfacecolor = 'None', markersize = 5.0, markevery = 1, label = "DNS")
-        ax4.plot(p, p / zeta_2_theory, 'b--', label = "K41")
+        ax4.plot(p, p, 'k--', label = "K41")
         ax4.set_xlabel(r"$p$")
         ax4.set_ylabel(r"$\zeta_{2p} / \zeta_{2, th}$")
         # ax4.set_xlim(0, 2)

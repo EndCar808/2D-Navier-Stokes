@@ -47,11 +47,7 @@ void OpenInputAndInitialize(void) {
 	// Create compound datatype for the complex datasets
 	file_info->COMPLEX_DTYPE = CreateComplexDatatype();
 
-	// status = H5Tclose(file_info->COMPLEX_DTYPE);
-	// if (status < 0) {
-	// 	fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close Complex Compound Datat Type at final write\n-->> Exiting...\n");
-	// 	exit(1);
-	// }
+	
 	// --------------------------------
 	//  Get Input File Path
 	// --------------------------------

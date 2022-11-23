@@ -386,7 +386,6 @@ if __name__ == '__main__':
             post_output = []
             post_error  = []
         
-        print(solver_mode)
         ## Generate command list 
         if solver_mode == "FULL":
             cmd_list = [["PostProcessing/bin/main -i {} -o {} -v {:g} -v {} -v {:1.1f} -d {:g} -d {} -d {:1.1f} -d {:g} -f {} -f {} -f {} -a {} -a {} -k {} -p {} -t {} {}".format(

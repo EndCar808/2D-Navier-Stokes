@@ -2166,9 +2166,9 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 	ForceConjugacy(run_data->phi_k, N, 1);
     #endif
 
-    PrintScalarFourier(run_data->w_hat, sys_vars->N, "wh");
-    PrintAmps(run_data->a_k, sys_vars->N, "a");
-    PrintPhases(run_data->phi_k, sys_vars->N, "p");
+    // PrintScalarFourier(run_data->w_hat, sys_vars->N, "wh");
+    // PrintAmps(run_data->a_k, sys_vars->N, "a");
+    // PrintPhases(run_data->phi_k, sys_vars->N, "p");
 
    	// -------------------------------------------------
    	// Get Max of Initial Condition
