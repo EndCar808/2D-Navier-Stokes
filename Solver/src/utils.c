@@ -458,6 +458,12 @@ int GetCMLArgs(int argc, char** argv) {
 					force_flag = 1;
 					break;
 				}
+				else if (!(strcmp(optarg,"ISO_BODY_FORC"))  && (force_flag == 0)) {
+					// "Isotropic" Body Forcing: f_omeage(x, y) = sin(2 y) + sin(2x)
+					strncpy(sys_vars->forcing, "ISO_BODY_FORC", 64);
+					force_flag = 1;
+					break;
+				}
 				else if (!(strcmp(optarg,"STOC"))  && (force_flag == 0)) {
 					// Stochastic Uniform forcing
 					strncpy(sys_vars->forcing, "STOC", 64);

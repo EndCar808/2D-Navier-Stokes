@@ -56,8 +56,6 @@ void InitializeForcing(void) {
 		// Get the number of forced modes
 		sys_vars->num_forced_modes = num_forced_modes;
 
-		MPI_Barrier(MPI_COMM_WORLD);
-
 		// Allocate forcing data on the local forcing process only
 		if (sys_vars->local_forcing_proc) {
 			// -----------------------------------
@@ -108,10 +106,10 @@ void InitializeForcing(void) {
 		}
 	}
 	//--------------------------------- Apply Body Forcing -> f_omega(x, y) = sin(2y) -> see Keeyeol Nam,  Edward Ott, Thomas M. Antonsen, Jr., and Parvez N. Guzdar, Phys. Rev Letters, 2000
-	else if(!(strcmp(sys_vars->forcing, "BODY_FORC"))) {
+	else if(!(strcmp(sys_vars->forcing, "BODY_FORC"))) { // note sys_vars->forc_k will be period of the forcing (= 2 in the paper)
 		// Loop through modes to identify local process(es) containing the modes to be forced
 		for (int i = 0; i < sys_vars->local_Ny; ++i) {
-			if (run_data->k[0][i] == sys_vars->force_k || run_data->k[0][i] == -sys_vars->force_k) { // note sys_vars->forc_k will be period of the forcing (= 2 in the paper)
+			if (run_data->k[0][i] == sys_vars->force_k || run_data->k[0][i] == -sys_vars->force_k) { 
 				sys_vars->local_forcing_proc = 1;
 				num_forced_modes++;
 			}
@@ -162,6 +160,79 @@ void InitializeForcing(void) {
 					run_data->forcing_indx[force_mode_counter] = i * Nx_Fourier;
 					run_data->forcing_k[0][force_mode_counter] = run_data->k[0][i];
 					run_data->forcing_k[1][force_mode_counter] = 0;
+					run_data->forcing_scaling[force_mode_counter] = sys_vars->force_scale_var;
+					// increment counter
+					force_mode_counter++;
+				}
+			}
+		}
+	}
+	//--------------------------------- Apply "Isotropic" Body Forcing -> f_omega(x, y) = sin(2y) + sin(2x)
+	else if(!(strcmp(sys_vars->forcing, "ISO_BODY_FORC"))) {
+		// Loop through modes to identify local process(es) containing the modes to be forced
+		for (int i = 0; i < sys_vars->local_Ny; ++i) {
+			if (run_data->k[0][i] == sys_vars->force_k || run_data->k[0][i] == -sys_vars->force_k || run_data->k[1][i] == sys_vars->force_k) { // note sys_vars->forc_k will be period of the forcing (= 2 in the paper)
+				sys_vars->local_forcing_proc = 1;
+				num_forced_modes++;
+			}
+		}
+
+		// Get the number of forced modes
+		sys_vars->num_forced_modes = num_forced_modes;
+
+		// Allocate forcing data on the local forcing process only
+		if (sys_vars->local_forcing_proc) {
+			// -----------------------------------
+			// Allocate Memory 
+			// -----------------------------------
+			// Allocate the forcing array to hold the forcing
+			run_data->forcing = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * num_forced_modes);
+			if (run_data->forcing == NULL) {
+				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Forcing");
+				exit(1);
+			}
+			// Allocate array for the forced mode index
+			run_data->forcing_indx = (int* )fftw_malloc(sizeof(int) * num_forced_modes);
+			if (run_data->forcing_indx == NULL) {
+				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Forcing Indices");
+				exit(1);
+			}
+			// Allocate array for the scaling 
+			run_data->forcing_scaling = (double* )fftw_malloc(sizeof(double) * num_forced_modes);
+			if (run_data->forcing_scaling == NULL) {
+				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Forcing Scaling");
+				exit(1);
+			}
+			// Allocate array for the forced mode wavenumbers
+			for (int i = 0; i < SYS_DIM; ++i) {
+				run_data->forcing_k[i] = (int* )fftw_malloc(sizeof(int) * num_forced_modes);
+				if (run_data->forcing_k[i] == NULL) {
+					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Forcing Wavevectors");
+					exit(1);
+				}
+			}
+
+			// -----------------------------------
+			// Fill Forcing Info
+			// -----------------------------------
+			force_mode_counter = 0;
+			for (int i = 0; i < sys_vars->local_Ny; ++i) {
+				if (run_data->k[0][i] == sys_vars->force_k || run_data->k[0][i] == -sys_vars->force_k) {
+					// Get the forcing info
+					run_data->forcing_indx[force_mode_counter] = i * Nx_Fourier;
+					run_data->forcing_k[0][force_mode_counter] = run_data->k[0][i];
+					run_data->forcing_k[1][force_mode_counter] = 0;
+					run_data->forcing_scaling[force_mode_counter] = sys_vars->force_scale_var;
+					// increment counter
+					force_mode_counter++;
+				}	
+			}
+			for (int i = 0; i < Nx_Fourier; ++i) {
+				if (run_data->k[1][i] == sys_vars->force_k) {
+					// Get the forcing info
+					run_data->forcing_indx[force_mode_counter] = i;
+					run_data->forcing_k[0][force_mode_counter] = 0;
+					run_data->forcing_k[1][force_mode_counter] = run_data->k[1][i];
 					run_data->forcing_scaling[force_mode_counter] = sys_vars->force_scale_var;
 					// increment counter
 					force_mode_counter++;
@@ -609,6 +680,13 @@ void ComputeForcing(double dt) {
 		}
 		//---------------------------- Compute Body Forcing -> f_omega(x, y) = sin(2y); -> f_k = 1/2 * scale * \delta(n - 2); scale = 1 to match the paper
 		else if(!(strcmp(sys_vars->forcing, "BODY_FORC"))) {
+			// Compute the Body Forcing
+			for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
+				run_data->forcing[i] = 0.5 * sys_vars->force_scale_var + 0.0 * I;
+			}
+		}
+		//---------------------------- Compute "Isotropic" Body Forcing -> f_omega(x, y) = sin(2y) + sin(2x); -> f_k = 1/2 * scale * \delta(n - 2); scale = 1 to match the paper
+		else if(!(strcmp(sys_vars->forcing, "ISO_BODY_FORC"))) {
 			// Compute the Body Forcing
 			for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
 				run_data->forcing[i] = 0.5 * sys_vars->force_scale_var + 0.0 * I;

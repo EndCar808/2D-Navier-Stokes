@@ -335,7 +335,7 @@ if __name__ == '__main__':
             for processes in zip_longest(*groups): 
                 for proc in filter(None, processes): # filters out 'None' fill values if proc_limit does not divide evenly into cmd_list
                     ## Print command to screen
-                    print("Executing the following command:\n\t" + tc.C + "{}".format(proc.args[0]) + tc.Rst)
+                    print("\nExecuting the following command:\n\n\t" + tc.C + "{}\n\n".format(proc.args[0]) + tc.Rst)
                     
                     ## Print output to terminal as it comes
                     for line in proc.stdout:
@@ -423,7 +423,7 @@ if __name__ == '__main__':
             for processes in zip_longest(*groups): 
                 for proc in filter(None, processes): # filters out 'None' fill values if proc_limit does not divide evenly into cmd_list
                     ## Print command to screen
-                    print("Executing the following command:\n\t" + tc.C + "{}".format(proc.args[0]) + tc.Rst)
+                    print("\nExecuting the following command:\n\n\t" + tc.C + "{}\n\n".format(proc.args[0]) + tc.Rst)
 
                     ## Print output to terminal as it comes
                     for line in proc.stdout:
@@ -502,7 +502,7 @@ if __name__ == '__main__':
             for processes in zip_longest(*groups): 
                 for proc in filter(None, processes): # filters out 'None' fill values if proc_limit does not divide evenly into cmd_list
                     ## Print command to screen
-                    print("Executing the following command:\n\t" + tc.C + "{}".format(proc.args[0]) + tc.Rst)
+                    print("\nExecuting the following command:\n\n\t" + tc.C + "{}\n\n".format(proc.args[0]) + tc.Rst)
 
                     ## Print output to terminal as it comes
                     for line in proc.stdout:
