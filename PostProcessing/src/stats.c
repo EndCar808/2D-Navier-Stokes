@@ -336,10 +336,10 @@ void RealSpaceStats(int s) {
 
 		#if defined(__VORT_RADIAL_STR_FUNC_STATS)
 		// Compute the radial structure functions
-		for (int r_x = 0; r_x < N_max_incr; ++r_x) {
-			tmp_r = r_x * N_max_incr;
-			for (int r_y = 0; r_y < N_max_incr; ++r_y) {
-				indx_r = tmp_r + r_y;
+		for (int r_x = 1; r_x <= N_max_incr; ++r_x) {
+			for (int r_y = 1; r_y <= N_max_incr; ++r_y) {
+				tmp_r = (r_x - 1) * N_max_incr;
+				indx_r = tmp_r + (r_y - 1);
 
 				vort_rad_increment     = 0.0;
 				vort_rad_increment_abs = 0.0;
