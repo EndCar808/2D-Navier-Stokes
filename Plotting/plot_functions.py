@@ -11,6 +11,7 @@
 import numpy as np
 import sys
 import os
+import h5py as h5
 import matplotlib as mpl
 if mpl.__version__ > '2':    
        mpl.rcParams['text.usetex'] = True
@@ -37,6 +38,9 @@ class tc:
     Bold = '\033[1m'
     Underline = '\033[4m'
 
+#####################
+##     MISC        ##
+#####################
 
 ##########################################
 ##       SOLVER SUMMARY FUNCTIONS       ##
@@ -148,7 +152,41 @@ def plot_summary_snaps(out_dir, i, w, x, y, w_min, w_max, kx, ky, kx_max, tot_en
     plt.savefig(out_dir + "SNAP_{:05d}.png".format(i), bbox_inches='tight') 
     plt.close()
 
+def plot_phase_snaps_stream(input_dir, output_dir, post_file, i, Nx, Ny):
 
+       ## Open Main data file to get vorticity
+       with h5.File(input_dir + "Main_HDF_Data.h5", "r") as main_file:
+              ## Group name
+              group_name = "Iter_{:05d}".format(i)
+              if "w" in list(main_file[group_name].keys()):
+                     w = main_file[group_name]["w"][:, :]
+              else:
+                     w_hat = main_file[group_name]["w_hat"][:, :]
+                     w = np.fft.irfft2(w_hat) * Nx * Nx
+
+       ## Get system measure data
+       with h5.File(input_dir + "SystemMeasures_HDF_Data.h5") as sys_msr_file:
+              x = sys_msr_file["x"][:]
+              y = sys_msr_file["y"][:]
+              time = sys_msr_file["Time"][:]
+              kx = sys_msr_file["kx"][:]
+              ky = sys_msr_file["ky"][:]
+
+       ## Get spectra data
+       with h5.File(input_dir + post_file) as post_file:
+              group_name = "Snap_{:05d}".format(i)
+              enrg_spec = post_file[group_name]["FullFieldEnergySpectrum"][:]
+              enst_spec = post_file[group_name]["FullFieldEnstrophySpectrum"][:]
+              min_enrg  = np.amin(np.delete(enrg_spec.flatten(), np.where(enrg_spec.flatten() == -50.0)))
+              max_enrg  = np.amax(np.delete(enrg_spec.flatten(), np.where(enrg_spec.flatten() == -50.0)))
+              min_enst  = np.amin(np.delete(enst_spec.flatten(), np.where(enst_spec.flatten() == -50.0)))
+              max_enst  = np.amax(np.delete(enst_spec.flatten(), np.where(enst_spec.flatten() == -50.0)))
+              spec_lims = np.array([min_enrg, max_enrg, min_enst, max_enst])
+              spec_lims[spec_lims[:] == 0.0] = 1e-12
+              phases    = post_file[group_name]["FullFieldPhases"][:]
+
+       ## Call plot flow summary function
+       plot_phase_snaps(output_dir, i, w, phases, enrg_spec, enst_spec, spec_lims, None, None, x, y, time, Nx, Ny, kx, ky)
 
 def plot_phase_snaps(out_dir, i, w, phases, enrg_spec, enst_spec, spec_lims, w_min, w_max, x, y, time, Nx, Ny, kx, ky):
 
@@ -267,6 +305,39 @@ def plot_phase_snaps(out_dir, i, w, phases, enrg_spec, enst_spec, spec_lims, w_m
     ## Save figure
     plt.savefig(out_dir + "Phase_SNAP_{:05d}.png".format(i), bbox_inches='tight') 
     plt.close()
+
+
+def plot_flow_summary_stream(input_dir, output_dir, i, Nx, Ny):
+
+       ## Open Main data file to get vorticity
+       with h5.File(input_dir + "Main_HDF_Data.h5", "r") as main_file:
+              ## Group name
+              group_name = "Iter_{:05d}".format(i)
+              if "w" in list(main_file[group_name].keys()):
+                     w = main_file[group_name]["w"][:, :]
+              else:
+                     w_hat = main_file[group_name]["w_hat"][:, :]
+                     w = np.fft.irfft2(w_hat) * Nx * Nx
+
+       ## Get system measure data
+       with h5.File(input_dir + "SystemMeasures_HDF_Data.h5") as sys_msr_file:
+              tot_en      = sys_msr_file["TotalEnergy"][:]
+              tot_ens     = sys_msr_file["TotalEnstrophy"][:]
+              tot_en_diss = sys_msr_file["EnergyDissipation"][:]
+              x = sys_msr_file["x"][:]
+              y = sys_msr_file["y"][:]
+              time = sys_msr_file["Time"][:]
+              kx = sys_msr_file["kx"][:]
+              ky = sys_msr_file["ky"][:]
+
+       ## Get spectra data
+       with h5.File(input_dir + "Spectra_HDF_Data.h5") as spectra_file:
+              group_name = "Iter_{:05d}".format(i)
+              enrg_spec = spectra_file[group_name]["EnergySpectrum"][:]
+              enst_spec = spectra_file[group_name]["EnstrophySpectrum"][:]
+
+       ## Call plot flow summary function
+       plot_flow_summary(output_dir, i, w, np.amin(w), np.amax(w), None, None, np.amin(enrg_spec), np.amax(enrg_spec), np.amin(enst_spec), np.amax(enst_spec), None, x, y, time, Nx, Ny, kx, ky, enrg_spec, enst_spec, tot_en, tot_ens, tot_en_diss)
 
 def plot_flow_summary(out_dir, i, w, w_min, w_max, measure_min, measure_max, enrg_spec_min, enrg_spec_max, enst_spec_min, enst_spec_max, force_k, x, y, time, Nx, Ny, kx, ky, enrg_spec, enst_spec, tot_en, tot_ens, tot_pal):
 

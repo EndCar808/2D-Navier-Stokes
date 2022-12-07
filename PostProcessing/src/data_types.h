@@ -54,33 +54,37 @@
 #define EKMN_DRAG_K 6 			// Wavenumber to split for determining low and high ekman drag variable
 #define FORCING 1 				// Indicates if forcing was used in simulation
 // Post processing Modes
-// #define __REAL_STATS
+#if defined(__POST_STATS)
+#define __REAL_STATS
 #define __VEL_INC_STATS
 #define __VORT_INC_STATS
 #define __VEL_STR_FUNC_STATS
 #define __VORT_STR_FUNC_STATS
-// #define __VORT_RADIAL_STR_FUNC_STATS
+#define __VORT_RADIAL_STR_FUNC_STATS
 #define __MIXED_VEL_STR_FUNC_STATS
 #define __MIXED_VORT_STR_FUNC_STATS
 #define __VEL_GRAD_STATS
 #define __VORT_GRAD_STATS
-// #define __FULL_FIELD
-// #define __SPECTRA
-// #define __SEC_PHASE_SYNC
+#endif
+#if defined(__POST_FIELD) || defined(__POST_SYNC)
+#define __FULL_FIELD
+#define __SPECTRA
+#define __ENST_FLUX
+#define __ENRG_FLUX
+#endif
+#if defined(__POST_SYNC)
+#define __SEC_PHASE_SYNC
 // #define __SEC_PHASE_SYNC_STATS
-// #define __ENST_FLUX
-// #define __ENRG_FLUX
-
-
+#endif
 // Postprocessing data sets
 // #define __VORT_FOUR
 // #define __VORT_REAL
 // #define __MODES
 // #define __REALSPACE
 // #define __NONLIN
-#define __TIME
-#define __COLLOC_PTS
-#define __WAVELIST
+// #define __TIME
+// #define __COLLOC_PTS
+// #define __WAVELIST
 
 #define __DEALIAS_23
 // #define __DEALIAS_HOU_LI
@@ -286,9 +290,9 @@ typedef struct postprocess_data_struct {
 	gsl_histogram*** triad_R_2d_pdf;						 					// Array to hold the histogram objects for the 2D contributions for the Phase sync
 	gsl_histogram*** triad_Phi_2d_pdf;											// Array to hold the histogram objects for the 2D contributions for the triads
 	gsl_histogram*** enst_flux_2d_pdf;											// Array to hold the histogram objects for the 2D contributions for the enstrophy flux
-	gsl_rstat_workspace*** triad_R_2d_stats[NUM_MOMENTS];									// Workplace for the running stats for the 2d phase sync
-	gsl_rstat_workspace*** triad_Phi_2d_stats[NUM_MOMENTS];									// Workplace for the running stats for 2d average phase
-	gsl_rstat_workspace*** enst_flux_2d_stats[NUM_MOMENTS];									// Workplace for the running stats for the 2d enstrophy flux contribution
+	gsl_rstat_workspace*** triad_R_2d_stats[NUM_MOMENTS];						// Workplace for the running stats for the 2d phase sync
+	gsl_rstat_workspace*** triad_Phi_2d_stats[NUM_MOMENTS];						// Workplace for the running stats for 2d average phase
+	gsl_rstat_workspace*** enst_flux_2d_stats[NUM_MOMENTS];						// Workplace for the running stats for the 2d enstrophy flux contribution
 } postprocess_data_struct;
 
 // Post processing stats data struct
@@ -321,8 +325,8 @@ typedef struct stats_data_struct {
 typedef struct HDF_file_info_struct {
 	char input_file_name[1024];		// Array holding main input file name
 	char sys_msr_file_name[1024];	// Array holding system measures file name
-	char output_file_name[1024];     // Output file name array
-	char wave_vec_data_name[1024];   // File path for the phase sync wavector data
+	char output_file_name[1024];    // Output file name array
+	char wave_vec_data_name[1024];  // File path for the phase sync wavector data
 	char output_dir[1024];			// Output directory
 	char input_dir[1024];			// Input directory
 	char output_tag[64]; 			// Tag to be added to the output directory

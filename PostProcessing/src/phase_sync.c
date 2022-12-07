@@ -1452,6 +1452,11 @@ void AllocatePhaseSyncMemory(const long int* N) {
 	proc_data->triad_R_2d_stats       = (gsl_rstat_workspace*** )fftw_malloc(sizeof(gsl_rstat_workspace**) * sys_vars->num_k3_sectors);
 	proc_data->triad_Phi_2d_stats     = (gsl_rstat_workspace*** )fftw_malloc(sizeof(gsl_rstat_workspace**) * sys_vars->num_k3_sectors);
 	proc_data->enst_flux_2d_stats     = (gsl_rstat_workspace*** )fftw_malloc(sizeof(gsl_rstat_workspace**) * sys_vars->num_k3_sectors);
+	for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
+		proc_data->triad_sect_pdf[i]         = (gsl_histogram** )fftw_malloc(sizeof(gsl_histogram*) * sys_vars->num_k3_sectors);
+		proc_data->triad_sect_pdf_t[i]       = (gsl_histogram** )fftw_malloc(sizeof(gsl_histogram*) * sys_vars->num_k3_sectors);
+		proc_data->triad_sect_wghtd_pdf_t[i] = (gsl_histogram** )fftw_malloc(sizeof(gsl_histogram*) * sys_vars->num_k3_sectors);
+	}
 	for (int l = 0; l < sys_vars->num_k3_sectors; ++l) {
 		proc_data->triad_R_2d_pdf[l]     = (gsl_histogram** )fftw_malloc(sizeof(gsl_histogram*) * sys_vars->num_k1_sectors);
 		proc_data->triad_Phi_2d_pdf[l]   = (gsl_histogram** )fftw_malloc(sizeof(gsl_histogram*) * sys_vars->num_k1_sectors);
@@ -1459,11 +1464,6 @@ void AllocatePhaseSyncMemory(const long int* N) {
 		proc_data->triad_R_2d_stats[l]   = (gsl_rstat_workspace** )fftw_malloc(sizeof(gsl_rstat_workspace*) * sys_vars->num_k1_sectors);
 		proc_data->triad_Phi_2d_stats[l] = (gsl_rstat_workspace** )fftw_malloc(sizeof(gsl_rstat_workspace*) * sys_vars->num_k1_sectors);
 		proc_data->enst_flux_2d_stats[l] = (gsl_rstat_workspace** )fftw_malloc(sizeof(gsl_rstat_workspace*) * sys_vars->num_k1_sectors);
-	}
-	for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
-		proc_data->triad_sect_pdf[i]         = (gsl_histogram** )fftw_malloc(sizeof(gsl_histogram*) * sys_vars->num_k3_sectors);
-		proc_data->triad_sect_pdf_t[i]       = (gsl_histogram** )fftw_malloc(sizeof(gsl_histogram*) * sys_vars->num_k3_sectors);
-		proc_data->triad_sect_wghtd_pdf_t[i] = (gsl_histogram** )fftw_malloc(sizeof(gsl_histogram*) * sys_vars->num_k3_sectors);
 	}
 	
 	// Allocate stats objects for each sector and set ranges

@@ -220,6 +220,8 @@ if __name__ == '__main__':
             if 'adaptive_step_type' in parser[section]:
                 step_type = int(parser[section]['adaptive_step_type'] == 'True')
         if section in ['POST']:
+            if 'post_executable' in parser[section]:
+                post_executable = str(parser[section]['post_executable'])
             if 'num_k3_sectors' in parser[section]:
                 for n in parser[section]['num_k3_sectors'].lstrip('[').rstrip(']').split(', '):
                     num_k3_sectors.append(int(n))
@@ -388,7 +390,8 @@ if __name__ == '__main__':
         
         ## Generate command list 
         if solver_mode == "FULL":
-            cmd_list = [["PostProcessing/bin/main -i {} -o {} -v {:g} -v {} -v {:1.1f} -d {:g} -d {} -d {:1.1f} -d {:g} -f {} -f {} -f {} -a {} -a {} -k {} -p {} -t {} {}".format(
+            cmd_list = [["{} -i {} -o {} -v {:g} -v {} -v {:1.1f} -d {:g} -d {} -d {:1.1f} -d {:g} -f {} -f {} -f {} -a {} -a {} -k {} -p {} -t {} {}".format(
+                                                        post_executable,
                                                         post_input_dir + "N[{},{}]_T[{:1.1f},{},{:1.3f}]_NU[{:g},{},{:1.1f}]_DRAG[{:g},{:g},{},{:1.1f}]_CFL[{:1.2f}]_FORC[{},{},{:g}]_u0[{}]_TAG[{}]/".format(nx, ny, t0, h, t, v, int(hype), hypervisc_pow, ekmn_alpha_low_k, a_hk, int(ekmn_hypo_diff), ekmn_hypo_pow, c, forcing, force_k, force_scale, u0, s_tag), 
                                                         post_output_dir + "N[{},{}]_T[{:1.1f},{},{:1.3f}]_NU[{:g},{},{:1.1f}]_DRAG[{:g},{:g},{},{:1.1f}]_CFL[{:1.2f}]_FORC[{},{},{:g}]_u0[{}]_TAG[{}]/".format(nx, ny, t0, h, t, v, int(hype), hypervisc_pow, ekmn_alpha_low_k, a_hk, int(ekmn_hypo_diff), ekmn_hypo_pow, c, forcing, force_k, force_scale, u0, s_tag),
                                                         v, hypervisc, hypervisc_pow, 
@@ -400,7 +403,8 @@ if __name__ == '__main__':
                                                         post_tag,
                                                         post_options)] for nx, ny in zip(Nx, Ny) for h in dt for t in T for a_hk in ekmn_alpha_high_k for n_k3 in num_k3_sectors for n_k1 in num_k1_sectors for k_f in k_frac for v in nu for hype in hyper_visc for c in cfl for u0 in ic for s_tag in solver_tag]
         elif solver_mode == "PHASEONLY":
-            cmd_list = [["PostProcessing/bin/main -i {} -o {} -f {} -f {} -f {} -a {} -a {} -k {} -p {} -t {} {}".format(
+            cmd_list = [["{} -i {} -o {} -f {} -f {} -f {} -a {} -a {} -k {} -p {} -t {} {}".format(
+                                                        post_executable,
                                                         post_input_dir + "N[{},{}]_T[{:1.1f},{},{:1.3f}]_SLOPE[{:1.3f}]_CFL[{:1.2f}]_FORC[{},{},{:g}]_u0[{}]_TAG[{}]/".format(nx, ny, t0, h, t, po_s, c, forcing, force_k, force_scale, u0, s_tag), 
                                                         post_output_dir + "N[{},{}]_T[{:1.1f},{},{:1.3f}]_SLOPE[{:1.3f}]_CFL[{:1.2f}]_FORC[{},{},{:g}]_u0[{}]_TAG[{}]/".format(nx, ny, t0, h, t, po_s, c, forcing, force_k, force_scale, u0, s_tag),                                
                                                         forcing, force_k, force_scale,

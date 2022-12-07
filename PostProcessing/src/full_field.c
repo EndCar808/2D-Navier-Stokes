@@ -35,7 +35,6 @@ void FullFieldData(void) {
 	const long int Ny 		  = sys_vars->N[0];
 	const long int Nx_Fourier = sys_vars->N[1] / 2 + 1;
 
-
 	// --------------------------------
 	// Fill The Full Field Arrays
 	// --------------------------------

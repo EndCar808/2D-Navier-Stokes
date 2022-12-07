@@ -1610,16 +1610,16 @@ void FinalWriteAndClose(void) {
 
     ///-------------------------- 2D Flux Contribution Histograms
     // Allocate temporary memory
-	double* ranges = (double*) fftw_malloc(sizeof(double) * sys_vars->num_k3_sectors * sys_vars->num_k1_sectors * (proc_data->triad_R_2d_pdf[0][0]->n + 1));
-	double* counts = (double*) fftw_malloc(sizeof(double) * sys_vars->num_k3_sectors * sys_vars->num_k1_sectors * proc_data->triad_R_2d_pdf[0][0]->n);
+	double* ranges_flux_2d = (double*) fftw_malloc(sizeof(double) * sys_vars->num_k3_sectors * sys_vars->num_k1_sectors * (proc_data->triad_R_2d_pdf[0][0]->n + 1));
+	double* counts_flux_2d = (double*) fftw_malloc(sizeof(double) * sys_vars->num_k3_sectors * sys_vars->num_k1_sectors * proc_data->triad_R_2d_pdf[0][0]->n);
     
     // Save phase data in temporary memory for writing to file
     for (int i = 0; i < sys_vars->num_k3_sectors; ++i) {
     	for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
 	    	for (int j = 0; j < (int) proc_data->triad_R_2d_pdf[0][0]->n + 1; ++j) {
-	    		ranges[(int) (proc_data->triad_R_2d_pdf[0][0]->n + 1) * (i * (sys_vars->num_k1_sectors) + l) + j] = proc_data->triad_R_2d_pdf[i][l]->range[j];
+	    		ranges_flux_2d[(int) (proc_data->triad_R_2d_pdf[0][0]->n + 1) * (i * (sys_vars->num_k1_sectors) + l) + j] = proc_data->triad_R_2d_pdf[i][l]->range[j];
 	    		if (j < (int) proc_data->triad_R_2d_pdf[0][0]->n) {
-	    			counts[(int) (proc_data->triad_R_2d_pdf->n) * (i * (sys_vars->num_k1_sectors) + l) + j] = proc_data->triad_R_2d_pdf[i][l]->bin[j];
+	    			counts_flux_2d[(int) (proc_data->triad_R_2d_pdf->n) * (i * (sys_vars->num_k1_sectors) + l) + j] = proc_data->triad_R_2d_pdf[i][l]->bin[j];
 	    		}
 	    	}
     	}
@@ -1627,13 +1627,13 @@ void FinalWriteAndClose(void) {
     dset_dims_3d[0] = sys_vars->num_k3_sectors;
     dset_dims_3d[1] = sys_vars->num_k1_sectors;
     dset_dims_3d[2] = proc_data->triad_R_2d_pdf[0][0]->n + 1;
-	status = H5LTmake_dataset(file_info->output_file_handle, "Phase_Sync_2D_PDFRanges", Dims3D, dset_dims_3d, H5T_NATIVE_DOUBLE, ranges);
+	status = H5LTmake_dataset(file_info->output_file_handle, "Phase_Sync_2D_PDFRanges", Dims3D, dset_dims_3d, H5T_NATIVE_DOUBLE, ranges_flux_2d);
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Phase Sync PDF Ranges");
         exit(1);
     }
     dset_dims_3d[2] = proc_data->triad_R_2d_pdf[0][l]->n;
-	status = H5LTmake_dataset(file_info->output_file_handle, "Phase_Sync_2D_PDFCounts", Dims3D, dset_dims_3d, H5T_NATIVE_DOUBLE, counts);
+	status = H5LTmake_dataset(file_info->output_file_handle, "Phase_Sync_2D_PDFCounts", Dims3D, dset_dims_3d, H5T_NATIVE_DOUBLE, counts_flux_2d);
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Phase Sync PDF Counts");
         exit(1);
@@ -1643,21 +1643,21 @@ void FinalWriteAndClose(void) {
     for (int i = 0; i < sys_vars->num_k3_sectors; ++i) {
     	for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
 	    	for (int j = 0; j < (int) proc_data->triad_Phi_2d_pdf[0][0]->n + 1; ++j) {
-	    		ranges[(int) (proc_data->triad_Phi_2d_pdf[0][0]->n + 1) * (i * (sys_vars->num_k1_sectors) + l) + j] = proc_data->triad_Phi_2d_pdf[i][l]->range[j];
+	    		ranges_flux_2d[(int) (proc_data->triad_Phi_2d_pdf[0][0]->n + 1) * (i * (sys_vars->num_k1_sectors) + l) + j] = proc_data->triad_Phi_2d_pdf[i][l]->range[j];
 	    		if (j < (int) proc_data->triad_Phi_2d_pdf[0][0]->n) {
-	    			counts[(int) (proc_data->triad_Phi_2d_pdf->n) * (i * (sys_vars->num_k1_sectors) + l) + j] = proc_data->triad_Phi_2d_pdf[i][l]->bin[j];
+	    			counts_flux_2d[(int) (proc_data->triad_Phi_2d_pdf->n) * (i * (sys_vars->num_k1_sectors) + l) + j] = proc_data->triad_Phi_2d_pdf[i][l]->bin[j];
 	    		}
 	    	}
     	}
     }
     dset_dims_3d[2] = proc_data->triad_Phi_2d_pdf[0][0]->n + 1;
-	status = H5LTmake_dataset(file_info->output_file_handle, "Average_Phase_2D_PDFRanges", Dims3D, dset_dims_3d, H5T_NATIVE_DOUBLE, ranges);
+	status = H5LTmake_dataset(file_info->output_file_handle, "Average_Phase_2D_PDFRanges", Dims3D, dset_dims_3d, H5T_NATIVE_DOUBLE, ranges_flux_2d);
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Average Phase PDF Ranges");
         exit(1);
     }
     dset_dims_3d[2] = proc_data->triad_Phi_2d_pdf[0][0]->n;
-	status = H5LTmake_dataset(file_info->output_file_handle, "Average_Phase_2D_PDFCounts", Dims3D, dset_dims_3d, H5T_NATIVE_DOUBLE, counts);
+	status = H5LTmake_dataset(file_info->output_file_handle, "Average_Phase_2D_PDFCounts", Dims3D, dset_dims_3d, H5T_NATIVE_DOUBLE, counts_flux_2d);
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Average Phase PDF Counts");
         exit(1);
@@ -1667,29 +1667,29 @@ void FinalWriteAndClose(void) {
     for (int i = 0; i < sys_vars->num_k3_sectors; ++i) {
     	for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
 	    	for (int j = 0; j < (int) proc_data->enst_flux_2d_pdf[0][0]->n + 1; ++j) {
-	    		ranges[(int) (proc_data->enst_flux_2d_pdf[0][0]->n + 1) * (i * (sys_vars->num_k1_sectors) + l) + j] = proc_data->enst_flux_2d_pdf[i][l]->range[j];
+	    		ranges_flux_2d[(int) (proc_data->enst_flux_2d_pdf[0][0]->n + 1) * (i * (sys_vars->num_k1_sectors) + l) + j] = proc_data->enst_flux_2d_pdf[i][l]->range[j];
 	    		if (j < (int) proc_data->enst_flux_2d_pdf[0][0]->n) {
-	    			counts[(int) (proc_data->enst_flux_2d_pdf->n) * (i * (sys_vars->num_k1_sectors) + l) + j] = proc_data->enst_flux_2d_pdf[i][l]->bin[j];
+	    			counts_flux_2d[(int) (proc_data->enst_flux_2d_pdf->n) * (i * (sys_vars->num_k1_sectors) + l) + j] = proc_data->enst_flux_2d_pdf[i][l]->bin[j];
 	    		}
 	    	}
     	}
     }
     dset_dims_3d[2] = proc_data->enst_flux_2d_pdf[0][0]->n + 1;
-	status = H5LTmake_dataset(file_info->output_file_handle, "Enstrophy_Flux_2D_PDFRanges", Dims3D, dset_dims_3d, H5T_NATIVE_DOUBLE, ranges);
+	status = H5LTmake_dataset(file_info->output_file_handle, "Enstrophy_Flux_2D_PDFRanges", Dims3D, dset_dims_3d, H5T_NATIVE_DOUBLE, ranges_flux_2d);
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Enstrophy Flux PDF Ranges");
         exit(1);
     }
     dset_dims_3d[2] = proc_data->enst_flux_2d_pdf[0][0]->n;
-	status = H5LTmake_dataset(file_info->output_file_handle, "Enstrophy_Flux_2D_PDFCounts", Dims3D, dset_dims_3d, H5T_NATIVE_DOUBLE, counts);
+	status = H5LTmake_dataset(file_info->output_file_handle, "Enstrophy_Flux_2D_PDFCounts", Dims3D, dset_dims_3d, H5T_NATIVE_DOUBLE, counts_flux_2d);
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Enstrophy Flux PDF Counts");
         exit(1);
     }
 
     // Free temporary memory
-    fftw_free(ranges);
-    fftw_free(counts);
+    fftw_free(ranges_flux_2d);
+    fftw_free(counts_flux_2d);
     #endif
     #endif
 
