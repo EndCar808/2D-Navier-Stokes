@@ -470,6 +470,12 @@ int GetCMLArgs(int argc, char** argv) {
 					force_flag = 1;
 					break;
 				}
+				else if (!(strcmp(optarg,"RAND"))  && (force_flag == 0)) {
+					// Random forcing
+					strncpy(sys_vars->forcing, "RAND", 64);
+					force_flag = 1;
+					break;
+				}
 				else if (!(strcmp(optarg,"STOC_GAUSS"))  && (force_flag == 0)) {
 					// Stochastic Gaussian forcing
 					strncpy(sys_vars->forcing, "STOC_GAUSS", 64);

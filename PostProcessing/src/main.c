@@ -84,18 +84,9 @@ int main(int argc, char** argv) {
 
 	// Initialize and set threads for fftw plans
 	fftw_init_threads();
-	
-	// Set the number of FFTW threads
-	int num_fftw_threads;
-	if (sys_vars->num_threads > 16) {
-		num_fftw_threads = 16;
-	}
-	else {
-		num_fftw_threads = sys_vars->num_threads;
-	}
 
 	// Set the number of threads for FFTW and print to screen
-	fftw_plan_with_nthreads(num_fftw_threads);
+	fftw_plan_with_nthreads(sys_vars->num_fftw_threads);
 	printf("\nFFTW Threads: "CYAN"%d"RESET"\n", sys_vars->num_threads);
 
 	//////////////////////////////

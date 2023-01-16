@@ -42,6 +42,7 @@ int GetCMLArgs(int argc, char** argv) {
 	int visc_flag 	    = 0;
 	int drag_flag       = 0;
 	int force_flag      = 0;
+	int threads_flag    = 0;
 
 	// -------------------------------
 	// Initialize Default Values
@@ -50,16 +51,17 @@ int GetCMLArgs(int argc, char** argv) {
 	strncpy(file_info->output_dir, "NONE", 1024);  // Set default output directory to the Tmp folder
 	strncpy(file_info->input_dir, "NONE", 1024);  // Set default output directory to the Tmp folder
 	strncpy(file_info->output_tag, "No-Tag", 64);
-	file_info->input_file_only = 0; // used to indicate if input file was file only i.e., not output folder
+	file_info->input_file_only  = 0; // used to indicate if input file was file only i.e., not output folder
 	file_info->output_file_only = 0; // used to indicate if output file should be file only i.e., not output folder
 	// Number of wavevector space sectors
-	sys_vars->num_k3_sectors = 24;
-	sys_vars->num_k1_sectors = 24;
+	sys_vars->num_k3_sectors         = 24;
+	sys_vars->num_k1_sectors         = 24;
 	sys_vars->REDUCED_K1_SEARCH_FLAG = 0;
 	// Fraction of maximum wavevector
 	sys_vars->kmax_frac = 1.0;
 	// Set the default amount of threads to use
-	sys_vars->num_threads = 1;
+	sys_vars->num_threads      = 1;
+	sys_vars->num_fftw_threads = 1;
 	// Viscosity
 	sys_vars->NU = 1e-4;
 	// Default number of k1 sectors
@@ -135,13 +137,27 @@ int GetCMLArgs(int argc, char** argv) {
 				}
 				else {
 					break;
-				}				
+				}
+				break;				
 			case 'p':
-				// Get the number of omp threads to use
-				sys_vars->num_threads = atoi(optarg); 
-				if (sys_vars->num_threads <= 0) {
-					fprintf(stderr, "\n["RED"ERROR"RESET"]: Error in reading in command line agument ["CYAN"%s"RESET"], number of OMP threads must be greater than or equal to 1, umber provided ["CYAN"%d"RESET"]\n--->> Now Exiting!\n", "sys_vars->num_k3_sectors", sys_vars->num_threads);
-					exit(1);
+				// Get the number of threads to use
+				if (threads_flag == 0) {
+					sys_vars->num_threads = atoi(optarg); 
+					if (sys_vars->num_threads <= 0) {
+						fprintf(stderr, "\n["RED"ERROR"RESET"]: Error in reading in command line agument ["CYAN"%s"RESET"], number of OMP threads must be greater than or equal to 1, umber provided ["CYAN"%d"RESET"]\n--->> Now Exiting!\n", "sys_vars->num_threads", sys_vars->num_threads);
+						exit(1);
+					}
+					threads_flag = 1;
+					break;
+				}
+				else if (threads_flag == 1) {
+					sys_vars->num_fftw_threads = atoi(optarg); 
+					if (sys_vars->num_fftw_threads <= 0 || sys_vars->num_fftw_threads > 16) {
+						fprintf(stderr, "\n["RED"ERROR"RESET"]: Error in reading in command line agument ["CYAN"%s"RESET"], number of FFTW threads must be greater than or equal to 1 and less than 16, number provided ["CYAN"%d"RESET"]\n--->> Now Exiting!\n", "sys_vars->num_fftw_threads", sys_vars->num_fftw_threads);
+						exit(1);
+					}
+					threads_flag = 2;
+					break;	
 				}
 				break;
 			case 'k':

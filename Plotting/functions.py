@@ -982,10 +982,15 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                     self.vort_trans_str_func = f["VorticityTransverseStructureFunctions"][:, :]
                 if 'AbsoluteVorticityTransverseStructureFunctions' in list(f.keys()):
                     self.vort_trans_str_func_abs = f["AbsoluteVorticityTransverseStructureFunctions"][:, :]
+                ## Radial Vorticity Structure Function Data
                 if 'RadialVorticityStructureFunctions' in list(f.keys()):
                     self.vort_rad_str_func = f["RadialVorticityStructureFunctions"][:, :]
                 if 'AbsoluteRadialVorticityStructureFunctions' in list(f.keys()):
                     self.vort_rad_str_func_abs = f["AbsoluteRadialVorticityStructureFunctions"][:, :]
+                if 'RadialVorticityStructureFunctionsField' in list(f.keys()):
+                    self.vort_rad_str_func_field = f["RadialVorticityStructureFunctionsField"][:, :, :]
+                if 'AbsoluteRadialVorticityStructureFunctionsField' in list(f.keys()):
+                    self.vort_rad_str_func_field_abs = f["AbsoluteRadialVorticityStructureFunctionsField"][:, :, :]
                 ## Mixed structure funcitons
                 if 'MixedVelocityStructureFunctions' in list(f.keys()):
                     self.mxd_vel_str_func = f["MixedVelocityStructureFunctions"][:]
@@ -1013,6 +1018,7 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                     self.grad_w_y_counts = f["VorticityGradient_y_BinCounts"][:]
                 if 'VorticityGradientStats' in list(f.keys()):
                     self.grad_w_stats = f["VorticityGradientStats"][:, :]
+
 
             ## Get the max wavenumber
             self.kmax      = int((sim_data.Nx / 3))

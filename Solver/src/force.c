@@ -240,6 +240,90 @@ void InitializeForcing(void) {
 			}
 		}
 	}
+	//--------------------------------- Apply Random forcing
+	else if(!(strcmp(sys_vars->forcing, "RAND"))) {
+		// Loop through modes to identify local process(es) containing the modes to be forced		
+		double forc_spect = 0.0;
+		for (int i = 0; i < sys_vars->local_Ny; ++i) {
+			for (int j = 0; j < Nx_Fourier; ++j) {
+				// Compute |k|
+				k_abs = sqrt((double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]));
+
+				if (k_abs >= sys_vars->force_k - 0.5 && k_abs <= sys_vars->force_k + 0.5) {
+					forc_spect += exp(-pow(k_abs - sys_vars->force_k, 2.0) / RAND_FORC_C);
+				}
+			}
+		}
+
+		// Get count of forced modes
+		sys_vars->num_forced_modes = num_forced_modes;
+
+		// Sync sum of forced wavenumbers
+		MPI_Allreduce(MPI_IN_PLACE, &forc_spect, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+		forc_spect *= 1.0 / pow(sys_vars->N[0] * sys_vars->N[1], 2.0);
+
+		// Allocate forcing data on the local forcing process only
+		if (sys_vars->local_forcing_proc) {
+			// -----------------------------------
+			// Allocate Memory 
+			// -----------------------------------
+			// Allocate the forcing array to hold the forcing
+			run_data->forcing = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * num_forced_modes);
+			if (run_data->forcing == NULL) {
+				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Forcing");
+				exit(1);
+			}
+			// Allocate array for the forced mode index
+			run_data->forcing_indx = (int* )fftw_malloc(sizeof(int) * num_forced_modes);
+			if (run_data->forcing_indx == NULL) {
+				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Forcing Indices");
+				exit(1);
+			}
+			// Allocate array for the scaling 
+			run_data->forcing_scaling = (double* )fftw_malloc(sizeof(double) * num_forced_modes);
+			if (run_data->forcing_scaling == NULL) {
+				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Forcing Scaling");
+				exit(1);
+			}
+			// Allocate array for the forced mode wavenumbers
+			for (int i = 0; i < SYS_DIM; ++i) {
+				run_data->forcing_k[i] = (int* )fftw_malloc(sizeof(int) * num_forced_modes);
+				if (run_data->forcing_k[i] == NULL) {
+					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Forcing Wavevectors");
+					exit(1);
+				}
+			}
+
+
+			// -----------------------------------
+			// Fill Forcing Info
+			// -----------------------------------
+			// Initialize variables
+			scale_fac_f0       = sys_vars->force_scale_var / forc_spect;
+			force_mode_counter = 0;
+			for (int i = 0; i < sys_vars->local_Ny; ++i) {
+				tmp = i * Nx_Fourier;
+				for (int j = 0; j < Nx_Fourier; ++j) {
+					indx = tmp + j;
+
+					// Compute |k|
+					k_abs = sqrt((double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]));
+
+					// Record the data for the forced modes
+					if (run_data->k[0][i] == 0 && run_data->k[1][j] == 0) {
+						continue;
+					}
+					else {
+						run_data->forcing_scaling[force_mode_counter] = scale_fac_f0 * exp(- pow(k_abs - sys_vars->force_k, 2.0) / (2.0 * STOC_FORC_UNIF_DELTA_K * STOC_FORC_UNIF_DELTA_K));
+						run_data->forcing_indx[force_mode_counter]    = indx;
+						run_data->forcing_k[0][force_mode_counter]    = run_data->k[0][i];
+						run_data->forcing_k[1][force_mode_counter]    = run_data->k[1][j];
+						force_mode_counter++;
+					}
+				}
+			}
+		}
+	}
 	//--------------------------------- Apply Stochastic Uniform forcing
 	else if(!(strcmp(sys_vars->forcing, "STOC"))) {
 		// Loop through modes to identify local process(es) containing the modes to be forced		

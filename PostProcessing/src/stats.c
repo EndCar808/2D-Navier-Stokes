@@ -257,107 +257,116 @@ void RealSpaceStats(int s) {
 	// Compute Structure Functions
 	// --------------------------------
 	#if defined(__VEL_STR_FUNC_STATS) || defined(__VORT_STR_FUNC_STATS) || defined(__VORT_RAD_STR_FUNC_STATS)
-	for (int p = 1; p <= STR_FUNC_MAX_POW; ++p) {
-		for (int r_inc = 1; r_inc <= N_max_incr; ++r_inc) {
-			
-			// Initialize velocity increments
-			#if defined(__VEL_STR_FUNC_STATS)
-			vel_long_increment      = 0.0;
-			vel_trans_increment     = 0.0;
-			vel_long_increment_abs  = 0.0;
-			vel_trans_increment_abs = 0.0;
-			#endif
-			// Initialize vorticit increments
-			#if defined(__VORT_STR_FUNC_STATS)
-			vort_long_increment      = 0.0;
-			vort_trans_increment     = 0.0;
-			vort_long_increment_abs  = 0.0;
-			vort_trans_increment_abs = 0.0;
-			#endif
-			if (p == 3) {
-				#if defined(__MIXED_VEL_STR_FUNC_STATS)
-				mixed_vel_increment = 0.0;
-				#endif
-				#if defined(__MIXED_VORT_STR_FUNC_STATS)
-				mixed_vort_increment = 0.0;
-				#endif	
-			}
+	#pragma omp parallel num_threads(sys_vars->num_threads) shared(run_data, stats_data) private(tmp, indx, tmp_r, indx_r)
+	{
+		#pragma omp single 
+		{	
+			for (int p = 1; p <= STR_FUNC_MAX_POW; ++p) {
 
-			// Loop over space and average 
-			for (int i = 0; i < Ny; ++i) {
-				for (int j = 0; j < Nx; ++j) {				
-					// Get velocity increments
+				#pragma omp taskloop reduction (+:vel_long_increment, vel_long_increment_abs, vel_trans_increment, vel_trans_increment_abs, vort_long_increment, vort_long_increment_abs, vort_trans_increment, vort_trans_increment_abs, mixed_vel_increment, mixed_vort_increment) grainsize(N_max_incr / sys_vars->num_threads)
+				for (int r_inc = 1; r_inc <= N_max_incr; ++r_inc) {
+					
+					// Initialize velocity increments
 					#if defined(__VEL_STR_FUNC_STATS)
-					vel_long_increment      += pow(sgn(run_data->u[SYS_DIM * (i * Nx + ((j + r_inc) % Nx)) + 0] - run_data->u[SYS_DIM * (i * Nx + j) + 0]), 2.0 * radial_pow[p - 1]) * pow(fabs(run_data->u[SYS_DIM * (i * Nx + ((j + r_inc) % Nx)) + 0] - run_data->u[SYS_DIM * (i * Nx + j) + 0]), 2.0 * radial_pow[p - 1]);
-					vel_trans_increment     += pow(sgn(run_data->u[SYS_DIM * (i * Nx + ((j + r_inc) % Nx)) + 1] - run_data->u[SYS_DIM * (i * Nx + j) + 1]), 2.0 * radial_pow[p - 1]) * pow(fabs(run_data->u[SYS_DIM * (i * Nx + ((j + r_inc) % Nx)) + 1] - run_data->u[SYS_DIM * (i * Nx + j) + 1]), 2.0 * radial_pow[p - 1]);
-					vel_long_increment_abs  += pow(fabs(run_data->u[SYS_DIM * (i * Nx + ((j + r_inc) % Nx)) + 0] - run_data->u[SYS_DIM * (i * Nx + j) + 0]), 2.0 * radial_pow[p - 1]);
-					vel_trans_increment_abs += pow(fabs(run_data->u[SYS_DIM * (i * Nx + ((j + r_inc) % Nx)) + 1] - run_data->u[SYS_DIM * (i * Nx + j) + 1]), 2.0 * radial_pow[p - 1]);
+					vel_long_increment      = 0.0;
+					vel_trans_increment     = 0.0;
+					vel_long_increment_abs  = 0.0;
+					vel_trans_increment_abs = 0.0;
 					#endif
-					// Get vorticity increments
+					// Initialize vorticit increments
 					#if defined(__VORT_STR_FUNC_STATS)
-					vort_long_increment      += pow(sgn(run_data->w[i * Nx + ((j + r_inc) % Nx)] - run_data->w[i * Nx + j]), 2.0 * radial_pow[p - 1]) * pow(fabs(run_data->w[i * Nx + ((j + r_inc) % Nx)] - run_data->w[i * Nx + j]), 2.0 * radial_pow[p - 1]);
-					vort_trans_increment     += pow(sgn(run_data->w[((i + r_inc) % Ny) * Nx + j] - run_data->w[i * Nx + j]), 2.0 * radial_pow[p - 1]) * pow(fabs(run_data->w[((i + r_inc) % Ny) * Nx + j] - run_data->w[i * Nx + j]), 2.0 * radial_pow[p - 1]);
-					vort_long_increment_abs  += pow(fabs(run_data->w[i * Nx + ((j + r_inc) % Nx)] - run_data->w[i * Nx + j]), 2.0 * radial_pow[p - 1]);
-					vort_trans_increment_abs += pow(fabs(run_data->w[((i + r_inc) % Ny) * Nx + j] - run_data->w[i * Nx + j]), 2.0 * radial_pow[p - 1]);
+					vort_long_increment      = 0.0;
+					vort_trans_increment     = 0.0;
+					vort_long_increment_abs  = 0.0;
+					vort_trans_increment_abs = 0.0;
+					#endif
+					if (p == 3) {
+						#if defined(__MIXED_VEL_STR_FUNC_STATS)
+						mixed_vel_increment = 0.0;
+						#endif
+						#if defined(__MIXED_VORT_STR_FUNC_STATS)
+						mixed_vort_increment = 0.0;
+						#endif	
+					}
+
+					// Loop over space and average 
+					for (int i = 0; i < Ny; ++i) {
+						for (int j = 0; j < Nx; ++j) {				
+							// Get velocity increments
+							#if defined(__VEL_STR_FUNC_STATS)
+							vel_long_increment      += pow(sgn(run_data->u[SYS_DIM * (i * Nx + ((j + r_inc) % Nx)) + 0] - run_data->u[SYS_DIM * (i * Nx + j) + 0]), 2.0 * radial_pow[p - 1]) * pow(fabs(run_data->u[SYS_DIM * (i * Nx + ((j + r_inc) % Nx)) + 0] - run_data->u[SYS_DIM * (i * Nx + j) + 0]), 2.0 * radial_pow[p - 1]);
+							vel_trans_increment     += pow(sgn(run_data->u[SYS_DIM * (i * Nx + ((j + r_inc) % Nx)) + 1] - run_data->u[SYS_DIM * (i * Nx + j) + 1]), 2.0 * radial_pow[p - 1]) * pow(fabs(run_data->u[SYS_DIM * (i * Nx + ((j + r_inc) % Nx)) + 1] - run_data->u[SYS_DIM * (i * Nx + j) + 1]), 2.0 * radial_pow[p - 1]);
+							vel_long_increment_abs  += pow(fabs(run_data->u[SYS_DIM * (i * Nx + ((j + r_inc) % Nx)) + 0] - run_data->u[SYS_DIM * (i * Nx + j) + 0]), 2.0 * radial_pow[p - 1]);
+							vel_trans_increment_abs += pow(fabs(run_data->u[SYS_DIM * (i * Nx + ((j + r_inc) % Nx)) + 1] - run_data->u[SYS_DIM * (i * Nx + j) + 1]), 2.0 * radial_pow[p - 1]);
+							#endif
+							// Get vorticity increments
+							#if defined(__VORT_STR_FUNC_STATS)
+							vort_long_increment      += pow(sgn(run_data->w[i * Nx + ((j + r_inc) % Nx)] - run_data->w[i * Nx + j]), 2.0 * radial_pow[p - 1]) * pow(fabs(run_data->w[i * Nx + ((j + r_inc) % Nx)] - run_data->w[i * Nx + j]), 2.0 * radial_pow[p - 1]);
+							vort_trans_increment     += pow(sgn(run_data->w[((i + r_inc) % Ny) * Nx + j] - run_data->w[i * Nx + j]), 2.0 * radial_pow[p - 1]) * pow(fabs(run_data->w[((i + r_inc) % Ny) * Nx + j] - run_data->w[i * Nx + j]), 2.0 * radial_pow[p - 1]);
+							vort_long_increment_abs  += pow(fabs(run_data->w[i * Nx + ((j + r_inc) % Nx)] - run_data->w[i * Nx + j]), 2.0 * radial_pow[p - 1]);
+							vort_trans_increment_abs += pow(fabs(run_data->w[((i + r_inc) % Ny) * Nx + j] - run_data->w[i * Nx + j]), 2.0 * radial_pow[p - 1]);
+							#endif
+							if (p == 3) {
+								#if defined(__MIXED_VEL_STR_FUNC)
+								mixed_vel_increment += (run_data->u[SYS_DIM * (i * Nx + ((j + r_inc) % Nx)) + 0] - run_data->u[SYS_DIM * (i * Nx + j) + 0]) * pow(run_data->u[SYS_DIM * (i * Nx + ((j + r_inc) % Nx)) + 1] - run_data->u[SYS_DIM * (i * Nx + j) + 1], 2.0);
+								#endif
+								#if defined(__MIXED_VORT_STR_FUNC)
+								mixed_vort_increment += (run_data->u[SYS_DIM * (i * Nx + ((j + r_inc) % Nx)) + 0] - run_data->u[SYS_DIM * (i * Nx + j) + 0]) * pow(run_data->w[i * Nx + ((j + r_inc) % Nx)] - run_data->w[i * Nx + j], 2.0);
+								#endif	
+							}
+						}
+					}
+					// Compute velocity str function - normalize here
+					#if defined(__VEL_STR_FUNC_STATS)
+					stats_data->u_str_func[0][p - 1][r_inc - 1]     += vel_long_increment * norm_fac;	
+					stats_data->u_str_func[1][p - 1][r_inc - 1]     += vel_trans_increment * norm_fac;
+					stats_data->u_str_func_abs[0][p - 1][r_inc - 1] += vel_long_increment_abs * norm_fac;	
+					stats_data->u_str_func_abs[1][p - 1][r_inc - 1] += vel_trans_increment_abs * norm_fac;
+					#endif
+					// Compute vorticity str function - normalize here
+					#if defined(__VORT_STR_FUNC_STATS)
+					stats_data->w_str_func[0][p - 1][r_inc - 1]     += vort_long_increment * norm_fac;	
+					stats_data->w_str_func[1][p - 1][r_inc - 1]     += vort_trans_increment * norm_fac;
+					stats_data->w_str_func_abs[0][p - 1][r_inc - 1] += vort_long_increment_abs * norm_fac;	
+					stats_data->w_str_func_abs[1][p - 1][r_inc - 1] += vort_trans_increment_abs * norm_fac;
 					#endif
 					if (p == 3) {
 						#if defined(__MIXED_VEL_STR_FUNC)
-						mixed_vel_increment += (run_data->u[SYS_DIM * (i * (Nx + 2) + ((j + r_inc) % Nx)) + 0] - run_data->u[SYS_DIM * (i * (Nx + 2) + j) + 0]) * pow(run_data->u[SYS_DIM * (i * (Nx + 2) + ((j + r_inc) % Nx)) + 1] - run_data->u[SYS_DIM * (i * (Nx + 2) + j) + 1], 2.0);
+						stats_data->vel_mixed_str_func[r_inc - 1] += mixed_vel_increment * norm_fac;
 						#endif
 						#if defined(__MIXED_VORT_STR_FUNC)
-						mixed_vort_increment += (run_data->u[SYS_DIM * (i * (Nx + 2) + ((j + r_inc) % Nx)) + 0] - run_data->u[SYS_DIM * (i * (Nx + 2) + j) + 0]) * pow(run_data->w[i * Nx + ((j + r_inc) % Nx)] - run_data->w[i * Nx + j], 2.0);
-						#endif	
-					}
-				}
-			}
-			// Compute velocity str function - normalize here
-			#if defined(__VEL_STR_FUNC_STATS)
-			stats_data->u_str_func[0][p - 1][r_inc - 1]     += vel_long_increment * norm_fac;	
-			stats_data->u_str_func[1][p - 1][r_inc - 1]     += vel_trans_increment * norm_fac;
-			stats_data->u_str_func_abs[0][p - 1][r_inc - 1] += vel_long_increment_abs * norm_fac;	
-			stats_data->u_str_func_abs[1][p - 1][r_inc - 1] += vel_trans_increment_abs * norm_fac;
-			#endif
-			// Compute vorticity str function - normalize here
-			#if defined(__VORT_STR_FUNC_STATS)
-			stats_data->w_str_func[0][p - 1][r_inc - 1]     += vort_long_increment * norm_fac;	
-			stats_data->w_str_func[1][p - 1][r_inc - 1]     += vort_trans_increment * norm_fac;
-			stats_data->w_str_func_abs[0][p - 1][r_inc - 1] += vort_long_increment_abs * norm_fac;	
-			stats_data->w_str_func_abs[1][p - 1][r_inc - 1] += vort_trans_increment_abs * norm_fac;
-			#endif
-			if (p == 3) {
-				#if defined(__MIXED_VEL_STR_FUNC)
-				stats_data->vel_mixed_str_func[r_inc - 1] += mixed_vel_increment * norm_fac;
-				#endif
-				#if defined(__MIXED_VORT_STR_FUNC)
-				stats_data->vel_mixed_str_func[r_inc - 1] += mixed_vort_increment * norm_fac;
-				#endif
-			}
-		}
-
-		#if defined(__VORT_RADIAL_STR_FUNC_STATS)
-		// Compute the radial structure functions
-		for (int r_x = 1; r_x <= N_max_incr; ++r_x) {
-			for (int r_y = 1; r_y <= N_max_incr; ++r_y) {
-				tmp_r = (r_x - 1) * N_max_incr;
-				indx_r = tmp_r + (r_y - 1);
-
-				vort_rad_increment     = 0.0;
-				vort_rad_increment_abs = 0.0;
-
-				// Loop over space and average 
-				for (int i = 0; i < Ny; ++i) {
-					for (int j = 0; j < Nx; ++j) {
-						vort_rad_increment     += pow(sgn(run_data->w[((i + r_y) % Ny) * Nx + ((j + r_x) % Nx)] - run_data->w[i * Nx + j]), 2.0 * radial_pow[p - 1]) * pow(fabs(run_data->w[((i + r_y) % Ny) * Nx + ((j + r_x) % Nx)] - run_data->w[i * Nx + j]), 2.0 * radial_pow[p - 1]);
-						vort_rad_increment_abs += pow(fabs(run_data->w[((i + r_y) % Ny) * Nx + ((j + r_x) % Nx)] - run_data->w[i * Nx + j]), 2.0 * radial_pow[p - 1]);
+						stats_data->vel_mixed_str_func[r_inc - 1] += mixed_vort_increment * norm_fac;
+						#endif
 					}
 				}
 
-				// Update radial vorticity the structure funcitons
-				stats_data->w_radial_str_func[p - 1][indx_r]     += vort_rad_increment * norm_fac;	
-				stats_data->w_radial_str_func_abs[p - 1][indx_r] += vort_rad_increment_abs * norm_fac;	
+				#if defined(__VORT_RADIAL_STR_FUNC_STATS)
+				// Compute the radial structure functions
+				#pragma omp taskloop reduction (+:vort_rad_increment, vort_rad_increment_abs) collapse(2) grainsize(N_max_incr * N_max_incr / sys_vars->num_threads)
+				for (int r_y = 1; r_y <= N_max_incr; ++r_y) {
+					for (int r_x = 1; r_x <= N_max_incr; ++r_x) {
+						tmp_r = (r_y - 1) * N_max_incr;
+						indx_r = tmp_r + (r_x - 1);
+
+						vort_rad_increment     = 0.0;
+						vort_rad_increment_abs = 0.0;
+
+						// Loop over space and average 
+						for (int i = 0; i < Ny; ++i) {
+							for (int j = 0; j < Nx; ++j) {
+								vort_rad_increment     += pow(sgn(run_data->w[((i + r_y) % Ny) * Nx + ((j + r_x) % Nx)] - run_data->w[i * Nx + j]), 2.0 * radial_pow[p - 1]) * pow(fabs(run_data->w[((i + r_y) % Ny) * Nx + ((j + r_x) % Nx)] - run_data->w[i * Nx + j]), 2.0 * radial_pow[p - 1]);
+								vort_rad_increment_abs += pow(fabs(run_data->w[((i + r_y) % Ny) * Nx + ((j + r_x) % Nx)] - run_data->w[i * Nx + j]), 2.0 * radial_pow[p - 1]);
+							}
+						}
+
+						// Update radial vorticity the structure funcitons
+						stats_data->w_radial_str_func[p - 1][indx_r]     += vort_rad_increment * norm_fac;	
+						stats_data->w_radial_str_func_abs[p - 1][indx_r] += vort_rad_increment_abs * norm_fac;	
+					}
+				}
+				#endif
 			}
 		}
-		#endif
 	}
 	#endif	
 }

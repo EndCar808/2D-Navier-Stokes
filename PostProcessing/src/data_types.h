@@ -17,10 +17,10 @@
 #include <fftw3.h>
 #define __FFTW3
 #endif
-// #ifndef __OPENMP
-// #include <omp.h>
-// #define __OPENMP
-// #endif
+#ifndef __OPENMP
+#include <omp.h>
+#define __OPENMP
+#endif
 #include <gsl/gsl_histogram.h> 
 #include <gsl/gsl_statistics_double.h>
 #include <gsl/gsl_rstat.h>
@@ -55,7 +55,7 @@
 #define FORCING 1 				// Indicates if forcing was used in simulation
 // Post processing Modes
 #if defined(__POST_STATS)
-#define __REAL_STATS
+// #define __REAL_STATS
 #define __VEL_INC_STATS
 #define __VORT_INC_STATS
 #define __VEL_STR_FUNC_STATS
@@ -180,6 +180,7 @@ typedef struct system_vars_struct {
 	int FOUR_VEL_FLAG;					// Flag to indicate if the Fourier space velocity exists in solver data or has already been calculated
 	int REAL_VEL_FLAG;					// Flag to indicate if the Real space velocity exists in solver data or has already been calculated
 	int num_threads;					// The number of OMP threads to use
+	int num_fftw_threads;				// The number of FFTW threads to use
 	int thread_id;						// The ID of the OMP threads
 	int num_triad_per_sec_est;          // The estimate number of triads per sector
     int REDUCED_K1_SEARCH_FLAG;			// Flag to control whether we are doing a reduced search over specifc sectors of k1 or not
