@@ -29,6 +29,7 @@ from subprocess import Popen, PIPE
 from matplotlib.pyplot import cm
 from functions import tc, sim_data, import_data, import_spectra_data, import_post_processing_data, import_sys_msr
 from plot_functions import plot_sector_phase_sync_snaps
+np.seterr(divide='ignore')
 ###############################
 ##       FUNCTION DEFS       ##
 ###############################

@@ -435,6 +435,7 @@ if __name__ == '__main__':
                     
                     ## Print output to terminal as it comes
                     for line in proc.stdout:
+                        post_output.append(line)
                         sys.stdout.write(line)
 
                     # Communicate with process to retrive output and error
@@ -442,10 +443,9 @@ if __name__ == '__main__':
 
                     # Append to output and error objects
                     if collect_data:
-                        post_output.append(run_CodeOutput)
                         post_error.append(run_CodeErr)
                     
-                    ## Print both to screen
+                    # ## Print both to screen
                     print(run_CodeOutput)
                     print(run_CodeErr)
 
