@@ -468,13 +468,13 @@ void AllocateStatsMemory(const long int* N) {
 	for (int i = 0; i < INCR_TYPES; ++i) {
 		for (int j = 0; j < NUM_INCR; ++j) {
 			// Initialize the vorticity increment objects	
-			#if defined(__VEL_INC_STATS)
+			#if defined(__VORT_INC_STATS)
 			stats_data->w_incr_hist[i][j]  = gsl_histogram_alloc(N_BINS);
 			stats_data->w_incr_stats[i][j] = gsl_rstat_alloc();
 			#endif
 			
 			// Initialize the velocity incrment objects
-			#if defined(__VORT_INC_STATS)
+			#if defined(__VEL_INC_STATS)
 			stats_data->u_incr_hist[i][j]  = gsl_histogram_alloc(N_BINS);
 			stats_data->u_incr_stats[i][j] = gsl_rstat_alloc();
 			#endif
@@ -1202,7 +1202,7 @@ void FreeStatsObjects(void) {
 			gsl_histogram_free(stats_data->u_incr_hist[i][j]);
 			gsl_rstat_free(stats_data->u_incr_stats[i][j]);
 			#endif
-			#if defined(__VEL_INC_STATS)
+			#if defined(__VORT_INC_STATS)
 			gsl_histogram_free(stats_data->w_incr_hist[i][j]);
 			gsl_rstat_free(stats_data->w_incr_stats[i][j]);
 			#endif

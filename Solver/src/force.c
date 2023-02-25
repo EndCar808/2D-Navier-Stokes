@@ -249,7 +249,7 @@ void InitializeForcing(void) {
 				// Compute |k|
 				k_abs = sqrt((double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]));
 
-				if (k_abs >= sys_vars->force_k - 0.5 && k_abs <= sys_vars->force_k + 0.5) {
+				if (k_abs >= sys_vars->force_k - RAND_FORC_DELTA && k_abs <= sys_vars->force_k + RAND_FORC_DELTA && run_data->k[1][j] != 0) {
 					forc_spect += exp(-pow(k_abs - sys_vars->force_k, 2.0) / RAND_FORC_C);
 				}
 			}
@@ -260,7 +260,6 @@ void InitializeForcing(void) {
 
 		// Sync sum of forced wavenumbers
 		MPI_Allreduce(MPI_IN_PLACE, &forc_spect, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-		forc_spect *= 1.0 / pow(sys_vars->N[0] * sys_vars->N[1], 2.0);
 
 		// Allocate forcing data on the local forcing process only
 		if (sys_vars->local_forcing_proc) {
@@ -299,12 +298,17 @@ void InitializeForcing(void) {
 			// Fill Forcing Info
 			// -----------------------------------
 			// Initialize variables
-			scale_fac_f0       = sys_vars->force_scale_var / forc_spect;
+			scale_fac_f0       = sys_vars->force_scale_var * forc_spect;
 			force_mode_counter = 0;
+			double psi, phi;
+			double theta_1, theta_2;
+			fftw_complex zeta_1, zeta_2;
+			int orth_indx;
 			for (int i = 0; i < sys_vars->local_Ny; ++i) {
 				tmp = i * Nx_Fourier;
 				for (int j = 0; j < Nx_Fourier; ++j) {
 					indx = tmp + j;
+					orth_indx = (sys_vars->local_Ny - j) * Nx_Fourier + i;
 
 					// Compute |k|
 					k_abs = sqrt((double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]));
@@ -313,8 +317,22 @@ void InitializeForcing(void) {
 					if (run_data->k[0][i] == 0 && run_data->k[1][j] == 0) {
 						continue;
 					}
-					else {
-						run_data->forcing_scaling[force_mode_counter] = scale_fac_f0 * exp(- pow(k_abs - sys_vars->force_k, 2.0) / (2.0 * STOC_FORC_UNIF_DELTA_K * STOC_FORC_UNIF_DELTA_K));
+					else if (k_abs >= sys_vars->force_k - RAND_FORC_DELTA && k_abs <= sys_vars->force_k + RAND_FORC_DELTA && run_data->k[1][j] != 0 && run_data->k[0][i] >= 0) {
+						// Generate random angles
+						psi = ((double) rand() / (double) RAND_MAX) * 2.0 * M_PI;
+						phi = ((double) rand() / (double) RAND_MAX) * 2.0 * M_PI;
+
+						// Get zeta_1 and zeta_2
+						zeta_1 = run_data->w_hat[indx] * cos(phi);
+						zeta_2 = run_data->w_hat[indx] * sin(phi);
+
+						// Get the angles theta_1 and theta_2
+						theta_1 = atan((creal(zeta_1) + creal(zeta_2) * cos(psi) - cimag(zeta_2) * sin(psi)) / (creal(zeta_2) * sin(psi) + cimag(zeta_1) + cimag(zeta_2) * cos(psi)));
+						theta_2 = psi + theta_1;
+
+						// Forcing data
+						run_data->forcing_scaling[force_mode_counter] = sqrt(scale_fac_f0 / k_abs * M_PI) * (cexp(-I * theta_1) * cos(phi));
+						run_data->forcing_scaling[force_mode_counter] = sqrt(scale_fac_f0 / k_abs * M_PI) * (cexp(-I * theta_2) * sin(phi));
 						run_data->forcing_indx[force_mode_counter]    = indx;
 						run_data->forcing_k[0][force_mode_counter]    = run_data->k[0][i];
 						run_data->forcing_k[1][force_mode_counter]    = run_data->k[1][j];

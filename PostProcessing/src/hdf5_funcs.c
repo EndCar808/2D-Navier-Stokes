@@ -476,8 +476,8 @@ void ReadInData(int snap_indx) {
 void OpenOutputFile(void) {
 
 	// Initialize variables
-	char file_name[1024];
 	herr_t status;
+	char file_name[1024];
 	struct stat st = {0};	// this is used to check whether the output directories exist or not.
 
 	// --------------------------------

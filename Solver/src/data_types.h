@@ -179,7 +179,7 @@
 #define CONST_GAUSS_K_MIN 10    		// The minimum value of the mod of forced wavevectors for the Constant Gaussian Ring forcing
 #define CONST_GAUSS_K_MAX 12    		// The minimum value of the mod of forced wavevectors for the Constant Gaussian Ring forcing
 #define RAND_FORC_C 2.0
-#define RAND_FORC_DELTA 
+#define RAND_FORC_DELTA 0.5 
 // System checking parameters
 #define MIN_STEP_SIZE 1e-10 	// The minimum allowed stepsize for the solver 
 #define MAX_ITERS 1e+12			// The maximum iterations to perform
