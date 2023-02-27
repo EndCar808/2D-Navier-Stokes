@@ -57,6 +57,7 @@ Thumbs.db
 # Data files
 *.pdf
 *.h5
+*.png
 
 # Jupyter
 *.ipynb_checkpoints/
