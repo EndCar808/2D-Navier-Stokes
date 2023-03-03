@@ -71,8 +71,8 @@ int main(int argc, char** argv) {
 
 	double Lx = 1.0;
 	double Ly = 1.0;
-	double dx = Lx / Nx;
-	double dy = Ly / Ny;
+	double dx = Lx / (Nx - 1);
+	double dy = Ly / (Ny - 1);
 
 	// Initialize test memory
 	for (int i = 0; i < Ny; ++i) {
@@ -82,7 +82,7 @@ int main(int argc, char** argv) {
 			// for (int l = 0; l < SYS_DIM; ++l) {
 				data_u[SYS_DIM * (indx) + 0] = j * dx;
 				data_u[SYS_DIM * (indx) + 1] = i * dy;
-				data_w[indx] = i *dx + j * dy;
+				data_w[indx] = i * dx + j * dy;
 			// }
 		}
 	}
@@ -157,13 +157,14 @@ int main(int argc, char** argv) {
 					}
 					
 
-					#pragma omp taskloop reduction (+:rad_increment) collapse(2) grainsize(rad_grain_size)
+					#pragma omp taskloop collapse(2) grainsize(rad_grain_size)
 					for (int r_y = 1; r_y <= Max_Incr; ++r_y) {
 						for (int r_x = 1; r_x <= Max_Incr; ++r_x) {
 							r_tmp = (r_y - 1) * Max_Incr;
 							r_indx = r_tmp + (r_x - 1);
 							
 							rad_increment = 0.0;
+							int counts = 0;
 
 							// #pragma omp taskloop reduction (+:increment) collapse(3) grainsize((Nx * Ny *  / num_threads))
 							for (int i = 0; i < Ny; ++i) {
@@ -172,13 +173,16 @@ int main(int argc, char** argv) {
 									indx = tmp + j;
 
 									// Compute increments
-									y_indx = (i + r_y) % Ny;
-									x_indx = (j + r_x) % Nx;
-									rad_increment += pow(fabs(data_w[y_indx * Nx + x_indx]  - data_w[indx]), p);
+									y_indx = (i + r_y);
+									x_indx = (j + r_x);
+									if (x_indx < Nx && y_indx < Ny) {
+										rad_increment += pow(fabs(data_w[y_indx * Nx + x_indx]  - data_w[indx]), p);
+										counts += 1;
+									}
 								}
 							}
 							// str_func_rad_par[p - 1][r_indx]               = rad_increment * norm_fac;
-							data_st->str_func_data_rad_par[p - 1][r_indx] = rad_increment * norm_fac;
+							data_st->str_func_data_rad_par[p - 1][r_indx] = rad_increment / counts;
 						}
 					}
 				}
@@ -218,10 +222,10 @@ int main(int argc, char** argv) {
 				data_st->str_func_data_ser[p - 1][r - 1] = increment * norm_fac; 
 			}
 		
-			for (int r_y = 1; r_y <= Max_Incr; ++r_y) {
-				for (int r_x = 1; r_x <= Max_Incr; ++r_x) {
-					r_tmp = (r_y - 1) * Max_Incr;
-					r_indx = r_tmp + (r_x - 1);
+			for (int r_y = 0; r_y < Max_Incr; ++r_y) {
+				for (int r_x = 0; r_x < Max_Incr; ++r_x) {
+					r_tmp = (r_y) * Max_Incr;
+					r_indx = r_tmp + (r_x);
 					
 					rad_increment = 0.0;
 
@@ -230,14 +234,26 @@ int main(int argc, char** argv) {
 							tmp = i * Nx;
 							indx = tmp + j;
 
+					// 		// Compute increments
+							// y_indx = (i + r_y) % Ny;
+							// x_indx = (j + r_x) % Nx;
+							// rad_increment += pow(fabs(data_w[y_indx * Nx + x_indx]  - data_w[indx]), p);
+					// 	}
+					// }
+					// // str_func_rad_ser[p - 1][r_indx]            = rad_increment * norm_fac;
+					// data_st->str_func_data_rad_ser[p - 1][r_indx] = rad_increment * norm_fac;
+					// 
 							// Compute increments
-							y_indx = (i + r_y) % Ny;
-							x_indx = (j + r_x) % Nx;
-							rad_increment += pow(fabs(data_w[y_indx * Nx + x_indx]  - data_w[indx]), p);
+							y_indx = (i + r_y);
+							x_indx = (j + r_x);
+							if (x_indx < Nx && y_indx < Ny) {
+								rad_increment += pow(fabs(data_w[y_indx * Nx + x_indx]  - data_w[indx]), p);
+								// counts += 1;
+							}
 						}
 					}
-					// str_func_rad_ser[p - 1][r_indx]            = rad_increment * norm_fac;
-					data_st->str_func_data_rad_ser[p - 1][r_indx] = rad_increment * norm_fac;
+					// str_func_rad_par[p - 1][r_indx]               = rad_increment * norm_fac;
+					data_st->str_func_data_rad_par[p - 1][r_indx] = rad_increment / ((Nx - r_x) * (Ny - r_y));
 				}
 			}
 		}
@@ -315,9 +331,9 @@ int main(int argc, char** argv) {
     }
 
     // Create ru data set to store details of the str_func computation
-    int num_data = 3;
+    int num_data = 4;
     dimsD1[0] = num_data;
-    int tmpdata[3] = {Nx, Ny, num_threads};
+    int tmpdata[4] = {Nx, Ny, num_threads, NUM_POW};
     H5LTmake_dataset(file_id, "RunData", D1, dimsD1, H5T_NATIVE_INT, tmpdata);
 
 	

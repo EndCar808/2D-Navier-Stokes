@@ -171,6 +171,7 @@ void SpectralSolve(void) {
 		}
 		#endif
 
+	exit(1);
 		// -------------------------------
 		// Compute Stats
 		// -------------------------------
@@ -1031,7 +1032,8 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* u) 
  	// Add the forcing
 	if (sys_vars->local_forcing_proc) {
 		for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
-			dw_hat_dt[run_data->forcing_indx[i]] += run_data->forcing[i]; 
+			dw_hat_dt[run_data->forcing_indx[i]] += run_data->forcing[i];
+			printf("rank: %d - num_forced_modes: %d \tfh(%d, %d): %1.16lf %1.16lf\n", sys_vars->rank, sys_vars->num_forced_modes, run_data->forcing_k[0][i], run_data->forcing_k[1][i], creal(run_data->forcing[i]), cimag(run_data->forcing[i]) );
 		}
 	}
 	// PrintScalarFourier(dw_hat_dt, sys_vars->N, "curl");

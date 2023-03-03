@@ -452,14 +452,20 @@ int GetCMLArgs(int argc, char** argv) {
 					force_flag = 1;
 					break;
 				}
-				else if (!(strcmp(optarg,"BODY_FORC"))  && (force_flag == 0)) {
+				else if (!(strcmp(optarg,"BODY_FORC_SIN"))  && (force_flag == 0)) {
 					// Body Forcing: f_omeage(x, y) = sin(2 y) -> see Keeyeol Nam,  Edward Ott, Thomas M. Antonsen, Jr., and Parvez N. Guzdar, Phys. Rev Letters, 2000
-					strncpy(sys_vars->forcing, "BODY_FORC", 64);
+					strncpy(sys_vars->forcing, "BODY_FORC_SIN", 64);
+					force_flag = 1;
+					break;
+				}
+				else if (!(strcmp(optarg,"BODY_FORC_COS"))  && (force_flag == 0)) {
+					// Body Forcing: f_omeage(x, y) = cos(2 x) -> see Yue-Kin Tsang, Edward Ott, Thomas M. Antonsen, Jr., and Parvez N. Guzdar2, Phys. Rev E, 2005
+					strncpy(sys_vars->forcing, "BODY_FORC_COS", 64);
 					force_flag = 1;
 					break;
 				}
 				else if (!(strcmp(optarg,"ISO_BODY_FORC"))  && (force_flag == 0)) {
-					// "Isotropic" Body Forcing: f_omeage(x, y) = sin(2 y) + sin(2x)
+					// "Isotropic" Body Forcing: f_omeage(x, y) = sin(2 y) + cos(2x)
 					strncpy(sys_vars->forcing, "ISO_BODY_FORC", 64);
 					force_flag = 1;
 					break;
@@ -467,6 +473,12 @@ int GetCMLArgs(int argc, char** argv) {
 				else if (!(strcmp(optarg,"STOC"))  && (force_flag == 0)) {
 					// Stochastic Uniform forcing
 					strncpy(sys_vars->forcing, "STOC", 64);
+					force_flag = 1;
+					break;
+				}
+				else if (!(strcmp(optarg,"ORN_ULH"))  && (force_flag == 0)) {
+					// Ornstein Ulhenbeck forcing
+					strncpy(sys_vars->forcing, "ORN_ULH", 64);
 					force_flag = 1;
 					break;
 				}
