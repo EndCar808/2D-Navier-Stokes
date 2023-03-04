@@ -171,7 +171,6 @@ void SpectralSolve(void) {
 		}
 		#endif
 
-	exit(1);
 		// -------------------------------
 		// Compute Stats
 		// -------------------------------
@@ -1033,7 +1032,7 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* u) 
 	if (sys_vars->local_forcing_proc) {
 		for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
 			dw_hat_dt[run_data->forcing_indx[i]] += run_data->forcing[i];
-			printf("rank: %d - num_forced_modes: %d \tfh(%d, %d): %1.16lf %1.16lf\n", sys_vars->rank, sys_vars->num_forced_modes, run_data->forcing_k[0][i], run_data->forcing_k[1][i], creal(run_data->forcing[i]), cimag(run_data->forcing[i]) );
+			// printf("rank: %d - num_forced_modes: %d \tfh(%d, %d): %1.16lf %1.16lf\n", sys_vars->rank, sys_vars->num_forced_modes, run_data->forcing_k[0][i], run_data->forcing_k[1][i], creal(run_data->forcing[i]), cimag(run_data->forcing[i]) );
 		}
 	}
 	// PrintScalarFourier(dw_hat_dt, sys_vars->N, "curl");
@@ -3179,6 +3178,14 @@ void FreeMemory(Int_data_struct* Int_data) {
 	fftw_free(run_data->enst_diss);
 	fftw_free(run_data->mean_flow_x);
 	fftw_free(run_data->mean_flow_y);
+	fftw_free(run_data->u_rms);
+	fftw_free(run_data->integral_lenght_scale);
+	fftw_free(run_data->edd_turnover_1);
+	fftw_free(run_data->eddy_turnover_2);
+	fftw_free(run_data->taylor_micro);
+	fftw_free(run_data->rey_no);
+	fftw_free(run_data->kolm_scale);
+	fftw_free(run_data->diss_k);
 	#endif
 	#if defined(__PHASE_SYNC)
 	fftw_free(run_data->phase_order_k);

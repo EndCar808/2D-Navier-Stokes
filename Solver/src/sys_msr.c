@@ -53,6 +53,20 @@ void ComputeSystemMeasurables(double t, int iter, Int_data_struct* Int_data) {
     #if defined(__PHASE_SYNC)
     double tmp_order;
     #endif
+    double hypo_drag_pow_fact = 1.0;
+    double hyper_visc_pow_fact = 1.0;
+    if((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
+    	// Both Hyperviscosity and Ekman drag
+    	hypo_drag_pow_fact = 1.0 / sys_vars->HYPER_VISC_POW;
+    	hyper_visc_pow_fact = 1.0 / sys_vars->EKMN_DRAG_POW;
+    }
+    else if((sys_vars->HYPER_VISC_FLAG != HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
+    	hypo_drag_pow_fact = 1.0 / sys_vars->EKMN_DRAG_POW
+    }
+    else if((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG != EKMN_DRAG)) {
+    	// Hyperviscosity only
+    	hyper_visc_pow_fact = 1.0 / sys_vars->HYPER_VISC_POW;
+    }
 
     // Update counter
     sys_vars->num_sys_msr_counts++;
@@ -77,13 +91,21 @@ void ComputeSystemMeasurables(double t, int iter, Int_data_struct* Int_data) {
 	#if defined(__SYS_MEASURES)
 	if (iter < sys_vars->num_print_steps) {
 		// Initialize totals
-		run_data->tot_enstr[iter]  = 0.0;
-		run_data->tot_palin[iter]  = 0.0;
-		run_data->tot_energy[iter] = 0.0;
-		run_data->tot_forc[iter]   = 0.0;
-		run_data->tot_div[iter]    = 0.0;
-		run_data->enrg_diss[iter]  = 0.0;
-		run_data->enst_diss[iter]  = 0.0;
+		run_data->tot_enstr[iter]             = 0.0;
+		run_data->tot_palin[iter]             = 0.0;
+		run_data->tot_energy[iter]            = 0.0;
+		run_data->tot_forc[iter]              = 0.0;
+		run_data->tot_div[iter]               = 0.0;
+		run_data->enrg_diss[iter]             = 0.0;
+		run_data->enst_diss[iter]             = 0.0;
+		run_data->u_rms[iter]                 = 0.0;
+		run_data->integral_length_scale[iter] = 0.0;
+		run_data->eddy_turnover_1[iter]       = 0.0;
+		run_data->eddy_turnover_2[iter]       = 0.0;
+		run_data->taylor_micro[iter]          = 0.0;
+		run_data->rey_no[iter]                = 0.0;
+		run_data->kolm_scale[iter]            = 0.0;
+		run_data->diss_k[iter]                = 0.0;
 		#if defined(__ENRG_FLUX)
 		run_data->d_enrg_dt_sbst[iter] = 0.0;
 		run_data->enrg_flux_sbst[iter] = 0.0;
@@ -228,6 +250,7 @@ void ComputeSystemMeasurables(double t, int iter, Int_data_struct* Int_data) {
 						run_data->tot_palin[iter]  += k_sqr * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
 						run_data->enrg_diss[iter]  += pre_fac * cabs(u_z * conj(u_z) + v_z * conj(v_z));
 						run_data->enst_diss[iter]  += pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+						run_data->integral_length_scale[iter] += (cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * (1.0 / k_sqr)) * (1.0 / k_sqr);
 						// Get mean flow in the y direction -> \bar{v}(x)
 						run_data->mean_flow_y[i] += cabs(v_z);
 						if ((k_sqr >= lwr_sbst_lim_sqr) && (k_sqr < upr_sbst_lim_sqr)) { // define the subset to consider for the flux and dissipation
@@ -404,9 +427,25 @@ void ComputeSystemMeasurables(double t, int iter, Int_data_struct* Int_data) {
 		}
 	}
 
-	// // ------------------------------------
-	// // Normalize Measureables 
-	// // ------------------------------------	
+	// ------------------------------------
+	// Compute Turbulence Measures
+	// ------------------------------------	
+	#if defined(__SYS_MEASURES)
+	if (iter < sys_vars->num_print_steps) {
+		// The characteristic velocity
+		run_data->u_rms[iter]                 = sqrt(run_data->tot_energy[iter]);
+		run_data->integral_length_scale[iter] /= run_data->tot_energy[iter];
+		run_data->eddy_turnover_1[iter]       = run_data->integral_length_scale[iter] / run_data->u_rms[iter];
+		run_data->eddy_turnover_2[iter]       = 2.0 * M_PI / run_data->u_rms[iter];
+		run_data->taylor_micro[iter]          = sqrt(10 * sys_vars->NU * run_data->tot_energy[iter] / run_data->enrg_diss[iter]);
+		run_data->rey_no[iter]                = run_data->u_rms[iter] * run_data->integral_length_scale[iter] / sys_vars->NU;
+		run_data->kolm_scale[iter]            = pow((pow(sys_vars->NU, 3.0) / run_data->enst_diss[iter]), 1.0/6.0 * hyper_visc_pow_fact); 
+	}
+	#endif
+
+	// ------------------------------------
+	// Normalize Measureables 
+	// ------------------------------------	
 	// #if defined(__SYS_MEASURES)
 	// if (iter < sys_vars->num_print_steps) {
 	// 	// Normalize results and take into account computation in Fourier space
@@ -536,6 +575,49 @@ void InitializeSystemMeasurables(Int_data_struct* Int_data) {
 	run_data->mean_flow_y = (double* )fftw_malloc(sizeof(double) * sys_vars->local_Ny);
 	if (run_data->mean_flow_y == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Mean Flow y Direction");
+		exit(1);
+	}
+
+	// Mean Squared velocity
+	run_data->u_rms = (double* )fftw_malloc(sizeof(double) * print_steps);
+	if (run_data->u_rms == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Mean Square Velocity");
+		exit(1);
+	}
+	// Integral length scale
+	run_data->integral_lenght_scale = (double* )fftw_malloc(sizeof(double) * print_steps);
+	if (run_data->integral_lenght_scale == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Integral Length Scale");
+		exit(1);
+	}
+	// Eddy Turnover Time
+	run_data->edd_turnover_1 = (double* )fftw_malloc(sizeof(double) * print_steps);
+	if (run_data->edd_turnover_1 == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Eddy Turnover Time 1");
+		exit(1);
+	}
+	// Eddy Turnover Time
+	run_data->eddy_turnover_2 = (double* )fftw_malloc(sizeof(double) * print_steps);
+	if (run_data->eddy_turnover_2 == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Eddy Turnover Time 2");
+		exit(1);
+	}
+	// Taylor Micro Scale
+	run_data->taylor_micro = (double* )fftw_malloc(sizeof(double) * print_steps);
+	if (run_data->taylor_micro == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Taylor Micro Scale");
+		exit(1);
+	}
+	// Reynolds No.
+	run_data->rey_no = (double* )fftw_malloc(sizeof(double) * print_steps);
+	if (run_data->rey_no == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Reynolds Number");
+		exit(1);
+	}
+	// Kolmogorov Length Scale
+	run_data->kolm_scale = (double* )fftw_malloc(sizeof(double) * print_steps);
+	if (run_data->kolm_scale == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Kolmogorov Scale");
 		exit(1);
 	}
 	#endif

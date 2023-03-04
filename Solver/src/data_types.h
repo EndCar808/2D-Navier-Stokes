@@ -180,6 +180,8 @@
 #define CONST_GAUSS_K_MAX 12    		// The minimum value of the mod of forced wavevectors for the Constant Gaussian Ring forcing
 #define RAND_FORC_C 2.0
 #define RAND_FORC_DELTA 0.5 
+#define GWN_KF_DELTA 1.5 		// The delta of the wavenumber band for the Gaussian white noise narrow isotropic band forcing
+#define GWN_BRD_KF_DELTA 8  	// The delta of the wavenumber band for the Gaussian white noise broad isotropic band forcing
 // System checking parameters
 #define MIN_STEP_SIZE 1e-10 	// The minimum allowed stepsize for the solver 
 #define MAX_ITERS 1e+12			// The maximum iterations to perform
@@ -304,6 +306,15 @@ typedef struct runtime_data_struct {
 	double* forcing_scaling;  			// Array to hold the initial scaling for the forced modes
 	int* forcing_indx;		  			// Array to hold the indices of the forced modes
 	int* forcing_k[SYS_DIM];  			// Array containg the wavenumbers for the forced modes
+
+	double* tot_time					// Records all time during the simulation including the transient dynamics
+	double* u_rms;						// Root mean square of the velocity field
+	double* integral_length_scale;		// The integral length scale
+	double* eddy_turnover_1;			// The eddy turnover time computed using the integral length scale
+	double* eddy_turnover_2;            // The eddy turnover time computed using the box size
+	double* taylor_micro;				// The taylor micro-scale
+	double* rey_no;						// The reynolds number
+	double* kolm_scale;					// The kolmogorov length scale
 } runtime_data_struct;
 
 // Runge-Kutta Integration struct

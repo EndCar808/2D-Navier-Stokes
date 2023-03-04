@@ -338,8 +338,8 @@ void InitializeForcing(void) {
 			}
 		}
 	}
-	//--------------------------------- Apply Stochastic Uniform forcing
-	else if(!(strcmp(sys_vars->forcing, "STOC"))) {
+	//--------------------------------- Apply Gaussian White Noise Forcing
+	else if(!(strcmp(sys_vars->forcing, "GWN_DELTA_T")) || !(strcmp(sys_vars->forcing, "GWN_NRW_ISO_DELTA_T")) || !(strcmp(sys_vars->forcing, "GWN_BRD_ISO_DELTA_T"))) {
 		// Loop through modes to identify local process(es) containing the modes to be forced		
 		double forc_spect = 0.0;
 		for (int i = 0; i < sys_vars->local_Ny; ++i) {
@@ -352,15 +352,53 @@ void InitializeForcing(void) {
 				}
 				else {
 					if (j == 0 || j == Nx_Fourier - 1) {
-						forc_spect += exp(- pow(k_abs - sys_vars->force_k, 2.0) / (2.0 * STOC_FORC_UNIF_DELTA_K * STOC_FORC_UNIF_DELTA_K)) / (2.0 * pow(k_abs, 2.0));
+						if (!(strcmp(sys_vars->forcing, "GWN_DELTA_T"))) {
+							if (k_abs >= sys_vars->force_k - GWN_KF_DELTA && k_abs <= sys_vars->force_k + GWN_KF_DELTA) {
+								forc_spect += 1.0;
+								// Count the forced modes
+								sys_vars->local_forcing_proc = 1;
+								num_forced_modes++;
+							}
+						}
+						else if (!(strcmp(sys_vars->forcing, "GWN_NRW_ISO_DELTA_T"))) {
+							if (k_abs >= sys_vars->force_k - GWN_KF_DELTA && k_abs <= sys_vars->force_k + GWN_KF_DELTA) {
+								forc_spect += 1.0 / (2.0 * pow(k_abs, 2.0));
+								// Count the forced modes
+								sys_vars->local_forcing_proc = 1;
+								num_forced_modes++;
+							}
+						}
+						else if (!(strcmp(sys_vars->forcing, "GWN_BRD_ISO_DELTA_T"))) {
+							forc_spect += exp(- pow(k_abs - sys_vars->force_k, 2.0) / (2.0 * GWN_BRD_KF_DELTA * GWN_BRD_KF_DELTA)) / (2.0 * pow(k_abs, 2.0));
+							// Count the forced modes
+							sys_vars->local_forcing_proc = 1;
+							num_forced_modes++;
+						}
 					}
 					else {
-						forc_spect += 2.0 * exp(- pow(k_abs - sys_vars->force_k, 2.0) / (2.0 * STOC_FORC_UNIF_DELTA_K * STOC_FORC_UNIF_DELTA_K)) / (2.0 * pow(k_abs, 2.0));						
+						if (!(strcmp(sys_vars->forcing, "GWN_DELTA_T"))) {
+							if (k_abs >= sys_vars->force_k - GWN_KF_DELTA && k_abs <= sys_vars->force_k + GWN_KF_DELTA) {
+								forc_spect += 2.0;
+								// Count the forced modes
+								sys_vars->local_forcing_proc = 1;
+								num_forced_modes++;
+							}
+						}
+						else if (!(strcmp(sys_vars->forcing, "GWN_NRW_ISO_DELTA_T"))) {
+							if (k_abs >= sys_vars->force_k - GWN_KF_DELTA && k_abs <= sys_vars->force_k + GWN_KF_DELTA) {
+								forc_spect += 2.0 * (1.0 / (2.0 * pow(k_abs, 2.0)));
+								// Count the forced modes
+								sys_vars->local_forcing_proc = 1;
+								num_forced_modes++;
+							}
+						}
+						else if (!(strcmp(sys_vars->forcing, "GWN_BRD_ISO_DELTA_T"))) {
+							forc_spect += 2.0 * exp(- pow(k_abs - sys_vars->force_k, 2.0) / (2.0 * GWN_BRD_KF_DELTA * GWN_BRD_KF_DELTA)) / (2.0 * pow(k_abs, 2.0));
+							// Count the forced modes
+							sys_vars->local_forcing_proc = 1;
+							num_forced_modes++;
+						}				
 					}
-					
-					// Count the forced modes
-					sys_vars->local_forcing_proc = 1;
-					num_forced_modes++;
 				}
 			}
 		}
@@ -370,7 +408,6 @@ void InitializeForcing(void) {
 
 		// Sync sum of forced wavenumbers
 		MPI_Allreduce(MPI_IN_PLACE, &forc_spect, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-		forc_spect *= 1.0 / pow(sys_vars->N[0] * sys_vars->N[1], 2.0);
 
 		// Allocate forcing data on the local forcing process only
 		if (sys_vars->local_forcing_proc) {
@@ -409,7 +446,7 @@ void InitializeForcing(void) {
 			// Fill Forcing Info
 			// -----------------------------------
 			// Initialize variables
-			scale_fac_f0       = sys_vars->force_scale_var / forc_spect;
+			scale_fac_f0       = sys_vars->force_scale_var / (forc_spect);
 			force_mode_counter = 0;
 			for (int i = 0; i < sys_vars->local_Ny; ++i) {
 				tmp = i * Nx_Fourier;
@@ -424,11 +461,31 @@ void InitializeForcing(void) {
 						continue;
 					}
 					else {
-						run_data->forcing_scaling[force_mode_counter] = scale_fac_f0 * exp(- pow(k_abs - sys_vars->force_k, 2.0) / (2.0 * STOC_FORC_UNIF_DELTA_K * STOC_FORC_UNIF_DELTA_K));
-						run_data->forcing_indx[force_mode_counter]    = indx;
-						run_data->forcing_k[0][force_mode_counter]    = run_data->k[0][i];
-						run_data->forcing_k[1][force_mode_counter]    = run_data->k[1][j];
-						force_mode_counter++;
+						if(!(strcmp(sys_vars->forcing, "GWN_DELTA_T"))) {
+							if (k_abs >= sys_vars->force_k - GWN_KF_DELTA && k_abs <= sys_vars->force_k + GWN_KF_DELTA) {
+								run_data->forcing_scaling[force_mode_counter] = sys_vars->force_scale_var;
+								run_data->forcing_indx[force_mode_counter]    = indx;
+								run_data->forcing_k[0][force_mode_counter]    = run_data->k[0][i];
+								run_data->forcing_k[1][force_mode_counter]    = run_data->k[1][j];
+								force_mode_counter++;
+							}
+						}
+						else if (!(strcmp(sys_vars->forcing, "GWN_NRW_ISO_DELTA_T"))) {
+							if (k_abs >= sys_vars->force_k - GWN_KF_DELTA && k_abs <= sys_vars->force_k + GWN_KF_DELTA) {
+								run_data->forcing_scaling[force_mode_counter] = scale_fac_f0;
+								run_data->forcing_indx[force_mode_counter]    = indx;
+								run_data->forcing_k[0][force_mode_counter]    = run_data->k[0][i];
+								run_data->forcing_k[1][force_mode_counter]    = run_data->k[1][j];
+								force_mode_counter++;
+							}
+						}
+						else if (!(strcmp(sys_vars->forcing, "GWN_BRD_ISO_DELTA_T"))) {
+							run_data->forcing_scaling[force_mode_counter] = (scale_fac_f0 / pow(2.0 * M_PI, 2.0)) * exp(- pow(k_abs - sys_vars->force_k, 2.0) / (2.0 * STOC_FORC_UNIF_DELTA_K * STOC_FORC_UNIF_DELTA_K));
+							run_data->forcing_indx[force_mode_counter]    = indx;
+							run_data->forcing_k[0][force_mode_counter]    = run_data->k[0][i];
+							run_data->forcing_k[1][force_mode_counter]    = run_data->k[1][j];
+							force_mode_counter++;
+						}
 					}
 				}
 			}
@@ -808,6 +865,17 @@ void ComputeForcing(double dt) {
 					run_data->forcing[i] = 0.5 * sys_vars->force_scale_var + 0.0 * I;		
 				}
 			}
+		}
+		//---------------------------- Compute Gaussian White Noise forcing terms
+		else if(!(strcmp(sys_vars->forcing, "GWN_DELTA_T")) || !(strcmp(sys_vars->forcing, "GWN_NRW_ISO_DELTA_T")) || !(strcmp(sys_vars->forcing, "GWN_BRD_ISO_DELTA_T"))) {
+			// Loop over the forced modes
+			for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
+				// // Generate uniform random numbers
+				r1 = (double) rand() / (double) RAND_MAX;
+
+				// Now compute the forcing 
+				run_data->forcing[i] = sqrt(run_data->forcing_scaling[i]) * cexp(2.0 * M_PI * I * r1) / sqrt(dt);
+			}	
 		}
 		//---------------------------- Compute Stochastic Gaussian forcing
 		else if(!(strcmp(sys_vars->forcing, "STOC_GAUSS"))) {

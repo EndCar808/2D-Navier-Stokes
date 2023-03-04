@@ -476,6 +476,24 @@ int GetCMLArgs(int argc, char** argv) {
 					force_flag = 1;
 					break;
 				}
+				else if (!(strcmp(optarg,"GWN_DELTA_T"))  && (force_flag == 0)) {
+					// Gaussian White Noise forcing
+					strncpy(sys_vars->forcing, "GWN_DELTA_T", 64);
+					force_flag = 1;
+					break;
+				}
+				else if (!(strcmp(optarg,"GWN_BRD_ISO_DELTA_T"))  && (force_flag == 0)) {
+					// Gaussian White Noise - Broad Band Isotropic forcing
+					strncpy(sys_vars->forcing, "GWN_BRD_ISO_DELTA_T", 64);
+					force_flag = 1;
+					break;
+				}
+				else if (!(strcmp(optarg,"GWN_NRW_ISO_DELTA_T"))  && (force_flag == 0)) {
+					// Gaussian White Noise - Narrow Band Isotropic forcing
+					strncpy(sys_vars->forcing, "GWN_NRW_ISO_DELTA_T", 64);
+					force_flag = 1;
+					break;
+				}
 				else if (!(strcmp(optarg,"ORN_ULH"))  && (force_flag == 0)) {
 					// Ornstein Ulhenbeck forcing
 					strncpy(sys_vars->forcing, "ORN_ULH", 64);

@@ -717,6 +717,11 @@ def import_sys_msr(input_file, sim_data, method = "default"):
             data.mean_flow_y = f['MeanFlow_y'][:]
         if 'Time' in list(f.keys()):
             data.time = f['Time'][:]
+        ## Time averaged data
+        if 'TimeAveragedEnstrophySpectrum' in list(f.keys()):
+            data.enst_spect_t_avg = f['TimeAveragedEnstrophySpectrum'][:]
+        if 'TimeAveragedEnergySpectrum' in list(f.keys()):
+            data.enrg_spect_t_avg = f['TimeAveragedEnergySpectrum'][:]
 
         ## Get inv wavenumbers
         if 'kx' in list(f.keys()) and 'ky' in list(f.keys()):
