@@ -353,29 +353,30 @@ def sim_data(input_dir, method = "default"):
 
         ## Initialize class
         def __init__(self, Nx = 0, Ny = 0, Nk = 0, nu = 0.0, t0 = 0.0, T = 0.0, ndata = 0, u0 = "TG_VORT", cfl = 0.0, spec_size = 0, dt = 0., dx = 0., dy = 0.):
-            self.Nx         = int(Nx)
-            self.Ny         = int(Ny)
-            self.Nk         = int(Nk)
-            self.nu         = float(nu)
-            self.hyper      = False
-            self.hyper_pow  = 2.0
-            self.alpha      = float(0.0)
-            self.drag       = float(0.0)
-            self.drag_pow   = -2.0
-            self.t0         = float(t0)
-            self.T          = float(T)
-            self.ndata      = int(ndata)
-            self.u0         = str(u0)
-            self.cfl        = float(cfl)
-            self.dt         = float(dt)
-            self.dx         = float(dx)
-            self.dy         = float(dy)
-            self.PO         = False
-            self.forc_type  = "NONE"
-            self.forc_k     = 0.0
-            self.forc_scale = 1.0
-            self.po_slope   = np.sqrt(3.0)
-            self.spec_size  = int(spec_size)
+            self.Nx                = int(Nx)
+            self.Ny                = int(Ny)
+            self.Nk                = int(Nk)
+            self.nu                = float(nu)
+            self.hyper             = False
+            self.hyper_pow         = 2.0
+            self.alpha             = float(0.0)
+            self.drag              = float(0.0)
+            self.drag_pow          = -2.0
+            self.t0                = float(t0)
+            self.T                 = float(T)
+            self.ndata             = int(ndata)
+            self.u0                = str(u0)
+            self.cfl               = float(cfl)
+            self.dt                = float(dt)
+            self.dx                = float(dx)
+            self.dy                = float(dy)
+            self.PO                = False
+            self.forc_type         = "NONE"
+            self.forc_k            = 0.0
+            self.forc_scale        = 1.0
+            self.po_slope          = np.sqrt(3.0)
+            self.spec_size         = int(spec_size)
+            self.spec_size_dealias = int(spec_size)
 
 
     ## Create instance of class
@@ -467,7 +468,8 @@ def sim_data(input_dir, method = "default"):
                         data.PO = False
 
             ## Get spectrum size
-            data.spec_size = int(np.round(np.sqrt((data.Nx / 2)**2 + (data.Ny / 2)**2)) + 1)
+            data.spec_size         = int(np.round(np.sqrt((data.Nx / 2)**2 + (data.Ny / 2)**2)) + 1)
+            data.spec_size_dealias = int(np.round(np.sqrt((data.Nx / 3)**2 + (data.Ny / 3)**2)) + 1)
             # data.spec_size = int(np.round(np.sqrt(data.Nx)))
     else:
 
@@ -504,7 +506,8 @@ def sim_data(input_dir, method = "default"):
             data.ndata = len([g for g in f.keys() if 'Iter' in g])
 
         ## Get spectrum size
-        data.spec_size = int(np.round(np.sqrt((data.Nx / 2)**2 + (data.Ny / 2)**2)) + 1)
+        data.spec_size         = int(np.round(np.sqrt((data.Nx / 2)**2 + (data.Ny / 2)**2)) + 1)
+        data.spec_size_dealias = int(np.round(np.sqrt((data.Nx / 3)**2 + (data.Ny / 3)**2)) + 1)
         # data.spec_size = int(np.round(np.sqrt(data.Nx)))
 
 
@@ -697,8 +700,10 @@ def import_sys_msr(input_file, sim_data, method = "default"):
             data.tot_palin = f['TotalPalinstrophy'][:]
         if 'TotalDivergence' in list(f.keys()):
             data.tot_div = f['TotalDivergence'][:]
-        if 'TotalForcing' in list(f.keys()):
-            data.tot_forc = f['TotalForcing'][:]
+        if 'TotalEnergyForcingInput' in list(f.keys()):
+            data.tot_enrg_forc = f['TotalEnergyForcingInput'][:]
+        if 'TotalEnstrophyForcingInput' in list(f.keys()):
+            data.tot_enst_forc = f['TotalEnstrophyForcingInput'][:]
         if 'EnergyDissipation' in list(f.keys()):
             data.enrg_diss = f['EnergyDissipation'][:]
         if 'EnstrophyDissipation' in list(f.keys()):
@@ -715,6 +720,23 @@ def import_sys_msr(input_file, sim_data, method = "default"):
             data.mean_flow_x = f['MeanFlow_x'][:]
         if 'MeanFlow_y' in list(f.keys()):
             data.mean_flow_y = f['MeanFlow_y'][:]
+        if 'U_rms' in list(f.keys()):
+            data.u_rms = f['U_rms'][:]
+        if 'TaylorMicroScale' in list(f.keys()):
+            data.taylor_micro = f['TaylorMicroScale'][:]
+
+        if 'ReynoldsNo' in list(f.keys()):
+            data.rey_no = f['ReynoldsNo'][:]
+        if 'KolmogorovScale' in list(f.keys()):
+            data.kolm_scale = f['KolmogorovScale'][:]
+        if 'IntLengthScale' in list(f.keys()):
+            data.int_length_scale = f['IntLengthScale'][:]
+        if 'EddyTurnover1' in list(f.keys()):
+            data.eddy_turn_1 = f['EddyTurnover1'][:]
+        if 'EddyTurnover2' in list(f.keys()):
+            data.eddy_turn_2 = f['EddyTurnover2'][:]
+
+
         if 'Time' in list(f.keys()):
             data.time = f['Time'][:]
         ## Time averaged data

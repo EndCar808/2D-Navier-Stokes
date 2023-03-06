@@ -23,7 +23,7 @@ from matplotlib.gridspec import GridSpec
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import getopt
 from functions import tc, sim_data, import_data, import_spectra_data, import_post_processing_data, import_sys_msr
-from plot_functions import plot_sector_phase_sync_snaps
+from plot_functions import plot_vort, plot_time_averaged_spectra_both
 np.seterr(divide='ignore')
 
 
@@ -32,58 +32,69 @@ np.seterr(divide='ignore')
 ###############################
 def parse_cml(argv):
 
-    """
-    Parses command line arguments
-    """
+	"""
+	Parses command line arguments
+	"""
 
-    ## Create arguments class
-    class cmd_args:
+	## Create arguments class
+	class cmd_args:
 
-        """
-        Class for command line arguments
-        """
+		"""
+		Class for command line arguments
+		"""
 
-        def __init__(self, in_dir = None, out_dir = None, info_dir = None, plotting = False):
-            self.in_dir         = in_dir
-            self.out_dir_info   = out_dir
-            self.in_file        = out_dir
-            self.plotting       = plotting
-            self.tag = "None"
+		def __init__(self, in_dir = None, out_dir = None, info_dir = None, plotting = False):
+			self.in_dir         = in_dir
+			self.out_dir_info   = out_dir
+			self.in_file        = out_dir
+			self.plotting       = plotting
+			self.tag = "None"
 
 
-    ## Initialize class
-    cargs = cmd_args()
+	## Initialize class
+	cargs = cmd_args()
 
-    try:
-        ## Gather command line arguments
-        opts, args = getopt.getopt(argv, "i:o:f:t:", ["plot"])
-    except Exception as e:
-        print("[" + tc.R + "ERROR" + tc.Rst + "] ---> Incorrect Command Line Arguements.")
-        print(e)
-        sys.exit()
+	try:
+		## Gather command line arguments
+		opts, args = getopt.getopt(argv, "i:o:f:t:", ["plot"])
+	except Exception as e:
+		print("[" + tc.R + "ERROR" + tc.Rst + "] ---> Incorrect Command Line Arguements.")
+		print(e)
+		sys.exit()
 
-    ## Parse command line args
-    for opt, arg in opts:
+	## Parse command line args
+	for opt, arg in opts:
 
-        if opt in ['-i']:
-            ## Read input directory
-            cargs.in_dir = str(arg)
-            print("\nInput Folder: " + tc.C + "{}".format(cargs.in_dir) + tc.Rst)
+		if opt in ['-i']:
+			## Read input directory
+			cargs.in_dir = str(arg)
+			print("\nInput Folder: " + tc.C + "{}".format(cargs.in_dir) + tc.Rst)
 
-            cargs.out_dir = str(arg)
-            print("Output Folder: " + tc.C + "{}".format(cargs.out_dir) + tc.Rst)
+			cargs.out_dir = str(arg)
+			print("Output Folder: " + tc.C + "{}".format(cargs.out_dir) + tc.Rst)
 
-        if opt in ['-o']:
-            ## Read output directory
-            cargs.out_dir = str(arg)
-            print("Output Folder: " + tc.C + "{}".format(cargs.out_dir) + tc.Rst)
+		if opt in ['-o']:
+			## Read output directory
+			cargs.out_dir = str(arg)
+			print("Output Folder: " + tc.C + "{}".format(cargs.out_dir) + tc.Rst)
 
-        elif opt in ['-f']:
-            ## Read input directory
-            cargs.in_file = str(arg)
-            print("Input Post Processing File: " + tc.C + "{}".format(cargs.in_file) + tc.Rst)
+		elif opt in ['-f']:
+			## Read input directory
+			cargs.in_file = str(arg)
+			print("Input Post Processing File: " + tc.C + "{}".format(cargs.in_file) + tc.Rst)
 
-    return cargs
+	return cargs
+
+
+def non_zero_spect(spect):
+	non_zero = np.where(spect[1, :] != 0)
+	non_zero_spect = np.cumsum(spect[0, non_zero])
+	for t in range(2, sys_vars.ndata):
+		non_zero = np.where(spect[t, :] != 0)
+		non_zero_spect += np.cumsum(spect[t, non_zero])
+	non_zero_spect /= sys_vars.ndata
+
+	return non_zero_spect
 
 ######################
 ##       MAIN       ##
@@ -121,7 +132,23 @@ if __name__ == '__main__':
 		print("Making folder:" + tc.C + " SIM_DATA/" + tc.Rst)
 		os.mkdir(out_dir_simdata)
 
+	#------------------------------------------
 	# Plot Tseries of system measures
+	#------------------------------------------
+	snaps_indx = [0, sys_vars.ndata//4, sys_vars.ndata//2, -1]
+	plot_vort(out_dir_simdata, run_data.w, sys_msr.x, sys_msr.y, sys_msr.time, snaps_indx)
+	
+
+	#------------------------------------------
+	# Plot Time Averaged Spectra
+	#------------------------------------------
+	plot_time_averaged_spectra_both(out_dir_simdata, spec_data.enrg_spectrum, spec_data.enrg_flux_spectrum, sys_vars.Nx//3, spect_type="Energy")
+	plot_time_averaged_spectra_both(out_dir_simdata, spec_data.enst_spectrum, spec_data.enst_flux_spectrum, sys_vars.Nx//3, spect_type="Enstrophy")
+
+	print()
+	#------------------------------------------
+	# Plot Tseries of system measures
+	#------------------------------------------
 	fig = plt.figure(figsize = (12, 8))
 	gs  = GridSpec(2, 2)
 	ax1 = fig.add_subplot(gs[0, 0])
@@ -139,21 +166,21 @@ if __name__ == '__main__':
 	ax1 = fig.add_subplot(gs[1, 0])
 	ax1.plot(sys_msr.time, sys_msr.enrg_diss, label=r"Total Energy Dissipation")
 	ax1.set_xlabel(r"t")
-	ax1.set_ylabel(r"$\varepsilon_{\mathbf{u}}$")
+	ax1.set_ylabel(r"$\varepsilon_{\mathcal{K}}$")
 	ax1.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
-	ax1.set_title(r"Total Energy")
+	ax1.set_title(r"Energy Dissipation")
 	ax1 = fig.add_subplot(gs[1, 1])
 	ax1.plot(sys_msr.time, sys_msr.enst_diss, label=r"Total Enstrophy Dissipation")
 	ax1.set_xlabel(r"t")
-	ax1.set_ylabel(r"$\varepsilon_{\omega}$")
+	ax1.set_ylabel(r"$\varepsilon_{\mathcal{E}}$")
 	ax1.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
-	ax1.set_title(r"Total Enstrophy")
+	ax1.set_title(r"Enstrophy Dissipation")
 	plt.savefig(out_dir_simdata + "SysMsr_Tseries.png", bbox_inches='tight')
 	plt.close()
 
 
 	# Plot Forcing Injection
-	fig = plt.figure(figsize = (12, 8))
+	fig = plt.figure(figsize = (16, 8))
 	gs  = GridSpec(2, 2)
 	ax1 = fig.add_subplot(gs[0, 0])
 	ax1.plot(sys_msr.time, sys_msr.tot_forc, label=r"$\omega f$")
@@ -165,7 +192,7 @@ if __name__ == '__main__':
 	plt.close()
 
 	# Plot time averaged spectra
-	fig = plt.figure(figsize = (12, 8))
+	fig = plt.figure(figsize = (16, 8))
 	gs  = GridSpec(1, 2)
 	ax1 = fig.add_subplot(gs[0, 0])
 	non_zero_args = np.where(sys_msr.enrg_spect_t_avg != 0)
@@ -192,36 +219,46 @@ if __name__ == '__main__':
 	plt.close()
 
 
-	if not hasattr(sys_msr, 'TimeAveragedEnstrophyFluxSpectrum') or not hasattr(sys_msr, 'TimeAveragedEnstrophyFluxSpectrum'):
-		enrg_flux_spect_t_avg = np.mean(spec_data.enrg_flux_spectrum, axis=0)
-		enst_flux_spect_t_avg = np.mean(spec_data.enst_flux_spectrum, axis=0)
-	else:
-		enrg_flux_spect_t_avg = sys_msr.enrg_flux_spect_t_avg
-		enst_flux_spect_t_avg = sys_msr.enst_flux_spect_t_avg
+	# # if not hasattr(sys_msr, 'TimeAveragedEnstrophyFluxSpectrum') or not hasattr(sys_msr, 'TimeAveragedEnstrophyFluxSpectrum'):
+	# non_zero = np.where(spec_data.enrg_flux_spectrum[1, :] != 0)
+	# enrg_flux_spect_t_avg = np.cumsum(spec_data.enrg_flux_spectrum[0, non_zero])
+	# non_zero = np.where(spec_data.enst_flux_spectrum[1, :] != 0)
+	# enst_flux_spect_t_avg = np.cumsum(spec_data.enst_flux_spectrum[0, non_zero])
+	# for t in range(2, sys_vars.ndata):
+	# 	non_zero = np.where(spec_data.enrg_flux_spectrum[t, :] != 0)
+	# 	enrg_flux_spect_t_avg += np.cumsum(spec_data.enrg_flux_spectrum[t, non_zero])
+	# 	non_zero = np.where(spec_data.enst_flux_spectrum[t, :] != 0)
+	# 	enst_flux_spect_t_avg += np.cumsum(spec_data.enst_flux_spectrum[t, non_zero])
+	# enrg_flux_spect_t_avg /= sys_vars.ndata
+	# enst_flux_spect_t_avg /= sys_vars.ndata
+	# # else:
+	# # 	enrg_flux_spect_t_avg = sys_msr.enrg_flux_spect_t_avg
+	# # 	enst_flux_spect_t_avg = sys_msr.enst_flux_spect_t_avg
+	# # print(spec_data.enrg_flux_spectrum[1, :], spec_data.enrg_flux_spectrum[1, :sys_vars.spec_size_dealias])
 
-	# Plot time averaged flux spectra
-	fig = plt.figure(figsize = (12, 8))
-	gs  = GridSpec(1, 2)
-	ax1 = fig.add_subplot(gs[0, 0])
-	non_zero_args = np.where(enrg_flux_spect_t_avg != 0)
-	enrg_flux_spect_t_avg = enrg_flux_spect_t_avg[non_zero_args]
-	k_range = np.arange(1, len(enrg_flux_spect_t_avg) + 1)
-	ax1.plot(k_range, enrg_flux_spect_t_avg)
-	ax1.set_xlabel(r"k")
-	ax1.set_ylabel(r"$\Pi^{\mathbf{u}}$")
-	ax1.set_xscale('log')
-	ax1.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
-	ax1.set_title(r"Time Averaged Energy Flux Spectrum")
-	ax1 = fig.add_subplot(gs[0, 1])
-	non_zero_args = np.where(enst_flux_spect_t_avg != 0)
-	enst_flux_spect_t_avg = enst_flux_spect_t_avg[non_zero_args]
-	k_range = np.arange(1, len(enst_flux_spect_t_avg) + 1)
-	ax1.plot(k_range, enst_flux_spect_t_avg)
-	ax1.set_xlabel(r"k")
-	ax1.set_ylabel(r"$\Pi^{\omega}$")
-	ax1.set_xscale('log')
-	ax1.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
-	ax1.set_title(r"Time Averaged Enstrophy Flux Spectrum")
+	# # Plot time averaged flux spectra
+	# fig = plt.figure(figsize = (12, 8))
+	# gs  = GridSpec(1, 2)
+	# ax1 = fig.add_subplot(gs[0, 0])
+	# non_zero_args = np.where(enrg_flux_spect_t_avg != 0)
+	# enrg_flux_spect_t_avg = enrg_flux_spect_t_avg[non_zero_args]
+	# k_range = np.arange(1, len(enrg_flux_spect_t_avg) + 1)
+	# ax1.plot(k_range, enrg_flux_spect_t_avg)
+	# ax1.set_xlabel(r"k")
+	# ax1.set_ylabel(r"$\Pi^{\mathbf{u}}$")
+	# ax1.set_xscale('log')
+	# ax1.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+	# ax1.set_title(r"Time Averaged Energy Flux Spectrum")
+	# ax1 = fig.add_subplot(gs[0, 1])
+	# non_zero_args = np.where(enst_flux_spect_t_avg != 0)
+	# enst_flux_spect_t_avg = enst_flux_spect_t_avg[non_zero_args]
+	# k_range = np.arange(1, len(enst_flux_spect_t_avg) + 1)
+	# ax1.plot(k_range, enst_flux_spect_t_avg)
+	# ax1.set_xlabel(r"k")
+	# ax1.set_ylabel(r"$\Pi^{\omega}$")
+	# ax1.set_xscale('log')
+	# ax1.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+	# ax1.set_title(r"Time Averaged Enstrophy Flux Spectrum")
 
-	plt.savefig(out_dir_simdata + "TimeAvg_Flux_Spectra.png", bbox_inches='tight')
-	plt.close()
+	# plt.savefig(out_dir_simdata + "TimeAvg_Flux_Spectra.png", bbox_inches='tight')
+	# plt.close()

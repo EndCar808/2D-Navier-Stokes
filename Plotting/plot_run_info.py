@@ -33,6 +33,7 @@ from subprocess import Popen, PIPE, run
 from matplotlib.pyplot import cm
 from functions import tc, sim_data, import_data, import_spectra_data, import_post_processing_data, import_sys_msr, energy_spectrum, enstrophy_spectrum
 from plot_functions import plot_flow_summary, plot_flow_summary_stream, plot_phase_snaps_stream, plot_phase_snaps
+from plot_functions import plot_vort, plot_time_averaged_spectra_both
 ###############################
 ##       FUNCTION DEFS       ##
 ###############################
@@ -132,13 +133,13 @@ if __name__ == '__main__':
         method = "file"
         post_file_path = cmdargs.in_dir + cmdargs.in_file
 
-    snaps_output_dir = cmdargs.out_dir + "RUN_SNAPS/"
+    snaps_output_dir = cmdargs.out_dir + "RUN_INFO_SNAPS/"
     if os.path.isdir(snaps_output_dir) != True:
-        print("Making folder:" + tc.C + " RUN_SNAPS/" + tc.Rst)
+        print("Making folder:" + tc.C + " RUN_INFO_SNAPS/" + tc.Rst)
         os.mkdir(snaps_output_dir)
-    summ_vid_snaps_output_dir = cmdargs.out_dir + "VID_SNAPS/"
+    summ_vid_snaps_output_dir = cmdargs.out_dir + "SUM_VID_SNAPS/"
     if os.path.isdir(summ_vid_snaps_output_dir) != True:
-        print("Making folder:" + tc.C + " VID_SNAPS/" + tc.Rst)
+        print("Making folder:" + tc.C + " SUM_VID_SNAPS/" + tc.Rst)
         os.mkdir(summ_vid_snaps_output_dir)
     phase_vid_snaps_output_dir = cmdargs.out_dir + "PHASE_VID_SNAPS/"
     if os.path.isdir(phase_vid_snaps_output_dir) != True:
@@ -155,7 +156,7 @@ if __name__ == '__main__':
         run_data = import_data(cmdargs.in_dir, sys_vars)
 
         ## Read in system measures
-        sys_msr_data = import_sys_msr(cmdargs.in_dir, sys_vars)
+        sys_msr = import_sys_msr(cmdargs.in_dir, sys_vars)
 
         ## Read in spectra data
         spec_data = import_spectra_data(cmdargs.in_dir, sys_vars)
@@ -163,99 +164,55 @@ if __name__ == '__main__':
         # -----------------------------------------
         # # --------  Plot Data
         # -----------------------------------------
-        ##------------------------------- Plot vorticity
-        fig = plt.figure(figsize = (16, 8))
-        gs  = GridSpec(2, 2, hspace = 0.3) 
 
         ##-------------------------
         ## Plot vorticity   
         ##-------------------------
-        ax1 = []
-        for i in range(2):
-            for j in range(2):
-                ax1.append(fig.add_subplot(gs[i, j]))
-        indx_list = [0, sys_vars.ndata//4, sys_vars.ndata//2, -1]
-        for j, i in enumerate(indx_list):
-            im1 = ax1[j].imshow(run_data.w[i, :], extent = (sys_msr_data.y[0], sys_msr_data.y[-1], sys_msr_data.x[-1], sys_msr_data.x[0]), cmap = "jet") #, vmin = w_min, vmax = w_max 
-            ax1[j].set_xlabel(r"$y$")
-            ax1[j].set_ylabel(r"$x$")
-            ax1[j].set_xlim(0.0, sys_msr_data.y[-1])
-            ax1[j].set_ylim(0.0, sys_msr_data.x[-1])
-            ax1[j].set_xticks([0.0, np.pi/2.0, np.pi, 1.5*np.pi, sys_msr_data.y[-1]])
-            ax1[j].set_xticklabels([r"$0$", r"$\frac{\pi}{2}$", r"$\pi$", r"$\frac{3\pi}{2}$", r"$2 \pi$"])
-            ax1[j].set_yticks([0.0, np.pi/2.0, np.pi, 1.5*np.pi, sys_msr_data.x[-1]])
-            ax1[j].set_yticklabels([r"$0$", r"$\frac{\pi}{2}$", r"$\pi$", r"$\frac{3\pi}{2}$", r"$2 \pi$"])
-            ax1[j].set_title(r"$t = {:0.5f}$".format(sys_msr_data.time[i]))
-            ## Plot colourbar
-            div1  = make_axes_locatable(ax1[j])
-            cbax1 = div1.append_axes("right", size = "10%", pad = 0.05)
-            cb1   = plt.colorbar(im1, cax = cbax1)
-            cb1.set_label(r"$\omega(x, y)$")
-        plt.savefig(snaps_output_dir + "Vorticity.png")
-        plt.close()
+        ##------------------------------- Plot vorticity
+        snaps_indx = [0, sys_vars.ndata//4, sys_vars.ndata//2, -1]
+        plot_vort(snaps_output_dir, run_data.w, sys_msr.x, sys_msr.y, sys_msr.time, snaps_indx)
 
         ##---------- Energy Enstrophy
         fig = plt.figure(figsize = (32, 8))
         gs  = GridSpec(2, 3, hspace = 0.35)
         ## Plot the energy dissipation
         ax1 = fig.add_subplot(gs[0, 0])
-        ax1.plot(sys_msr_data.time, sys_msr_data.enrg_diss)
+        ax1.plot(sys_msr.time, sys_msr.enrg_diss)
         ax1.set_xlabel(r"$t$")
         ax1.set_title(r"Energy Dissipation")
         ax1.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
         ## Plot the enstrophy dissipation
         ax2 = fig.add_subplot(gs[0, 1])
-        ax2.plot(sys_msr_data.time, sys_msr_data.enst_diss)
+        ax2.plot(sys_msr.time, sys_msr.enst_diss)
         ax2.set_xlabel(r"$t$")
         ax2.set_title(r"Enstrophy Dissipation")
-        ax2.set_yscale('symlog')
         ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
         ## Plot the relative energy
         ax1 = fig.add_subplot(gs[1, 0])
-        ax1.plot(sys_msr_data.time, sys_msr_data.tot_enrg)
+        ax1.plot(sys_msr.time, sys_msr.tot_enrg)
         ax1.set_xlabel(r"$t$")
         ax1.set_title(r"Total Energy")
         ax1.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
         ## Plot the relative helicity
         ax2 = fig.add_subplot(gs[1, 1])
-        ax2.plot(sys_msr_data.time, sys_msr_data.tot_enst)
+        ax2.plot(sys_msr.time, sys_msr.tot_enst)
         ax2.set_xlabel(r"$t$")
         ax2.set_title(r"Total Enstrophy")
-        ax2.set_yscale('symlog')
         ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
         ## Plot the relative helicity
         ax2 = fig.add_subplot(gs[0, 2])
-        ax2.plot(sys_msr_data.time, sys_msr_data.tot_forc)
+        ax2.plot(sys_msr.time, sys_msr.tot_enrg_forc, label=r"Energy Forcing Input")
+        ax2.plot(sys_msr.time, sys_msr.tot_enst_forc, label=r"Enstrophy Forcing Input")
         ax2.set_xlabel(r"$t$")
         ax2.set_title(r"Total Forcing Input")
-        ax2.set_yscale('symlog')
+        ax2.legend()
         ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
         ax2 = fig.add_subplot(gs[1, 2])
-        ax2.plot(sys_msr_data.time, sys_msr_data.tot_palin)
+        ax2.plot(sys_msr.time, sys_msr.tot_palin)
         ax2.set_xlabel(r"$t$")
         ax2.set_title(r"Total Palinstrophy")
-        ax2.set_yscale('symlog')
         ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
         plt.savefig(snaps_output_dir + "System_Measures.png")
-        plt.close()
-
-
-        ##---------- Mean Flow
-        fig = plt.figure(figsize = (32, 8))
-        gs  = GridSpec(1, 2)
-        ax1 = fig.add_subplot(gs[0, 0])
-        ax1.plot(sys_msr_data.mean_flow_x, label = "$$")
-        ax1.set_ylabel(r"$\bar{u}(y)$")
-        ax1.set_xlabel(r"$y$")
-        ax1.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
-        ax1.set_title(r"Mean Flow in x Direction")
-        ax2 = fig.add_subplot(gs[0, 1])
-        ax2.plot(sys_msr_data.x, sys_msr_data.mean_flow_y, label = "$$")
-        ax2.set_xlabel(r"$x$")
-        ax2.set_xlabel(r"$\bar{v}(y)$")
-        ax2.set_title(r"Mean Flow in y Directon")
-        ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
-        plt.savefig(snaps_output_dir + "MeanFlow.png")
         plt.close()
 
         ##---------- Spectra
@@ -280,8 +237,6 @@ if __name__ == '__main__':
         plt.savefig(snaps_output_dir + "Spectra.png")
         plt.close()
 
-
-
         ##---------- Flux Spectra
         fig = plt.figure(figsize = (32, 8))
         gs  = GridSpec(1, 2)
@@ -301,55 +256,11 @@ if __name__ == '__main__':
         plt.close()
 
 
-        ##------------------------ Time Averaged Enstorphy Spectra and Flux Spectra
-        fig = plt.figure(figsize = (21, 8))
-        gs  = GridSpec(1, 2)
-        ax2 = fig.add_subplot(gs[0, 0])
-        for i in range(spec_data.enst_spectrum.shape[0]):
-            ax2.plot(np.arange(1, int(sys_vars.Nx/3)), spec_data.enst_spectrum[i, 1:int(sys_vars.Nx/3)], 'r', alpha = 0.15)
-        ax2.plot(np.arange(1, int(sys_vars.Nx/3)), np.mean(spec_data.enst_spectrum[:, 1:int(sys_vars.Nx/3)], axis = 0), 'k')
-        ax2.set_xlabel(r"$k$")
-        ax2.set_xscale('log')
-        ax2.set_yscale('log')
-        ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
-        ax2.set_title(r"$\mathcal{E}(|\mathbf{k}|)$: Enstrophy Spectrum")
-
-        ax2 = fig.add_subplot(gs[0, 1])
-        for i in range(spec_data.enst_flux_spectrum.shape[0]):
-            ax2.plot(np.arange(1, int(sys_vars.Nx/3)), spec_data.enst_flux_spectrum[i, 1:int(sys_vars.Nx/3)], 'r', alpha = 0.15)
-        ax2.plot(np.arange(1, int(sys_vars.Nx/3)), np.mean(spec_data.enst_flux_spectrum[:, 1:int(sys_vars.Nx/3)], axis = 0), 'k')
-        ax2.set_xlabel(r"$k$")
-        ax2.set_xscale('log')
-        ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
-        ax2.set_title(r"$\Pi(|\mathbf{k}|)$: Enstrophy Flux Spectrum")
-        
-        plt.savefig(snaps_output_dir + "TimeAveragedEnstrophySpectra.png")
-        plt.close()
-
-        ##------------------------ Time Averaged Energy Spectra and Flux Spectra
-        fig = plt.figure(figsize = (21, 8))
-        gs  = GridSpec(1, 2)
-        ax2 = fig.add_subplot(gs[0, 0])
-        for i in range(spec_data.enst_spectrum.shape[0]):
-            ax2.plot(np.arange(1, int(sys_vars.Nx/3)), spec_data.enrg_spectrum[i, 1:int(sys_vars.Nx/3)], 'r', alpha = 0.15)
-        ax2.plot(np.arange(1, int(sys_vars.Nx/3)), np.mean(spec_data.enrg_spectrum[:, 1:int(sys_vars.Nx/3)], axis = 0), 'k')
-        ax2.set_xlabel(r"$k$")
-        ax2.set_xscale('log')
-        ax2.set_yscale('log')
-        ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
-        ax2.set_title(r"$\mathcal{K}(|\mathbf{k}|)$: Energy Spectrum")
-
-        ax2 = fig.add_subplot(gs[0, 1])
-        for i in range(spec_data.enrg_flux_spectrum.shape[0]):
-            ax2.plot(np.arange(1, int(sys_vars.Nx/3)), spec_data.enrg_flux_spectrum[i, 1:int(sys_vars.Nx/3)], 'r', alpha = 0.15)
-        ax2.plot(np.arange(1, int(sys_vars.Nx/3)), np.mean(spec_data.enrg_flux_spectrum[:, 1:int(sys_vars.Nx/3)], axis = 0), 'k')
-        ax2.set_xlabel(r"$k$")
-        ax2.set_xscale('log')
-        ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
-        ax2.set_title(r"$\Pi(|\mathbf{k}|)$: Energy Flux Spectrum")
-        
-        plt.savefig(snaps_output_dir + "TimeAveragedEnergySpectra.png")
-        plt.close()
+        #------------------------------------------
+        # Plot Time Averaged Spectra
+        #------------------------------------------
+        plot_time_averaged_spectra_both(snaps_output_dir, spec_data.enrg_spectrum, spec_data.enrg_flux_spectrum, sys_vars.Nx//3, spect_type="Energy")
+        plot_time_averaged_spectra_both(snaps_output_dir, spec_data.enst_spectrum, spec_data.enst_flux_spectrum, sys_vars.Nx//3, spect_type="Enstrophy")
 
 
         ##------------------------ Time Averaged Spectra to Measure the Spectra Scaling Exponent
@@ -412,13 +323,13 @@ if __name__ == '__main__':
                 sys_vars.forc_k = 2.0
 
                 ## Get max and min system measures 
-                emax  = np.amax(sys_msr_data.tot_enrg[:])
-                enmax = np.amax(sys_msr_data.tot_enst[:] / sys_vars.forc_k**2 )
-                pmax  = np.amax(sys_msr_data.enst_diss[:] / sys_vars.forc_k**2 )
+                emax  = np.amax(sys_msr.tot_enrg[:])
+                enmax = np.amax(sys_msr.tot_enst[:] / sys_vars.forc_k**2 )
+                pmax  = np.amax(sys_msr.enst_diss[:] / sys_vars.forc_k**2 )
                 # print(emax, enmax, pmax)
-                emin  = np.amin(sys_msr_data.tot_enrg[:])
-                enmin = np.amin(sys_msr_data.tot_enst[:] / sys_vars.forc_k**2 )
-                pmin  = np.amin(sys_msr_data.enst_diss[:] / sys_vars.forc_k**2 )
+                emin  = np.amin(sys_msr.tot_enrg[:])
+                enmin = np.amin(sys_msr.tot_enst[:] / sys_vars.forc_k**2 )
+                pmin  = np.amin(sys_msr.enst_diss[:] / sys_vars.forc_k**2 )
                 m_max = np.amax([emax, enmax, pmax])
                 m_min = np.amin([emin, enmin, pmin])
                 # m_max = np.amax([emax, enmax])
@@ -441,7 +352,7 @@ if __name__ == '__main__':
                     proc_lim = cmdargs.num_threads
 
                     ## Create tasks for the process pool
-                    groups_args = [(mprocs.Process(target = plot_flow_summary, args = (summ_vid_snaps_output_dir, i, run_data.w[i, :, :] / np.sqrt(np.mean(run_data.w[:, :, :]**2)), wmin, wmax, m_min, m_max, enrg_spec_min, enrg_spec_max, enst_spec_min, enst_spec_max, sys_vars.forc_k, sys_msr_data.x, sys_msr_data.y, sys_msr_data.time, sys_vars.Nx, sys_vars.Ny, sys_msr_data.kx, sys_msr_data.ky, spec_data.enrg_spectrum[i, :], spec_data.enst_spectrum[i, :], sys_msr_data.tot_enrg, sys_msr_data.tot_enst[:] / (15.5**2), sys_msr_data.enst_diss / (15.5**2))) for i in range(run_data.w.shape[0]))] * proc_lim
+                    groups_args = [(mprocs.Process(target = plot_flow_summary, args = (summ_vid_snaps_output_dir, i, run_data.w[i, :, :] / np.sqrt(np.mean(run_data.w[:, :, :]**2)), wmin, wmax, m_min, m_max, enrg_spec_min, enrg_spec_max, enst_spec_min, enst_spec_max, sys_vars.forc_k, sys_msr.x, sys_msr.y, sys_msr.time, sys_vars.Nx, sys_vars.Ny, sys_msr.kx, sys_msr.ky, spec_data.enrg_spectrum[i, :], spec_data.enst_spectrum[i, :], sys_msr.tot_enrg, sys_msr.tot_enst[:] / (15.5**2), sys_msr.enst_diss / (15.5**2))) for i in range(run_data.w.shape[0]))] * proc_lim
 
                     ## Loop of grouped iterable
                     for procs in zip_longest(*groups_args): 
@@ -458,7 +369,7 @@ if __name__ == '__main__':
                 else:
                     # Loop over snapshots
                     for i in range(sys_vars.ndata):
-                        plot_flow_summary(summ_vid_snaps_output_dir, i, run_data.w[i, :, :] / np.sqrt(np.mean(run_data.w[:, :, :]**2)), wmin, wmax, m_min, m_max, enrg_spec_min, enrg_spec_max, enst_spec_min, enst_spec_max, sys_vars.forc_k, sys_msr_data.x, sys_msr_data.y, sys_msr_data.time, sys_vars.Nx, sys_vars.Ny, sys_msr_data.kx, sys_msr_data.ky, spec_data.enrg_spectrum[i, :], spec_data.enst_spectrum[i, :], sys_msr_data.tot_enrg, sys_msr_data.tot_enst[:] / (15.5**2), sys_msr_data.enst_diss / (15.5**2))
+                        plot_flow_summary(summ_vid_snaps_output_dir, i, run_data.w[i, :, :] / np.sqrt(np.mean(run_data.w[:, :, :]**2)), wmin, wmax, m_min, m_max, enrg_spec_min, enrg_spec_max, enst_spec_min, enst_spec_max, sys_vars.forc_k, sys_msr.x, sys_msr.y, sys_msr.time, sys_vars.Nx, sys_vars.Ny, sys_msr.kx, sys_msr.ky, spec_data.enrg_spectrum[i, :], spec_data.enst_spectrum[i, :], sys_msr.tot_enrg, sys_msr.tot_enst[:] / (15.5**2), sys_msr.enst_diss / (15.5**2))
             
 
             framesPerSec = 15

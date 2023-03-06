@@ -272,7 +272,6 @@ typedef struct runtime_data_struct {
 	double* a_k_t_avg;					// Time averaged Fourier vorticity amplitudes
 	double* phi_k;			  			// Fourier vorticity phases
 	double* tot_div;		  			// Array to hold the total diverence
-	double* tot_forc;		  			// Array to hold the total forcing input into the sytem over the simulation
 	double* tot_energy;       			// Array to hold the total energy over the simulation
 	double* tot_enstr;		  			// Array to hold the total entrophy over the simulation
 	double* tot_palin;		  			// Array to hold the total palinstrophy over the simulaiotns
@@ -306,8 +305,10 @@ typedef struct runtime_data_struct {
 	double* forcing_scaling;  			// Array to hold the initial scaling for the forced modes
 	int* forcing_indx;		  			// Array to hold the indices of the forced modes
 	int* forcing_k[SYS_DIM];  			// Array containg the wavenumbers for the forced modes
+	double* tot_enrg_input;	  			// Array to hold the total energy forcing into the sytem over the simulation
+	double* tot_enst_input;	  			// Array to hold the total enstrophy forcing into the sytem over the simulation
 
-	double* tot_time					// Records all time during the simulation including the transient dynamics
+	double* tot_time;					// Records all time during the simulation including the transient dynamics
 	double* u_rms;						// Root mean square of the velocity field
 	double* integral_length_scale;		// The integral length scale
 	double* eddy_turnover_1;			// The eddy turnover time computed using the integral length scale
@@ -315,6 +316,8 @@ typedef struct runtime_data_struct {
 	double* taylor_micro;				// The taylor micro-scale
 	double* rey_no;						// The reynolds number
 	double* kolm_scale;					// The kolmogorov length scale
+	double* enrg_diss_k;				// The dissipative wavenumber for energy
+	double* enst_diss_k;				// The dissipative wavenumber for enstrophy
 } runtime_data_struct;
 
 // Runge-Kutta Integration struct

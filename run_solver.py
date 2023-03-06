@@ -296,6 +296,9 @@ if __name__ == '__main__':
         print("Making folder:" + tc.C + " ParallelRunsDump/" + tc.Rst)
         os.mkdir(par_runs_output_dir)
 
+    ## Get the current date and time for writing calling commands to file
+    now         = datetime.now()
+    current_d_t = now.strftime("%d%b%Y_%H:%M:%S")
 
     #########################
     ##      RUN SOLVER     ##
@@ -378,6 +381,7 @@ if __name__ == '__main__':
                         file.write("%s\n" % cmd_list[i])
                         file.write("%s\n" % item)
 
+
     ##################################
     ##      RUN POST PROCESSING     ##
     ##################################
@@ -394,7 +398,7 @@ if __name__ == '__main__':
         
         ## Generate command list 
         if solver_mode == "FULL":
-            cmd_list = [["{} -i {} -o {} -v {:g} -v {} -v {:1.1f} -d {:g} -d {} -d {:1.1f} -d {:g} -f {} -f {} -f {} -a {} -a {} -k {} -p {} -p {} -t {} {}".format(
+            post_cmd_list = [["{} -i {} -o {} -v {:g} -v {} -v {:1.1f} -d {:g} -d {} -d {:1.1f} -d {:g} -f {} -f {} -f {} -a {} -a {} -k {} -p {} -p {} -t {} {}".format(
                                                         post_executable,
                                                         post_input_dir + "N[{},{}]_T[{:1.1f},{},{:1.3f}]_NU[{:g},{},{:1.1f}]_DRAG[{:g},{:g},{},{:1.1f}]_CFL[{:1.2f}]_FORC[{},{},{:g}]_u0[{}]_TAG[{}]/".format(nx, ny, t0, h, t, v, int(hype), hypervisc_pow, ekmn_alpha_low_k, a_hk, int(ekmn_hypo_diff), ekmn_hypo_pow, c, forcing, force_k, force_scale, u0, s_tag), 
                                                         post_output_dir + "N[{},{}]_T[{:1.1f},{},{:1.3f}]_NU[{:g},{},{:1.1f}]_DRAG[{:g},{:g},{},{:1.1f}]_CFL[{:1.2f}]_FORC[{},{},{:g}]_u0[{}]_TAG[{}]/".format(nx, ny, t0, h, t, v, int(hype), hypervisc_pow, ekmn_alpha_low_k, a_hk, int(ekmn_hypo_diff), ekmn_hypo_pow, c, forcing, force_k, force_scale, u0, s_tag),
@@ -407,7 +411,7 @@ if __name__ == '__main__':
                                                         post_tag,
                                                         post_options)] for nx, ny in zip(Nx, Ny) for h in dt for t in T for a_hk in ekmn_alpha_high_k for n_k3 in num_k3_sectors for n_k1 in num_k1_sectors for k_f in k_frac for v in nu for hype in hyper_visc for c in cfl for u0 in ic for s_tag in solver_tag for num_threads in num_post_omp_threads]
         elif solver_mode == "PHASEONLY":
-            cmd_list = [["{} -i {} -o {} -f {} -f {} -f {} -a {} -a {} -k {} -p {} -p {} -t {} {}".format(
+            post_cmd_list = [["{} -i {} -o {} -f {} -f {} -f {} -a {} -a {} -k {} -p {} -p {} -t {} {}".format(
                                                         post_executable,
                                                         post_input_dir + "N[{},{}]_T[{:1.1f},{},{:1.3f}]_SLOPE[{:1.3f}]_CFL[{:1.2f}]_FORC[{},{},{:g}]_u0[{}]_TAG[{}]/".format(nx, ny, t0, h, t, po_s, c, forcing, force_k, force_scale, u0, s_tag), 
                                                         post_output_dir + "N[{},{}]_T[{:1.1f},{},{:1.3f}]_SLOPE[{:1.3f}]_CFL[{:1.2f}]_FORC[{},{},{:g}]_u0[{}]_TAG[{}]/".format(nx, ny, t0, h, t, po_s, c, forcing, force_k, force_scale, u0, s_tag),                                
@@ -420,23 +424,24 @@ if __name__ == '__main__':
 
         if cmdargs.cmd_only:
             print(tc.C + "\nPost Processing Commands:\n" + tc.Rst)
-            for c in cmd_list:
+            for c in post_cmd_list:
                 print(c)
                 print()
         else:
             ## Create grouped iterable of subprocess calls to Popen() - see grouper recipe in itertools
-            groups = [(Popen(cmd, shell = True, stdout = PIPE, stdin = PIPE, stderr = PIPE, universal_newlines = True) for cmd in cmd_list)] * proc_limit 
+            groups = [(Popen(cmd, shell = True, stdout = PIPE, stdin = PIPE, stderr = PIPE, universal_newlines = True) for cmd in post_cmd_list)] * proc_limit 
 
             ## Loop through grouped iterable
             for processes in zip_longest(*groups): 
-                for proc in filter(None, processes): # filters out 'None' fill values if proc_limit does not divide evenly into cmd_list
+                for proc in filter(None, processes): # filters out 'None' fill values if proc_limit does not divide evenly into post_cmd_list
                     ## Print command to screen
                     print("\nExecuting the following command:\n\n\t" + tc.C + "{}\n\n".format(proc.args[0]) + tc.Rst)
                     
                     ## Print output to terminal as it comes
                     for line in proc.stdout:
-                        post_output.append(line)
                         sys.stdout.write(line)
+                        if collect_data:
+                            post_output.append(line)
 
                     # Communicate with process to retrive output and error
                     [run_CodeOutput, run_CodeErr] = proc.communicate()
@@ -465,10 +470,9 @@ if __name__ == '__main__':
                 # Write error to file
                 with open(par_runs_output_dir + "par_run_post_error_{}_{}.txt".format(os.path.split(cmdargs.init_file)[-1], d_t), "w") as file:
                     for i, item in enumerate(post_error):
-                        file.write("%s\n" % cmd_list[i])
+                        file.write("%s\n" % post_cmd_list[i])
                         file.write("%s\n" % item)
-                    
-
+        
     ###########################
     ##      RUN PLOTTING     ##
     ###########################
@@ -485,13 +489,13 @@ if __name__ == '__main__':
 
         ## Generate command list 
         if solver_mode == "FULL":
-            cmd_list = [["python3 {} -i {} -f {} {} ".format(
+            plot_cmd_list = [["python3 {} -i {} -f {} {} ".format(
                                             plot_script, 
                                             post_input_dir + "N[{},{}]_T[{:1.1f},{},{:1.3f}]_NU[{:g},{},{:1.1f}]_DRAG[{:g},{:g},{},{:1.1f}]_CFL[{:1.2f}]_FORC[{},{},{:g}]_u0[{}]_TAG[{}]/".format(nx, ny, t0, h, t, v, int(hype), hypervisc_pow, ekmn_alpha_low_k, a_hk, int(ekmn_hypo_diff), ekmn_hypo_pow, c, forcing, force_k, force_scale, u0, s_tag), 
                                             "PostProcessing_HDF_Data_THREADS[{},{}]_SECTORS[{},{}]_KFRAC[{:1.2f}]_TAG[{}].h5".format(num_threads, num_post_fftw_threads, n_k3, n_k1, k_f, post_tag),
                                             plot_options)] for nx, ny in zip(Nx, Ny) for h in dt for t in T for v in nu for a_hk in ekmn_alpha_high_k for n_k3 in num_k3_sectors for n_k1 in num_k1_sectors for k_f in k_frac for hype in hyper_visc for c in cfl for u0 in ic for s_tag in solver_tag for num_threads in num_post_omp_threads]
         elif solver_mode == "PHASEONLY":
-            cmd_list = [["python3 {} -i {} -f {} {} ".format(
+            plot_cmd_list = [["python3 {} -i {} -f {} {} ".format(
                                             plot_script, 
                                             post_input_dir + "N[{},{}]_T[{:1.1f},{},{:1.3f}]_SLOPE[{:1.3f}]_CFL[{:1.2f}]_FORC[{},{},{:g}]_u0[{}]_TAG[{}]/".format(nx, ny, t0, h, t, po_s, c, forcing, force_k, force_scale, u0, s_tag), 
                                             "PostProcessing_HDF_Data_THREADS[{},{}]_SECTORS[{},{}]_KFRAC[{:1.2f}]_TAG[{}].h5".format(num_threads, num_post_fftw_threads, n_k3, n_k1, k_f, post_tag),
@@ -499,16 +503,16 @@ if __name__ == '__main__':
 
         if cmdargs.cmd_only:
             print(tc.C + "\nPlotting Commands:\n" + tc.Rst)
-            for c in cmd_list:
+            for c in plot_cmd_list:
                 print(c)
                 print()
         else:
             ## Create grouped iterable of subprocess calls to Popen() - see grouper recipe in itertools
-            groups = [(Popen(cmd, shell = True, stdout = PIPE, stdin = PIPE, stderr = PIPE, universal_newlines = True) for cmd in cmd_list)] * proc_limit 
+            groups = [(Popen(cmd, shell = True, stdout = PIPE, stdin = PIPE, stderr = PIPE, universal_newlines = True) for cmd in plot_cmd_list)] * proc_limit 
 
             ## Loop through grouped iterable
             for processes in zip_longest(*groups): 
-                for proc in filter(None, processes): # filters out 'None' fill values if proc_limit does not divide evenly into cmd_list
+                for proc in filter(None, processes): # filters out 'None' fill values if proc_limit does not divide evenly into plot_cmd_list
                     ## Print command to screen
                     print("\nExecuting the following command:\n\n\t" + tc.C + "{}\n\n".format(proc.args[0]) + tc.Rst)
 
@@ -544,6 +548,5 @@ if __name__ == '__main__':
                 # Write error to file
                 with open(par_runs_output_dir + "par_run_plot_error_{}_{}.txt".format(os.path.split(cmdargs.init_file)[-1], d_t), "w") as file:
                     for i, item in enumerate(plot_error):
-                        file.write("%s\n" % cmd_list[i])
+                        file.write("%s\n" % plot_cmd_list[i])
                         file.write("%s\n" % item)
-                    

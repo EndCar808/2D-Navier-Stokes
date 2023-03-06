@@ -535,12 +535,12 @@ void FluxSpectra(int snap) {
 
 					// Update the current bin sum 
 					#if defined(__ENST_FLUX)
-					proc_data->d_enst_dt_spec[spec_indx] += tmp_deriv + tmp_diss;
+					proc_data->d_enst_dt_spec[spec_indx] += tmp_deriv - tmp_diss;
 					proc_data->enst_diss_spec[spec_indx] += tmp_diss;
 					proc_data->enst_flux_spec[spec_indx] += tmp_deriv;
 					#endif
 					#if defined(__ENRG_FLUX)
-					proc_data->d_enrg_dt_spec[spec_indx] += (tmp_deriv + tmp_diss) / k_sqr;
+					proc_data->d_enrg_dt_spec[spec_indx] += (tmp_deriv - tmp_diss) / k_sqr;
 					proc_data->enrg_diss_spec[spec_indx] += tmp_diss / k_sqr;
 					proc_data->enrg_flux_spec[spec_indx] += tmp_deriv / k_sqr;
 					#endif
@@ -560,7 +560,7 @@ void FluxSpectra(int snap) {
 
 								// Record the phase sync
 								if (run_data->k[0][i] > 0 && cabs(tmp_deriv) != 0.0) {
-									proc_data->phase_order_C_theta[a] += (tmp_deriv + tmp_diss) / cabs(tmp_deriv);
+									proc_data->phase_order_C_theta[a] += (tmp_deriv - tmp_diss) / cabs(tmp_deriv);
 								}
 							}
 						}
@@ -576,12 +576,12 @@ void FluxSpectra(int snap) {
 
 					// Update the running sum for the flux
 					#if defined(__ENST_FLUX)
-					proc_data->d_enst_dt_spec[spec_indx] += 2.0 * (tmp_deriv + tmp_diss);
+					proc_data->d_enst_dt_spec[spec_indx] += 2.0 * (tmp_deriv - tmp_diss);
 					proc_data->enst_diss_spec[spec_indx] += 2.0 * tmp_diss;
 					proc_data->enst_flux_spec[spec_indx] += 2.0 * tmp_deriv;
 					#endif
 					#if defined(__ENRG_FLUX)
-					proc_data->d_enrg_dt_spec[spec_indx] += 2.0 * (tmp_deriv + tmp_diss) / k_sqr;
+					proc_data->d_enrg_dt_spec[spec_indx] += 2.0 * (tmp_deriv - tmp_diss) / k_sqr;
 					proc_data->enrg_diss_spec[spec_indx] += 2.0 * tmp_diss / k_sqr;
 					proc_data->enrg_flux_spec[spec_indx] += 2.0 * tmp_deriv / k_sqr;
 					#endif
@@ -601,7 +601,7 @@ void FluxSpectra(int snap) {
 
 								// Record the phase sync
 								if (cabs(tmp_deriv) != 0.0) {
-									proc_data->phase_order_C_theta[a] += (tmp_deriv + tmp_diss) / cabs(tmp_deriv);
+									proc_data->phase_order_C_theta[a] += (tmp_deriv - tmp_diss) / cabs(tmp_deriv);
 								}
 							}
 						}

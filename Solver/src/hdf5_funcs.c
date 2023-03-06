@@ -1688,7 +1688,8 @@ void FinalWriteAndCloseOutputFiles(const long int* N, int iters, int save_data_i
 		MPI_Reduce(MPI_IN_PLACE, run_data->tot_energy, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		MPI_Reduce(MPI_IN_PLACE, run_data->tot_enstr, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		MPI_Reduce(MPI_IN_PLACE, run_data->tot_palin, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		MPI_Reduce(MPI_IN_PLACE, run_data->tot_forc, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(MPI_IN_PLACE, run_data->tot_enrg_input, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(MPI_IN_PLACE, run_data->tot_enst_input, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		MPI_Reduce(MPI_IN_PLACE, run_data->tot_div, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		MPI_Reduce(MPI_IN_PLACE, run_data->enrg_diss, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		MPI_Reduce(MPI_IN_PLACE, run_data->enst_diss, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
@@ -1765,9 +1766,13 @@ void FinalWriteAndCloseOutputFiles(const long int* N, int iters, int save_data_i
 		if ( (H5LTmake_dataset(file_info->sys_msr_file_handle, "TotalPalinstrophy", D1, dims1D, H5T_NATIVE_DOUBLE, run_data->tot_palin)) < 0) {
 			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "TotalPalinstrophy");
 		}
-		// Forcing Input
-		if ( (H5LTmake_dataset(file_info->sys_msr_file_handle, "TotalForcing", D1, dims1D, H5T_NATIVE_DOUBLE, run_data->tot_forc)) < 0) {
-			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "TotalForcing");
+		// Energy Forcing Input
+		if ( (H5LTmake_dataset(file_info->sys_msr_file_handle, "TotalEnergyForcingInput", D1, dims1D, H5T_NATIVE_DOUBLE, run_data->tot_enrg_input)) < 0) {
+			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "TotalEnergyForcingInput");
+		}
+		// Enstrophy Forciyng Input
+		if ( (H5LTmake_dataset(file_info->sys_msr_file_handle, "TotalEnstrophyForcingInput", D1, dims1D, H5T_NATIVE_DOUBLE, run_data->tot_enst_input)) < 0) {
+			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "TotalEnstrophyForcingInput");
 		}
 		// Divergence
 		if ( (H5LTmake_dataset(file_info->sys_msr_file_handle, "TotalDivergence", D1, dims1D, H5T_NATIVE_DOUBLE, run_data->tot_div)) < 0) {
@@ -1780,6 +1785,56 @@ void FinalWriteAndCloseOutputFiles(const long int* N, int iters, int save_data_i
 		// Enstrophy dissipation rate
 		if ( (H5LTmake_dataset(file_info->sys_msr_file_handle, "EnstrophyDissipation", D1, dims1D, H5T_NATIVE_DOUBLE, run_data->enst_diss)) < 0) {
 			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "EnstrophyDissipation");
+		}
+
+		// Loop through time and compute the remaining system measures
+		for (int i = 0; i < sys_vars->num_print_steps; ++i) {
+			// The characteristic velocity
+			run_data->u_rms[i]                 = sqrt(run_data->tot_energy[i]);
+			run_data->integral_length_scale[i] /= run_data->tot_energy[i];
+			run_data->eddy_turnover_2[i]       = 2.0 * M_PI / run_data->u_rms[i];
+			run_data->eddy_turnover_1[i]       = run_data->integral_length_scale[i] / run_data->u_rms[i];
+			run_data->rey_no[i]                = run_data->u_rms[i] * run_data->integral_length_scale[i] / sys_vars->NU;
+			run_data->kolm_scale[i]            = pow((pow(sys_vars->NU, 3.0) / run_data->enst_diss[i]), 1.0/6.0); 
+			run_data->taylor_micro[i]          = sqrt(10 * sys_vars->NU * run_data->tot_energy[i] / run_data->enrg_diss[i]);
+			run_data->enrg_diss_k[i] = 1.0 / pow((pow(sys_vars->NU, 3.0) / run_data->enrg_diss[i]), 1.0/6.0); ;
+			run_data->enst_diss_k[i] = 1.0 / pow((pow(sys_vars->NU, 3.0) / run_data->enst_diss[i]), 1.0/6.0); ;
+		}
+		// Enstrophy dissipation rate
+		if ( (H5LTmake_dataset(file_info->sys_msr_file_handle, "U_rms", D1, dims1D, H5T_NATIVE_DOUBLE, run_data->u_rms)) < 0) {
+			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "U_rms");
+		}
+		// Enstrophy dissipation rate
+		if ( (H5LTmake_dataset(file_info->sys_msr_file_handle, "IntLengthScale", D1, dims1D, H5T_NATIVE_DOUBLE, run_data->integral_length_scale)) < 0) {
+			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "IntLengthScale");
+		}
+		// Enstrophy dissipation rate
+		if ( (H5LTmake_dataset(file_info->sys_msr_file_handle, "EddyTurnover1", D1, dims1D, H5T_NATIVE_DOUBLE, run_data->eddy_turnover_1)) < 0) {
+			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "EddyTurnover1");
+		}
+		// Enstrophy dissipation rate
+		if ( (H5LTmake_dataset(file_info->sys_msr_file_handle, "EddyTurnOver2", D1, dims1D, H5T_NATIVE_DOUBLE, run_data->eddy_turnover_2)) < 0) {
+			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "EddyTurnOver2");
+		}
+		// Enstrophy dissipation rate
+		if ( (H5LTmake_dataset(file_info->sys_msr_file_handle, "TaylorMicroScale", D1, dims1D, H5T_NATIVE_DOUBLE, run_data->taylor_micro)) < 0) {
+			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "TaylorMicroScale");
+		}
+		// Enstrophy dissipation rate
+		if ( (H5LTmake_dataset(file_info->sys_msr_file_handle, "ReynoldsNo", D1, dims1D, H5T_NATIVE_DOUBLE, run_data->rey_no)) < 0) {
+			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "ReynoldsNo");
+		}
+		// Enstrophy dissipation rate
+		if ( (H5LTmake_dataset(file_info->sys_msr_file_handle, "KolmogororScale", D1, dims1D, H5T_NATIVE_DOUBLE, run_data->kolm_scale)) < 0) {
+			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "KolmogororScale");
+		}
+		// Enstrophy dissipative wavenumber
+		if ( (H5LTmake_dataset(file_info->sys_msr_file_handle, "EnstrophyDissWavenumber", D1, dims1D, H5T_NATIVE_DOUBLE, run_data->enst_diss_k)) < 0) {
+			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "EnstrophyDissWavenumber");
+		}
+		// Enstrophy dissipation rate
+		if ( (H5LTmake_dataset(file_info->sys_msr_file_handle, "EnergyDissWavenumber", D1, dims1D, H5T_NATIVE_DOUBLE, run_data->enrg_diss_k)) < 0) {
+			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "EnergyDissWavenumber");
 		}
 		#endif
 		#if defined(__ENST_FLUX)
@@ -1939,7 +1994,8 @@ void FinalWriteAndCloseOutputFiles(const long int* N, int iters, int save_data_i
 		MPI_Reduce(run_data->tot_energy, NULL,  sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		MPI_Reduce(run_data->tot_enstr, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		MPI_Reduce(run_data->tot_palin, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		MPI_Reduce(run_data->tot_forc, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(run_data->tot_enrg_input, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(run_data->tot_enst_input, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		MPI_Reduce(run_data->tot_div, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		MPI_Reduce(run_data->enrg_diss, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		MPI_Reduce(run_data->enst_diss, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);

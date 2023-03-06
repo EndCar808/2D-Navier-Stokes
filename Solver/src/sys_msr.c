@@ -53,20 +53,6 @@ void ComputeSystemMeasurables(double t, int iter, Int_data_struct* Int_data) {
     #if defined(__PHASE_SYNC)
     double tmp_order;
     #endif
-    double hypo_drag_pow_fact = 1.0;
-    double hyper_visc_pow_fact = 1.0;
-    if((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
-    	// Both Hyperviscosity and Ekman drag
-    	hypo_drag_pow_fact = 1.0 / sys_vars->HYPER_VISC_POW;
-    	hyper_visc_pow_fact = 1.0 / sys_vars->EKMN_DRAG_POW;
-    }
-    else if((sys_vars->HYPER_VISC_FLAG != HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
-    	hypo_drag_pow_fact = 1.0 / sys_vars->EKMN_DRAG_POW
-    }
-    else if((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG != EKMN_DRAG)) {
-    	// Hyperviscosity only
-    	hyper_visc_pow_fact = 1.0 / sys_vars->HYPER_VISC_POW;
-    }
 
     // Update counter
     sys_vars->num_sys_msr_counts++;
@@ -94,7 +80,8 @@ void ComputeSystemMeasurables(double t, int iter, Int_data_struct* Int_data) {
 		run_data->tot_enstr[iter]             = 0.0;
 		run_data->tot_palin[iter]             = 0.0;
 		run_data->tot_energy[iter]            = 0.0;
-		run_data->tot_forc[iter]              = 0.0;
+		run_data->tot_enrg_input[iter]        = 0.0;
+		run_data->tot_enst_input[iter]        = 0.0;
 		run_data->tot_div[iter]               = 0.0;
 		run_data->enrg_diss[iter]             = 0.0;
 		run_data->enst_diss[iter]             = 0.0;
@@ -105,7 +92,8 @@ void ComputeSystemMeasurables(double t, int iter, Int_data_struct* Int_data) {
 		run_data->taylor_micro[iter]          = 0.0;
 		run_data->rey_no[iter]                = 0.0;
 		run_data->kolm_scale[iter]            = 0.0;
-		run_data->diss_k[iter]                = 0.0;
+		run_data->enrg_diss_k[iter]           = 0.0;
+		run_data->enst_diss_k[iter]           = 0.0;
 		#if defined(__ENRG_FLUX)
 		run_data->d_enrg_dt_sbst[iter] = 0.0;
 		run_data->enrg_flux_sbst[iter] = 0.0;
@@ -171,7 +159,16 @@ void ComputeSystemMeasurables(double t, int iter, Int_data_struct* Int_data) {
 	//------------------- Compute the total forcing input
 	if (sys_vars->local_forcing_proc) {
 		for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
-			run_data->tot_forc[iter] += cabs(run_data->forcing[i] * run_data->w_hat[run_data->forcing_indx[i]]);
+			// Total enstrophy input
+			run_data->tot_enst_input[iter] += cabs(run_data->forcing[i] * carg(run_data->w_hat[run_data->forcing_indx[i]]));
+
+			// Total energy input
+			k_sqr = (double) (run_data->forcing_k[0][i] * run_data->forcing_k[0][i] + run_data->forcing_k[1][i] * run_data->forcing_k[1][i]);
+			if (run_data->forcing_k[0][i] != 0 || run_data->forcing_k[1][i] != 0) {
+				u_z = I * ((double )run_data->forcing_k[1][i]) * run_data->w_hat[run_data->forcing_indx[i]] / k_sqr;
+				v_z = -I * ((double )run_data->forcing_k[0][i]) * run_data->w_hat[run_data->forcing_indx[i]] / k_sqr;
+				run_data->tot_enrg_input[iter] += cabs(run_data->forcing[i] * carg(u_z) + run_data->forcing[i] * carg(v_z));
+			}
 		}
 	}
 
@@ -241,16 +238,15 @@ void ComputeSystemMeasurables(double t, int iter, Int_data_struct* Int_data) {
 					// Get the diverence of the Fourier velocity
 					div_u_z = I * ((double )run_data->k[0][i] * u_z + (double )run_data->k[1][j] * v_z);
 
-
 					// Update the sums
 					if ((j == 0) || (j == Nx_Fourier - 1)) { // only count the 0 and N/2 modes once as they have no conjugate
-						run_data->tot_energy[iter] += cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * (1.0 / k_sqr);
+						run_data->tot_energy[iter] += cabs(u_z * conj(u_z) + v_z * conj(v_z));
 						run_data->tot_enstr[iter]  += cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
 						run_data->tot_div[iter]    += cabs(div_u_z * conj(div_u_z));
 						run_data->tot_palin[iter]  += k_sqr * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
 						run_data->enrg_diss[iter]  += pre_fac * cabs(u_z * conj(u_z) + v_z * conj(v_z));
 						run_data->enst_diss[iter]  += pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
-						run_data->integral_length_scale[iter] += (cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * (1.0 / k_sqr)) * (1.0 / k_sqr);
+						run_data->integral_length_scale[iter] += cabs(u_z * conj(u_z) + v_z * conj(v_z)) * (1.0 / k_sqr);
 						// Get mean flow in the y direction -> \bar{v}(x)
 						run_data->mean_flow_y[i] += cabs(v_z);
 						if ((k_sqr >= lwr_sbst_lim_sqr) && (k_sqr < upr_sbst_lim_sqr)) { // define the subset to consider for the flux and dissipation
@@ -261,24 +257,25 @@ void ComputeSystemMeasurables(double t, int iter, Int_data_struct* Int_data) {
 							#endif
 
 							#if defined(__ENRG_FLUX)
-							run_data->d_enrg_dt_sbst[iter] += (tmp_deriv + tmp_diss) * (1.0 / k_sqr);
+							run_data->d_enrg_dt_sbst[iter] += (tmp_deriv - tmp_diss) * (1.0 / k_sqr);
 							run_data->enrg_diss_sbst[iter] += tmp_diss * (1.0 / k_sqr);
 							run_data->enrg_flux_sbst[iter] += tmp_deriv * (1.0 / k_sqr);
 							#endif
 							#if defined(__ENST_FLUX)
-							run_data->d_enst_dt_sbst[iter] += tmp_deriv + tmp_diss; 
+							run_data->d_enst_dt_sbst[iter] += tmp_deriv - tmp_diss; 
 							run_data->enst_diss_sbst[iter] += tmp_diss;
 							run_data->enst_flux_sbst[iter] += tmp_deriv; 
 							#endif
 						}
 					}
 					else {
-						run_data->tot_energy[iter] += 2.0 * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * (1.0 / k_sqr);
+						run_data->tot_energy[iter] += 2.0 * cabs(u_z * conj(u_z) + v_z * conj(v_z));
 						run_data->tot_enstr[iter]  += 2.0 * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
 						run_data->tot_div[iter]    += 2.0 * cabs(div_u_z * conj(div_u_z));
 						run_data->tot_palin[iter]  += 2.0 * k_sqr * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
 						run_data->enrg_diss[iter]  += 2.0 * pre_fac * cabs(u_z * conj(u_z) + v_z * conj(v_z));
 						run_data->enst_diss[iter]  += 2.0 * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+						run_data->integral_length_scale[iter] += 2.0 * cabs(u_z * conj(u_z) + v_z * conj(v_z)) * (1.0 / k_sqr);
 						// Get mean flow in the y direction -> \bar{v}(x)
 						run_data->mean_flow_y[i] += 2.0 * cabs(v_z);
 						if ((k_sqr >= lwr_sbst_lim_sqr) && (k_sqr < upr_sbst_lim_sqr)) { // define the subset to consider for the flux and dissipation
@@ -289,12 +286,12 @@ void ComputeSystemMeasurables(double t, int iter, Int_data_struct* Int_data) {
 							#endif
 
 							#if defined(__ENRG_FLUX)
-							run_data->d_enrg_dt_sbst[iter] += (tmp_deriv + tmp_diss) * (2.0 / k_sqr);
+							run_data->d_enrg_dt_sbst[iter] += (tmp_deriv - tmp_diss) * (2.0 / k_sqr);
 							run_data->enrg_diss_sbst[iter] += tmp_diss * (2.0 / k_sqr);
 							run_data->enrg_flux_sbst[iter] += tmp_deriv * (2.0 / k_sqr);
 							#endif
 							#if defined(__ENST_FLUX)
-							run_data->d_enst_dt_sbst[iter] += 2.0 * (tmp_deriv + tmp_diss);
+							run_data->d_enst_dt_sbst[iter] += 2.0 * (tmp_deriv - tmp_diss);
 							run_data->enst_diss_sbst[iter] += 2.0 * tmp_diss; 
 							run_data->enst_flux_sbst[iter] += 2.0 * tmp_deriv;
 							#endif
@@ -312,31 +309,31 @@ void ComputeSystemMeasurables(double t, int iter, Int_data_struct* Int_data) {
 			if ((run_data->k[0][i] != 0) || (run_data->k[1][j] != 0)) {
 				#if defined(__ENRG_FLUX_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__ENRG_FLUX_SPECT_T_AVG) || defined(__ENST_FLUX_SPECT_T_AVG)
 				// Get the derivative and dissipation terms
-				tmp_deriv = creal(run_data->w_hat[indx] * conj(Int_data->RK1[indx]) + conj(run_data->w_hat[indx]) * Int_data->RK1[indx]) * const_fac * norm_fac;
-				tmp_diss  = pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * const_fac * norm_fac;
+				tmp_deriv = creal(run_data->w_hat[indx] * conj(Int_data->RK1[indx]) + conj(run_data->w_hat[indx]) * Int_data->RK1[indx]); // * const_fac * norm_fac;
+				tmp_diss  = pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])); // * const_fac * norm_fac;
 				#endif
 
 				if ((j == 0) || (j == Nx_Fourier - 1)) {
 					// Update the current bin
 					#if defined(__ENRG_SPECT)
-					run_data->enrg_spect[spec_indx] += const_fac * norm_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * (1.0 / k_sqr);
+					run_data->enrg_spect[spec_indx] += cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * (1.0 / k_sqr);    // const_fac * norm_fac *
 					#endif
 					#if defined(__ENST_SPECT)
-					run_data->enst_spect[spec_indx] += const_fac * norm_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+					run_data->enst_spect[spec_indx] += cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));    // const_fac * norm_fac *
 					#endif
 					#if defined(__ENRG_SPECT_T_AVG)
-					run_data->enrg_spect_t_avg[spec_indx] += const_fac * norm_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * (1.0 / k_sqr);
+					run_data->enrg_spect_t_avg[spec_indx] += cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * (1.0 / k_sqr);    // const_fac * norm_fac *
 					#endif
 					#if defined(__ENST_SPECT_T_AVG)
-					run_data->enst_spect_t_avg[spec_indx] += const_fac * norm_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+					run_data->enst_spect_t_avg[spec_indx] += cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));    // const_fac * norm_fac *
 					#endif
 					#if defined(__ENST_FLUX_SPECT)
-					run_data->d_enst_dt_spect[spec_indx] += tmp_deriv + tmp_diss;
+					run_data->d_enst_dt_spect[spec_indx] += tmp_deriv - tmp_diss;
 					run_data->enst_diss_spect[spec_indx] += tmp_diss;
 					run_data->enst_flux_spect[spec_indx] += tmp_deriv;
 					#endif
 					#if defined(__ENRG_FLUX_SPECT)
-					run_data->d_enrg_dt_spect[spec_indx] += (tmp_deriv + tmp_diss) / k_sqr;
+					run_data->d_enrg_dt_spect[spec_indx] += (tmp_deriv - tmp_diss) / k_sqr;
 					run_data->enrg_diss_spect[spec_indx] += tmp_diss / k_sqr;
 					run_data->enrg_flux_spect[spec_indx] += tmp_deriv / k_sqr;
 					#endif
@@ -350,24 +347,24 @@ void ComputeSystemMeasurables(double t, int iter, Int_data_struct* Int_data) {
 				else {
 					// Update the spectra sums for the current mode
 					#if defined(__ENRG_SPECT)
-					run_data->enrg_spect[spec_indx] += 2.0 * const_fac * norm_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * (1.0 / k_sqr);
+					run_data->enrg_spect[spec_indx] += 2.0 * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * (1.0 / k_sqr);    // const_fac * norm_fac *
 					#endif
 					#if defined(__ENST_SPECT)
-					run_data->enst_spect[spec_indx] += 2.0 * const_fac * norm_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+					run_data->enst_spect[spec_indx] += 2.0 * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));    // const_fac * norm_fac *
 					#endif
 					#if defined(__ENRG_SPECT_T_AVG)
-					run_data->enrg_spect_t_avg[spec_indx] += 2.0 * const_fac * norm_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * (1.0 / k_sqr);
+					run_data->enrg_spect_t_avg[spec_indx] += 2.0 * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * (1.0 / k_sqr);    // const_fac * norm_fac *
 					#endif
 					#if defined(__ENST_SPECT_T_AVG)
-					run_data->enst_spect_t_avg[spec_indx] += 2.0 * const_fac * norm_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+					run_data->enst_spect_t_avg[spec_indx] += 2.0 * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));    // const_fac * norm_fac *
 					#endif
 					#if defined(__ENST_FLUX_SPECT)
-					run_data->d_enst_dt_spect[spec_indx] += 2.0 * (tmp_deriv + tmp_diss);
+					run_data->d_enst_dt_spect[spec_indx] += 2.0 * (tmp_deriv - tmp_diss);
 					run_data->enst_diss_spect[spec_indx] += 2.0 * tmp_diss;
 					run_data->enst_flux_spect[spec_indx] += 2.0 * tmp_deriv;
 					#endif
 					#if defined(__ENRG_FLUX_SPECT)
-					run_data->d_enrg_dt_spect[spec_indx] += 2.0 * (tmp_deriv + tmp_diss) / k_sqr;
+					run_data->d_enrg_dt_spect[spec_indx] += 2.0 * (tmp_deriv - tmp_diss) / k_sqr;
 					run_data->enrg_diss_spect[spec_indx] += 2.0 * tmp_diss / k_sqr;
 					run_data->enrg_flux_spect[spec_indx] += 2.0 * tmp_deriv / k_sqr;
 					#endif
@@ -427,21 +424,7 @@ void ComputeSystemMeasurables(double t, int iter, Int_data_struct* Int_data) {
 		}
 	}
 
-	// ------------------------------------
-	// Compute Turbulence Measures
-	// ------------------------------------	
-	#if defined(__SYS_MEASURES)
-	if (iter < sys_vars->num_print_steps) {
-		// The characteristic velocity
-		run_data->u_rms[iter]                 = sqrt(run_data->tot_energy[iter]);
-		run_data->integral_length_scale[iter] /= run_data->tot_energy[iter];
-		run_data->eddy_turnover_1[iter]       = run_data->integral_length_scale[iter] / run_data->u_rms[iter];
-		run_data->eddy_turnover_2[iter]       = 2.0 * M_PI / run_data->u_rms[iter];
-		run_data->taylor_micro[iter]          = sqrt(10 * sys_vars->NU * run_data->tot_energy[iter] / run_data->enrg_diss[iter]);
-		run_data->rey_no[iter]                = run_data->u_rms[iter] * run_data->integral_length_scale[iter] / sys_vars->NU;
-		run_data->kolm_scale[iter]            = pow((pow(sys_vars->NU, 3.0) / run_data->enst_diss[iter]), 1.0/6.0 * hyper_visc_pow_fact); 
-	}
-	#endif
+	
 
 	// ------------------------------------
 	// Normalize Measureables 
@@ -536,10 +519,16 @@ void InitializeSystemMeasurables(Int_data_struct* Int_data) {
 		exit(1);
 	}	
 
-	// Total Forcing Input
-	run_data->tot_forc = (double* )fftw_malloc(sizeof(double) * print_steps);
-	if (run_data->tot_forc == NULL) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Total Forcing Input");
+	// Total Energy Forcing Input
+	run_data->tot_enrg_input = (double* )fftw_malloc(sizeof(double) * print_steps);
+	if (run_data->tot_enrg_input == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Total Energy Forcing Input");
+		exit(1);
+	}	
+	// Total Enstrophy Forcing Input
+	run_data->tot_enst_input = (double* )fftw_malloc(sizeof(double) * print_steps);
+	if (run_data->tot_enst_input == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Total Enstrophy Forcing Input");
 		exit(1);
 	}	
 
@@ -585,14 +574,14 @@ void InitializeSystemMeasurables(Int_data_struct* Int_data) {
 		exit(1);
 	}
 	// Integral length scale
-	run_data->integral_lenght_scale = (double* )fftw_malloc(sizeof(double) * print_steps);
-	if (run_data->integral_lenght_scale == NULL) {
+	run_data->integral_length_scale = (double* )fftw_malloc(sizeof(double) * print_steps);
+	if (run_data->integral_length_scale == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Integral Length Scale");
 		exit(1);
 	}
 	// Eddy Turnover Time
-	run_data->edd_turnover_1 = (double* )fftw_malloc(sizeof(double) * print_steps);
-	if (run_data->edd_turnover_1 == NULL) {
+	run_data->eddy_turnover_1 = (double* )fftw_malloc(sizeof(double) * print_steps);
+	if (run_data->eddy_turnover_1 == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Eddy Turnover Time 1");
 		exit(1);
 	}
@@ -618,6 +607,18 @@ void InitializeSystemMeasurables(Int_data_struct* Int_data) {
 	run_data->kolm_scale = (double* )fftw_malloc(sizeof(double) * print_steps);
 	if (run_data->kolm_scale == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Kolmogorov Scale");
+		exit(1);
+	}
+	// Enrgy Dissipative Wavenumber
+	run_data->enrg_diss_k = (double* )fftw_malloc(sizeof(double) * print_steps);
+	if (run_data->enrg_diss_k == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Enrgy Dissipative Wavenumber");
+		exit(1);
+	}
+	// Enstrophy Dissipative Wavenumber
+	run_data->enst_diss_k = (double* )fftw_malloc(sizeof(double) * print_steps);
+	if (run_data->enst_diss_k == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Enstrophy Dissipative Wavenumber");
 		exit(1);
 	}
 	#endif
@@ -1865,7 +1866,7 @@ void RecordSystemMeasures(double t, int print_indx, Int_data_struct* Int_data) {
 		run_data->tot_energy[print_indx] = TotalEnergy();
 		run_data->tot_palin[print_indx]  = TotalPalinstrophy();
 		// Total Forcing and Divergence
-		run_data->tot_forc[print_indx] = TotalForcing();
+		run_data->tot_enst_input[print_indx] = TotalForcing();
 		run_data->tot_div[print_indx]    = TotalDivergence();
 		// Energy and enstrophy dissipation rates
 		run_data->enrg_diss[print_indx] = EnergyDissipationRate();

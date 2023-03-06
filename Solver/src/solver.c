@@ -3172,20 +3172,22 @@ void FreeMemory(Int_data_struct* Int_data) {
 	fftw_free(run_data->tot_energy);
 	fftw_free(run_data->tot_enstr);
 	fftw_free(run_data->tot_div);
-	fftw_free(run_data->tot_forc);
+	fftw_free(run_data->tot_enrg_input);
+	fftw_free(run_data->tot_enst_input);
 	fftw_free(run_data->tot_palin);
 	fftw_free(run_data->enrg_diss);
 	fftw_free(run_data->enst_diss);
 	fftw_free(run_data->mean_flow_x);
 	fftw_free(run_data->mean_flow_y);
 	fftw_free(run_data->u_rms);
-	fftw_free(run_data->integral_lenght_scale);
-	fftw_free(run_data->edd_turnover_1);
+	fftw_free(run_data->integral_length_scale);
+	fftw_free(run_data->eddy_turnover_1);
 	fftw_free(run_data->eddy_turnover_2);
 	fftw_free(run_data->taylor_micro);
 	fftw_free(run_data->rey_no);
 	fftw_free(run_data->kolm_scale);
-	fftw_free(run_data->diss_k);
+	fftw_free(run_data->enrg_diss_k);
+	fftw_free(run_data->enst_diss_k);
 	#endif
 	#if defined(__PHASE_SYNC)
 	fftw_free(run_data->phase_order_k);

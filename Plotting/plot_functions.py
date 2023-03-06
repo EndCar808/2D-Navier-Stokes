@@ -45,6 +45,74 @@ class tc:
 ##########################################
 ##       SOLVER SUMMARY FUNCTIONS       ##
 ##########################################
+def plot_vort(outdir, w, x, y, time, snaps, file_type=".png", fig_size=(16, 8)):
+
+	fig = plt.figure(figsize = fig_size)
+	gs  = GridSpec(2, 2, hspace = 0.3) 
+
+	ax1 = []
+	for i in range(2):
+		for j in range(2):
+			ax1.append(fig.add_subplot(gs[i, j]))
+	indx_list = snaps
+	for j, i in enumerate(indx_list):
+		im1 = ax1[j].imshow(w[i, :], extent = (y[0], y[-1], x[-1], x[0]), cmap = "jet") #, vmin = w_min, vmax = w_max 
+		ax1[j].set_xlabel(r"$y$")
+		ax1[j].set_ylabel(r"$x$")
+		ax1[j].set_xlim(0.0, y[-1])
+		ax1[j].set_ylim(0.0, x[-1])
+		ax1[j].set_xticks([0.0, np.pi/2.0, np.pi, 1.5*np.pi, y[-1]])
+		ax1[j].set_xticklabels([r"$0$", r"$\frac{\pi}{2}$", r"$\pi$", r"$\frac{3\pi}{2}$", r"$2 \pi$"])
+		ax1[j].set_yticks([0.0, np.pi/2.0, np.pi, 1.5*np.pi, x[-1]])
+		ax1[j].set_yticklabels([r"$0$", r"$\frac{\pi}{2}$", r"$\pi$", r"$\frac{3\pi}{2}$", r"$2 \pi$"])
+		ax1[j].set_title(r"$t = {:0.5f}$".format(time[i]))
+		## Plot colourbar
+		div1  = make_axes_locatable(ax1[j])
+		cbax1 = div1.append_axes("right", size = "10%", pad = 0.05)
+		cb1   = plt.colorbar(im1, cax = cbax1)
+		cb1.set_label(r"$\omega(x, y)$")
+
+	plt.savefig(outdir + "Vorticity" + file_type, bbox_inches='tight')
+	plt.close()
+
+
+def plot_time_averaged_spectra_both(outdir, spect, flux_spect, kmax, spect_type, file_type=".png", fig_size=(21, 8)):
+
+	##------------------------ Time Averaged Enstorphy Spectra and Flux Spectra
+	fig = plt.figure(figsize = fig_size)
+	gs  = GridSpec(1, 2)
+	ax2 = fig.add_subplot(gs[0, 0])
+	for i in range(spect.shape[0]):
+		ax2.plot(np.arange(1, kmax), spect[i, 1:kmax], 'r', alpha = 0.15)
+	ax2.plot(np.arange(1, kmax), np.mean(spect[:, 1:kmax], axis = 0), 'k')
+	ax2.set_xlabel(r"$k$")
+	ax2.set_xscale('log')
+	ax2.set_yscale('log')
+	ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+	if spect_type == "Enstrophy":
+		ax2.set_title(r"$\mathcal{E}(|\mathbf{k}|)$: Enstrophy Spectrum")
+	else:
+		ax2.set_title(r"$\mathcal{K}(|\mathbf{k}|)$: Energy Spectrum")
+
+	ax2 = fig.add_subplot(gs[0, 1])
+	for i in range(flux_spect.shape[0]):
+		ax2.plot(np.arange(1, kmax), flux_spect[i, 1:kmax], 'r', alpha = 0.15)
+	ax2.plot(np.arange(1, kmax), np.mean(flux_spect[:, 1:kmax], axis = 0), 'k')
+	ax2.set_xlabel(r"$k$")
+	ax2.set_xscale('log')
+	ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+	if spect_type == "Enstrophy":
+		ax2.set_title(r"$\Pi_{\mathcal{E}}(|\mathbf{k}|)$: Enstrophy Flux Spectrum")
+	else:
+		ax2.set_title(r"$\Pi_{\mathcal{K}}(|\mathbf{k}|)$: Energy Flux Spectrum")
+
+	if spect_type == "Enstrophy":
+		plt.savefig(outdir + "TimeAveraged_EnstrophySpectra" + file_type, bbox_inches='tight')
+	else:
+		plt.savefig(outdir + "TimeAveraged_EnergySpectra" + file_type, bbox_inches='tight')
+
+	plt.close()
+
 def plot_summary_snaps(out_dir, i, w, x, y, w_min, w_max, kx, ky, kx_max, tot_en, tot_ens, tot_pal, enrg_spec, enst_spec, enrg_diss, enst_diss, enrg_flux_sb, enrg_diss_sb, enst_flux_sb, enst_diss_sb, time, Nx, Ny):
 
     """
@@ -449,7 +517,6 @@ def plot_flow_summary(out_dir, i, w, w_min, w_max, measure_min, measure_max, enr
     ax4.set_ylim(enst_spec_min, enst_spec_max)
     # ax4.legend()
     ax4.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
-
 
     ## Save figure
     plt.savefig(out_dir + "SNAP_{:05d}.png".format(i), bbox_inches='tight') 
