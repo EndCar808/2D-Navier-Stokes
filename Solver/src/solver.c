@@ -133,6 +133,7 @@ void SpectralSolve(void) {
 	t         += dt;
 	int iters = 1;
 	int save_data_indx;
+	int tot_save_data_indx = 1; // this includes transient iterations
 	if (sys_vars->TRANS_ITERS_FLAG == TRANSIENT_ITERS) {
 		save_data_indx = 0;
 	}
@@ -189,7 +190,8 @@ void SpectralSolve(void) {
 			#endif
 
 			// Record System Measurables
-			ComputeSystemMeasurables(t, save_data_indx, Int_data);
+			ComputeSystemMeasurables(t, save_data_indx, tot_save_data_indx, Int_data);
+			tot_save_data_indx++;
 
 			// If and when transient steps are complete write to file
 			if (iters > trans_steps) {
@@ -211,15 +213,16 @@ void SpectralSolve(void) {
 			}
 		}
 		if (iters % sys_vars->SAVE_EVERY == 0) {
-			// Print update of the system to the terminal 
-			if (iters <= sys_vars->trans_iters) {
-				// If performing transient iterations the system measures are stored in the 0th index
-				PrintUpdateToTerminal(iters, t, dt, T, 0);
-			}
-			else {
-				// Print update of the non transient iterations to the terminal 
-				PrintUpdateToTerminal(iters, t, dt, T, save_data_indx - 1);
-			}
+			// // Print update of the system to the terminal 
+			// if (iters <= sys_vars->trans_iters) {
+			// 	// If performing transient iterations the system measures are stored in the 0th index
+			// 	PrintUpdateToTerminal(iters, t, dt, T, 0);
+			// }
+			// else {
+			// 	// Print update of the non transient iterations to the terminal 
+			// 	PrintUpdateToTerminal(iters, t, dt, T, save_data_indx - 1);
+			// }
+			PrintUpdateToTerminal(iters, t, dt, T, tot_save_data_indx - 1);
 		}
 		#endif
 
@@ -2323,6 +2326,7 @@ void InitializeIntegrationVariables(double* t0, double* t, double* dt, double* T
 
 		// Get the number of steps to perform before printing to file -> allowing for a transient fraction of these to be ignored
 		sys_vars->num_print_steps = (sys_vars->num_t_steps >= sys_vars->SAVE_EVERY ) ? (sys_vars->num_t_steps - sys_vars->trans_iters) / sys_vars->SAVE_EVERY : sys_vars->num_t_steps - sys_vars->trans_iters;	 
+		sys_vars->num_tot_print_steps = (sys_vars->num_t_steps >= sys_vars->SAVE_EVERY ) ? (sys_vars->num_t_steps) / sys_vars->SAVE_EVERY : sys_vars->num_t_steps;	 
 		if (!(sys_vars->rank)){
 			printf("Total Iters: %ld\t Saving Iters: %ld\t Transient Steps: %ld\n", sys_vars->num_t_steps, sys_vars->num_print_steps, sys_vars->trans_iters);
 		}
@@ -2334,6 +2338,7 @@ void InitializeIntegrationVariables(double* t0, double* t, double* dt, double* T
 
 		// Get the number of steps to perform before printing to file
 		sys_vars->num_print_steps = (sys_vars->num_t_steps >= sys_vars->SAVE_EVERY ) ? sys_vars->num_t_steps / sys_vars->SAVE_EVERY + 1 : sys_vars->num_t_steps + 1; // plus one to include initial condition
+		sys_vars->num_tot_print_steps = sys_vars->num_print_steps;
 		if (!(sys_vars->rank)){
 			printf("Total Iters: %ld\t Saving Iters: %ld\n", sys_vars->num_t_steps, sys_vars->num_print_steps);
 		}
@@ -3237,6 +3242,7 @@ void FreeMemory(Int_data_struct* Int_data) {
 	#if defined(__TIME)
 	if (!(sys_vars->rank)){
 		fftw_free(run_data->time);
+		fftw_free(run_data->tot_time);
 	}
 	#endif
 	#if defined(__AMPS_T_AVG)

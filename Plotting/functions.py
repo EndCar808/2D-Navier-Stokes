@@ -724,7 +724,6 @@ def import_sys_msr(input_file, sim_data, method = "default"):
             data.u_rms = f['U_rms'][:]
         if 'TaylorMicroScale' in list(f.keys()):
             data.taylor_micro = f['TaylorMicroScale'][:]
-
         if 'ReynoldsNo' in list(f.keys()):
             data.rey_no = f['ReynoldsNo'][:]
         if 'KolmogorovScale' in list(f.keys()):
@@ -735,10 +734,10 @@ def import_sys_msr(input_file, sim_data, method = "default"):
             data.eddy_turn_1 = f['EddyTurnover1'][:]
         if 'EddyTurnover2' in list(f.keys()):
             data.eddy_turn_2 = f['EddyTurnover2'][:]
-
-
         if 'Time' in list(f.keys()):
             data.time = f['Time'][:]
+        if 'TotalTime' in list(f.keys()):
+            data.tot_time = f['TotalTime'][:]
         ## Time averaged data
         if 'TimeAveragedEnstrophySpectrum' in list(f.keys()):
             data.enst_spect_t_avg = f['TimeAveragedEnstrophySpectrum'][:]

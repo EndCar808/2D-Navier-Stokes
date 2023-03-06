@@ -29,7 +29,7 @@
  * @param iter 		The index in the system arrays for the current timestep
  * @param Int_data 	Struct containing the integration varaiables needed for the nonlinear term function
  */
-void ComputeSystemMeasurables(double t, int iter, Int_data_struct* Int_data) {
+void ComputeSystemMeasurables(double t, int iter, int tot_iter, Int_data_struct* Int_data) {
 
 	// Initialize variables
 	int tmp;
@@ -61,12 +61,13 @@ void ComputeSystemMeasurables(double t, int iter, Int_data_struct* Int_data) {
     // Record the initial time
     #if defined(__TIME)
     if (!(sys_vars->rank)) {
-    	run_data->time[iter] = t;
+		run_data->time[iter]         = t;
+		run_data->tot_time[tot_iter] = t;
     }
 	#endif
 
     // If adaptive stepping check if within memory limits
-    if ((iter >= sys_vars->num_print_steps) && (iter % 100 == 0)) {
+    if (((iter >= sys_vars->num_print_steps) || (tot_iter >= sys_vars->num_tot_print_steps))  && (iter % 100 == 0)) {
     	// Print warning to screen if we have exceeded the memory limits for the system measurables arrays
     	printf("\n["MAGENTA"WARNING"RESET"] --- Unable to write system measures at Indx: [%d] t: [%lf] ---- Number of intergration steps is now greater then memory allocated\n", iter, t);
     }
@@ -75,34 +76,34 @@ void ComputeSystemMeasurables(double t, int iter, Int_data_struct* Int_data) {
 	// Initialize Measurables
 	// ------------------------------------
 	#if defined(__SYS_MEASURES)
-	if (iter < sys_vars->num_print_steps) {
+	if (tot_iter < sys_vars->num_tot_print_steps) {
 		// Initialize totals
-		run_data->tot_enstr[iter]             = 0.0;
-		run_data->tot_palin[iter]             = 0.0;
-		run_data->tot_energy[iter]            = 0.0;
-		run_data->tot_enrg_input[iter]        = 0.0;
-		run_data->tot_enst_input[iter]        = 0.0;
-		run_data->tot_div[iter]               = 0.0;
-		run_data->enrg_diss[iter]             = 0.0;
-		run_data->enst_diss[iter]             = 0.0;
-		run_data->u_rms[iter]                 = 0.0;
-		run_data->integral_length_scale[iter] = 0.0;
-		run_data->eddy_turnover_1[iter]       = 0.0;
-		run_data->eddy_turnover_2[iter]       = 0.0;
-		run_data->taylor_micro[iter]          = 0.0;
-		run_data->rey_no[iter]                = 0.0;
-		run_data->kolm_scale[iter]            = 0.0;
-		run_data->enrg_diss_k[iter]           = 0.0;
-		run_data->enst_diss_k[iter]           = 0.0;
+		run_data->tot_enstr[tot_iter]             = 0.0;
+		run_data->tot_palin[tot_iter]             = 0.0;
+		run_data->tot_energy[tot_iter]            = 0.0;
+		run_data->tot_enrg_input[tot_iter]        = 0.0;
+		run_data->tot_enst_input[tot_iter]        = 0.0;
+		run_data->tot_div[tot_iter]               = 0.0;
+		run_data->enrg_diss[tot_iter]             = 0.0;
+		run_data->enst_diss[tot_iter]             = 0.0;
+		run_data->u_rms[tot_iter]                 = 0.0;
+		run_data->integral_length_scale[tot_iter] = 0.0;
+		run_data->eddy_turnover_1[tot_iter]       = 0.0;
+		run_data->eddy_turnover_2[tot_iter]       = 0.0;
+		run_data->taylor_micro[tot_iter]          = 0.0;
+		run_data->rey_no[tot_iter]                = 0.0;
+		run_data->kolm_scale[tot_iter]            = 0.0;
+		run_data->enrg_diss_k[tot_iter]           = 0.0;
+		run_data->enst_diss_k[tot_iter]           = 0.0;
 		#if defined(__ENRG_FLUX)
-		run_data->d_enrg_dt_sbst[iter] = 0.0;
-		run_data->enrg_flux_sbst[iter] = 0.0;
-		run_data->enrg_diss_sbst[iter] = 0.0;
+		run_data->d_enrg_dt_sbst[tot_iter] = 0.0;
+		run_data->enrg_flux_sbst[tot_iter] = 0.0;
+		run_data->enrg_diss_sbst[tot_iter] = 0.0;
 		#endif
 		#if defined(__ENST_FLUX)
-		run_data->d_enst_dt_sbst[iter] = 0.0;
-		run_data->enst_flux_sbst[iter] = 0.0;
-		run_data->enst_diss_sbst[iter] = 0.0;
+		run_data->d_enst_dt_sbst[tot_iter] = 0.0;
+		run_data->enst_flux_sbst[tot_iter] = 0.0;
+		run_data->enst_diss_sbst[tot_iter] = 0.0;
 		#endif
 	}
 	#endif 
@@ -160,14 +161,14 @@ void ComputeSystemMeasurables(double t, int iter, Int_data_struct* Int_data) {
 	if (sys_vars->local_forcing_proc) {
 		for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
 			// Total enstrophy input
-			run_data->tot_enst_input[iter] += cabs(run_data->forcing[i] * carg(run_data->w_hat[run_data->forcing_indx[i]]));
+			run_data->tot_enst_input[tot_iter] += cabs(run_data->forcing[i] * carg(run_data->w_hat[run_data->forcing_indx[i]]));
 
 			// Total energy input
 			k_sqr = (double) (run_data->forcing_k[0][i] * run_data->forcing_k[0][i] + run_data->forcing_k[1][i] * run_data->forcing_k[1][i]);
 			if (run_data->forcing_k[0][i] != 0 || run_data->forcing_k[1][i] != 0) {
 				u_z = I * ((double )run_data->forcing_k[1][i]) * run_data->w_hat[run_data->forcing_indx[i]] / k_sqr;
 				v_z = -I * ((double )run_data->forcing_k[0][i]) * run_data->w_hat[run_data->forcing_indx[i]] / k_sqr;
-				run_data->tot_enrg_input[iter] += cabs(run_data->forcing[i] * carg(u_z) + run_data->forcing[i] * carg(v_z));
+				run_data->tot_enrg_input[tot_iter] += cabs(run_data->forcing[i] * carg(u_z) + run_data->forcing[i] * carg(v_z));
 			}
 		}
 	}
@@ -228,7 +229,7 @@ void ComputeSystemMeasurables(double t, int iter, Int_data_struct* Int_data) {
 
 			///--------------------------------- System Measures
 			#if defined(__SYS_MEASURES)
-		    if (iter < sys_vars->num_print_steps) {
+		    if (tot_iter < sys_vars->num_tot_print_steps) {
 				if ((run_data->k[0][i] != 0) || (run_data->k[1][j] != 0)) {
 
 					// Get the fourier velocities
@@ -240,13 +241,13 @@ void ComputeSystemMeasurables(double t, int iter, Int_data_struct* Int_data) {
 
 					// Update the sums
 					if ((j == 0) || (j == Nx_Fourier - 1)) { // only count the 0 and N/2 modes once as they have no conjugate
-						run_data->tot_energy[iter] += cabs(u_z * conj(u_z) + v_z * conj(v_z));
-						run_data->tot_enstr[iter]  += cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
-						run_data->tot_div[iter]    += cabs(div_u_z * conj(div_u_z));
-						run_data->tot_palin[iter]  += k_sqr * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
-						run_data->enrg_diss[iter]  += pre_fac * cabs(u_z * conj(u_z) + v_z * conj(v_z));
-						run_data->enst_diss[iter]  += pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
-						run_data->integral_length_scale[iter] += cabs(u_z * conj(u_z) + v_z * conj(v_z)) * (1.0 / k_sqr);
+						run_data->tot_energy[tot_iter] += cabs(u_z * conj(u_z) + v_z * conj(v_z));
+						run_data->tot_enstr[tot_iter]  += cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+						run_data->tot_div[tot_iter]    += cabs(div_u_z * conj(div_u_z));
+						run_data->tot_palin[tot_iter]  += k_sqr * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+						run_data->enrg_diss[tot_iter]  += pre_fac * cabs(u_z * conj(u_z) + v_z * conj(v_z));
+						run_data->enst_diss[tot_iter]  += pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+						run_data->integral_length_scale[tot_iter] += cabs(u_z * conj(u_z) + v_z * conj(v_z)) * (1.0 / k_sqr);
 						// Get mean flow in the y direction -> \bar{v}(x)
 						run_data->mean_flow_y[i] += cabs(v_z);
 						if ((k_sqr >= lwr_sbst_lim_sqr) && (k_sqr < upr_sbst_lim_sqr)) { // define the subset to consider for the flux and dissipation
@@ -257,25 +258,25 @@ void ComputeSystemMeasurables(double t, int iter, Int_data_struct* Int_data) {
 							#endif
 
 							#if defined(__ENRG_FLUX)
-							run_data->d_enrg_dt_sbst[iter] += (tmp_deriv - tmp_diss) * (1.0 / k_sqr);
-							run_data->enrg_diss_sbst[iter] += tmp_diss * (1.0 / k_sqr);
-							run_data->enrg_flux_sbst[iter] += tmp_deriv * (1.0 / k_sqr);
+							run_data->d_enrg_dt_sbst[tot_iter] += (tmp_deriv - tmp_diss) * (1.0 / k_sqr);
+							run_data->enrg_diss_sbst[tot_iter] += tmp_diss * (1.0 / k_sqr);
+							run_data->enrg_flux_sbst[tot_iter] += tmp_deriv * (1.0 / k_sqr);
 							#endif
 							#if defined(__ENST_FLUX)
-							run_data->d_enst_dt_sbst[iter] += tmp_deriv - tmp_diss; 
-							run_data->enst_diss_sbst[iter] += tmp_diss;
-							run_data->enst_flux_sbst[iter] += tmp_deriv; 
+							run_data->d_enst_dt_sbst[tot_iter] += tmp_deriv - tmp_diss; 
+							run_data->enst_diss_sbst[tot_iter] += tmp_diss;
+							run_data->enst_flux_sbst[tot_iter] += tmp_deriv; 
 							#endif
 						}
 					}
 					else {
-						run_data->tot_energy[iter] += 2.0 * cabs(u_z * conj(u_z) + v_z * conj(v_z));
-						run_data->tot_enstr[iter]  += 2.0 * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
-						run_data->tot_div[iter]    += 2.0 * cabs(div_u_z * conj(div_u_z));
-						run_data->tot_palin[iter]  += 2.0 * k_sqr * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
-						run_data->enrg_diss[iter]  += 2.0 * pre_fac * cabs(u_z * conj(u_z) + v_z * conj(v_z));
-						run_data->enst_diss[iter]  += 2.0 * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
-						run_data->integral_length_scale[iter] += 2.0 * cabs(u_z * conj(u_z) + v_z * conj(v_z)) * (1.0 / k_sqr);
+						run_data->tot_energy[tot_iter] += 2.0 * cabs(u_z * conj(u_z) + v_z * conj(v_z));
+						run_data->tot_enstr[tot_iter]  += 2.0 * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+						run_data->tot_div[tot_iter]    += 2.0 * cabs(div_u_z * conj(div_u_z));
+						run_data->tot_palin[tot_iter]  += 2.0 * k_sqr * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+						run_data->enrg_diss[tot_iter]  += 2.0 * pre_fac * cabs(u_z * conj(u_z) + v_z * conj(v_z));
+						run_data->enst_diss[tot_iter]  += 2.0 * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+						run_data->integral_length_scale[tot_iter] += 2.0 * cabs(u_z * conj(u_z) + v_z * conj(v_z)) * (1.0 / k_sqr);
 						// Get mean flow in the y direction -> \bar{v}(x)
 						run_data->mean_flow_y[i] += 2.0 * cabs(v_z);
 						if ((k_sqr >= lwr_sbst_lim_sqr) && (k_sqr < upr_sbst_lim_sqr)) { // define the subset to consider for the flux and dissipation
@@ -286,14 +287,14 @@ void ComputeSystemMeasurables(double t, int iter, Int_data_struct* Int_data) {
 							#endif
 
 							#if defined(__ENRG_FLUX)
-							run_data->d_enrg_dt_sbst[iter] += (tmp_deriv - tmp_diss) * (2.0 / k_sqr);
-							run_data->enrg_diss_sbst[iter] += tmp_diss * (2.0 / k_sqr);
-							run_data->enrg_flux_sbst[iter] += tmp_deriv * (2.0 / k_sqr);
+							run_data->d_enrg_dt_sbst[tot_iter] += (tmp_deriv - tmp_diss) * (2.0 / k_sqr);
+							run_data->enrg_diss_sbst[tot_iter] += tmp_diss * (2.0 / k_sqr);
+							run_data->enrg_flux_sbst[tot_iter] += tmp_deriv * (2.0 / k_sqr);
 							#endif
 							#if defined(__ENST_FLUX)
-							run_data->d_enst_dt_sbst[iter] += 2.0 * (tmp_deriv - tmp_diss);
-							run_data->enst_diss_sbst[iter] += 2.0 * tmp_diss; 
-							run_data->enst_flux_sbst[iter] += 2.0 * tmp_deriv;
+							run_data->d_enst_dt_sbst[tot_iter] += 2.0 * (tmp_deriv - tmp_diss);
+							run_data->enst_diss_sbst[tot_iter] += 2.0 * tmp_diss; 
+							run_data->enst_flux_sbst[tot_iter] += 2.0 * tmp_deriv;
 							#endif
 						}
 					}
@@ -430,24 +431,24 @@ void ComputeSystemMeasurables(double t, int iter, Int_data_struct* Int_data) {
 	// Normalize Measureables 
 	// ------------------------------------	
 	// #if defined(__SYS_MEASURES)
-	// if (iter < sys_vars->num_print_steps) {
+	// if (tot_iter < sys_vars->num_tot_print_steps) {
 	// 	// Normalize results and take into account computation in Fourier space
-	// 	run_data->enrg_diss[iter]  *= 2.0 * const_fac * norm_fac;
-	// 	run_data->enst_diss[iter]  *= 2.0 * const_fac * norm_fac;
-	// 	run_data->tot_enstr[iter]  *= const_fac * norm_fac;
-	// 	run_data->tot_palin[iter]  *= const_fac * norm_fac;
-	// 	run_data->tot_forc[iter]   *= const_fac * norm_fac;
-	// 	run_data->tot_div[iter]    *= const_fac * norm_fac;
-	// 	run_data->tot_energy[iter] *= const_fac * norm_fac;
+	// 	run_data->enrg_diss[tot_iter]  *= 2.0 * const_fac * norm_fac;
+	// 	run_data->enst_diss[tot_iter]  *= 2.0 * const_fac * norm_fac;
+	// 	run_data->tot_enstr[tot_iter]  *= const_fac * norm_fac;
+	// 	run_data->tot_palin[tot_iter]  *= const_fac * norm_fac;
+	// 	run_data->tot_forc[tot_iter]   *= const_fac * norm_fac;
+	// 	run_data->tot_div[tot_iter]    *= const_fac * norm_fac;
+	// 	run_data->tot_energy[tot_iter] *= const_fac * norm_fac;
 	// }
 	// #endif
 	// #if defined(__ENRG_FLUX)
-	// run_data->enrg_flux_sbst[iter] *= const_fac * norm_fac;
-	// run_data->enrg_diss_sbst[iter] *= 2.0 * const_fac * norm_fac;
+	// run_data->enrg_flux_sbst[tot_iter] *= const_fac * norm_fac;
+	// run_data->enrg_diss_sbst[tot_iter] *= 2.0 * const_fac * norm_fac;
 	// #endif
 	// #if defined(__ENST_FLUX)
-	// run_data->enst_flux_sbst[iter] *= const_fac * norm_fac;
-	// run_data->enst_diss_sbst[iter] *= 2.0 * const_fac * norm_fac;
+	// run_data->enst_flux_sbst[tot_iter] *= const_fac * norm_fac;
+	// run_data->enst_diss_sbst[tot_iter] *= 2.0 * const_fac * norm_fac;
 	// #endif
 }
 /**
@@ -459,11 +460,14 @@ void InitializeSystemMeasurables(Int_data_struct* Int_data) {
 	// Set the size of the arrays to twice the number of printing steps to account for extra steps due to adaptive stepping
 	if (sys_vars->ADAPT_STEP_FLAG == ADAPTIVE_STEP) {
 		sys_vars->num_print_steps = 2 * sys_vars->num_print_steps;
+		sys_vars->num_tot_print_steps = 2 * sys_vars->num_tot_print_steps;
 	}
 	else {
 		sys_vars->num_print_steps = sys_vars->num_print_steps;
+		sys_vars->num_tot_print_steps = sys_vars->num_tot_print_steps;
 	}
 	int print_steps = sys_vars->num_print_steps;
+	int tot_print_steps = sys_vars->num_tot_print_steps;
 
 	// Get the size of the spectrum arrays
 	#if defined(__ENST_SPECT) || defined(__ENRG_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__ENRG_FLUX_SPECT) || defined(__PHASE_SYNC) || defined(__ENST_SPECT_T_AVG) || defined(__ENRG_SPECT_T_AVG) || defined(__ENST_FLUX_SPECT_T_AVG) || defined(__ENRG_FLUX_SPECT_T_AVG)
@@ -499,55 +503,55 @@ void InitializeSystemMeasurables(Int_data_struct* Int_data) {
 	// --------------------------------
 	#if defined(__SYS_MEASURES)
 	// Total Energy in the system
-	run_data->tot_energy = (double* )fftw_malloc(sizeof(double) * print_steps);
+	run_data->tot_energy = (double* )fftw_malloc(sizeof(double) * tot_print_steps);
 	if (run_data->tot_energy == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Total Energy");
 		exit(1);
 	}	
 
 	// Total Enstrophy
-	run_data->tot_enstr = (double* )fftw_malloc(sizeof(double) * print_steps);
+	run_data->tot_enstr = (double* )fftw_malloc(sizeof(double) * tot_print_steps);
 	if (run_data->tot_enstr == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Total Enstrophy");
 		exit(1);
 	}	
 
 	// Total Palinstrophy
-	run_data->tot_palin = (double* )fftw_malloc(sizeof(double) * print_steps);
+	run_data->tot_palin = (double* )fftw_malloc(sizeof(double) * tot_print_steps);
 	if (run_data->tot_palin == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Total Palinstrophy");
 		exit(1);
 	}	
 
 	// Total Energy Forcing Input
-	run_data->tot_enrg_input = (double* )fftw_malloc(sizeof(double) * print_steps);
+	run_data->tot_enrg_input = (double* )fftw_malloc(sizeof(double) * tot_print_steps);
 	if (run_data->tot_enrg_input == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Total Energy Forcing Input");
 		exit(1);
 	}	
 	// Total Enstrophy Forcing Input
-	run_data->tot_enst_input = (double* )fftw_malloc(sizeof(double) * print_steps);
+	run_data->tot_enst_input = (double* )fftw_malloc(sizeof(double) * tot_print_steps);
 	if (run_data->tot_enst_input == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Total Enstrophy Forcing Input");
 		exit(1);
 	}	
 
 	// Total Divergence
-	run_data->tot_div = (double* )fftw_malloc(sizeof(double) * print_steps);
+	run_data->tot_div = (double* )fftw_malloc(sizeof(double) * tot_print_steps);
 	if (run_data->tot_div == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Total Divergence");
 		exit(1);
 	}	
 
 	// Energy Dissipation Rate
-	run_data->enrg_diss = (double* )fftw_malloc(sizeof(double) * print_steps);
+	run_data->enrg_diss = (double* )fftw_malloc(sizeof(double) * tot_print_steps);
 	if (run_data->enrg_diss == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Energy Dissipation Rate");
 		exit(1);
 	}	
 
 	// Enstrophy Dissipation Rate
-	run_data->enst_diss = (double* )fftw_malloc(sizeof(double) * print_steps);
+	run_data->enst_diss = (double* )fftw_malloc(sizeof(double) * tot_print_steps);
 	if (run_data->enst_diss == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Enstrophy Dissipation Rate");
 		exit(1);
@@ -568,55 +572,55 @@ void InitializeSystemMeasurables(Int_data_struct* Int_data) {
 	}
 
 	// Mean Squared velocity
-	run_data->u_rms = (double* )fftw_malloc(sizeof(double) * print_steps);
+	run_data->u_rms = (double* )fftw_malloc(sizeof(double) * tot_print_steps);
 	if (run_data->u_rms == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Mean Square Velocity");
 		exit(1);
 	}
 	// Integral length scale
-	run_data->integral_length_scale = (double* )fftw_malloc(sizeof(double) * print_steps);
+	run_data->integral_length_scale = (double* )fftw_malloc(sizeof(double) * tot_print_steps);
 	if (run_data->integral_length_scale == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Integral Length Scale");
 		exit(1);
 	}
 	// Eddy Turnover Time
-	run_data->eddy_turnover_1 = (double* )fftw_malloc(sizeof(double) * print_steps);
+	run_data->eddy_turnover_1 = (double* )fftw_malloc(sizeof(double) * tot_print_steps);
 	if (run_data->eddy_turnover_1 == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Eddy Turnover Time 1");
 		exit(1);
 	}
 	// Eddy Turnover Time
-	run_data->eddy_turnover_2 = (double* )fftw_malloc(sizeof(double) * print_steps);
+	run_data->eddy_turnover_2 = (double* )fftw_malloc(sizeof(double) * tot_print_steps);
 	if (run_data->eddy_turnover_2 == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Eddy Turnover Time 2");
 		exit(1);
 	}
 	// Taylor Micro Scale
-	run_data->taylor_micro = (double* )fftw_malloc(sizeof(double) * print_steps);
+	run_data->taylor_micro = (double* )fftw_malloc(sizeof(double) * tot_print_steps);
 	if (run_data->taylor_micro == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Taylor Micro Scale");
 		exit(1);
 	}
 	// Reynolds No.
-	run_data->rey_no = (double* )fftw_malloc(sizeof(double) * print_steps);
+	run_data->rey_no = (double* )fftw_malloc(sizeof(double) * tot_print_steps);
 	if (run_data->rey_no == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Reynolds Number");
 		exit(1);
 	}
 	// Kolmogorov Length Scale
-	run_data->kolm_scale = (double* )fftw_malloc(sizeof(double) * print_steps);
+	run_data->kolm_scale = (double* )fftw_malloc(sizeof(double) * tot_print_steps);
 	if (run_data->kolm_scale == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Kolmogorov Scale");
 		exit(1);
 	}
 	// Enrgy Dissipative Wavenumber
-	run_data->enrg_diss_k = (double* )fftw_malloc(sizeof(double) * print_steps);
+	run_data->enrg_diss_k = (double* )fftw_malloc(sizeof(double) * tot_print_steps);
 	if (run_data->enrg_diss_k == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Enrgy Dissipative Wavenumber");
 		exit(1);
 	}
 	// Enstrophy Dissipative Wavenumber
-	run_data->enst_diss_k = (double* )fftw_malloc(sizeof(double) * print_steps);
+	run_data->enst_diss_k = (double* )fftw_malloc(sizeof(double) * tot_print_steps);
 	if (run_data->enst_diss_k == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Enstrophy Dissipative Wavenumber");
 		exit(1);
@@ -669,21 +673,21 @@ void InitializeSystemMeasurables(Int_data_struct* Int_data) {
 	// --------------------------------
 	#if defined(__ENST_FLUX)
 	// Time derivative of the enstrophy
-	run_data->d_enst_dt_sbst = (double* )fftw_malloc(sizeof(double) * print_steps);
+	run_data->d_enst_dt_sbst = (double* )fftw_malloc(sizeof(double) * tot_print_steps);
 	if (run_data->d_enst_dt_sbst == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Time Derivative of Enstrophy Subset");
 		exit(1);
 	}
 
 	// Enstrophy flux
-	run_data->enst_flux_sbst = (double* )fftw_malloc(sizeof(double) * print_steps);
+	run_data->enst_flux_sbst = (double* )fftw_malloc(sizeof(double) * tot_print_steps);
 	if (run_data->enst_flux_sbst == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Enstrophy Flux Subset");
 		exit(1);
 	}	
 
 	// Enstrophy Dissipation Rate
-	run_data->enst_diss_sbst = (double* )fftw_malloc(sizeof(double) * print_steps);
+	run_data->enst_diss_sbst = (double* )fftw_malloc(sizeof(double) * tot_print_steps);
 	if (run_data->enst_diss_sbst == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Enstrophy Dissipation Rate Subset");
 		exit(1);
@@ -723,21 +727,21 @@ void InitializeSystemMeasurables(Int_data_struct* Int_data) {
 	// --------------------------------
 	#if defined(__ENRG_FLUX)
 	// Time derivative of energy 
-	run_data->d_enrg_dt_sbst = (double* )fftw_malloc(sizeof(double) * print_steps);
+	run_data->d_enrg_dt_sbst = (double* )fftw_malloc(sizeof(double) * tot_print_steps);
 	if (run_data->d_enrg_dt_sbst == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Time Derivative of Energy Subset");
 		exit(1);
 	}
 
 	// Energy Flux
-	run_data->enrg_flux_sbst = (double* )fftw_malloc(sizeof(double) * print_steps);
+	run_data->enrg_flux_sbst = (double* )fftw_malloc(sizeof(double) * tot_print_steps);
 	if (run_data->enrg_flux_sbst == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Energy Flux Subset");
 		exit(1);
 	}	
 
 	// Energy Dissipation Rate
-	run_data->enrg_diss_sbst = (double* )fftw_malloc(sizeof(double) * print_steps);
+	run_data->enrg_diss_sbst = (double* )fftw_malloc(sizeof(double) * tot_print_steps);
 	if (run_data->enrg_diss_sbst == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Energy Dissipation Rate Subset");
 		exit(1);
@@ -779,6 +783,11 @@ void InitializeSystemMeasurables(Int_data_struct* Int_data) {
 		if (run_data->time == NULL) {
 			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Time");
 			exit(1);
+		}
+		run_data->tot_time = (double* )fftw_malloc(sizeof(double) * tot_print_steps);
+		if (run_data->tot_time == NULL) {
+			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Total Time");
+			exit(1);
 		}	
 	}
 	#endif
@@ -804,7 +813,7 @@ void InitializeSystemMeasurables(Int_data_struct* Int_data) {
 	// ----------------------------
 	// Get Measurables of the ICs
 	// ----------------------------
-	ComputeSystemMeasurables(0.0, 0, Int_data);
+	ComputeSystemMeasurables(0.0, 0, 0, Int_data);
 }
 /**
  * Function used to compute the energy spectrum of the current iteration. The energy spectrum is defined as all(sum) of the energy contained in concentric annuli in

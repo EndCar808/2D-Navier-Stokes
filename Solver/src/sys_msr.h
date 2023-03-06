@@ -33,7 +33,7 @@ void EnstrophyFluxSpectrum(Int_data_struct* Int_data);
 void EnstrophyFlux(double* d_e_dt, double* enst_flux, double* enst_diss, Int_data_struct* Int_data);
 void EnergyFlux(double* d_e_dt, double* enrg_flux, double* enrg_diss, Int_data_struct* Int_data);
 void RecordSystemMeasures(double t, int print_indx,  Int_data_struct* Int_data);
-void ComputeSystemMeasurables(double t, int iter, Int_data_struct* Int_data);
+void ComputeSystemMeasurables(double t, int iter, int tot_iter, Int_data_struct* Int_data);
 // ---------------------------------------------------------------------
 //  End of File
 // ---------------------------------------------------------------------

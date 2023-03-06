@@ -217,6 +217,7 @@ typedef struct system_vars_struct {
 	int num_procs;						// Variable to hold the number of active provcesses
 	int rank;							// Rank of the active processes
 	long int num_t_steps;				// Number of iteration steps to perform
+	long int num_tot_print_steps;       // Number of times system was saved to file including transient iters
 	long int num_print_steps;           // Number of times system was saved to file
 	long int tot_iters;					// Records the total executed iterations
 	long int tot_save_steps;			// Records the total saving iterations
@@ -307,7 +308,6 @@ typedef struct runtime_data_struct {
 	int* forcing_k[SYS_DIM];  			// Array containg the wavenumbers for the forced modes
 	double* tot_enrg_input;	  			// Array to hold the total energy forcing into the sytem over the simulation
 	double* tot_enst_input;	  			// Array to hold the total enstrophy forcing into the sytem over the simulation
-
 	double* tot_time;					// Records all time during the simulation including the transient dynamics
 	double* u_rms;						// Root mean square of the velocity field
 	double* integral_length_scale;		// The integral length scale

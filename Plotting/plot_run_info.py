@@ -177,38 +177,38 @@ if __name__ == '__main__':
         gs  = GridSpec(2, 3, hspace = 0.35)
         ## Plot the energy dissipation
         ax1 = fig.add_subplot(gs[0, 0])
-        ax1.plot(sys_msr.time, sys_msr.enrg_diss)
+        ax1.plot(sys_msr.tot_time, sys_msr.enrg_diss)
         ax1.set_xlabel(r"$t$")
         ax1.set_title(r"Energy Dissipation")
         ax1.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
         ## Plot the enstrophy dissipation
         ax2 = fig.add_subplot(gs[0, 1])
-        ax2.plot(sys_msr.time, sys_msr.enst_diss)
+        ax2.plot(sys_msr.tot_time, sys_msr.enst_diss)
         ax2.set_xlabel(r"$t$")
         ax2.set_title(r"Enstrophy Dissipation")
         ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
         ## Plot the relative energy
         ax1 = fig.add_subplot(gs[1, 0])
-        ax1.plot(sys_msr.time, sys_msr.tot_enrg)
+        ax1.plot(sys_msr.tot_time, sys_msr.tot_enrg)
         ax1.set_xlabel(r"$t$")
         ax1.set_title(r"Total Energy")
         ax1.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
         ## Plot the relative helicity
         ax2 = fig.add_subplot(gs[1, 1])
-        ax2.plot(sys_msr.time, sys_msr.tot_enst)
+        ax2.plot(sys_msr.tot_time, sys_msr.tot_enst)
         ax2.set_xlabel(r"$t$")
         ax2.set_title(r"Total Enstrophy")
         ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
         ## Plot the relative helicity
         ax2 = fig.add_subplot(gs[0, 2])
-        ax2.plot(sys_msr.time, sys_msr.tot_enrg_forc, label=r"Energy Forcing Input")
-        ax2.plot(sys_msr.time, sys_msr.tot_enst_forc, label=r"Enstrophy Forcing Input")
+        ax2.plot(sys_msr.tot_time, sys_msr.tot_enrg_forc, label=r"Energy Forcing Input")
+        ax2.plot(sys_msr.tot_time, sys_msr.tot_enst_forc, label=r"Enstrophy Forcing Input")
         ax2.set_xlabel(r"$t$")
         ax2.set_title(r"Total Forcing Input")
         ax2.legend()
         ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
         ax2 = fig.add_subplot(gs[1, 2])
-        ax2.plot(sys_msr.time, sys_msr.tot_palin)
+        ax2.plot(sys_msr.tot_time, sys_msr.tot_palin)
         ax2.set_xlabel(r"$t$")
         ax2.set_title(r"Total Palinstrophy")
         ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
@@ -393,21 +393,21 @@ if __name__ == '__main__':
             run("cd {};".format(summ_vid_snaps_output_dir) + "rm {};".format("./*.png") + "cd -;", shell = True)
 
         if cmdargs.field:
-            if cmdargs.stream:
-                if cmdargs.parallel:
-                    ## Create process Pool executer
-                    executor = cf.ProcessPoolExecutor(cmdargs.num_threads)
+            # if cmdargs.stream:
+            if cmdargs.parallel:
+                ## Create process Pool executer
+                executor = cf.ProcessPoolExecutor(cmdargs.num_threads)
 
-                    ## Submit jobs to the executor
-                    futures = [executor.submit(plot_phase_snaps_stream, cmdargs.in_dir, phase_vid_snaps_output_dir, cmdargs.in_file, i, sys_vars.Nx, sys_vars.Ny) for i in range(sys_vars.ndata)]
+                ## Submit jobs to the executor
+                futures = [executor.submit(plot_phase_snaps_stream, cmdargs.in_dir, phase_vid_snaps_output_dir, cmdargs.in_file, i, sys_vars.Nx, sys_vars.Ny) for i in range(sys_vars.ndata)]
 
-                    ## Wait until these jobs are finished
-                    cf.wait(futures)
-                    for f in futures:
-                        print(f.result())
-                else:
-                    for i in range(sys_vars.ndata):
-                        plot_phase_snaps_stream(cmdargs.in_dir, phase_vid_snaps_output_dir, cmdargs.in_file, i, sys_vars.Nx, sys_vars.Ny)
+                ## Wait until these jobs are finished
+                cf.wait(futures)
+                for f in futures:
+                    print(f.result())
+            else:
+                for i in range(sys_vars.ndata):
+                    plot_phase_snaps_stream(cmdargs.in_dir, phase_vid_snaps_output_dir, cmdargs.in_file, i, sys_vars.Nx, sys_vars.Ny)
 
 
             framesPerSec = 15

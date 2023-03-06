@@ -1581,6 +1581,10 @@ void FinalWriteAndCloseOutputFiles(const long int* N, int iters, int save_data_i
 		if ( (H5LTmake_dataset(file_info->sys_msr_file_handle, "Time", D1, dims1D, H5T_NATIVE_DOUBLE, run_data->time)) < 0) {
 			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "Time");
 		}
+		dims1D[0] = sys_vars->num_tot_print_steps;
+		if ( (H5LTmake_dataset(file_info->sys_msr_file_handle, "TotalTime", D1, dims1D, H5T_NATIVE_DOUBLE, run_data->tot_time)) < 0) {
+			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "TotalTime");
+		}
 	}
 	#endif
 
@@ -1685,24 +1689,24 @@ void FinalWriteAndCloseOutputFiles(const long int* N, int iters, int save_data_i
 	if (!(sys_vars->rank)) {
 		// Reduce on to rank 0
 		#if defined(__SYS_MEASURES)
-		MPI_Reduce(MPI_IN_PLACE, run_data->tot_energy, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		MPI_Reduce(MPI_IN_PLACE, run_data->tot_enstr, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		MPI_Reduce(MPI_IN_PLACE, run_data->tot_palin, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		MPI_Reduce(MPI_IN_PLACE, run_data->tot_enrg_input, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		MPI_Reduce(MPI_IN_PLACE, run_data->tot_enst_input, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		MPI_Reduce(MPI_IN_PLACE, run_data->tot_div, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		MPI_Reduce(MPI_IN_PLACE, run_data->enrg_diss, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		MPI_Reduce(MPI_IN_PLACE, run_data->enst_diss, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(MPI_IN_PLACE, run_data->tot_energy, sys_vars->num_tot_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(MPI_IN_PLACE, run_data->tot_enstr, sys_vars->num_tot_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(MPI_IN_PLACE, run_data->tot_palin, sys_vars->num_tot_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(MPI_IN_PLACE, run_data->tot_enrg_input, sys_vars->num_tot_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(MPI_IN_PLACE, run_data->tot_enst_input, sys_vars->num_tot_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(MPI_IN_PLACE, run_data->tot_div, sys_vars->num_tot_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(MPI_IN_PLACE, run_data->enrg_diss, sys_vars->num_tot_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(MPI_IN_PLACE, run_data->enst_diss, sys_vars->num_tot_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		#endif
 		#if defined(__ENST_FLUX)
-		MPI_Reduce(MPI_IN_PLACE, run_data->d_enst_dt_sbst, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		MPI_Reduce(MPI_IN_PLACE, run_data->enst_flux_sbst, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		MPI_Reduce(MPI_IN_PLACE, run_data->enst_diss_sbst, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(MPI_IN_PLACE, run_data->d_enst_dt_sbst, sys_vars->num_tot_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(MPI_IN_PLACE, run_data->enst_flux_sbst, sys_vars->num_tot_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(MPI_IN_PLACE, run_data->enst_diss_sbst, sys_vars->num_tot_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		#endif
 		#if defined(__ENRG_FLUX)
-		MPI_Reduce(MPI_IN_PLACE, run_data->d_enrg_dt_sbst, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		MPI_Reduce(MPI_IN_PLACE, run_data->enrg_flux_sbst, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		MPI_Reduce(MPI_IN_PLACE, run_data->enrg_diss_sbst, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(MPI_IN_PLACE, run_data->d_enrg_dt_sbst, sys_vars->num_tot_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(MPI_IN_PLACE, run_data->enrg_flux_sbst, sys_vars->num_tot_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(MPI_IN_PLACE, run_data->enrg_diss_sbst, sys_vars->num_tot_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		#endif
 		#if defined(__ENRG_FLUX_SPECT_T_AVG)
 		MPI_Reduce(MPI_IN_PLACE, run_data->enrg_flux_spect_t_avg, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
@@ -1751,7 +1755,7 @@ void FinalWriteAndCloseOutputFiles(const long int* N, int iters, int save_data_i
 		#endif
 
 		// Dataset dims
-		dims1D[0] = sys_vars->num_print_steps;
+		dims1D[0] = sys_vars->num_tot_print_steps;
 
 		#if defined(__SYS_MEASURES)
 		// Energy
@@ -1788,7 +1792,7 @@ void FinalWriteAndCloseOutputFiles(const long int* N, int iters, int save_data_i
 		}
 
 		// Loop through time and compute the remaining system measures
-		for (int i = 0; i < sys_vars->num_print_steps; ++i) {
+		for (int i = 0; i < sys_vars->num_tot_print_steps; ++i) {
 			// The characteristic velocity
 			run_data->u_rms[i]                 = sqrt(run_data->tot_energy[i]);
 			run_data->integral_length_scale[i] /= run_data->tot_energy[i];
@@ -1991,24 +1995,24 @@ void FinalWriteAndCloseOutputFiles(const long int* N, int iters, int save_data_i
 	else {
 		// Reduce all other process to rank 0
 		#if defined(__SYS_MEASURES)
-		MPI_Reduce(run_data->tot_energy, NULL,  sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		MPI_Reduce(run_data->tot_enstr, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		MPI_Reduce(run_data->tot_palin, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		MPI_Reduce(run_data->tot_enrg_input, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		MPI_Reduce(run_data->tot_enst_input, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		MPI_Reduce(run_data->tot_div, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		MPI_Reduce(run_data->enrg_diss, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		MPI_Reduce(run_data->enst_diss, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(run_data->tot_energy, NULL,  sys_vars->num_tot_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(run_data->tot_enstr, NULL, sys_vars->num_tot_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(run_data->tot_palin, NULL, sys_vars->num_tot_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(run_data->tot_enrg_input, NULL, sys_vars->num_tot_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(run_data->tot_enst_input, NULL, sys_vars->num_tot_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(run_data->tot_div, NULL, sys_vars->num_tot_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(run_data->enrg_diss, NULL, sys_vars->num_tot_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(run_data->enst_diss, NULL, sys_vars->num_tot_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		#endif
 		#if defined(__ENST_FLUX)
-		MPI_Reduce(run_data->d_enst_dt_sbst, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		MPI_Reduce(run_data->enst_flux_sbst, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		MPI_Reduce(run_data->enst_diss_sbst, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(run_data->d_enst_dt_sbst, NULL, sys_vars->num_tot_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(run_data->enst_flux_sbst, NULL, sys_vars->num_tot_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(run_data->enst_diss_sbst, NULL, sys_vars->num_tot_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		#endif
 		#if defined(__ENRG_FLUX)
-		MPI_Reduce(run_data->d_enrg_dt_sbst, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		MPI_Reduce(run_data->enrg_flux_sbst, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		MPI_Reduce(run_data->enrg_diss_sbst, NULL, sys_vars->num_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(run_data->d_enrg_dt_sbst, NULL, sys_vars->num_tot_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(run_data->enrg_flux_sbst, NULL, sys_vars->num_tot_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(run_data->enrg_diss_sbst, NULL, sys_vars->num_tot_print_steps, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		#endif
 		#if defined(__STATS)
 		///------------------ Structure functions

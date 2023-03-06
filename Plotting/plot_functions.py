@@ -48,7 +48,7 @@ class tc:
 def plot_vort(outdir, w, x, y, time, snaps, file_type=".png", fig_size=(16, 8)):
 
 	fig = plt.figure(figsize = fig_size)
-	gs  = GridSpec(2, 2, hspace = 0.3) 
+	gs  = GridSpec(2, 2, hspace = 0.2) 
 
 	ax1 = []
 	for i in range(2):
