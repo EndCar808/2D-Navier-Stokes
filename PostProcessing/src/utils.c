@@ -80,6 +80,8 @@ int GetCMLArgs(int argc, char** argv) {
 	sys_vars->EKMN_ALPHA_HIGH_K = 0.1;
 	sys_vars->EKMN_DRAG_FLAG    = 0;
 	sys_vars->EKMN_DRAG_POW     = EKMN_POW;
+	// Checkpoint counter
+	sys_vars->chk_pt_every = 50;
 	
 	// -------------------------------
 	// Parse CML Arguments
@@ -294,6 +296,10 @@ int GetCMLArgs(int argc, char** argv) {
 			case 't':
 				// Get the tag for the output file
 				strncpy(file_info->output_tag, optarg, 64);
+				break;
+			case 'c':
+				// Get the counter to control how often to check point
+				sys_vars->chk_pt_every = atoi(optarg);
 				break;
 			default:
 				fprintf(stderr, "\n["RED"ERROR"RESET"] Incorrect command line flag encountered\n");		

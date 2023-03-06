@@ -45,7 +45,8 @@ void RealSpaceStats(int s) {
 	double vort_long_increment_abs, vort_trans_increment_abs;
 	int N_max_incr = (int) (GSL_MIN(Ny, Nx) / 2);
 	double norm_fac = 1.0 / (Ny * Nx);
-	double radial_pow[STR_FUNC_MAX_POW] = {0.1, 0.5, 1.0, 1.5, 2.0, 2.5};
+	double radial_pow_p[STR_FUNC_MAX_POW] = {0.1, 0.5, 1.0, 1.5, 2.0, 2.5};
+	double pow_p[STR_FUNC_MAX_POW] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
 	double delta_x = 2.0 * M_PI / Nx;
 	double delta_y = 2.0 * M_PI / Ny;
 	#endif
@@ -294,17 +295,17 @@ void RealSpaceStats(int s) {
 						for (int j = 0; j < Nx; ++j) {				
 							// Get velocity increments
 							#if defined(__VEL_STR_FUNC_STATS)
-							vel_long_increment      += pow(sgn(run_data->u[SYS_DIM * (i * Nx + ((j + r_inc) % Nx)) + 0] - run_data->u[SYS_DIM * (i * Nx + j) + 0]), 2.0 * radial_pow[p - 1]) * pow(fabs(run_data->u[SYS_DIM * (i * Nx + ((j + r_inc) % Nx)) + 0] - run_data->u[SYS_DIM * (i * Nx + j) + 0]), 2.0 * radial_pow[p - 1]);
-							vel_trans_increment     += pow(sgn(run_data->u[SYS_DIM * (i * Nx + ((j + r_inc) % Nx)) + 1] - run_data->u[SYS_DIM * (i * Nx + j) + 1]), 2.0 * radial_pow[p - 1]) * pow(fabs(run_data->u[SYS_DIM * (i * Nx + ((j + r_inc) % Nx)) + 1] - run_data->u[SYS_DIM * (i * Nx + j) + 1]), 2.0 * radial_pow[p - 1]);
-							vel_long_increment_abs  += pow(fabs(run_data->u[SYS_DIM * (i * Nx + ((j + r_inc) % Nx)) + 0] - run_data->u[SYS_DIM * (i * Nx + j) + 0]), 2.0 * radial_pow[p - 1]);
-							vel_trans_increment_abs += pow(fabs(run_data->u[SYS_DIM * (i * Nx + ((j + r_inc) % Nx)) + 1] - run_data->u[SYS_DIM * (i * Nx + j) + 1]), 2.0 * radial_pow[p - 1]);
+							vel_long_increment      += pow(sgn(run_data->u[SYS_DIM * (i * Nx + ((j + r_inc) % Nx)) + 0] - run_data->u[SYS_DIM * (i * Nx + j) + 0]), 2.0 * pow_p[p - 1]) * pow(fabs(run_data->u[SYS_DIM * (i * Nx + ((j + r_inc) % Nx)) + 0] - run_data->u[SYS_DIM * (i * Nx + j) + 0]), 2.0 * pow_p[p - 1]);
+							vel_trans_increment     += pow(sgn(run_data->u[SYS_DIM * (i * Nx + ((j + r_inc) % Nx)) + 1] - run_data->u[SYS_DIM * (i * Nx + j) + 1]), 2.0 * pow_p[p - 1]) * pow(fabs(run_data->u[SYS_DIM * (i * Nx + ((j + r_inc) % Nx)) + 1] - run_data->u[SYS_DIM * (i * Nx + j) + 1]), 2.0 * pow_p[p - 1]);
+							vel_long_increment_abs  += pow(fabs(run_data->u[SYS_DIM * (i * Nx + ((j + r_inc) % Nx)) + 0] - run_data->u[SYS_DIM * (i * Nx + j) + 0]), 2.0 * pow_p[p - 1]);
+							vel_trans_increment_abs += pow(fabs(run_data->u[SYS_DIM * (i * Nx + ((j + r_inc) % Nx)) + 1] - run_data->u[SYS_DIM * (i * Nx + j) + 1]), 2.0 * pow_p[p - 1]);
 							#endif
 							// Get vorticity increments
 							#if defined(__VORT_STR_FUNC_STATS)
-							vort_long_increment      += pow(sgn(run_data->w[i * Nx + ((j + r_inc) % Nx)] - run_data->w[i * Nx + j]), 2.0 * radial_pow[p - 1]) * pow(fabs(run_data->w[i * Nx + ((j + r_inc) % Nx)] - run_data->w[i * Nx + j]), 2.0 * radial_pow[p - 1]);
-							vort_trans_increment     += pow(sgn(run_data->w[((i + r_inc) % Ny) * Nx + j] - run_data->w[i * Nx + j]), 2.0 * radial_pow[p - 1]) * pow(fabs(run_data->w[((i + r_inc) % Ny) * Nx + j] - run_data->w[i * Nx + j]), 2.0 * radial_pow[p - 1]);
-							vort_long_increment_abs  += pow(fabs(run_data->w[i * Nx + ((j + r_inc) % Nx)] - run_data->w[i * Nx + j]), 2.0 * radial_pow[p - 1]);
-							vort_trans_increment_abs += pow(fabs(run_data->w[((i + r_inc) % Ny) * Nx + j] - run_data->w[i * Nx + j]), 2.0 * radial_pow[p - 1]);
+							vort_long_increment      += pow(sgn(run_data->w[i * Nx + ((j + r_inc) % Nx)] - run_data->w[i * Nx + j]), 2.0 * pow_p[p - 1]) * pow(fabs(run_data->w[i * Nx + ((j + r_inc) % Nx)] - run_data->w[i * Nx + j]), 2.0 * pow_p[p - 1]);
+							vort_trans_increment     += pow(sgn(run_data->w[((i + r_inc) % Ny) * Nx + j] - run_data->w[i * Nx + j]), 2.0 * pow_p[p - 1]) * pow(fabs(run_data->w[((i + r_inc) % Ny) * Nx + j] - run_data->w[i * Nx + j]), 2.0 * pow_p[p - 1]);
+							vort_long_increment_abs  += pow(fabs(run_data->w[i * Nx + ((j + r_inc) % Nx)] - run_data->w[i * Nx + j]), 2.0 * pow_p[p - 1]);
+							vort_trans_increment_abs += pow(fabs(run_data->w[((i + r_inc) % Ny) * Nx + j] - run_data->w[i * Nx + j]), 2.0 * pow_p[p - 1]);
 							#endif
 							if (p == 3) {
 								#if defined(__MIXED_VEL_STR_FUNC)
@@ -335,7 +336,7 @@ void RealSpaceStats(int s) {
 						stats_data->vel_mixed_str_func[r_inc - 1] += mixed_vel_increment * norm_fac;
 						#endif
 						#if defined(__MIXED_VORT_STR_FUNC)
-						stats_data->vel_mixed_str_func[r_inc - 1] += mixed_vort_increment * norm_fac;
+						stats_data->vort_mixed_str_func[r_inc - 1] += mixed_vort_increment * norm_fac;
 						#endif
 					}
 				}
@@ -354,8 +355,8 @@ void RealSpaceStats(int s) {
 						// Loop over space and average 
 						for (int i = 0; i < Ny; ++i) {
 							for (int j = 0; j < Nx; ++j) {
-								vort_rad_increment     += pow(sgn(run_data->w[((i + r_y) % Ny) * Nx + ((j + r_x) % Nx)] - run_data->w[i * Nx + j]), 2.0 * radial_pow[p - 1]) * pow(fabs(run_data->w[((i + r_y) % Ny) * Nx + ((j + r_x) % Nx)] - run_data->w[i * Nx + j]), 2.0 * radial_pow[p - 1]);
-								vort_rad_increment_abs += pow(fabs(run_data->w[((i + r_y) % Ny) * Nx + ((j + r_x) % Nx)] - run_data->w[i * Nx + j]), 2.0 * radial_pow[p - 1]);
+								vort_rad_increment     += pow(sgn(run_data->w[((i + r_y) % Ny) * Nx + ((j + r_x) % Nx)] - run_data->w[i * Nx + j]), 2.0 * radial_pow_p[p - 1]) * pow(fabs(run_data->w[((i + r_y) % Ny) * Nx + ((j + r_x) % Nx)] - run_data->w[i * Nx + j]), 2.0 * radial_pow_p[p - 1]);
+								vort_rad_increment_abs += pow(fabs(run_data->w[((i + r_y) % Ny) * Nx + ((j + r_x) % Nx)] - run_data->w[i * Nx + j]), 2.0 * radial_pow_p[p - 1]);
 							}
 						}
 

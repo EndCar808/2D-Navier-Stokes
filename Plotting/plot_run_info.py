@@ -32,6 +32,7 @@ import time as TIME
 from subprocess import Popen, PIPE, run
 from matplotlib.pyplot import cm
 from functions import tc, sim_data, import_data, import_spectra_data, import_post_processing_data, import_sys_msr, energy_spectrum, enstrophy_spectrum
+from functions import compute_pdf
 from plot_functions import plot_flow_summary, plot_flow_summary_stream, plot_phase_snaps_stream, plot_phase_snaps
 from plot_functions import plot_vort, plot_time_averaged_spectra_both
 ###############################
@@ -160,6 +161,9 @@ if __name__ == '__main__':
 
         ## Read in spectra data
         spec_data = import_spectra_data(cmdargs.in_dir, sys_vars)
+
+        ## Read in post processing data
+        post_data = import_post_processing_data(post_file_path, sys_vars, method)
 
         # -----------------------------------------
         # # --------  Plot Data
@@ -294,6 +298,128 @@ if __name__ == '__main__':
         ax2.set_title(r"$\mathcal{E}(|\mathbf{k}|)$: Enstrophy Spectrum")
         
         plt.savefig(snaps_output_dir + "SpectraScaling.png")
+        plt.close()
+
+
+        # -----------------------------------------
+        # # --------  Plot Longitudinal Increment PDFs
+        # -----------------------------------------
+        ## Create Figure
+        fig = plt.figure(figsize = (16, 8))
+        gs  = GridSpec(1, 2) 
+
+        if post_data.vel_long_incr_ranges.shape[0] == 2:
+            plot_legend = [r"$r = \frac{\pi}{N}$", r"$r = \pi$"]
+        else:
+            plot_legend = [r"$r = \frac{\pi}{N}$", r"$r = \frac{2\pi}{N}$", r"$r = \frac{4\pi}{N}$", r"$r = \frac{16\pi}{N}$",  r"$r = \pi$"]
+
+        ## Longitudinal PDFs
+        ax1 = fig.add_subplot(gs[0, 0])
+        for i in range(post_data.vel_long_incr_ranges.shape[0]):
+            bin_centres, pdf = compute_pdf(post_data.vel_long_incr_ranges[i, :], post_data.vel_long_incr_counts[i, :], normalized = True)
+            ax1.plot(bin_centres, pdf, label = plot_legend[i])
+        ax1.set_xlabel(r"$\delta_r \mathbf{u}_{\parallel} / \langle (\delta_r \mathbf{u}_{\parallel})^2 \rangle^{1/2}$")
+        ax1.set_ylabel(r"PDF")
+        ax1.set_yscale('log')
+        ax1.grid(color = 'k', linewidth = .5, linestyle = ':')
+        ax1.set_title("Velocity Longitudinal Increments")
+        ax1.legend()
+
+        ## Transverse PDFs
+        ax2 = fig.add_subplot(gs[0, 1])
+        for i in range(post_data.vort_long_incr_ranges.shape[0]):
+            bin_centres, pdf = compute_pdf(post_data.vort_long_incr_ranges[i, :], post_data.vort_long_incr_counts[i, :], normalized = True)        
+            ax2.plot(bin_centres, pdf, label = plot_legend[i])
+        ax2.set_xlabel(r"$\delta_r \omega_{\parallel} / \langle (\delta_r \omega_{\parallel})^2 \rangle^{1/2}$")
+        ax2.set_ylabel(r"PDF")
+        ax2.set_yscale('log')
+        ax2.grid(color = 'k', linewidth = .5, linestyle = ':')
+        ax2.set_title("Vorticity Longitudinal Incrments")
+        ax2.legend()
+
+        plt.suptitle(r"Longitudinal Increment PDFs")
+        
+        plt.savefig(snaps_output_dir + "/Longitudinal_Incrmenents_PDFs.png")
+        plt.close()
+
+
+        # -----------------------------------------
+        # # --------  Plot Transverse Increment PDFs
+        # -----------------------------------------
+        ## Create Figure
+        fig = plt.figure(figsize = (16, 8))
+        gs  = GridSpec(1, 2) 
+
+        if post_data.vel_trans_incr_ranges.shape[0] == 2:
+            plot_legend = [r"$r = \frac{\pi}{N}$", r"$r = \pi$"]
+        else:
+            plot_legend = [r"$r = \frac{\pi}{N}$", r"$r = \frac{2\pi}{N}$", r"$r = \frac{4\pi}{N}$", r"$r = \frac{16\pi}{N}$",  r"$r = \pi$"]
+
+        ## Transverse PDFs
+        ax1 = fig.add_subplot(gs[0, 0])
+        for i in range(post_data.vel_trans_incr_ranges.shape[0]):
+            bin_centres, pdf = compute_pdf(post_data.vel_trans_incr_ranges[i, :], post_data.vel_trans_incr_counts[i, :], normalized = True)
+            ax1.plot(bin_centres, pdf, label = plot_legend[i])
+        ax1.set_xlabel(r"$\delta_r \mathbf{u}_{\perp} / \langle (\delta_r \mathbf{u}_{\perp})^2 \rangle^{1/2}$")
+        ax1.set_ylabel(r"PDF")
+        ax1.set_yscale('log')
+        ax1.grid(color = 'k', linewidth = .5, linestyle = ':')
+        ax1.set_title("Velocity Transverse Increments")
+        ax1.legend()
+
+        ## Transverse PDFs
+        ax2 = fig.add_subplot(gs[0, 1])
+        for i in range(post_data.vort_trans_incr_ranges.shape[0]):
+            bin_centres, pdf = compute_pdf(post_data.vort_trans_incr_ranges[i, :], post_data.vort_trans_incr_counts[i, :], normalized = True)        
+            ax2.plot(bin_centres, pdf, label = plot_legend[i])
+        ax2.set_xlabel(r"$\delta_r \omega_{\perp} / \langle (\delta_r \omega_{\perp})^2 \rangle^{1/2}$")
+        ax2.set_ylabel(r"PDF")
+        ax2.set_yscale('log')
+        ax2.grid(color = 'k', linewidth = .5, linestyle = ':')
+        ax2.set_title("Vorticity Transverse Incrments")
+        ax2.legend()
+
+        plt.suptitle(r"Transverse Increment PDFs")
+        
+        plt.savefig(snaps_output_dir + "/Transverse_Incrmenents_PDFs.png")
+        plt.close()
+
+        # -----------------------------------------
+        # # --------  Compare Structure Funcs
+        # -----------------------------------------
+        fig = plt.figure(figsize = (16, 8))
+        gs  = GridSpec(1, 2)
+        r = np.arange(1, np.minimum(sys_vars.Nx, sys_vars.Ny) / 2 + 1)
+        L = np.minimum(sys_vars.Nx, sys_vars.Ny) / 2
+
+        ## Velocity
+        ax1 = fig.add_subplot(gs[0, 0])
+        p, = ax1.plot(r / L, 3.0 / 2.0 * (r / L), linestyle = '--', label = r"$\frac{3}{2} \epsilon_l r$")
+        ax1.plot(r / L, post_data.mxd_vel_str_func[:], linestyle = '-.', color = p.get_color(), label = r"Mixed; $3\left\langle\delta u_{\parallel}(r)\left[\delta u_{\perp}(r)\right]^2\right\rangle$")
+        ax1.plot(r / L, post_data.vel_long_str_func[2, :], linestyle = ':', color = p.get_color(), label = r"Third Order; $\left\langle\left[\delta u_{\|}(r)\right]^3\right\rangle$")
+        ax1.set_xlabel(r"$r / L$")
+        ax1.set_xscale('log')
+        ax1.set_yscale('log')
+        ax1.grid(color = 'k', linewidth = .5, linestyle = ':')
+        ax1.set_title("Holds For Inverse Cascade")
+        ax1.legend()
+
+        ## Vorticity
+        ax2 = fig.add_subplot(gs[0, 1])
+        p, = ax2.plot(r / L, -2.0 * r / L, linestyle = '--', label = r"$-2 \eta_I r$")
+        ax2.plot(r / L, post_data.mxd_vel_str_func[:], linestyle = '-.', color = p.get_color(), label = r"Mixed; $\left\langle\delta u_{\|}(r)[\delta \omega(r)]^2\right\rangle$")
+        p, = ax2.plot(r / L, 1.0 / 8.0 * (r / L) ** 3, linestyle = '--', label = r"$\frac{1}{8} \eta_I r^3$")
+        ax2.plot(r / L, post_data.vel_long_str_func[2, :], '-.', color = p.get_color(), label = r"Third Order; $\left\langle\left[\delta u_{\|}(r)\right]^3\right\rangle$")
+        ax2.set_xlabel(r"$r / L$")
+        ax2.set_xscale('log')
+        ax2.set_yscale('log')
+        ax2.grid(color = 'k', linewidth = .5, linestyle = ':')
+        ax2.set_title("Holds For Direct Cascade")
+        ax2.legend()
+
+        plt.suptitle(r"Compare Structure Funcitons")
+        
+        plt.savefig(snaps_output_dir + "/Compare_Structure_Functions.png")
         plt.close()
 
 

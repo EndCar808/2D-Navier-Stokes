@@ -473,7 +473,7 @@ void ReadInData(int snap_indx) {
 /**
  * Function to create and open the output file
  */
-void OpenOutputFile(void) {
+void OpenOutputFile(int indx) {
 
 	// Initialize variables
 	herr_t status;
@@ -485,9 +485,7 @@ void OpenOutputFile(void) {
 	// --------------------------------
 	if (strcmp(file_info->output_dir, "NONE") != 0) {
 		// Construct pathh
-		strcpy(file_info->output_file_name, file_info->output_dir);
-		sprintf(file_name, "PostProcessing_HDF_Data_THREADS[%d,%d]_SECTORS[%d,%d]_KFRAC[%1.2lf]_TAG[%s].h5", sys_vars->num_threads, sys_vars->num_fftw_threads, sys_vars->num_k3_sectors, sys_vars->num_k1_sectors, sys_vars->kmax_frac, file_info->output_tag);
-		strcat(file_info->output_file_name, file_name);
+		OutputFileName(indx);
 
 		// Print output file path to screen
 		printf("Output File: "CYAN"%s"RESET"\n\n", file_info->output_file_name);	
@@ -496,9 +494,8 @@ void OpenOutputFile(void) {
 		printf("\n["YELLOW"NOTE"RESET"] --- No Output directory provided. Using input directory instead \n");
 
 		// Construct path
-		strcpy(file_info->output_file_name, file_info->input_dir);
-		sprintf(file_name, "PostProcessing_HDF_Data_THREADS[%d,%d]_SECTORS[%d,%d]_KFRAC[%1.2lf]_TAG[%s].h5", sys_vars->num_threads, sys_vars->num_fftw_threads, sys_vars->num_k3_sectors, sys_vars->num_k1_sectors, sys_vars->kmax_frac, file_info->output_tag);
-		strcat(file_info->output_file_name, file_name);
+		strcpy(file_info->output_dir, file_info->input_dir);
+		OutputFileName(indx);
 
 		// Print output file path to screen
 		printf("Output File: "CYAN"%s"RESET"\n\n", file_info->output_file_name);
@@ -527,11 +524,25 @@ void OpenOutputFile(void) {
 	}
 }
 /**
+ * Function to create the file name given the current check pointing indx
+ * @param indx Current checkpoint index
+ */
+void OutputFileName(int indx) {
+
+	// Tmp array to store intermediate file name path
+	char file_name[1024];
+
+	// Contruct the output filename using the currernt check point info
+	strcpy(file_info->output_file_name, file_info->output_dir);
+	sprintf(file_name, "PostProcessing_HDF_Data_THREADS[%d,%d]_SECTORS[%d,%d]_KFRAC[%1.2lf]_TAG[%s-%d].h5", sys_vars->num_threads, sys_vars->num_fftw_threads, sys_vars->num_k3_sectors, sys_vars->num_k1_sectors, sys_vars->kmax_frac, file_info->output_tag, indx);
+	strcat(file_info->output_file_name, file_name);
+}
+/**
  * Function to write the data for the current snapshot to the file
  * @param t     The current time in the simulaiton 
  * @param snap The current snapshot
  */
-void WriteDataToFile(double t, long int snap) {
+void WriteDataToFile(double t, long int snap, int chk_pt_indx) {
 
 	// Initialize variables
 	char group_name[128];
@@ -548,10 +559,13 @@ void WriteDataToFile(double t, long int snap) {
 	static const hsize_t Dims3D = 3;
 	hsize_t dset_dims_3d[Dims3D];     
 	
-	// printf("file_name: %s", file_info->output_file_name);
+
 	// -------------------------------
 	// Check for Output File
 	// -------------------------------
+	// Construct the filename using the current check pointing  info
+	OutputFileName(chk_pt_indx);
+
 	// Check if output file exist if not create it
 	if (access(file_info->output_file_name, F_OK) != 0) {
 		file_info->output_file_handle = H5Fcreate(file_info->output_file_name, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
@@ -1347,7 +1361,7 @@ hid_t CreateComplexDatatype(void) {
 /**
 * Wrapper function for writing any remaining data to output file
 */
-void FinalWriteAndClose(void) {
+void FinalWriteAndClose(int indx) {
 
 	// Initialize variables
 	herr_t status;
@@ -1361,6 +1375,9 @@ void FinalWriteAndClose(void) {
 	// -------------------------------
 	// Check for Output File
 	// -------------------------------
+	// Construct the filename using the current check pointing  info
+	OutputFileName(indx);
+
 	// Check if output file exist if not create it
 	if (access(file_info->output_file_name, F_OK) != 0) {
 		file_info->output_file_handle = H5Fcreate(file_info->output_file_name, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);

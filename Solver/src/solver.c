@@ -213,15 +213,7 @@ void SpectralSolve(void) {
 			}
 		}
 		if (iters % sys_vars->SAVE_EVERY == 0) {
-			// // Print update of the system to the terminal 
-			// if (iters <= sys_vars->trans_iters) {
-			// 	// If performing transient iterations the system measures are stored in the 0th index
-			// 	PrintUpdateToTerminal(iters, t, dt, T, 0);
-			// }
-			// else {
-			// 	// Print update of the non transient iterations to the terminal 
-			// 	PrintUpdateToTerminal(iters, t, dt, T, save_data_indx - 1);
-			// }
+			// Print update of the system to the terminal 
 			PrintUpdateToTerminal(iters, t, dt, T, tot_save_data_indx - 1);
 		}
 		#endif

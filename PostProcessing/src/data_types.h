@@ -58,13 +58,13 @@
 // #define __REAL_STATS
 #define __VEL_INC_STATS
 #define __VORT_INC_STATS
+#define __VEL_GRAD_STATS
+#define __VORT_GRAD_STATS
 #define __VEL_STR_FUNC_STATS
 #define __VORT_STR_FUNC_STATS
 #define __VORT_RADIAL_STR_FUNC_STATS
 #define __MIXED_VEL_STR_FUNC_STATS
 #define __MIXED_VORT_STR_FUNC_STATS
-#define __VEL_GRAD_STATS
-#define __VORT_GRAD_STATS
 #endif
 #if defined(__POST_FIELD) || defined(__POST_SYNC)
 #define __FULL_FIELD
@@ -97,7 +97,7 @@
 #define N_BINS 1000				// The number of histogram bins to use
 #define NUM_INCR 5              // The number of increment length scales
 #define INCR_TYPES 2 			// The number of increment directions i.e., longitudinal and transverse
-#define STR_FUNC_MAX_POW 6      // The maximum pow of the structure functions to compute
+#define STR_FUNC_MAX_POW 3      // The maximum pow of the structure functions to compute
 #define BIN_LIM 40              // The limit of the bins for the velocity increments
 // Phase sync 
 // #define N_SECTORS 40		 	// The number of phase sectors
@@ -184,6 +184,7 @@ typedef struct system_vars_struct {
 	int thread_id;						// The ID of the OMP threads
 	int num_triad_per_sec_est;          // The estimate number of triads per sector
     int REDUCED_K1_SEARCH_FLAG;			// Flag to control whether we are doing a reduced search over specifc sectors of k1 or not
+    int chk_pt_every;					// counter that controls how often to checkpoint
 } system_vars_struct;
 
 // Runtime data struct

@@ -41,7 +41,8 @@ void PostProcessing(void) {
 	// --------------------------------
 	//  Open Output File
 	// --------------------------------
-	OpenOutputFile();
+	int chk_pt_indx = 0;
+	OpenOutputFile(chk_pt_indx);
 
 	// --------------------------------
 	//  Allocate Processing Memmory
@@ -107,7 +108,12 @@ void PostProcessing(void) {
 		// --------------------------------
 		//  Write Data to File
 		// --------------------------------
-		WriteDataToFile(run_data->time[s], s);
+		WriteDataToFile(run_data->time[s], s, chk_pt_indx);
+		if (s % sys_vars->chk_pt_every == 0) {
+			// Save current state to file and open a new output file at next iter
+			FinalWriteAndClose(chk_pt_indx);
+			chk_pt_indx++;
+		}
 	}
 	///////////////////////////////
 	// End Snapshot Processing
@@ -117,7 +123,7 @@ void PostProcessing(void) {
 	//  Final Write of Data and Close 
 	// ---------------------------------
 	// Write any remaining datasets to output file
-	FinalWriteAndClose();
+	FinalWriteAndClose(chk_pt_indx);
 	
 	// --------------------------------
 	//  Clean Up
