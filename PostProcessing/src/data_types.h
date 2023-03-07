@@ -62,7 +62,7 @@
 #define __VORT_GRAD_STATS
 #define __VEL_STR_FUNC_STATS
 #define __VORT_STR_FUNC_STATS
-#define __VORT_RADIAL_STR_FUNC_STATS
+// #define __VORT_RADIAL_STR_FUNC_STATS
 #define __MIXED_VEL_STR_FUNC_STATS
 #define __MIXED_VORT_STR_FUNC_STATS
 #endif
@@ -97,7 +97,7 @@
 #define N_BINS 1000				// The number of histogram bins to use
 #define NUM_INCR 5              // The number of increment length scales
 #define INCR_TYPES 2 			// The number of increment directions i.e., longitudinal and transverse
-#define STR_FUNC_MAX_POW 3      // The maximum pow of the structure functions to compute
+#define STR_FUNC_MAX_POW 6      // The maximum pow of the structure functions to compute
 #define BIN_LIM 40              // The limit of the bins for the velocity increments
 // Phase sync 
 // #define N_SECTORS 40		 	// The number of phase sectors
@@ -328,11 +328,13 @@ typedef struct HDF_file_info_struct {
 	char input_file_name[1024];		// Array holding main input file name
 	char sys_msr_file_name[1024];	// Array holding system measures file name
 	char output_file_name[1024];    // Output file name array
+	char chkpt_file_name[1024];     // Checkpoint file name array
 	char wave_vec_data_name[1024];  // File path for the phase sync wavector data
 	char output_dir[1024];			// Output directory
 	char input_dir[1024];			// Input directory
 	char output_tag[64]; 			// Tag to be added to the output directory
 	hid_t output_file_handle;		// File handle for the output file 
+	hid_t chkpt_file_handle;		// File handle for the chkpt file 
 	hid_t input_file_handle;		// File handle for the input file 
 	hid_t sys_msr_file_handle;		// File handle for the system measures file 
 	hid_t wave_vec_file_handle;		// Wavevector file handle

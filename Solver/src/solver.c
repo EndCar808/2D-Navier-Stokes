@@ -190,7 +190,7 @@ void SpectralSolve(void) {
 			#endif
 
 			// Record System Measurables
-			ComputeSystemMeasurables(t, save_data_indx, tot_save_data_indx, Int_data);
+			ComputeSystemMeasurables(t, iters, save_data_indx, tot_save_data_indx, Int_data);
 			tot_save_data_indx++;
 
 			// If and when transient steps are complete write to file

@@ -41,8 +41,8 @@ void PostProcessing(void) {
 	// --------------------------------
 	//  Open Output File
 	// --------------------------------
+	OpenOutputFile();
 	int chk_pt_indx = 0;
-	OpenOutputFile(chk_pt_indx);
 
 	// --------------------------------
 	//  Allocate Processing Memmory
@@ -61,11 +61,11 @@ void PostProcessing(void) {
 	// Begin Snapshot Processing
 	//////////////////////////////
 	printf("\n\nStarting Snapshot Processing:\n");
-	for (int s = 0; s <  sys_vars->num_snaps; ++s) {
+	for (int s = 0; s <  sys_vars->num_snaps; ++s) {		
 		
-		// Print update to screen
-		printf("Snapshot: %d\n", s);
-	
+		// Start timer
+		double loop_begin = omp_get_wtime();
+
 		// --------------------------------
 		//  Read in Data
 		// --------------------------------
@@ -108,12 +108,18 @@ void PostProcessing(void) {
 		// --------------------------------
 		//  Write Data to File
 		// --------------------------------
-		WriteDataToFile(run_data->time[s], s, chk_pt_indx);
-		if (s % sys_vars->chk_pt_every == 0) {
-			// Save current state to file and open a new output file at next iter
-			FinalWriteAndClose(chk_pt_indx);
+		WriteDataToFile(run_data->time[s], s);
+		if ((s + 1) % sys_vars->chk_pt_every == 0) { // shifted by 1 to avoid writing first iteration
+			// Write post computation to checkpoint file
+			CreateCheckPointCopy(s, chk_pt_indx);
 			chk_pt_indx++;
 		}
+		
+		// End timer for current loop
+		double loop_end = omp_get_wtime();
+
+		// Print update to screen
+		printf("Snapshot: %d/%ld\tSaving Index: %d \t Time: %g(s)\n", s, sys_vars->num_snaps, chk_pt_indx, (loop_end - loop_begin));
 	}
 	///////////////////////////////
 	// End Snapshot Processing
@@ -123,7 +129,7 @@ void PostProcessing(void) {
 	//  Final Write of Data and Close 
 	// ---------------------------------
 	// Write any remaining datasets to output file
-	FinalWriteAndClose(chk_pt_indx);
+	FinalWriteAndClose(file_info->output_file_name);
 	
 	// --------------------------------
 	//  Clean Up

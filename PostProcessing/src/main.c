@@ -55,7 +55,7 @@ int main(int argc, char** argv) {
 	//  Begin Timing
 	// --------------------------------
 	// Initialize timing counter
-	clock_t main_begin = omp_get_wtime();
+	double main_begin = omp_get_wtime();
 
 	// --------------------------------
 	//  Get Command Line Arguements
@@ -87,7 +87,7 @@ int main(int argc, char** argv) {
 
 	// Set the number of threads for FFTW and print to screen
 	fftw_plan_with_nthreads(sys_vars->num_fftw_threads);
-	printf("\nFFTW Threads: "CYAN"%d"RESET"\n", sys_vars->num_threads);
+	printf("\nFFTW Threads: "CYAN"%d"RESET"\n", sys_vars->num_fftw_threads);
 
 	//////////////////////////////
 	// Call Post Processing
@@ -111,7 +111,7 @@ int main(int argc, char** argv) {
 	//  End Timing
 	// --------------------------------
 	// Finish timing
-	clock_t main_end = omp_get_wtime();
+	double main_end = omp_get_wtime();
 
 	// calculate execution time
 	double time_spent = (double)(main_end - main_begin);

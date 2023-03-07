@@ -374,14 +374,11 @@ void PrintTime(time_t start, time_t end) {
 	// Get time spent in seconds
 	double time_spent = (double)(end - start);
 
-	// Get the hours, minutes and seconds
 	int hh = (int) time_spent / 3600;
 	int mm = ((int )time_spent - hh * 3600) / 60;
-	int ss = time_spent - (hh * 3600) - (mm * 60);
-
-	// Print hours minutes and second to screen
-	printf("Time taken: ["CYAN"%5.10lf"RESET"] --> "CYAN"%d"RESET" hrs : "CYAN"%d"RESET" mins : "CYAN"%d"RESET" secs\n\n", time_spent, hh, mm, ss);
-
+	int ss = time_spent - hh * 3600 - mm * 60;
+	
+	printf("\n\nTotal Execution Time: ["CYAN"%5.10lf"RESET"] --> "CYAN"%d"RESET" hrs : "CYAN"%d"RESET" mins : "CYAN"%d"RESET" secs\n\n", time_spent, hh, mm, ss);
 }
 /**
  * Function to carry out the signum function 

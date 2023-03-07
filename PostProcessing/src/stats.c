@@ -36,7 +36,7 @@ void RealSpaceStats(int s) {
 	int gsl_status;
 	const long int Ny = sys_vars->N[0];
 	const long int Nx = sys_vars->N[1];
-	#if defined(__VEL_INC_STATS) || defined(__VORT_INC_STATS) || defined(__VORT_STR_FUNC_STATS) || defined(__VORT_RADIAL_STR_FUNC_STATS) || defined(__VEL_STR_FUNC_STATS) || defined(__VEL_GRAD_STATS) || defined(__VORT_GRAD_STATS)  || defined(__MIXED_VEL_STR_FUNC) || defined(__MIXED_VORT_STR_FUNC)
+	#if defined(__VEL_INC_STATS) || defined(__VORT_INC_STATS) || defined(__VORT_STR_FUNC_STATS) || defined(__VORT_RADIAL_STR_FUNC_STATS) || defined(__VEL_STR_FUNC_STATS) || defined(__VEL_GRAD_STATS) || defined(__VORT_GRAD_STATS)  || defined(__MIXED_VEL_STR_FUNC_STAS) || defined(__MIXED_VORT_STR_FUNC_STATS)
 	int r;
 	const long int Nx_Fourier = sys_vars->N[1] / 2 + 1;
 	double vel_long_increment, vel_trans_increment, mixed_vel_increment;
@@ -45,12 +45,10 @@ void RealSpaceStats(int s) {
 	double vort_long_increment_abs, vort_trans_increment_abs;
 	int N_max_incr = (int) (GSL_MIN(Ny, Nx) / 2);
 	double norm_fac = 1.0 / (Ny * Nx);
-	double radial_pow_p[STR_FUNC_MAX_POW] = {0.1, 0.5, 1.0, 1.5, 2.0, 2.5};
-	double pow_p[STR_FUNC_MAX_POW] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
+	double radial_pow_p[8] = {0.1, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5};
+	double pow_p[8] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0};
 	double delta_x = 2.0 * M_PI / Nx;
 	double delta_y = 2.0 * M_PI / Ny;
-	#endif
-	#if defined(__VORT_RADIAL_STR_FUNC_STATS)
 	int tmp_r, indx_r;
 	double vort_rad_increment, vort_rad_increment_abs;
 	#endif
@@ -308,10 +306,10 @@ void RealSpaceStats(int s) {
 							vort_trans_increment_abs += pow(fabs(run_data->w[((i + r_inc) % Ny) * Nx + j] - run_data->w[i * Nx + j]), 2.0 * pow_p[p - 1]);
 							#endif
 							if (p == 3) {
-								#if defined(__MIXED_VEL_STR_FUNC)
+								#if defined(__MIXED_VEL_STR_FUNC_STAS)
 								mixed_vel_increment += (run_data->u[SYS_DIM * (i * Nx + ((j + r_inc) % Nx)) + 0] - run_data->u[SYS_DIM * (i * Nx + j) + 0]) * pow(run_data->u[SYS_DIM * (i * Nx + ((j + r_inc) % Nx)) + 1] - run_data->u[SYS_DIM * (i * Nx + j) + 1], 2.0);
 								#endif
-								#if defined(__MIXED_VORT_STR_FUNC)
+								#if defined(__MIXED_VORT_STR_FUNC_STATS)
 								mixed_vort_increment += (run_data->u[SYS_DIM * (i * Nx + ((j + r_inc) % Nx)) + 0] - run_data->u[SYS_DIM * (i * Nx + j) + 0]) * pow(run_data->w[i * Nx + ((j + r_inc) % Nx)] - run_data->w[i * Nx + j], 2.0);
 								#endif	
 							}
@@ -332,11 +330,11 @@ void RealSpaceStats(int s) {
 					stats_data->w_str_func_abs[1][p - 1][r_inc - 1] += vort_trans_increment_abs * norm_fac;
 					#endif
 					if (p == 3) {
-						#if defined(__MIXED_VEL_STR_FUNC)
-						stats_data->vel_mixed_str_func[r_inc - 1] += mixed_vel_increment * norm_fac;
+						#if defined(__MIXED_VEL_STR_FUNC_STAS)
+						stats_data->mxd_u_str_func[r_inc - 1] += mixed_vel_increment * norm_fac;
 						#endif
-						#if defined(__MIXED_VORT_STR_FUNC)
-						stats_data->vort_mixed_str_func[r_inc - 1] += mixed_vort_increment * norm_fac;
+						#if defined(__MIXED_VORT_STR_FUNC_STATS)
+						stats_data->mxd_w_str_func[r_inc - 1] += mixed_vort_increment * norm_fac;
 						#endif
 					}
 				}
@@ -926,7 +924,7 @@ void WriteStatsToFile(void) {
     // Normal Structure functions
    	for (int p = 0; p < STR_FUNC_MAX_POW; ++p) {
    		for (int r = 0; r < N_max_incr; ++r) {
-	   		vel_str_funcs[p * (N_max_incr) + r] = stats_data->u_str_func[0][p][r] / sys_vars->num_snaps;
+	   		vel_str_funcs[p * (N_max_incr) + r] = stats_data->u_str_func[0][p][r] ; /// sys_vars->num_snaps;
    		}
    	}
    	dset_dims_2d[0] = STR_FUNC_MAX_POW;
@@ -939,7 +937,7 @@ void WriteStatsToFile(void) {
     // Absolute Structure functions
    	for (int p = 0; p < STR_FUNC_MAX_POW; ++p) {
    		for (int r = 0; r < N_max_incr; ++r) {
-	   		vel_str_funcs[p * (N_max_incr) + r] = stats_data->u_str_func_abs[0][p][r] / sys_vars->num_snaps;
+	   		vel_str_funcs[p * (N_max_incr) + r] = stats_data->u_str_func_abs[0][p][r] ; /// sys_vars->num_snaps;
    		}
    	}
 	status = H5LTmake_dataset(file_info->output_file_handle, "AbsoluteVelocityLongitudinalStructureFunctions", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, vel_str_funcs);
@@ -952,7 +950,7 @@ void WriteStatsToFile(void) {
     // Normal structure functions
     for (int p = 0; p < STR_FUNC_MAX_POW; ++p) {
    		for (int r = 0; r < N_max_incr; ++r) {
-	   		vel_str_funcs[p * (N_max_incr) + r] = stats_data->u_str_func[1][p][r] / sys_vars->num_snaps;
+	   		vel_str_funcs[p * (N_max_incr) + r] = stats_data->u_str_func[1][p][r] ; /// sys_vars->num_snaps;
    		}
    	}
    	status = H5LTmake_dataset(file_info->output_file_handle, "VelocityTransverseStructureFunctions", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, vel_str_funcs);
@@ -963,7 +961,7 @@ void WriteStatsToFile(void) {
     // Absolute structure functions
     for (int p = 0; p < STR_FUNC_MAX_POW; ++p) {
    		for (int r = 0; r < N_max_incr; ++r) {
-	   		vel_str_funcs[p * (N_max_incr) + r] = stats_data->u_str_func_abs[1][p][r] / sys_vars->num_snaps;
+	   		vel_str_funcs[p * (N_max_incr) + r] = stats_data->u_str_func_abs[1][p][r] ; /// sys_vars->num_snaps;
    		}
    	}
    	status = H5LTmake_dataset(file_info->output_file_handle, "AbsoluteVelocityTransverseStructureFunctions", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, vel_str_funcs);
@@ -985,7 +983,7 @@ void WriteStatsToFile(void) {
     // Normal Structure functions
    	for (int p = 0; p < STR_FUNC_MAX_POW; ++p) {
    		for (int r = 0; r < N_max_incr; ++r) {
-	   		vort_str_funcs[p * (N_max_incr) + r] = stats_data->w_str_func[0][p][r] / sys_vars->num_snaps;
+	   		vort_str_funcs[p * (N_max_incr) + r] = stats_data->w_str_func[0][p][r] ; /// sys_vars->num_snaps;
    		}
    	}
    	dset_dims_2d[0] = STR_FUNC_MAX_POW;
@@ -998,7 +996,7 @@ void WriteStatsToFile(void) {
     // Absolute Structure functions
    	for (int p = 0; p < STR_FUNC_MAX_POW; ++p) {
    		for (int r = 0; r < N_max_incr; ++r) {
-	   		vort_str_funcs[p * (N_max_incr) + r] = stats_data->w_str_func_abs[0][p][r] / sys_vars->num_snaps;
+	   		vort_str_funcs[p * (N_max_incr) + r] = stats_data->w_str_func_abs[0][p][r] ; /// sys_vars->num_snaps;
    		}
    	}
 	status = H5LTmake_dataset(file_info->output_file_handle, "AbsoluteVorticityLongitudinalStructureFunctions", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, vort_str_funcs);
@@ -1011,7 +1009,7 @@ void WriteStatsToFile(void) {
     // Normal structure functions
     for (int p = 0; p < STR_FUNC_MAX_POW; ++p) {
    		for (int r = 0; r < N_max_incr; ++r) {
-	   		vort_str_funcs[p * (N_max_incr) + r] = stats_data->w_str_func[1][p][r] / sys_vars->num_snaps;
+	   		vort_str_funcs[p * (N_max_incr) + r] = stats_data->w_str_func[1][p][r] ; /// sys_vars->num_snaps;
    		}
    	}
    	status = H5LTmake_dataset(file_info->output_file_handle, "VorticityTransverseStructureFunctions", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, vort_str_funcs);
@@ -1022,7 +1020,7 @@ void WriteStatsToFile(void) {
     // Absolute structure functions
     for (int p = 0; p < STR_FUNC_MAX_POW; ++p) {
    		for (int r = 0; r < N_max_incr; ++r) {
-	   		vort_str_funcs[p * (N_max_incr) + r] = stats_data->w_str_func_abs[1][p][r] / sys_vars->num_snaps;
+	   		vort_str_funcs[p * (N_max_incr) + r] = stats_data->w_str_func_abs[1][p][r] ; /// sys_vars->num_snaps;
    		}
    	}
    	status = H5LTmake_dataset(file_info->output_file_handle, "AbsoluteVorticityTransverseStructureFunctions", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, vort_str_funcs);
@@ -1059,7 +1057,7 @@ void WriteStatsToFile(void) {
 
    				shell_indx = (int) round(sqrt(r_x * r_x + r_y * r_y));
 
-		   		vort_radial_str_funcs[p * (max_shell_indx) + shell_indx] += stats_data->w_radial_str_func[p][indx] / sys_vars->num_snaps / (2.0 * M_PI * shell_indx);
+		   		vort_radial_str_funcs[p * (max_shell_indx) + shell_indx] += stats_data->w_radial_str_func[p][indx] ; /// sys_vars->num_snaps / (2.0 * M_PI * shell_indx);
 		   	}
    		}
    	}
@@ -1102,7 +1100,7 @@ void WriteStatsToFile(void) {
 
    				shell_indx = (int) round(sqrt(r_x * r_x + r_y * r_y));
 
-		   		vort_radial_str_funcs_abs[p * (max_shell_indx) + shell_indx] += stats_data->w_radial_str_func_abs[p][indx] / sys_vars->num_snaps / (2.0 * M_PI * shell_indx);
+		   		vort_radial_str_funcs_abs[p * (max_shell_indx) + shell_indx] += stats_data->w_radial_str_func_abs[p][indx] ; /// sys_vars->num_snaps / (2.0 * M_PI * shell_indx);
 		   	}
    		}
    	}
@@ -1168,10 +1166,10 @@ void FreeStatsObjects(void) {
 		fftw_free(stats_data->w_radial_str_func_abs[p - 1]);
 		#endif
 	}
-	#if defined(__MIXED_VEL_STR_FUNC)
+	#if defined(__MIXED_VEL_STR_FUNC_STATS)
 	fftw_free(stats_data->mxd_u_str_func);
 	#endif
-	#if defined(__MIXED_VORT_STR_FUNC)
+	#if defined(__MIXED_VORT_STR_FUNC_STATS)
 	fftw_free(stats_data->mxd_w_str_func);
 	#endif
 	#if defined(__VEL_GRAD_STATS)

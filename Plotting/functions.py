@@ -726,14 +726,18 @@ def import_sys_msr(input_file, sim_data, method = "default"):
             data.taylor_micro = f['TaylorMicroScale'][:]
         if 'ReynoldsNo' in list(f.keys()):
             data.rey_no = f['ReynoldsNo'][:]
-        if 'KolmogorovScale' in list(f.keys()):
-            data.kolm_scale = f['KolmogorovScale'][:]
+        if 'KolmogororScale' in list(f.keys()):
+            data.kolm_scale = f['KolmogororScale'][:]
         if 'IntLengthScale' in list(f.keys()):
             data.int_length_scale = f['IntLengthScale'][:]
         if 'EddyTurnover1' in list(f.keys()):
-            data.eddy_turn_1 = f['EddyTurnover1'][:]
-        if 'EddyTurnover2' in list(f.keys()):
-            data.eddy_turn_2 = f['EddyTurnover2'][:]
+            data.eddy_turnover_1 = f['EddyTurnover1'][:]
+        if 'EddyTurnOver2' in list(f.keys()):
+            data.eddy_turnover_2 = f['EddyTurnOver2'][:]
+        if 'EnergyDissWavenumber' in list(f.keys()):
+            data.enrg_diss_k = f['EnergyDissWavenumber'][:]
+        if 'EnstrophyDissWavenumber' in list(f.keys()):
+            data.enst_diss_k = f['EnstrophyDissWavenumber'][:]
         if 'Time' in list(f.keys()):
             data.time = f['Time'][:]
         if 'TotalTime' in list(f.keys()):

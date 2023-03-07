@@ -473,7 +473,7 @@ void ReadInData(int snap_indx) {
 /**
  * Function to create and open the output file
  */
-void OpenOutputFile(int indx) {
+void OpenOutputFile(void) {
 
 	// Initialize variables
 	herr_t status;
@@ -485,7 +485,9 @@ void OpenOutputFile(int indx) {
 	// --------------------------------
 	if (strcmp(file_info->output_dir, "NONE") != 0) {
 		// Construct pathh
-		OutputFileName(indx);
+		strcpy(file_info->output_file_name, file_info->output_dir);
+		sprintf(file_name, "PostProcessing_HDF_Data_THREADS[%d,%d]_SECTORS[%d,%d]_KFRAC[%1.2lf]_TAG[%s].h5", sys_vars->num_threads, sys_vars->num_fftw_threads, sys_vars->num_k3_sectors, sys_vars->num_k1_sectors, sys_vars->kmax_frac, file_info->output_tag);
+		strcat(file_info->output_file_name, file_name);
 
 		// Print output file path to screen
 		printf("Output File: "CYAN"%s"RESET"\n\n", file_info->output_file_name);	
@@ -495,7 +497,9 @@ void OpenOutputFile(int indx) {
 
 		// Construct path
 		strcpy(file_info->output_dir, file_info->input_dir);
-		OutputFileName(indx);
+		strcpy(file_info->output_file_name, file_info->output_dir);
+		sprintf(file_name, "PostProcessing_HDF_Data_THREADS[%d,%d]_SECTORS[%d,%d]_KFRAC[%1.2lf]_TAG[%s].h5", sys_vars->num_threads, sys_vars->num_fftw_threads, sys_vars->num_k3_sectors, sys_vars->num_k1_sectors, sys_vars->kmax_frac, file_info->output_tag);
+		strcat(file_info->output_file_name, file_name);
 
 		// Print output file path to screen
 		printf("Output File: "CYAN"%s"RESET"\n\n", file_info->output_file_name);
@@ -527,22 +531,22 @@ void OpenOutputFile(int indx) {
  * Function to create the file name given the current check pointing indx
  * @param indx Current checkpoint index
  */
-void OutputFileName(int indx) {
+void CheckPointOutputFileName(int indx) {
 
 	// Tmp array to store intermediate file name path
 	char file_name[1024];
 
 	// Contruct the output filename using the currernt check point info
-	strcpy(file_info->output_file_name, file_info->output_dir);
+	strcpy(file_info->chkpt_file_name, file_info->output_dir);
 	sprintf(file_name, "PostProcessing_HDF_Data_THREADS[%d,%d]_SECTORS[%d,%d]_KFRAC[%1.2lf]_TAG[%s-%d].h5", sys_vars->num_threads, sys_vars->num_fftw_threads, sys_vars->num_k3_sectors, sys_vars->num_k1_sectors, sys_vars->kmax_frac, file_info->output_tag, indx);
-	strcat(file_info->output_file_name, file_name);
+	strcat(file_info->chkpt_file_name, file_name);
 }
 /**
  * Function to write the data for the current snapshot to the file
  * @param t     The current time in the simulaiton 
  * @param snap The current snapshot
  */
-void WriteDataToFile(double t, long int snap, int chk_pt_indx) {
+void WriteDataToFile(double t, long int snap) {
 
 	// Initialize variables
 	char group_name[128];
@@ -563,9 +567,6 @@ void WriteDataToFile(double t, long int snap, int chk_pt_indx) {
 	// -------------------------------
 	// Check for Output File
 	// -------------------------------
-	// Construct the filename using the current check pointing  info
-	OutputFileName(chk_pt_indx);
-
 	// Check if output file exist if not create it
 	if (access(file_info->output_file_name, F_OK) != 0) {
 		file_info->output_file_handle = H5Fcreate(file_info->output_file_name, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
@@ -1250,6 +1251,67 @@ void WriteDataToFile(double t, long int snap, int chk_pt_indx) {
 		exit(1);
 	}
 }
+
+void CreateCheckPointCopy(int snap, int chk_pt_indx) {
+
+	// Initialize variabeles
+	herr_t status;
+	char group_name[64];
+
+	// -------------------------------
+	// Close HDF5 Identifiers
+	// -------------------------------
+	// Construct the filename using the current check pointing  info
+	CheckPointOutputFileName(chk_pt_indx);
+
+	// Check if Check file exist if not create it
+	file_info->chkpt_file_handle = H5Fcreate(file_info->chkpt_file_name, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+	if (file_info->chkpt_file_handle < 0) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to create checkpoint file ["CYAN"%s"RESET"] at: Snap = ["CYAN"%d"RESET"]\n-->> Exiting...\n", file_info->chkpt_file_name, snap);
+		exit(1);
+	}
+
+
+
+	// -------------------------------
+	// Open Output File (ReadOnly)
+	// -------------------------------
+	// Open file with default I/O access properties
+	file_info->output_file_handle = H5Fopen(file_info->output_file_name, H5F_ACC_RDONLY, H5P_DEFAULT);
+	if (file_info->output_file_handle < 0) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to open output file ["CYAN"%s"RESET"] at: Snap = ["CYAN"%d"RESET"]\n-->> Exiting...\n", file_info->output_file_name, snap);
+		exit(1);
+	}
+
+
+	// -------------------------------
+	// Copy Group Contents to Checkpoint File
+	// -------------------------------
+	// Loop through created groups and copy to check point file
+	for (int i = 0; i < snap; ++i) {
+		// Get current groupname
+		sprintf(group_name, "/Snap_%05d", (int)i);
+
+		// Copy group contents to checkpoint file
+		H5Ocopy(file_info->output_file_handle, group_name, file_info->chkpt_file_handle, group_name, H5P_DEFAULT, H5P_DEFAULT);
+	}
+
+	// -------------------------------
+	// Close HDF5 Identifiers
+	// -------------------------------
+	status = H5Fclose(file_info->chkpt_file_handle);
+	status = H5Fclose(file_info->output_file_handle);
+	if (status < 0) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close chkpt file ["CYAN"%s"RESET"] at: Snap = ["CYAN"%d"RESET"]\n-->> Exiting...\n", file_info->chkpt_file_name, snap);
+		exit(1);
+	}
+
+	// -------------------------------
+	// Write Current state to file
+	// -------------------------------
+	// Finally write the current state of the postprocessing computation to file
+	FinalWriteAndClose(file_info->chkpt_file_name);	
+}
 /**
  * Wrapper function used to create a Group for the current iteration in the output HDF5 file 
  * @param  group_name The name of the group - will be the snapshot counter
@@ -1361,7 +1423,7 @@ hid_t CreateComplexDatatype(void) {
 /**
 * Wrapper function for writing any remaining data to output file
 */
-void FinalWriteAndClose(int indx) {
+void FinalWriteAndClose(char* filename) {
 
 	// Initialize variables
 	herr_t status;
@@ -1375,22 +1437,19 @@ void FinalWriteAndClose(int indx) {
 	// -------------------------------
 	// Check for Output File
 	// -------------------------------
-	// Construct the filename using the current check pointing  info
-	OutputFileName(indx);
-
 	// Check if output file exist if not create it
 	if (access(file_info->output_file_name, F_OK) != 0) {
-		file_info->output_file_handle = H5Fcreate(file_info->output_file_name, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+		file_info->output_file_handle = H5Fcreate(filename, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
 		if (file_info->output_file_handle < 0) {
-			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to create output file ["CYAN"%s"RESET"] at final write\n-->> Exiting...\n", file_info->output_file_name);
+			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to create output file ["CYAN"%s"RESET"] at final write\n-->> Exiting...\n", filename);
 			exit(1);
 		}
 	}
 	else {
 		// Open file with default I/O access properties
-		file_info->output_file_handle = H5Fopen(file_info->output_file_name, H5F_ACC_RDWR, H5P_DEFAULT);
+		file_info->output_file_handle = H5Fopen(filename, H5F_ACC_RDWR, H5P_DEFAULT);
 		if (file_info->output_file_handle < 0) {
-			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to open output file ["CYAN"%s"RESET"] at final write\n-->> Exiting...\n", file_info->output_file_name);
+			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to open output file ["CYAN"%s"RESET"] at final write\n-->> Exiting...\n", filename);
 			exit(1);
 		}
 	}
@@ -1715,7 +1774,7 @@ void FinalWriteAndClose(int indx) {
     // -------------------------------
     // status = H5Fclose(file_info->output_file_handle);
     // if (status < 0) {
-    // 	fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close output file ["CYAN"%s"RESET"] at final write\n-->> Exiting...\n", file_info->output_file_name);
+    // 	fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close output file ["CYAN"%s"RESET"] at final write\n-->> Exiting...\n", filename);
     // 	exit(1);
     // }
 }

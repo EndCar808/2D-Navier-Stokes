@@ -26,10 +26,11 @@
 /**
  * Function to compute the system measurables such as energy, enstrophy, palinstrophy, helicity, energy and enstrophy dissipation rates, and spectra at once on the local processes for the current timestep
  * @param t 		The current time in the simulation
- * @param iter 		The index in the system arrays for the current timestep
+ * @param iter      The current iteration of the simulation
+ * @param save_iter The index in the system arrays for the current timestep
  * @param Int_data 	Struct containing the integration varaiables needed for the nonlinear term function
  */
-void ComputeSystemMeasurables(double t, int iter, int tot_iter, Int_data_struct* Int_data) {
+void ComputeSystemMeasurables(double t, int iter, int save_iter, int tot_iter, Int_data_struct* Int_data) {
 
 	// Initialize variables
 	int tmp;
@@ -51,23 +52,25 @@ void ComputeSystemMeasurables(double t, int iter, int tot_iter, Int_data_struct*
     double tmp_deriv, tmp_diss;
     #endif
     #if defined(__PHASE_SYNC)
-    double tmp_order;
+    fftw_complex tmp_order;
     #endif
 
     // Update counter
-    sys_vars->num_sys_msr_counts++;
+    if (iter >= sys_vars->trans_iters) {
+    	sys_vars->num_sys_msr_counts++;
+    }
 
 
     // Record the initial time
     #if defined(__TIME)
     if (!(sys_vars->rank)) {
-		run_data->time[iter]         = t;
+		run_data->time[save_iter]         = t;
 		run_data->tot_time[tot_iter] = t;
     }
 	#endif
 
     // If adaptive stepping check if within memory limits
-    if (((iter >= sys_vars->num_print_steps) || (tot_iter >= sys_vars->num_tot_print_steps))  && (iter % 100 == 0)) {
+    if (((save_iter >= sys_vars->num_print_steps) || (tot_iter >= sys_vars->num_tot_print_steps))  && (save_iter % 100 == 0)) {
     	// Print warning to screen if we have exceeded the memory limits for the system measurables arrays
     	printf("\n["MAGENTA"WARNING"RESET"] --- Unable to write system measures at Indx: [%d] t: [%lf] ---- Number of intergration steps is now greater then memory allocated\n", iter, t);
     }
@@ -188,9 +191,11 @@ void ComputeSystemMeasurables(double t, int iter, int tot_iter, Int_data_struct*
 			#endif
 
 			// Record the time averaged amplitudes
-			#if defined(__AMPS_T_AVG)
-			run_data->a_k_t_avg[indx] += cabs(run_data->w_hat[indx]);
-			#endif
+			if (iter >= sys_vars->trans_iters) {
+				#if defined(__AMPS_T_AVG)
+				run_data->a_k_t_avg[indx] += cabs(run_data->w_hat[indx]);
+				#endif				
+			}
 
 			#if defined(__ENRG_SPECT) || defined(__ENST_SPECT) || defined(__ENRG_FLUX_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__PHASE_SYNC) || defined(__ENRG_SPECT_T_AVG) || defined(__ENST_SPECT_T_AVG) || defined(__ENRG_FLUX_SPECT_T_AVG) || defined(__ENST_FLUX_SPECT_T_AVG)
 			// Get spectrum index -> spectrum is computed by summing over the energy contained in concentric annuli in wavenumber space
@@ -322,12 +327,6 @@ void ComputeSystemMeasurables(double t, int iter, int tot_iter, Int_data_struct*
 					#if defined(__ENST_SPECT)
 					run_data->enst_spect[spec_indx] += cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));    // const_fac * norm_fac *
 					#endif
-					#if defined(__ENRG_SPECT_T_AVG)
-					run_data->enrg_spect_t_avg[spec_indx] += cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * (1.0 / k_sqr);    // const_fac * norm_fac *
-					#endif
-					#if defined(__ENST_SPECT_T_AVG)
-					run_data->enst_spect_t_avg[spec_indx] += cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));    // const_fac * norm_fac *
-					#endif
 					#if defined(__ENST_FLUX_SPECT)
 					run_data->d_enst_dt_spect[spec_indx] += tmp_deriv - tmp_diss;
 					run_data->enst_diss_spect[spec_indx] += tmp_diss;
@@ -338,12 +337,20 @@ void ComputeSystemMeasurables(double t, int iter, int tot_iter, Int_data_struct*
 					run_data->enrg_diss_spect[spec_indx] += tmp_diss / k_sqr;
 					run_data->enrg_flux_spect[spec_indx] += tmp_deriv / k_sqr;
 					#endif
-					#if defined(__ENST_FLUX_SPECT_T_AVG)
-					run_data->enst_flux_spect_t_avg[spec_indx] += tmp_deriv;
-					#endif
-					#if defined(__ENRG_FLUX_SPECT_T_AVG)
-					run_data->enrg_flux_spect_t_avg[spec_indx] += tmp_deriv / k_sqr;
-					#endif
+					if (iter >= sys_vars->trans_iters) {
+						#if defined(__ENRG_SPECT_T_AVG)
+						run_data->enrg_spect_t_avg[spec_indx] += cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * (1.0 / k_sqr);    // const_fac * norm_fac *
+						#endif
+						#if defined(__ENST_SPECT_T_AVG)
+						run_data->enst_spect_t_avg[spec_indx] += cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));    // const_fac * norm_fac *
+						#endif
+						#if defined(__ENST_FLUX_SPECT_T_AVG)
+						run_data->enst_flux_spect_t_avg[spec_indx] += tmp_deriv;
+						#endif
+						#if defined(__ENRG_FLUX_SPECT_T_AVG)
+						run_data->enrg_flux_spect_t_avg[spec_indx] += tmp_deriv / k_sqr;
+						#endif
+					}
 				}
 				else {
 					// Update the spectra sums for the current mode
@@ -352,12 +359,6 @@ void ComputeSystemMeasurables(double t, int iter, int tot_iter, Int_data_struct*
 					#endif
 					#if defined(__ENST_SPECT)
 					run_data->enst_spect[spec_indx] += 2.0 * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));    // const_fac * norm_fac *
-					#endif
-					#if defined(__ENRG_SPECT_T_AVG)
-					run_data->enrg_spect_t_avg[spec_indx] += 2.0 * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * (1.0 / k_sqr);    // const_fac * norm_fac *
-					#endif
-					#if defined(__ENST_SPECT_T_AVG)
-					run_data->enst_spect_t_avg[spec_indx] += 2.0 * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));    // const_fac * norm_fac *
 					#endif
 					#if defined(__ENST_FLUX_SPECT)
 					run_data->d_enst_dt_spect[spec_indx] += 2.0 * (tmp_deriv - tmp_diss);
@@ -369,12 +370,20 @@ void ComputeSystemMeasurables(double t, int iter, int tot_iter, Int_data_struct*
 					run_data->enrg_diss_spect[spec_indx] += 2.0 * tmp_diss / k_sqr;
 					run_data->enrg_flux_spect[spec_indx] += 2.0 * tmp_deriv / k_sqr;
 					#endif
-					#if defined(__ENST_FLUX_SPECT_T_AVG)
-					run_data->enst_flux_spect_t_avg[spec_indx] += 2.0 * tmp_deriv;
-					#endif
-					#if defined(__ENRG_FLUX_SPECT_T_AVG)
-					run_data->enrg_flux_spect_t_avg[spec_indx] += 2.0 * tmp_deriv / k_sqr;
-					#endif
+					if (iter >= sys_vars->trans_iters) {
+						#if defined(__ENRG_SPECT_T_AVG)
+						run_data->enrg_spect_t_avg[spec_indx] += 2.0 * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * (1.0 / k_sqr);    // const_fac * norm_fac *
+						#endif
+						#if defined(__ENST_SPECT_T_AVG)
+						run_data->enst_spect_t_avg[spec_indx] += 2.0 * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));    // const_fac * norm_fac *
+						#endif
+						#if defined(__ENST_FLUX_SPECT_T_AVG)
+						run_data->enst_flux_spect_t_avg[spec_indx] += 2.0 * tmp_deriv;
+						#endif
+						#if defined(__ENRG_FLUX_SPECT_T_AVG)
+						run_data->enrg_flux_spect_t_avg[spec_indx] += 2.0 * tmp_deriv / k_sqr;
+						#endif
+					}
 				}
 			}
 			else {
@@ -813,7 +822,7 @@ void InitializeSystemMeasurables(Int_data_struct* Int_data) {
 	// ----------------------------
 	// Get Measurables of the ICs
 	// ----------------------------
-	ComputeSystemMeasurables(0.0, 0, 0, Int_data);
+	ComputeSystemMeasurables(0.0, 0, 0, 0, Int_data);
 }
 /**
  * Function used to compute the energy spectrum of the current iteration. The energy spectrum is defined as all(sum) of the energy contained in concentric annuli in
