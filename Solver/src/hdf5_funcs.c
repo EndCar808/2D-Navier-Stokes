@@ -107,7 +107,6 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 	}
 	#endif
 
-
 	// //////////////////////////////
 	// / Write Initial Condtions
 	// //////////////////////////////
@@ -469,7 +468,7 @@ void GetOutputDirPath(void) {
 	char sys_type[64];
 	char solv_type[64];
 	char model_type[64];
-	char tmp_path[512];
+	char tmp_path[1024];
 	char file_data[512];  
 	struct stat st = {0};	// this is used to check whether the output directories exist or not.
 
@@ -488,9 +487,9 @@ void GetOutputDirPath(void) {
 		}
 	}
 
-	////////////////////////////////////////////
+	// //////////////////////////////////////////
 	// Check if Output File Only is Requested
-	////////////////////////////////////////////
+	// //////////////////////////////////////////
 	if (file_info->file_only) {
 		// Update to screen that file only output option is selected
 		printf("\n["YELLOW"NOTE"RESET"] --- File only output option selected...\n");
@@ -529,22 +528,20 @@ void GetOutputDirPath(void) {
 		// -------------------------------------
 		// Construct file label from simulation data
 		#if defined(PHASE_ONLY) || defined(PHASE_ONLY_FXD_AMP)
-		sprintf(file_data, "_SIM[%s-%s-%s]_N[%ld,%ld]_T[%1.1lf,%g,%1.3lf]_SLOPE[%1.3lf]_CFL[%1.2lf]_FORC[%s,%d,%g]_u0[%s].h5", 
+		sprintf(file_data, "_SIM[%s-%s-%s]_N[%ld,%ld]_T[%1.1lf,%g,%1.3lf]_SLOPE[%1.3lf]_FORC[%s,%d,%g]_u0[%s].h5", 
 											sys_type, solv_type, model_type, 
 											sys_vars->N[0], sys_vars->N[1], 
 											sys_vars->t0, sys_vars->dt, sys_vars->T, 
 											sys_vars->PO_SLOPE,
-											sys_vars->CFL_CONST,
 											sys_vars->forcing, sys_vars->force_k, sys_vars->force_scale_var,
 											sys_vars->u0);
 		#else
-		sprintf(file_data, "_SIM[%s-%s-%s]_N[%ld,%ld]_T[%1.1lf,%g,%1.3lf]_NU[%g,%d,%1.1lf]_DRAG[%g,%g,%d,%1.1lf]_CFL[%1.2lf]_FORC[%s,%d,%g]_u0[%s].h5", 
+		sprintf(file_data, "_SIM[%s-%s-%s]_N[%ld,%ld]_T[%1.1lf,%g,%1.3lf]_NU[%g,%d,%1.1lf]_DRAG[%g,%g,%d,%1.1lf]_FORC[%s,%d,%g]_u0[%s].h5", 
 											sys_type, solv_type, model_type, 
 											sys_vars->N[0], sys_vars->N[1], 
 											sys_vars->t0, sys_vars->dt, sys_vars->T, 
 											sys_vars->NU, sys_vars->HYPER_VISC_FLAG, sys_vars->HYPER_VISC_POW,
 											sys_vars->EKMN_ALPHA_LOW_K, sys_vars->EKMN_ALPHA_HIGH_K, sys_vars->EKMN_DRAG_FLAG, sys_vars->EKMN_DRAG_POW,
-											sys_vars->CFL_CONST,
 											sys_vars->forcing, sys_vars->force_k, sys_vars->force_scale_var,
 											sys_vars->u0);
 		#endif
@@ -553,9 +550,9 @@ void GetOutputDirPath(void) {
 		// Construct File Paths
 		// ---------------------------------- 
 		// Construct main file path
-		strcpy(tmp_path, file_info->output_dir);
+		strncpy(tmp_path, file_info->output_dir, 1024);
 		strcat(tmp_path, "Main_HDF_Data"); 
-		strcpy(file_info->output_file_name, tmp_path); 
+		strncpy(file_info->output_file_name, tmp_path, 1024); 
 		strcat(file_info->output_file_name, file_data);
 		if ( !(sys_vars->rank) ) {
 			printf("\nMain Output File: "CYAN"%s"RESET"\n\n", file_info->output_file_name);
@@ -564,9 +561,9 @@ void GetOutputDirPath(void) {
 		#if defined(__ENST_SPECT) || defined(__ENRG_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__ENRG_FLUX_SPECT)
 		if ( !(sys_vars->rank) ) {
 			// Construct Spectra file path
-			strcpy(tmp_path, file_info->output_dir);
+			strncpy(tmp_path, file_info->output_dir, 1024);
 			strcat(tmp_path, "Spectra_HDF_Data"); 
-			strcpy(file_info->spectra_file_name, tmp_path); 
+			strncpy(file_info->spectra_file_name, tmp_path, 1024); 
 			strcat(file_info->spectra_file_name, file_data);
 			printf("Spectra Output File: "CYAN"%s"RESET"\n\n", file_info->spectra_file_name);
 		}	
@@ -575,9 +572,9 @@ void GetOutputDirPath(void) {
 		#if defined(__PHASE_SYNC)
 		if ( !(sys_vars->rank) ) {
 			// Construct Phase sync file path
-			strcpy(tmp_path, file_info->output_dir);
+			strncpy(tmp_path, file_info->output_dir, 1024);
 			strcat(tmp_path, "PhaseSync_HDF_Data"); 
-			strcpy(file_info->sync_file_name, tmp_path); 
+			strncpy(file_info->sync_file_name, tmp_path, 1024); 
 			strcat(file_info->sync_file_name, file_data);
 			printf("Phase Sync Output File: "CYAN"%s"RESET"\n\n", file_info->sync_file_name);
 		}	
@@ -588,11 +585,11 @@ void GetOutputDirPath(void) {
 		// Get Simulation Details
 		// ----------------------------------
 		#if defined(__NAVIER)
-		sprintf(sys_type, "%s", "NAVIER");
+		sprintf(sys_type, "%s", "NAV");
 		#elif defined(__EULER)
-		sprintf(sys_type, "%s", "EULER");
+		sprintf(sys_type, "%s", "EUL");
 		#else
-		sprintf(sys_type, "%s", "SYS_UNKN");
+		sprintf(sys_type, "%s", "UNKN");
 		#endif
 		#if defined(__RK4)
 		sprintf(solv_type, "%s", "RK4");
@@ -605,10 +602,10 @@ void GetOutputDirPath(void) {
 		#elif defined(__DPRK5CN)
 		sprintf(solv_type, "%s", "DP5CN");
 		#else 
-		sprintf(solv_type, "%s", "SOLV_UKN");
+		sprintf(solv_type, "%s", "SOLVUKN");
 		#endif
 		#if defined(__PHASE_ONLY)
-		sprintf(model_type, "%s", "PHASEONLY");
+		sprintf(model_type, "%s", "PO");
 		#else
 		sprintf(model_type, "%s", "FULL");
 		#endif
@@ -618,23 +615,21 @@ void GetOutputDirPath(void) {
 		// ----------------------------------
 		// Construct file label from simulation data
 		#if defined(PHASE_ONLY) || defined(PHASE_ONLY_FXD_AMP)
-		sprintf(file_data, "SIM_DATA_%s_%s_%s_N[%ld,%ld]_T[%1.1lf,%g,%1.3lf]_SLOPE[%1.3lf]_CFL[%1.2lf]_FORC[%s,%d,%g]_u0[%s]_TAG[%s]/", 
+		sprintf(file_data, "%s_%s_%s_N[%ld,%ld]_T[%1.1lf,%g,%1.3lf]_SLOPE[%1.3lf]_FORC[%s,%d,%g]_u0[%s]_TAG[%s]/", 
 											sys_type, solv_type, model_type, 
 											sys_vars->N[0], sys_vars->N[1], 
 											sys_vars->t0, sys_vars->dt, sys_vars->T, 
 											sys_vars->PO_SLOPE,
-											sys_vars->CFL_CONST,
 											sys_vars->forcing, sys_vars->force_k, sys_vars->force_scale_var,
 											sys_vars->u0,
 											file_info->output_tag);
 		#else
-		sprintf(file_data, "SIM_DATA_%s_%s_%s_N[%ld,%ld]_T[%1.1lf,%g,%1.3lf]_NU[%g,%d,%1.1lf]_DRAG[%g,%g,%d,%1.1lf]_CFL[%1.2lf]_FORC[%s,%d,%g]_u0[%s]_TAG[%s]/", 
+		sprintf(file_data, "%s_%s_%s_N[%ld,%ld]_T[%1.1lf,%g,%1.3lf]_NU[%g,%d,%1.1lf]_DRAG[%g,%g,%d,%1.1lf]_FORC[%s,%d,%g]_u0[%s]_TAG[%s]/", 
 											sys_type, solv_type, model_type, 
 											sys_vars->N[0], sys_vars->N[1], 
 											sys_vars->t0, sys_vars->dt, sys_vars->T, 
 											sys_vars->NU, sys_vars->HYPER_VISC_FLAG, sys_vars->HYPER_VISC_POW,
 											sys_vars->EKMN_ALPHA_LOW_K, sys_vars->EKMN_ALPHA_HIGH_K, sys_vars->EKMN_DRAG_FLAG, sys_vars->EKMN_DRAG_POW,
-											sys_vars->CFL_CONST,
 											sys_vars->forcing, sys_vars->force_k, sys_vars->force_scale_var,
 											sys_vars->u0,
 											file_info->output_tag);
@@ -659,13 +654,13 @@ void GetOutputDirPath(void) {
 		// Construct File Paths
 		// ---------------------------------- 
 		// Construct main file path
-		strcpy(file_info->output_file_name, file_info->output_dir); 
+		strncpy(file_info->output_file_name, file_info->output_dir, 1024); 
 		strcat(file_info->output_file_name, "Main_HDF_Data.h5");
 		if ( !(sys_vars->rank) ) {
 			printf("\nMain Output File: "CYAN"%s"RESET"\n\n", file_info->output_file_name);
 		}
 		// Construct system measures file
-		strcpy(file_info->sys_msr_file_name, file_info->output_dir); 
+		strncpy(file_info->sys_msr_file_name, file_info->output_dir, 1024); 
 		strcat(file_info->sys_msr_file_name, "SystemMeasures_HDF_Data.h5");
 		if ( !(sys_vars->rank) ) {
 			printf("\nSystem Measures File: "CYAN"%s"RESET"\n\n", file_info->sys_msr_file_name);
@@ -674,7 +669,7 @@ void GetOutputDirPath(void) {
 		#if defined(__ENST_SPECT) || defined(__ENRG_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__ENRG_FLUX_SPECT)
 		if ( !(sys_vars->rank) ) {
 			// Construct spectra file path
-			strcpy(file_info->spectra_file_name, file_info->output_dir); 
+			strncpy(file_info->spectra_file_name, file_info->output_dir, 1024); 
 			strcat(file_info->spectra_file_name, "Spectra_HDF_Data.h5");
 			printf("Spectra Output File: "CYAN"%s"RESET"\n\n", file_info->spectra_file_name);
 		}	
@@ -683,7 +678,7 @@ void GetOutputDirPath(void) {
 		#if defined(__PHASE_SYNC)
 		if ( !(sys_vars->rank) ) {
 			// Construct phase sync file path
-			strcpy(file_info->sync_file_name, file_info->output_dir); 
+			strncpy(file_info->sync_file_name, file_info->output_dir, 1024); 
 			strcat(file_info->sync_file_name, "PhaseSync_HDF_Data.h5");
 			printf("Phase Sync Output File: "CYAN"%s"RESET"\n\n", file_info->sync_file_name);
 		}	
@@ -691,7 +686,7 @@ void GetOutputDirPath(void) {
 		#if defined(__STATS)
 		if ( !(sys_vars->rank) ) {
 			// Construct phase sync file path
-			strcpy(file_info->stats_file_name, file_info->output_dir); 
+			strncpy(file_info->stats_file_name, file_info->output_dir, 1024); 
 			strcat(file_info->stats_file_name, "Stats_HDF_Data.h5");
 			printf("Stats Output File: "CYAN"%s"RESET"\n\n", file_info->stats_file_name);
 		}	
@@ -2113,7 +2108,7 @@ void OpenTestingFile(void) {
 	// Construct File Paths
 	// ---------------------------------- 
 	// Construct main file path
-	strcpy(file_info->test_file_name, file_info->output_dir);
+	strncpy(file_info->test_file_name, file_info->output_dir, 1024);
 	strcat(file_info->test_file_name, file_data); 
 
 	// ----------------------------------

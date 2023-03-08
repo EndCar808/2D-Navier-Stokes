@@ -49,10 +49,10 @@ int GetCMLArgs(int argc, char** argv) {
 	// Initialize Default Values
 	// -------------------------------
 	// Input file path
-	strncpy(file_info->input_file_name, "NONE", 512);
-	strncpy(file_info->input_dir, "./Data/Solver/InitialConditions/", 512);  // Set default to Initial Conditions folder
+	strncpy(file_info->input_file_name, "NONE", 1024);
+	strncpy(file_info->input_dir, "./Data/Solver/InitialConditions/", 1024);  // Set default to Initial Conditions folder
 	// Output file directory
-	strncpy(file_info->output_dir, "./Data/Tmp/", 512);  // Set default output directory to the Tmp folder
+	strncpy(file_info->output_dir, "./Data/Tmp/", 1024);  // Set default output directory to the Tmp folder
 	strncpy(file_info->output_tag, "No-Tag", 64);
 	file_info->file_only = 0; // used to indicate if output file should be file only i.e., not output folder
 	// System dimensions
@@ -97,7 +97,7 @@ int GetCMLArgs(int argc, char** argv) {
 			case 'o':
 				if (output_dir_flag == 0) {
 					// Read in location of output directory
-					strncpy(file_info->output_dir, optarg, 512);
+					strncpy(file_info->output_dir, optarg, 1024);
 					output_dir_flag++;
 				}
 				else if (output_dir_flag == 1) {
@@ -531,7 +531,7 @@ int GetCMLArgs(int argc, char** argv) {
 				}
 				break;
 			case 'z':
-				strncpy((file_info->input_file_name), optarg, 512);	// copy the input file name given as a command line argument
+				strncpy((file_info->input_file_name), optarg, 1024);	// copy the input file name given as a command line argument
 				if ( access((file_info->input_file_name), F_OK) != 0) {
 					fprintf(stderr, "\n["RED"ERROR"RESET"] Parsing of Command Line Arguements Failed: The input file [%s] cannot be found, please ensure correct path to file is specified.\n", (file_info->input_file_name));		
 					exit(1);					
@@ -574,12 +574,12 @@ void PrintSimulationDetails(int argc, char** argv, double sim_time) {
 	char solv_type[64];
 	char model_type[64];
 	char dealias_type[64];
-	char file_path[512];
+	char file_path[1024];
 
 	// -------------------------------
 	// Open File
 	// -------------------------------
-	strcpy(file_path, file_info->output_dir);
+	strncpy(file_path, file_info->output_dir, 1024);
 	strcat(file_path, "SimulationDetails.txt");
 	sim_file = fopen(file_path, "w");
 

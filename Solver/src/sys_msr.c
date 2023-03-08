@@ -424,21 +424,23 @@ void ComputeSystemMeasurables(double t, int iter, int save_iter, int tot_iter, I
 	// Get mean flow in the x direction
 	for (int i = 0; i < Nx_Fourier; ++i) {
 		for (int j = 0; j < local_Ny; ++j) {
-			u_z = I * ((double )run_data->k[1][j]) * run_data->w_hat[j * Nx_Fourier + i] / k_sqr;
-			if (i == 0 || i == Nx_Fourier - 1) {
-				run_data->mean_flow_x[i] += cabs(u_z);
-			}
-			else {
-				run_data->mean_flow_x[i] += 2.0 * cabs(u_z);				
+			k_sqr = (double )(run_data->k[0][j] * run_data->k[0][j] + run_data->k[1][i] * run_data->k[1][i]);
+			if (run_data->k[0][j] != 0 || run_data->k[1][i] != 0) {
+				u_z = I * ((double )run_data->k[1][j]) * run_data->w_hat[j * Nx_Fourier + i] / k_sqr;
+				if (i == 0 || i == Nx_Fourier - 1) {
+					run_data->mean_flow_x[i] += cabs(u_z);
+				}
+				else {
+					run_data->mean_flow_x[i] += 2.0 * cabs(u_z);				
+				}
 			}
 		}
 	}
 
 	
-
-	// ------------------------------------
-	// Normalize Measureables 
-	// ------------------------------------	
+	// // ------------------------------------
+	// // Normalize Measureables 
+	// // ------------------------------------	
 	// #if defined(__SYS_MEASURES)
 	// if (tot_iter < sys_vars->num_tot_print_steps) {
 	// 	// Normalize results and take into account computation in Fourier space
