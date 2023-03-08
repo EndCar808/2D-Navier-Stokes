@@ -321,7 +321,7 @@ if __name__ == '__main__':
                                                                                                                                                                                     output_dir, 
                                                                                                                                                                                     nx, ny, 
                                                                                                                                                                                     t0, t, trans_iters, 
-                                                                                                                                                                                    cfl_cond, c, 
+                                                                                                                                                                                    cfl_cond, c,
                                                                                                                                                                                     h, step_type, 
                                                                                                                                                                                     v, int(hype), hypervisc_pow, 
                                                                                                                                                                                     ekmn_alpha_low_k, ekmn_hypo_diff, ekmn_hypo_pow, a_hk,
@@ -400,8 +400,8 @@ if __name__ == '__main__':
         if solver_mode == "FULL":
             post_cmd_list = [["{} -i {} -o {} -v {:g} -v {} -v {:1.1f} -d {:g} -d {} -d {:1.1f} -d {:g} -f {} -f {} -f {} -a {} -a {} -k {} -p {} -p {} -t {} {}".format(
                                                         post_executable,
-                                                        post_input_dir + "N[{},{}]_T[{:1.1f},{},{:1.3f}]_NU[{:g},{},{:1.1f}]_DRAG[{:g},{:g},{},{:1.1f}]_CFL[{:1.2f}]_FORC[{},{},{:g}]_u0[{}]_TAG[{}]/".format(nx, ny, t0, h, t, v, int(hype), hypervisc_pow, ekmn_alpha_low_k, a_hk, int(ekmn_hypo_diff), ekmn_hypo_pow, c, forcing, force_k, force_scale, u0, s_tag), 
-                                                        post_output_dir + "N[{},{}]_T[{:1.1f},{},{:1.3f}]_NU[{:g},{},{:1.1f}]_DRAG[{:g},{:g},{},{:1.1f}]_CFL[{:1.2f}]_FORC[{},{},{:g}]_u0[{}]_TAG[{}]/".format(nx, ny, t0, h, t, v, int(hype), hypervisc_pow, ekmn_alpha_low_k, a_hk, int(ekmn_hypo_diff), ekmn_hypo_pow, c, forcing, force_k, force_scale, u0, s_tag),
+                                                        post_input_dir + "N[{},{}]_T[{:1.1f},{},{:1.3f}]_NU[{:g},{},{:1.1f}]_DRAG[{:g},{:g},{},{:1.1f}]_FORC[{},{},{:g}]_u0[{}]_TAG[{}]/".format(nx, ny, t0, h, t, v, int(hype), hypervisc_pow, ekmn_alpha_low_k, a_hk, int(ekmn_hypo_diff), ekmn_hypo_pow, forcing, force_k, force_scale, u0, s_tag), 
+                                                        post_output_dir + "N[{},{}]_T[{:1.1f},{},{:1.3f}]_NU[{:g},{},{:1.1f}]_DRAG[{:g},{:g},{},{:1.1f}]_FORC[{},{},{:g}]_u0[{}]_TAG[{}]/".format(nx, ny, t0, h, t, v, int(hype), hypervisc_pow, ekmn_alpha_low_k, a_hk, int(ekmn_hypo_diff), ekmn_hypo_pow, forcing, force_k, force_scale, u0, s_tag),
                                                         v, int(hype), hypervisc_pow, 
                                                         ekmn_alpha_low_k, int(ekmn_hypo_diff), ekmn_hypo_pow, a_hk,
                                                         forcing, force_k, force_scale,
@@ -409,18 +409,18 @@ if __name__ == '__main__':
                                                         k_f, 
                                                         num_threads, num_post_fftw_threads,
                                                         post_tag,
-                                                        post_options)] for nx, ny in zip(Nx, Ny) for h in dt for t in T for a_hk in ekmn_alpha_high_k for n_k3 in num_k3_sectors for n_k1 in num_k1_sectors for k_f in k_frac for v in nu for hype in hyper_visc for c in cfl for u0 in ic for s_tag in solver_tag for num_threads in num_post_omp_threads]
+                                                        post_options)] for nx, ny in zip(Nx, Ny) for h in dt for t in T for a_hk in ekmn_alpha_high_k for n_k3 in num_k3_sectors for n_k1 in num_k1_sectors for k_f in k_frac for v in nu for hype in hyper_visc for u0 in ic for s_tag in solver_tag for num_threads in num_post_omp_threads]
         elif solver_mode == "PHASEONLY":
             post_cmd_list = [["{} -i {} -o {} -f {} -f {} -f {} -a {} -a {} -k {} -p {} -p {} -t {} {}".format(
                                                         post_executable,
-                                                        post_input_dir + "N[{},{}]_T[{:1.1f},{},{:1.3f}]_SLOPE[{:1.3f}]_CFL[{:1.2f}]_FORC[{},{},{:g}]_u0[{}]_TAG[{}]/".format(nx, ny, t0, h, t, po_s, c, forcing, force_k, force_scale, u0, s_tag), 
-                                                        post_output_dir + "N[{},{}]_T[{:1.1f},{},{:1.3f}]_SLOPE[{:1.3f}]_CFL[{:1.2f}]_FORC[{},{},{:g}]_u0[{}]_TAG[{}]/".format(nx, ny, t0, h, t, po_s, c, forcing, force_k, force_scale, u0, s_tag),                                
+                                                        post_input_dir + "N[{},{}]_T[{:1.1f},{},{:1.3f}]_SLOPE[{:1.3f}]_FORC[{},{},{:g}]_u0[{}]_TAG[{}]/".format(nx, ny, t0, h, t, po_s, forcing, force_k, force_scale, u0, s_tag), 
+                                                        post_output_dir + "N[{},{}]_T[{:1.1f},{},{:1.3f}]_SLOPE[{:1.3f}]_FORC[{},{},{:g}]_u0[{}]_TAG[{}]/".format(nx, ny, t0, h, t, po_s, forcing, force_k, force_scale, u0, s_tag),                                
                                                         forcing, force_k, force_scale,
                                                         n_k3, n_k1, 
                                                         k_f, 
                                                         num_threads, num_post_fftw_threads,
                                                         post_tag,
-                                                        post_options)] for nx, ny in zip(Nx, Ny) for h in dt for t in T for po_s in po_slope for n_k3 in num_k3_sectors for n_k1 in num_k1_sectors for k_f in k_frac for c in cfl for u0 in ic for s_tag in solver_tag for num_threads in num_post_omp_threads]
+                                                        post_options)] for nx, ny in zip(Nx, Ny) for h in dt for t in T for po_s in po_slope for n_k3 in num_k3_sectors for n_k1 in num_k1_sectors for k_f in k_frac for u0 in ic for s_tag in solver_tag for num_threads in num_post_omp_threads]
 
         if cmdargs.cmd_only:
             print(tc.C + "\nPost Processing Commands:\n" + tc.Rst)
@@ -491,15 +491,15 @@ if __name__ == '__main__':
         if solver_mode == "FULL":
             plot_cmd_list = [["python3 {} -i {} -f {} {} ".format(
                                             plot_script, 
-                                            post_input_dir + "N[{},{}]_T[{:1.1f},{},{:1.3f}]_NU[{:g},{},{:1.1f}]_DRAG[{:g},{:g},{},{:1.1f}]_CFL[{:1.2f}]_FORC[{},{},{:g}]_u0[{}]_TAG[{}]/".format(nx, ny, t0, h, t, v, int(hype), hypervisc_pow, ekmn_alpha_low_k, a_hk, int(ekmn_hypo_diff), ekmn_hypo_pow, c, forcing, force_k, force_scale, u0, s_tag), 
+                                            post_input_dir + "N[{},{}]_T[{:1.1f},{},{:1.3f}]_NU[{:g},{},{:1.1f}]_DRAG[{:g},{:g},{},{:1.1f}]_FORC[{},{},{:g}]_u0[{}]_TAG[{}]/".format(nx, ny, t0, h, t, v, int(hype), hypervisc_pow, ekmn_alpha_low_k, a_hk, int(ekmn_hypo_diff), ekmn_hypo_pow, forcing, force_k, force_scale, u0, s_tag), 
                                             "PostProcessing_HDF_Data_THREADS[{},{}]_SECTORS[{},{}]_KFRAC[{:1.2f}]_TAG[{}].h5".format(num_threads, num_post_fftw_threads, n_k3, n_k1, k_f, post_tag),
-                                            plot_options)] for nx, ny in zip(Nx, Ny) for h in dt for t in T for v in nu for a_hk in ekmn_alpha_high_k for n_k3 in num_k3_sectors for n_k1 in num_k1_sectors for k_f in k_frac for hype in hyper_visc for c in cfl for u0 in ic for s_tag in solver_tag for num_threads in num_post_omp_threads]
+                                            plot_options)] for nx, ny in zip(Nx, Ny) for h in dt for t in T for v in nu for a_hk in ekmn_alpha_high_k for n_k3 in num_k3_sectors for n_k1 in num_k1_sectors for k_f in k_frac for hype in hyper_visc for u0 in ic for s_tag in solver_tag for num_threads in num_post_omp_threads]
         elif solver_mode == "PHASEONLY":
             plot_cmd_list = [["python3 {} -i {} -f {} {} ".format(
                                             plot_script, 
-                                            post_input_dir + "N[{},{}]_T[{:1.1f},{},{:1.3f}]_SLOPE[{:1.3f}]_CFL[{:1.2f}]_FORC[{},{},{:g}]_u0[{}]_TAG[{}]/".format(nx, ny, t0, h, t, po_s, c, forcing, force_k, force_scale, u0, s_tag), 
+                                            post_input_dir + "N[{},{}]_T[{:1.1f},{},{:1.3f}]_SLOPE[{:1.3f}]_FORC[{},{},{:g}]_u0[{}]_TAG[{}]/".format(nx, ny, t0, h, t, po_s, forcing, force_k, force_scale, u0, s_tag), 
                                             "PostProcessing_HDF_Data_THREADS[{},{}]_SECTORS[{},{}]_KFRAC[{:1.2f}]_TAG[{}].h5".format(num_threads, num_post_fftw_threads, n_k3, n_k1, k_f, post_tag),
-                                            plot_options)] for nx, ny in zip(Nx, Ny) for h in dt for t in T for n_k3 in num_k3_sectors for n_k1 in num_k1_sectors for k_f in k_frac for po_s in po_slope for c in cfl for u0 in ic for s_tag in solver_tag for num_threads in num_post_omp_threads]
+                                            plot_options)] for nx, ny in zip(Nx, Ny) for h in dt for t in T for n_k3 in num_k3_sectors for n_k1 in num_k1_sectors for k_f in k_frac for po_s in po_slope for u0 in ic for s_tag in solver_tag for num_threads in num_post_omp_threads]
 
         if cmdargs.cmd_only:
             print(tc.C + "\nPlotting Commands:\n" + tc.Rst)

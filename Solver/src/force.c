@@ -342,6 +342,7 @@ void InitializeForcing(void) {
 	else if(!(strcmp(sys_vars->forcing, "GWN_DELTA_T")) || !(strcmp(sys_vars->forcing, "GWN_NRW_ISO_DELTA_T")) || !(strcmp(sys_vars->forcing, "GWN_BRD_ISO_DELTA_T"))) {
 		// Loop through modes to identify local process(es) containing the modes to be forced		
 		double forc_spect = 0.0;
+		double norm_k;
 		for (int i = 0; i < sys_vars->local_Ny; ++i) {
 			for (int j = 0; j < Nx_Fourier; ++j) {
 				// Compute |k|
@@ -362,14 +363,16 @@ void InitializeForcing(void) {
 						}
 						else if (!(strcmp(sys_vars->forcing, "GWN_NRW_ISO_DELTA_T"))) {
 							if (k_abs >= sys_vars->force_k - GWN_KF_DELTA && k_abs <= sys_vars->force_k + GWN_KF_DELTA) {
-								forc_spect += 1.0 / (2.0 * pow(k_abs, 2.0));
+								norm_k = 1.0 / (2.0 * pow(k_abs, 2.0)); // For normalization of the spatial correlation function -> ensures constant injection rate
+								forc_spect += norm_k * norm_k; // For computing the power spectrum 
 								// Count the forced modes
 								sys_vars->local_forcing_proc = 1;
 								num_forced_modes++;
 							}
 						}
 						else if (!(strcmp(sys_vars->forcing, "GWN_BRD_ISO_DELTA_T"))) {
-							forc_spect += exp(- pow(k_abs - sys_vars->force_k, 2.0) / (2.0 * GWN_BRD_KF_DELTA * GWN_BRD_KF_DELTA)) / (2.0 * pow(k_abs, 2.0));
+							norm_k = exp(- pow(k_abs - sys_vars->force_k, 2.0) / (2.0 * GWN_BRD_KF_DELTA * GWN_BRD_KF_DELTA)) / (2.0 * pow(k_abs, 2.0));
+							forc_spect += norm_k * norm_k;
 							// Count the forced modes
 							sys_vars->local_forcing_proc = 1;
 							num_forced_modes++;
@@ -386,14 +389,16 @@ void InitializeForcing(void) {
 						}
 						else if (!(strcmp(sys_vars->forcing, "GWN_NRW_ISO_DELTA_T"))) {
 							if (k_abs >= sys_vars->force_k - GWN_KF_DELTA && k_abs <= sys_vars->force_k + GWN_KF_DELTA) {
-								forc_spect += 2.0 * (1.0 / (2.0 * pow(k_abs, 2.0)));
+								norm_k = 1.0 / (2.0 * pow(k_abs, 2.0)); // For normalization of the spatial correlation function -> ensures constant injection rate
+								forc_spect += 2.0 * norm_k * norm_k; // For computing the power spectrum 
 								// Count the forced modes
 								sys_vars->local_forcing_proc = 1;
 								num_forced_modes++;
 							}
 						}
 						else if (!(strcmp(sys_vars->forcing, "GWN_BRD_ISO_DELTA_T"))) {
-							forc_spect += 2.0 * exp(- pow(k_abs - sys_vars->force_k, 2.0) / (2.0 * GWN_BRD_KF_DELTA * GWN_BRD_KF_DELTA)) / (2.0 * pow(k_abs, 2.0));
+							norm_k = exp(- pow(k_abs - sys_vars->force_k, 2.0) / (2.0 * GWN_BRD_KF_DELTA * GWN_BRD_KF_DELTA)) / (2.0 * pow(k_abs, 2.0));
+							forc_spect += 2.0 * norm_k * norm_k;
 							// Count the forced modes
 							sys_vars->local_forcing_proc = 1;
 							num_forced_modes++;
@@ -480,7 +485,7 @@ void InitializeForcing(void) {
 							}
 						}
 						else if (!(strcmp(sys_vars->forcing, "GWN_BRD_ISO_DELTA_T"))) {
-							run_data->forcing_scaling[force_mode_counter] = (scale_fac_f0 / pow(2.0 * M_PI, 2.0)) * exp(- pow(k_abs - sys_vars->force_k, 2.0) / (2.0 * STOC_FORC_UNIF_DELTA_K * STOC_FORC_UNIF_DELTA_K));
+							run_data->forcing_scaling[force_mode_counter] = scale_fac_f0 / pow(2.0 * M_PI, 2.0);
 							run_data->forcing_indx[force_mode_counter]    = indx;
 							run_data->forcing_k[0][force_mode_counter]    = run_data->k[0][i];
 							run_data->forcing_k[1][force_mode_counter]    = run_data->k[1][j];

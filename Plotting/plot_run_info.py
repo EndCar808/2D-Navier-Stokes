@@ -176,99 +176,99 @@ if __name__ == '__main__':
         snaps_indx = [0, sys_vars.ndata//4, sys_vars.ndata//2, -1]
         plot_vort(snaps_output_dir, run_data.w, sys_msr.x, sys_msr.y, sys_msr.time, snaps_indx)
 
-        # ##-------------------------
-        # ## Plot System Measures
-        # ##-------------------------
-        # ##---------- Energy Enstrophy
-        # fig = plt.figure(figsize = (32, 8))
-        # gs  = GridSpec(2, 3, hspace = 0.35)
-        # ## Plot the energy dissipation
-        # ax1 = fig.add_subplot(gs[0, 0])
-        # ax1.plot(sys_msr.tot_time, sys_msr.enrg_diss)
-        # ax1.set_xlabel(r"$t$")
-        # ax1.set_title(r"Energy Dissipation")
-        # ax1.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
-        # ## Plot the enstrophy dissipation
-        # ax2 = fig.add_subplot(gs[0, 1])
-        # ax2.plot(sys_msr.tot_time, sys_msr.enst_diss)
-        # ax2.set_xlabel(r"$t$")
-        # ax2.set_title(r"Enstrophy Dissipation")
-        # ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
-        # ## Plot the relative energy
-        # ax1 = fig.add_subplot(gs[1, 0])
-        # ax1.plot(sys_msr.tot_time, sys_msr.tot_enrg)
-        # ax1.set_xlabel(r"$t$")
-        # ax1.set_title(r"Total Energy")
-        # ax1.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
-        # ## Plot the relative helicity
-        # ax2 = fig.add_subplot(gs[1, 1])
-        # ax2.plot(sys_msr.tot_time, sys_msr.tot_enst)
-        # ax2.set_xlabel(r"$t$")
-        # ax2.set_title(r"Total Enstrophy")
-        # ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
-        # ## Plot the relative helicity
-        # ax2 = fig.add_subplot(gs[0, 2])
-        # ax2.plot(sys_msr.tot_time, sys_msr.tot_enrg_forc, label=r"Energy Forcing Input")
-        # ax2.plot(sys_msr.tot_time, sys_msr.tot_enst_forc, label=r"Enstrophy Forcing Input")
-        # ax2.set_xlabel(r"$t$")
-        # ax2.set_title(r"Total Forcing Input")
-        # ax2.legend()
-        # ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
-        # ax2 = fig.add_subplot(gs[1, 2])
-        # ax2.plot(sys_msr.tot_time, sys_msr.tot_palin)
-        # ax2.set_xlabel(r"$t$")
-        # ax2.set_title(r"Total Palinstrophy")
-        # ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
-        # plt.savefig(snaps_output_dir + "System_Measures.png")
-        # plt.close()
+        ##-------------------------
+        ## Plot System Measures
+        ##-------------------------
+        ##---------- Energy Enstrophy
+        fig = plt.figure(figsize = (32, 8))
+        gs  = GridSpec(2, 3, hspace = 0.35)
+        ## Plot the energy dissipation
+        ax1 = fig.add_subplot(gs[0, 0])
+        ax1.plot(sys_msr.tot_time, sys_msr.enrg_diss)
+        ax1.set_xlabel(r"$t$")
+        ax1.set_title(r"Energy Dissipation")
+        ax1.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+        ## Plot the enstrophy dissipation
+        ax2 = fig.add_subplot(gs[0, 1])
+        ax2.plot(sys_msr.tot_time, sys_msr.enst_diss)
+        ax2.set_xlabel(r"$t$")
+        ax2.set_title(r"Enstrophy Dissipation")
+        ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+        ## Plot the relative energy
+        ax1 = fig.add_subplot(gs[1, 0])
+        ax1.plot(sys_msr.tot_time, sys_msr.tot_enrg)
+        ax1.set_xlabel(r"$t$")
+        ax1.set_title(r"Total Energy")
+        ax1.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+        ## Plot the relative helicity
+        ax2 = fig.add_subplot(gs[1, 1])
+        ax2.plot(sys_msr.tot_time, sys_msr.tot_enst)
+        ax2.set_xlabel(r"$t$")
+        ax2.set_title(r"Total Enstrophy")
+        ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+        ## Plot the relative helicity
+        ax2 = fig.add_subplot(gs[0, 2])
+        ax2.plot(sys_msr.tot_time, sys_msr.tot_enrg_forc, label=r"Energy Forcing Input")
+        ax2.plot(sys_msr.tot_time, sys_msr.tot_enst_forc, label=r"Enstrophy Forcing Input")
+        ax2.set_xlabel(r"$t$")
+        ax2.set_title(r"Total Forcing Input")
+        ax2.legend()
+        ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+        ax2 = fig.add_subplot(gs[1, 2])
+        ax2.plot(sys_msr.tot_time, sys_msr.tot_palin)
+        ax2.set_xlabel(r"$t$")
+        ax2.set_title(r"Total Palinstrophy")
+        ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+        plt.savefig(snaps_output_dir + "System_Measures.png")
+        plt.close()
 
-        # ##-------------------------
-        # ## Plot Turbulecne Measures
-        # ##-------------------------
-        # fig = plt.figure(figsize = (24, 8))
-        # gs  = GridSpec(2, 3, hspace = 0.35)
-        # ## Plot the u_rms
-        # ax1 = fig.add_subplot(gs[0, 0])
-        # ax1.plot(sys_msr.tot_time, sys_msr.u_rms)
-        # ax1.set_xlabel(r"$t$")
-        # ax1.set_title(r"Root Mean Square Velocity")
-        # ax1.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
-        # ## Plot the Eddy TurnOver Time
-        # ax1 = fig.add_subplot(gs[0, 1])
-        # ax1.plot(sys_msr.tot_time, sys_msr.eddy_turnover_1, label=r"$\ell/u_{rms}$")
-        # ax1.plot(sys_msr.tot_time, sys_msr.eddy_turnover_2, label=r"$2 \pi/u_{rms}$")
-        # ax1.set_xlabel(r"$t$")
-        # ax1.set_title(r"Eddy Turnover Time")
-        # ax1.legend()
-        # ax1.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
-        # ## Plot the Kolmogrov Length Scale
-        # ax1 = fig.add_subplot(gs[1, 0])
-        # ax1.plot(sys_msr.tot_time, sys_msr.kolm_scale, label=r"$\eta$")
-        # ax1.set_xlabel(r"$t$")
-        # ax1.set_title(r"Kolmogorov Length Scale")
-        # ax1.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
-        # ## Plot the Kolmogrov Length Scale
-        # ax1 = fig.add_subplot(gs[1, 1])
-        # ax1.plot(sys_msr.tot_time, sys_msr.taylor_micro, label=r"$\lambda$")
-        # ax1.set_xlabel(r"$t$")
-        # ax1.set_title(r"Taylor Microscale")
-        # ax1.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
-        # plt.savefig(snaps_output_dir + "Turbulent_Measures.png")
-        # plt.close()
-        # ## Plot the Energy Dissipative Wavenumber
-        # ax1 = fig.add_subplot(gs[0, 2])
-        # ax1.plot(sys_msr.tot_time, sys_msr.enrg_diss_k, label=r"$k_{\eta}$")
-        # ax1.set_xlabel(r"$t$")
-        # ax1.set_title(r"Energy Dissipative k")
-        # ax1.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
-        # ## Plot the Enstrophy Dissipative Wavenumber
-        # ax1 = fig.add_subplot(gs[1, 2])
-        # ax1.plot(sys_msr.tot_time, sys_msr.enst_diss_k, label=r"$k_{\eta}$")
-        # ax1.set_xlabel(r"$t$")
-        # ax1.set_title(r"Enstrophy Dissipative k")
-        # ax1.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
-        # plt.savefig(snaps_output_dir + "Turbulent_Measures.png")
-        # plt.close()
+        ##-------------------------
+        ## Plot Turbulecne Measures
+        ##-------------------------
+        fig = plt.figure(figsize = (24, 8))
+        gs  = GridSpec(2, 3, hspace = 0.35)
+        ## Plot the u_rms
+        ax1 = fig.add_subplot(gs[0, 0])
+        ax1.plot(sys_msr.tot_time, sys_msr.u_rms)
+        ax1.set_xlabel(r"$t$")
+        ax1.set_title(r"Root Mean Square Velocity")
+        ax1.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+        ## Plot the Eddy TurnOver Time
+        ax1 = fig.add_subplot(gs[0, 1])
+        ax1.plot(sys_msr.tot_time, sys_msr.eddy_turnover_1, label=r"$\ell/u_{rms}$")
+        ax1.plot(sys_msr.tot_time, sys_msr.eddy_turnover_2, label=r"$2 \pi/u_{rms}$")
+        ax1.set_xlabel(r"$t$")
+        ax1.set_title(r"Eddy Turnover Time")
+        ax1.legend()
+        ax1.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+        ## Plot the Kolmogrov Length Scale
+        ax1 = fig.add_subplot(gs[1, 0])
+        ax1.plot(sys_msr.tot_time, sys_msr.kolm_scale, label=r"$\eta$")
+        ax1.set_xlabel(r"$t$")
+        ax1.set_title(r"Kolmogorov Length Scale")
+        ax1.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+        ## Plot the Kolmogrov Length Scale
+        ax1 = fig.add_subplot(gs[1, 1])
+        ax1.plot(sys_msr.tot_time, sys_msr.taylor_micro, label=r"$\lambda$")
+        ax1.set_xlabel(r"$t$")
+        ax1.set_title(r"Taylor Microscale")
+        ax1.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+        plt.savefig(snaps_output_dir + "Turbulent_Measures.png")
+        plt.close()
+        ## Plot the Energy Dissipative Wavenumber
+        ax1 = fig.add_subplot(gs[0, 2])
+        ax1.plot(sys_msr.tot_time, sys_msr.enrg_diss_k, label=r"$k_{\eta}$")
+        ax1.set_xlabel(r"$t$")
+        ax1.set_title(r"Energy Dissipative k")
+        ax1.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+        ## Plot the Enstrophy Dissipative Wavenumber
+        ax1 = fig.add_subplot(gs[1, 2])
+        ax1.plot(sys_msr.tot_time, sys_msr.enst_diss_k, label=r"$k_{\eta}$")
+        ax1.set_xlabel(r"$t$")
+        ax1.set_title(r"Enstrophy Dissipative k")
+        ax1.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+        plt.savefig(snaps_output_dir + "Turbulent_Measures.png")
+        plt.close()
 
         #------------------------------------------
         # Plot Time Averaged Spectra
@@ -319,189 +319,192 @@ if __name__ == '__main__':
         # -----------------------------------------
         # # --------  Plot Longitudinal Increment PDFs
         # -----------------------------------------
-        ## Create Figure
-        fig = plt.figure(figsize = (16, 8))
-        gs  = GridSpec(1, 2) 
+        if hasattr(post_data, 'vel_long_incr_ranges'):
+            ## Create Figure
+            fig = plt.figure(figsize = (16, 8))
+            gs  = GridSpec(1, 2) 
 
-        if post_data.vel_long_incr_ranges.shape[0] == 2:
-            plot_legend = [r"$r = \frac{\pi}{N}$", r"$r = \pi$"]
-        else:
-            plot_legend = [r"$r = \frac{\pi}{N}$", r"$r = \frac{2\pi}{N}$", r"$r = \frac{4\pi}{N}$", r"$r = \frac{16\pi}{N}$",  r"$r = \pi$"]
+            if post_data.vel_long_incr_ranges.shape[0] == 2:
+                plot_legend = [r"$r = \frac{\pi}{N}$", r"$r = \pi$"]
+            else:
+                plot_legend = [r"$r = \frac{\pi}{N}$", r"$r = \frac{2\pi}{N}$", r"$r = \frac{4\pi}{N}$", r"$r = \frac{16\pi}{N}$",  r"$r = \pi$"]
 
-        ## Longitudinal PDFs
-        ax1 = fig.add_subplot(gs[0, 0])
-        for i in range(post_data.vel_long_incr_ranges.shape[0]):
-            bin_centres, pdf = compute_pdf(post_data.vel_long_incr_ranges[i, :], post_data.vel_long_incr_counts[i, :], normalized = True)
-            ax1.plot(bin_centres, pdf, label = plot_legend[i])
-        ax1.set_xlabel(r"$\delta_r \mathbf{u}_{\parallel} / \langle (\delta_r \mathbf{u}_{\parallel})^2 \rangle^{1/2}$")
-        ax1.set_ylabel(r"PDF")
-        ax1.set_yscale('log')
-        ax1.grid(color = 'k', linewidth = .5, linestyle = ':')
-        ax1.set_title("Velocity Longitudinal Increments")
-        ax1.legend()
+            ## Longitudinal PDFs
+            ax1 = fig.add_subplot(gs[0, 0])
+            for i in range(post_data.vel_long_incr_ranges.shape[0]):
+                bin_centres, pdf = compute_pdf(post_data.vel_long_incr_ranges[i, :], post_data.vel_long_incr_counts[i, :], normalized = True)
+                ax1.plot(bin_centres, pdf, label = plot_legend[i])
+            ax1.set_xlabel(r"$\delta_r \mathbf{u}_{\parallel} / \langle (\delta_r \mathbf{u}_{\parallel})^2 \rangle^{1/2}$")
+            ax1.set_ylabel(r"PDF")
+            ax1.set_yscale('log')
+            ax1.grid(color = 'k', linewidth = .5, linestyle = ':')
+            ax1.set_title("Velocity Longitudinal Increments")
+            ax1.legend()
 
-        ## Transverse PDFs
-        ax2 = fig.add_subplot(gs[0, 1])
-        for i in range(post_data.vort_long_incr_ranges.shape[0]):
-            bin_centres, pdf = compute_pdf(post_data.vort_long_incr_ranges[i, :], post_data.vort_long_incr_counts[i, :], normalized = True)        
-            ax2.plot(bin_centres, pdf, label = plot_legend[i])
-        ax2.set_xlabel(r"$\delta_r \omega_{\parallel} / \langle (\delta_r \omega_{\parallel})^2 \rangle^{1/2}$")
-        ax2.set_ylabel(r"PDF")
-        ax2.set_yscale('log')
-        ax2.grid(color = 'k', linewidth = .5, linestyle = ':')
-        ax2.set_title("Vorticity Longitudinal Incrments")
-        ax2.legend()
+            ## Transverse PDFs
+            ax2 = fig.add_subplot(gs[0, 1])
+            for i in range(post_data.vort_long_incr_ranges.shape[0]):
+                bin_centres, pdf = compute_pdf(post_data.vort_long_incr_ranges[i, :], post_data.vort_long_incr_counts[i, :], normalized = True)        
+                ax2.plot(bin_centres, pdf, label = plot_legend[i])
+            ax2.set_xlabel(r"$\delta_r \omega_{\parallel} / \langle (\delta_r \omega_{\parallel})^2 \rangle^{1/2}$")
+            ax2.set_ylabel(r"PDF")
+            ax2.set_yscale('log')
+            ax2.grid(color = 'k', linewidth = .5, linestyle = ':')
+            ax2.set_title("Vorticity Longitudinal Incrments")
+            ax2.legend()
 
-        plt.suptitle(r"Longitudinal Increment PDFs")
-        
-        plt.savefig(snaps_output_dir + "/Longitudinal_Incrmenents_PDFs.png")
-        plt.close()
+            plt.suptitle(r"Longitudinal Increment PDFs")
+            
+            plt.savefig(snaps_output_dir + "/Longitudinal_Incrmenents_PDFs.png")
+            plt.close()
 
 
         # -----------------------------------------
         # # --------  Plot Transverse Increment PDFs
         # -----------------------------------------
-        ## Create Figure
-        fig = plt.figure(figsize = (16, 8))
-        gs  = GridSpec(1, 2) 
+        if hasattr(post_data, 'vel_trans_incr_ranges'):
+            ## Create Figure
+            fig = plt.figure(figsize = (16, 8))
+            gs  = GridSpec(1, 2) 
 
-        if post_data.vel_trans_incr_ranges.shape[0] == 2:   
-            plot_legend = [r"$r = \frac{\pi}{N}$", r"$r = \pi$"]
-        else:
-            plot_legend = [r"$r = \frac{\pi}{N}$", r"$r = \frac{2\pi}{N}$", r"$r = \frac{4\pi}{N}$", r"$r = \frac{16\pi}{N}$",  r"$r = \pi$"]
+            if post_data.vel_trans_incr_ranges.shape[0] == 2:   
+                plot_legend = [r"$r = \frac{\pi}{N}$", r"$r = \pi$"]
+            else:
+                plot_legend = [r"$r = \frac{\pi}{N}$", r"$r = \frac{2\pi}{N}$", r"$r = \frac{4\pi}{N}$", r"$r = \frac{16\pi}{N}$",  r"$r = \pi$"]
 
-        ## Transverse PDFs
-        ax1 = fig.add_subplot(gs[0, 0])
-        for i in range(post_data.vel_trans_incr_ranges.shape[0]):
-            bin_centres, pdf = compute_pdf(post_data.vel_trans_incr_ranges[i, :], post_data.vel_trans_incr_counts[i, :], normalized = True)
-            ax1.plot(bin_centres, pdf, label = plot_legend[i])
-        ax1.set_xlabel(r"$\delta_r \mathbf{u}_{\perp} / \langle (\delta_r \mathbf{u}_{\perp})^2 \rangle^{1/2}$")
-        ax1.set_ylabel(r"PDF")
-        ax1.set_yscale('log')
-        ax1.grid(color = 'k', linewidth = .5, linestyle = ':')
-        ax1.set_title("Velocity Transverse Increments")
-        ax1.legend()
+            ## Transverse PDFs
+            ax1 = fig.add_subplot(gs[0, 0])
+            for i in range(post_data.vel_trans_incr_ranges.shape[0]):
+                bin_centres, pdf = compute_pdf(post_data.vel_trans_incr_ranges[i, :], post_data.vel_trans_incr_counts[i, :], normalized = True)
+                ax1.plot(bin_centres, pdf, label = plot_legend[i])
+            ax1.set_xlabel(r"$\delta_r \mathbf{u}_{\perp} / \langle (\delta_r \mathbf{u}_{\perp})^2 \rangle^{1/2}$")
+            ax1.set_ylabel(r"PDF")
+            ax1.set_yscale('log')
+            ax1.grid(color = 'k', linewidth = .5, linestyle = ':')
+            ax1.set_title("Velocity Transverse Increments")
+            ax1.legend()
 
-        ## Transverse PDFs
-        ax2 = fig.add_subplot(gs[0, 1])
-        for i in range(post_data.vort_trans_incr_ranges.shape[0]):
-            bin_centres, pdf = compute_pdf(post_data.vort_trans_incr_ranges[i, :], post_data.vort_trans_incr_counts[i, :], normalized = True)        
-            ax2.plot(bin_centres, pdf, label = plot_legend[i])
-        ax2.set_xlabel(r"$\delta_r \omega_{\perp} / \langle (\delta_r \omega_{\perp})^2 \rangle^{1/2}$")
-        ax2.set_ylabel(r"PDF")
-        ax2.set_yscale('log')
-        ax2.grid(color = 'k', linewidth = .5, linestyle = ':')
-        ax2.set_title("Vorticity Transverse Incrments")
-        ax2.legend()
+            ## Transverse PDFs
+            ax2 = fig.add_subplot(gs[0, 1])
+            for i in range(post_data.vort_trans_incr_ranges.shape[0]):
+                bin_centres, pdf = compute_pdf(post_data.vort_trans_incr_ranges[i, :], post_data.vort_trans_incr_counts[i, :], normalized = True)        
+                ax2.plot(bin_centres, pdf, label = plot_legend[i])
+            ax2.set_xlabel(r"$\delta_r \omega_{\perp} / \langle (\delta_r \omega_{\perp})^2 \rangle^{1/2}$")
+            ax2.set_ylabel(r"PDF")
+            ax2.set_yscale('log')
+            ax2.grid(color = 'k', linewidth = .5, linestyle = ':')
+            ax2.set_title("Vorticity Transverse Incrments")
+            ax2.legend()
 
-        plt.suptitle(r"Transverse Increment PDFs")
-        
-        plt.savefig(snaps_output_dir + "/Transverse_Incrmenents_PDFs.png")
-        plt.close()
+            plt.suptitle(r"Transverse Increment PDFs")
+            
+            plt.savefig(snaps_output_dir + "/Transverse_Incrmenents_PDFs.png")
+            plt.close()
 
         # -----------------------------------------
         # # --------  Compare Structure Funcs
         # -----------------------------------------
-        fig = plt.figure(figsize = (16, 8))
-        gs  = GridSpec(1, 2)
-        r = np.arange(1, np.minimum(sys_vars.Nx, sys_vars.Ny) / 2 + 1)
-        L = np.minimum(sys_vars.Nx, sys_vars.Ny) / 2
+        if hasattr(post_data, 'vel_long_str_func'):
+            fig = plt.figure(figsize = (16, 8))
+            gs  = GridSpec(1, 2)
+            r = np.arange(1, np.minimum(sys_vars.Nx, sys_vars.Ny) / 2 + 1)
+            L = np.minimum(sys_vars.Nx, sys_vars.Ny) / 2
 
-        ## Velocity
-        ax1 = fig.add_subplot(gs[0, 0])
-        p, = ax1.plot(r, (r)**2, linestyle = '--', label = r"$r^2$")
-        ax1.plot(r, post_data.vel_long_str_func[1, :]/sys_vars.ndata, label = r"Second Order; $\left\langle\left[\delta u_{\|}(r)\right]^2\right\rangle$") ##linestyle = ':', color = p.get_color(),
-        ax1.set_xlabel(r"$r$")
-        ax1.set_xscale('log')
-        ax1.set_yscale('log')
-        ax1.grid(color = 'k', linewidth = .5, linestyle = ':')
-        ax1.set_title("2nd Order")
-        ax1.legend()
+            ## Velocity
+            ax1 = fig.add_subplot(gs[0, 0])
+            p, = ax1.plot(r, (r)**2, linestyle = '--', label = r"$r^2$")
+            ax1.plot(r, post_data.vel_long_str_func[1, :]/sys_vars.ndata, label = r"Second Order; $\left\langle\left[\delta u_{\|}(r)\right]^2\right\rangle$") ##linestyle = ':', color = p.get_color(),
+            ax1.set_xlabel(r"$r$")
+            ax1.set_xscale('log')
+            ax1.set_yscale('log')
+            ax1.grid(color = 'k', linewidth = .5, linestyle = ':')
+            ax1.set_title("2nd Order")
+            ax1.legend()
 
-        ## Vorticity
-        ax2 = fig.add_subplot(gs[0, 1])
-        p, = ax2.plot(r, 2.0 * r, linestyle = '--', label = r"$\eta_I r$")
-        ax2.plot(r, np.absolute(post_data.mxd_vort_str_func[:])/sys_vars.ndata, color = p.get_color(), label = r"Mixed; $\left\langle\delta u_{\|}(r)[\delta \omega(r)]^2\right\rangle$") 
-        p, = ax2.plot(r, 1.0 / 8.0 * (r) ** 3, linestyle = '--', label = r"$\frac{1}{8} r^3$")
-        ax2.plot(r, post_data.vel_long_str_func[2, :]/sys_vars.ndata, label = r"Third Order; $\left\langle\left[\delta u_{\|}(r)\right]^3\right\rangle$") ## '-.', color = p.get_color(), 
-        ax2.set_xlabel(r"$r$")
-        ax2.set_xscale('log')
-        ax2.set_yscale('log')
-        ax2.grid(color = 'k', linewidth = .5, linestyle = ':')
-        ax2.set_title("3rd Order")
-        ax2.legend()
+            ## Vorticity
+            ax2 = fig.add_subplot(gs[0, 1])
+            p, = ax2.plot(r, 2.0 * r, linestyle = '--', label = r"$\eta_I r$")
+            ax2.plot(r, np.absolute(post_data.mxd_vort_str_func[:])/sys_vars.ndata, color = p.get_color(), label = r"Mixed; $\left\langle\delta u_{\|}(r)[\delta \omega(r)]^2\right\rangle$") 
+            p, = ax2.plot(r, 1.0 / 8.0 * (r) ** 3, linestyle = '--', label = r"$\frac{1}{8} r^3$")
+            ax2.plot(r, post_data.vel_long_str_func[2, :]/sys_vars.ndata, label = r"Third Order; $\left\langle\left[\delta u_{\|}(r)\right]^3\right\rangle$") ## '-.', color = p.get_color(), 
+            ax2.set_xlabel(r"$r$")
+            ax2.set_xscale('log')
+            ax2.set_yscale('log')
+            ax2.grid(color = 'k', linewidth = .5, linestyle = ':')
+            ax2.set_title("3rd Order")
+            ax2.legend()
 
-        plt.suptitle(r"Compare Structure Funcitons")
-        
-        plt.savefig(snaps_output_dir + "/Compare_Structure_Functions.png")
-        plt.close()
+            plt.suptitle(r"Compare Structure Funcitons")
+            
+            plt.savefig(snaps_output_dir + "/Compare_Structure_Functions.png")
+            plt.close()
 
         # -----------------------------------------
         # # --------  Plot Structure Functions
         # -----------------------------------------
-        fig = plt.figure(figsize = (16, 8))
-        gs  = GridSpec(2, 2, hspace = 0.3) 
-        # powers = [0.1, 0.5, 1.0, 1.5, 2.0, 2.5]
-        powers = [1, 2, 3, 4, 5, 6]
-        ax1 = fig.add_subplot(gs[0, 0])
-        plot_str_funcs(fig, ax1, post_data.vel_long_str_func/sys_vars.ndata, powers, r"$r$", r"$|\mathcal{S}^{\mathbf{u}_{\parallel}}|$", "Longitudinal Velocity Structure Functions")
-        ax1 = fig.add_subplot(gs[0, 1])
-        plot_str_funcs(fig, ax1, post_data.vel_trans_str_func/sys_vars.ndata, powers, r"$r$", r"$|\mathcal{S}^{\mathbf{u}_{\perp}}|$", "Transverse Velocity Structure Functions")
-        ax1 = fig.add_subplot(gs[1, 0])
-        plot_str_funcs(fig, ax1, post_data.vel_long_str_func_abs/sys_vars.ndata, powers, r"$r$", r"$\mathcal{S}^{\mathbf{u}_{\parallel}}_{abs}$", "Longitudinal Velocity Structure Functions")
-        ax1 = fig.add_subplot(gs[1, 1])
-        plot_str_funcs(fig, ax1, post_data.vel_trans_str_func_abs/sys_vars.ndata, powers, r"$r$", r"$\mathcal{S}^{\mathbf{u}_{\perp}}_{abs}$", "Transverse Velocity Structure Functions")
-        plt.savefig(snaps_output_dir + "/Velocity_Structure_Functions.png")
-        plt.close()
+        if hasattr(post_data, 'vel_long_str_func'):
+            fig = plt.figure(figsize = (16, 8))
+            gs  = GridSpec(2, 2, hspace = 0.3) 
+            # powers = [0.1, 0.5, 1.0, 1.5, 2.0, 2.5]
+            powers = [1, 2, 3, 4, 5, 6]
+            ax1 = fig.add_subplot(gs[0, 0])
+            plot_str_funcs(fig, ax1, post_data.vel_long_str_func/sys_vars.ndata, powers, r"$r$", r"$|\mathcal{S}^{\mathbf{u}_{\parallel}}|$", "Longitudinal Velocity Structure Functions")
+            ax1 = fig.add_subplot(gs[0, 1])
+            plot_str_funcs(fig, ax1, post_data.vel_trans_str_func/sys_vars.ndata, powers, r"$r$", r"$|\mathcal{S}^{\mathbf{u}_{\perp}}|$", "Transverse Velocity Structure Functions")
+            ax1 = fig.add_subplot(gs[1, 0])
+            plot_str_funcs(fig, ax1, post_data.vel_long_str_func_abs/sys_vars.ndata, powers, r"$r$", r"$\mathcal{S}^{\mathbf{u}_{\parallel}}_{abs}$", "Longitudinal Velocity Structure Functions")
+            ax1 = fig.add_subplot(gs[1, 1])
+            plot_str_funcs(fig, ax1, post_data.vel_trans_str_func_abs/sys_vars.ndata, powers, r"$r$", r"$\mathcal{S}^{\mathbf{u}_{\perp}}_{abs}$", "Transverse Velocity Structure Functions")
+            plt.savefig(snaps_output_dir + "/Velocity_Structure_Functions.png")
+            plt.close()
 
 
-        fig = plt.figure(figsize = (16, 8))
-        gs  = GridSpec(2, 2, hspace = 0.3) 
-        # powers = [0.1, 0.5, 1.0, 1.5, 2.0, 2.5]
-        powers = [1, 2, 3, 4, 5, 6]
-        ax1 = fig.add_subplot(gs[0, 0])
-        plot_str_funcs(fig, ax1, post_data.vort_long_str_func/sys_vars.ndata, powers, r"$r$", r"$|\mathcal{S}^{\omega_{\parallel}}|$", "Longitudinal Vorticity Structure Functions")
-        ax1 = fig.add_subplot(gs[0, 1])
-        plot_str_funcs(fig, ax1, post_data.vort_trans_str_func/sys_vars.ndata, powers, r"$r$", r"$|\mathcal{S}^{\omega_{\perp}}|$", "Transverse Vorticity Structure Functions")
-        ax1 = fig.add_subplot(gs[1, 0])
-        plot_str_funcs(fig, ax1, post_data.vort_long_str_func_abs/sys_vars.ndata, powers, r"$r$", r"$\mathcal{S}^{\omega_{\parallel}}_{abs}$", "Longitudinal Vorticity Structure Functions")
-        ax1 = fig.add_subplot(gs[1, 1])
-        plot_str_funcs(fig, ax1, post_data.vort_trans_str_func_abs/sys_vars.ndata, powers, r"$r$", r"$\mathcal{S}^{\omega_{\perp}}_{abs}$", "Transverse Vorticity Structure Functions")
-        plt.savefig(snaps_output_dir + "/Vorticity_Structure_Functions.png")
-        plt.close()
+        if hasattr(post_data, 'vort_long_str_func'):
+            fig = plt.figure(figsize = (16, 8))
+            gs  = GridSpec(2, 2, hspace = 0.3) 
+            # powers = [0.1, 0.5, 1.0, 1.5, 2.0, 2.5]
+            powers = [1, 2, 3, 4, 5, 6]
+            ax1 = fig.add_subplot(gs[0, 0])
+            plot_str_funcs(fig, ax1, post_data.vort_long_str_func/sys_vars.ndata, powers, r"$r$", r"$|\mathcal{S}^{\omega_{\parallel}}|$", "Longitudinal Vorticity Structure Functions")
+            ax1 = fig.add_subplot(gs[0, 1])
+            plot_str_funcs(fig, ax1, post_data.vort_trans_str_func/sys_vars.ndata, powers, r"$r$", r"$|\mathcal{S}^{\omega_{\perp}}|$", "Transverse Vorticity Structure Functions")
+            ax1 = fig.add_subplot(gs[1, 0])
+            plot_str_funcs(fig, ax1, post_data.vort_long_str_func_abs/sys_vars.ndata, powers, r"$r$", r"$\mathcal{S}^{\omega_{\parallel}}_{abs}$", "Longitudinal Vorticity Structure Functions")
+            ax1 = fig.add_subplot(gs[1, 1])
+            plot_str_funcs(fig, ax1, post_data.vort_trans_str_func_abs/sys_vars.ndata, powers, r"$r$", r"$\mathcal{S}^{\omega_{\perp}}_{abs}$", "Transverse Vorticity Structure Functions")
+            plt.savefig(snaps_output_dir + "/Vorticity_Structure_Functions.png")
+            plt.close()
 
 
         # -----------------------------------------
         # # --------  Plot Structure Functions w/ fit
         # -----------------------------------------
-
-        
-        # powers = np.array([0.1, 0.5, 1.0, 1.5, 2.0, 2.5])
-        powers = np.array([1, 2, 3, 4, 5, 6])
-        r      = np.arange(1, np.minimum(sys_vars.Nx, sys_vars.Ny) / 2 + 1)
-        fig   = plt.figure(figsize = (16, 8))
-        gs    = GridSpec(1, 2, hspace = 0.3)
-        ax1   = fig.add_subplot(gs[0, 0])
-        vort_long_zeta_p, vort_long_zeta_p_resid = plot_str_func_fit(fig, ax1, r, post_data.vort_long_str_func/sys_vars.ndata, powers, inert_range, insert_fig=False)
-        # --------  Plot Anomalous Exponent
-        ax2   = fig.add_subplot(gs[0, 1])
-        p = powers
-        ax2.plot(p, vort_long_zeta_p[:], marker= 'o', markersize = 5.0, markevery = 1, label = "DNS")
-        ax2.plot(p, p, 'k--', label = "K41")
-        ax2.set_xlabel(r"$p$")
-        ax2.set_ylabel(r"$\zeta_{p}$")
-        ax2.set_xlim(powers[0], powers[-1])
-        ax2.set_ylim(powers[0], powers[-1])
-        ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
-        ax2.set_title(r"Longitudinal $\zeta_{p}$")
-        ax2.legend()
-        plt.suptitle('Longitudinal Vorticity Structure Functions')
-        plt.savefig(snaps_output_dir + "Vorticity_Structure_Func_Anonalous_Exponent_Zeta_p.png", bbox_inches='tight')
-        plt.close()
+        if hasattr(post_data, 'vort_long_str_func'):
+            # powers = np.array([0.1, 0.5, 1.0, 1.5, 2.0, 2.5])
+            powers = np.array([1, 2, 3, 4, 5, 6])
+            r      = np.arange(1, np.minimum(sys_vars.Nx, sys_vars.Ny) / 2 + 1)
+            fig   = plt.figure(figsize = (16, 8))
+            gs    = GridSpec(1, 2, hspace = 0.3)
+            ax1   = fig.add_subplot(gs[0, 0])
+            vort_long_zeta_p, vort_long_zeta_p_resid = plot_str_func_fit(fig, ax1, r, post_data.vort_long_str_func_abs/sys_vars.ndata, powers, inert_range, insert_fig=False)
+            # --------  Plot Anomalous Exponent
+            ax2   = fig.add_subplot(gs[0, 1])
+            p = powers
+            ax2.plot(p, vort_long_zeta_p[:], marker= 'o', markersize = 5.0, markevery = 1, label = "DNS")
+            ax2.plot(p, p, 'k--', label = "K41")
+            ax2.set_xlabel(r"$p$")
+            ax2.set_ylabel(r"$\zeta_{p}$")
+            ax2.set_xlim(powers[0], powers[-1])
+            ax2.set_ylim(powers[0], powers[-1])
+            ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+            ax2.set_title(r"Longitudinal $\zeta_{p}$")
+            ax2.legend()
+            plt.suptitle('Longitudinal Vorticity Structure Functions')
+            plt.savefig(snaps_output_dir + "Vorticity_Structure_Func_Anonalous_Exponent_Zeta_p.png", bbox_inches='tight')
+            plt.close()
 
 
     if cmdargs.video:
-
         if cmdargs.summ:
             if cmdargs.stream:
                 if cmdargs.parallel:
