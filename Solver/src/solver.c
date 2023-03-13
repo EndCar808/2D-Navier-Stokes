@@ -23,6 +23,7 @@
 #include "sys_msr.h"
 #include "force.h"
 #include "stats.h"
+#include "mt64.h"
 // ---------------------------------------------------------------------
 //  Global Variables
 // ---------------------------------------------------------------------
@@ -1161,8 +1162,10 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
     // ------------------------------------------------
     // Set Seed for RNG
     // ------------------------------------------------
-    // Set the seed for the random number generation -> process has its own chain
-    srand(123456789 * (sys_vars->rank + 1));
+    // Set the seed for the random number generation
+    init_genrand64(123456789 * (sys_vars->rank + 1));
+
+
 
 	if(!(strcmp(sys_vars->u0, "TG_VEL"))) {
 		// ------------------------------------------------
@@ -1325,7 +1328,7 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 					} 
 					
 					// Generate uniform random number between 0, 1
-					u1 = (double)rand() / (double) RAND_MAX;
+					u1 = genrand64_real1();
 					#if defined(DEBUG)
 					rand_u[indx] = u1;
 					#endif
@@ -1436,8 +1439,8 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 				indx = tmp + j;	
 
 				// Generate Standard normal random variable
-				u1 = (double) rand() / (double) RAND_MAX;
-				u2 = (double) rand() / (double) RAND_MAX;
+				u1 = genrand64_real1();
+				u2 = genrand64_real1();
 				z1 = sqrt(-2.0 * log(u1)) * cos(2.0 * M_PI * u2);
 				z2 = sqrt(-2.0 * log(u1)) * sin(2.0 * M_PI * u2);
 
@@ -1589,7 +1592,7 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 					spec_1d = pow(k_sqrt, 6.0) / pow((1.0 + k_sqrt / 60.0), 18.0);
 
 					// Fill the Fourier vorticity with Gaussian data
-					u1 = (double) rand() / (double) RAND_MAX;
+					u1 = genrand64_real1();
 					psi_hat[indx] = sqrt(spec_1d * (1.0 / k_sqrt)) * cexp(I * 2.0 * M_PI * u1); //  * 
 				}
 			}
@@ -1703,12 +1706,12 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 				// Initialize the Fourier modes
 				if ((k_sqr > 0) && (sqrt(k_sqr) > EXTRM_ENS_MIN_K)) {
 					// Get random uniform number of the phases
-					u1 = (double) rand() / (double) RAND_MAX;
+					u1 = genrand64_real1();
 					w_hat[indx] = pow(sqrt(k_sqr), -EXTRM_ENS_POW / 2.0) * norm * cexp(I * 2.0 * M_PI * u1);
 				}
 				else if (sqrt(k_sqr) <= EXTRM_ENS_MIN_K){
 					// Get random uniform number of the phases
-					u1 = (double) rand() / (double) RAND_MAX;
+					u1 = genrand64_real1();
 					w_hat[indx] = pow(EXTRM_ENS_MIN_K, -EXTRM_ENS_POW / 2.0) * exp((sqrt(k_sqr) - EXTRM_ENS_MIN_K)/3.5) * norm * cexp(I * 2.0 * M_PI * u1);
 				}
 				else {
@@ -1730,7 +1733,7 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 				// Get the absolute wavevector value
 				abs_k = sqrt((double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]));
 
-				u1 = (double) rand() / (double) RAND_MAX;
+				u1 = genrand64_real1();
 
 				// Compute the sum of appropiate modes to use as a normalization factor
 				if ((abs_k >= RING_MIN_K && abs_k <= RING_MAX_K) && (run_data->k[1][j] != 0 || run_data->k[0][i] > 0)) {
@@ -1755,7 +1758,7 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 				// Initialize the Fourier modes
 				if ((abs_k >= RING_MIN_K && abs_k <= RING_MAX_K) && (run_data->k[1][j] != 0 || run_data->k[0][i] > 0)) {
 					// Get random uniform number of the phases
-					u1 = (double) rand() / (double) RAND_MAX;
+					u1 = genrand64_real1();
 					w_hat[indx] = sqrt(72.0 * exp(-pow(abs_k - ((RING_MIN_K + RING_MAX_K) /2.0), 2.0)) / (M_PI * abs_k * norm)) * cexp(2.0 * M_PI * I * u1);
 				}
 				else {
@@ -1806,7 +1809,7 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 				// Initialize the Fourier modes
 				if ((k_abs > UNIF_MIN_K && k_abs < UNIF_MAX_K)) {
 					// Get random uniform number of the phases
-					u1 = (double) rand() / (double) RAND_MAX;
+					u1 = genrand64_real1();
 					w_hat[indx] = norm * cexp(2.0 * M_PI * I * u1); 
 				}
 				else {
@@ -1941,7 +1944,7 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 					enst_k = pow(sqrt_k, 2.0) * enrg_k;
 
 					// Get random uniform number
-					r1 = (double)rand() / (double) RAND_MAX;
+					r1 = genrand64_real1();
 
 					// Fill vorticity
 					#if defined(PHASE_ONLY)
@@ -2006,7 +2009,7 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 		double energy_norm;
 		double r1;
 
-		for (int i = 0; i < local_Ny; ++i) {	
+		for (int i = 0; i < local_Ny; ++i) {
 			tmp = i * (Nx_Fourier);
 			for (int j = 0; j < Nx_Fourier; ++j) {
 				indx = tmp + j;
@@ -2027,7 +2030,7 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 
 					if (!(strcmp(sys_vars->u0, "PO_RANDOM"))) {
 						// Get random uniform number
-						r1 = (double)rand() / (double) RAND_MAX;
+						r1 = genrand64_real1();
 
 						run_data->a_k[indx]   = amp_k;
 						run_data->phi_k[indx] = r1 * 2.0 * M_PI;
@@ -2122,7 +2125,7 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 				indx = tmp + j;
 
 				// Fill vorticity
-				w_hat[indx] = ((double)rand() / (double) RAND_MAX) * cexp(((double)rand() / (double) RAND_MAX) * 2.0 * M_PI * I);
+				w_hat[indx] = (genrand64_real1()) * cexp((genrand64_real1()) * 2.0 * M_PI * I);
 			}
 		}		
 	}

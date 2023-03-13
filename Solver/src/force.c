@@ -18,7 +18,7 @@
 //  User Libraries and Headers
 // ---------------------------------------------------------------------
 #include "data_types.h"
-
+#include "mt64.h"
 // ---------------------------------------------------------------------
 //  Function Definitions
 // ---------------------------------------------------------------------
@@ -315,8 +315,8 @@ void InitializeForcing(void) {
 					}
 					else if (k_abs >= sys_vars->force_k - RAND_FORC_DELTA && k_abs <= sys_vars->force_k + RAND_FORC_DELTA && run_data->k[1][j] != 0 && run_data->k[0][i] >= 0) {
 						// Generate random angles
-						psi = ((double) rand() / (double) RAND_MAX) * 2.0 * M_PI;
-						phi = ((double) rand() / (double) RAND_MAX) * 2.0 * M_PI;
+						psi = (genrand64_real1()) * 2.0 * M_PI;
+						phi = (genrand64_real1()) * 2.0 * M_PI;
 
 						// Get zeta_1 and zeta_2
 						zeta_1 = run_data->w_hat[indx] * cos(phi);
@@ -646,8 +646,8 @@ void InitializeForcing(void) {
 				// Count the forced modes
 				if (k_abs >= CONST_GAUSS_K_MIN && k_abs < CONST_GAUSS_K_MAX) {
 					// Generate two uniform random numbers
-					r1 = (double) rand() / (double) RAND_MAX;
-					r2 = (double) rand() / (double) RAND_MAX;
+					r1 = genrand64_real1();
+					r2 = genrand64_real1();
 
 					// Convert to Gaussian using Box-Muller transform
 					re_f = sqrt(-2.0 * log(r1)) * cos(r2 * 2.0 * M_PI);
@@ -876,7 +876,7 @@ void ComputeForcing(double dt) {
 			// Loop over the forced modes
 			for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
 				// // Generate uniform random numbers
-				r1 = (double) rand() / (double) RAND_MAX;
+				r1 = genrand64_real1();
 
 				// Now compute the forcing 
 				run_data->forcing[i] = sqrt(run_data->forcing_scaling[i]) * cexp(2.0 * M_PI * I * r1) / sqrt(dt);
@@ -887,8 +887,8 @@ void ComputeForcing(double dt) {
 			// Loop over the forced modes
 			for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
 				// Generate two uniform random numbers
-				r1 = (double) rand() / (double) RAND_MAX;
-				r2 = (double) rand() / (double) RAND_MAX;
+				r1 = genrand64_real1();
+				r2 = genrand64_real1();
 
 				// Convert to Gaussian using Box-Muller transform
 				re_f = sqrt(-2.0 * log(r1)) * cos(r2 * 2.0 * M_PI);
@@ -903,7 +903,7 @@ void ComputeForcing(double dt) {
 			// Loop over the forced modes
 			for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
 				// // Generate uniform random numbers
-				r1 = (double) rand() / (double) RAND_MAX;
+				r1 = genrand64_real1();
 
 				// // Now compute the forcing 
 				run_data->forcing[i] = sqrt(run_data->forcing_scaling[i]) * cexp(2.0 * M_PI * I * r1) / sqrt(dt);
