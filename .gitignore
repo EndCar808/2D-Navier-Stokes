@@ -42,7 +42,7 @@ Thumbs.db
 *.app
 *.exe
 *.war
-
+*.bash_history
 # Large media files
 *.mp4
 *.tiff

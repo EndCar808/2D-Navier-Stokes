@@ -1922,7 +1922,7 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 		// Initialize variables
 		double enrg_k, enst_k;
 		double sqrt_k;
-		double enst_norm;
+		double enst_norm = 0.0;
 		double r1;
 
 		for (int i = 0; i < local_Ny; ++i) {	
@@ -1930,7 +1930,7 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 			for (int j = 0; j < Nx_Fourier; ++j) {
 				indx = tmp + j;
 
-				// Get the |k|^2
+				// Get the |k|
 				sqrt_k = sqrt(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 
 				// Get the energy for this mode
