@@ -283,12 +283,20 @@ void Precompute(void) {
 
 					//------------- Get the longitudinal and transverse Vorticity increments
 					#if defined(__VORT_INC_STATS)
-					vort_long_increment  = run_data->w[i * Nx + (j + r) % Nx] - run_data->w[i * Nx + j];
-					vort_trans_increment = run_data->w[((i + r) % Ny) * Nx + j] - run_data->w[i * Nx + j];
+					// Increment in the x direction 
+					x_incr = j + r;
+					if (x_incr < Nx) {
+						vort_long_increment  = run_data->w[i * Nx + x_incr] - run_data->w[i * Nx + j];
+						gsl_rstat_add(vort_long_increment, stats_data->w_incr_stats[0][r_indx]);
 
-					// Update the stats accumulators
-					gsl_rstat_add(vort_long_increment, stats_data->w_incr_stats[0][r_indx]);
-					gsl_rstat_add(vort_trans_increment, stats_data->w_incr_stats[1][r_indx]);			
+					}
+
+					// Increment in the y direction
+					y_incr = i + r; 
+					if (y_incr < Ny) {
+						vort_trans_increment = run_data->w[y_incr * Nx + j] - run_data->w[i * Nx + j];
+						gsl_rstat_add(vort_trans_increment, stats_data->w_incr_stats[1][r_indx]);
+					}
 					#endif
 
 					// //------------- Get the longitudinal and transverse Velocity increments

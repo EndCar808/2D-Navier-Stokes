@@ -39,6 +39,7 @@ void RealSpaceStats(int s) {
 	#if defined(__VEL_INC_STATS) || defined(__VORT_INC_STATS) || defined(__VORT_STR_FUNC_STATS) || defined(__VORT_RADIAL_STR_FUNC_STATS) || defined(__VEL_STR_FUNC_STATS) || defined(__VEL_GRAD_STATS) || defined(__VORT_GRAD_STATS)  || defined(__MIXED_VEL_STR_FUNC_STAS) || defined(__MIXED_VORT_STR_FUNC_STATS)
 	int r;
 	const long int Nx_Fourier = sys_vars->N[1] / 2 + 1;
+	double x_incr, y_incr;
 	double vel_long_increment_x, vel_trans_increment_x, mixed_vel_increment;
 	double vel_long_increment_y, vel_trans_increment_y;
 	double vel_long_increment_abs, vel_trans_increment_abs;
@@ -214,40 +215,105 @@ void RealSpaceStats(int s) {
 				r = stats_data->increments[r_indx];
 
 				#if defined(__VEL_INC_STATS)
-				//------------- Get the longitudinal and transverse Velocity increments
-				vel_long_increment  = run_data->u[SYS_DIM * (i * Nx + (j + r) % Nx) + 0] - run_data->u[SYS_DIM * (i * Nx + j) + 0];
-				vel_trans_increment = run_data->u[SYS_DIM * (i * Nx + (j + r) % Nx) + 1] - run_data->u[SYS_DIM * (i * Nx + j) + 1];
+				// Increments in the x direction
+				x_incr = j + r;
+				if (x_incr < Nx) {
+					// Longitudinal increment in the x direction
+					vel_long_increment_x  = run_data->u[SYS_DIM * (i * Nx + x_incr) + 0] - run_data->u[SYS_DIM * (i * Nx + j) + 0];
+					gsl_status = gsl_histogram_increment(stats_data->u_incr_hist[0][r_indx], vel_long_increment_x);
+					if (gsl_status != 0) {
+						fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Longitudinal Velocity Increment", s, gsl_status, vel_long_increment_x);
+						exit(1);
+					}
+					
+					// Transverse increment in the x direction
+					vel_trans_increment_x = run_data->u[SYS_DIM * (i * Nx + x_incr) + 1] - run_data->u[SYS_DIM * (i * Nx + j) + 1];
+					gsl_status = gsl_histogram_increment(stats_data->u_incr_hist[1][r_indx], vel_trans_increment_x);
+					if (gsl_status != 0) {
+						fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Transverse Velocity Increment", s, gsl_status, vel_trans_increment_x);
+						exit(1);
+					}
+				}
 
-				// Update the histograms
-				gsl_status = gsl_histogram_increment(stats_data->u_incr_hist[0][r_indx], vel_long_increment);
-				if (gsl_status != 0) {
-					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Longitudinal Velocity Increment", s, gsl_status, vel_long_increment);
-					exit(1);
-				}
-				gsl_status = gsl_histogram_increment(stats_data->u_incr_hist[1][r_indx], vel_trans_increment);
-				if (gsl_status != 0) {
-					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Transverse Velocity Increment", s, gsl_status, vel_trans_increment);
-					exit(1);
-				}
+				// Increments in the y direction
+				y_incr = i + r;
+				if (y_incr < Ny) {
+					// Longitudinal increment in the y direction
+					vel_long_increment_y  = run_data->u[SYS_DIM * (y_incr * Nx + j) + 1] - run_data->u[SYS_DIM * (i * Nx + j) + 1];
+					gsl_status = gsl_histogram_increment(stats_data->u_incr_hist[0][r_indx], vel_long_increment_y);
+					if (gsl_status != 0) {
+						fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Longitudinal Velocity Increment", s, gsl_status, vel_long_increment_y);
+						exit(1);
+					}
+					
+					// Transverse increment in the y direction
+					vel_trans_increment_y = run_data->u[SYS_DIM * (y_incr * Nx + j) + 0] - run_data->u[SYS_DIM * (i * Nx + j) + 0];
+					gsl_status = gsl_histogram_increment(stats_data->u_incr_hist[1][r_indx], vel_trans_increment_y);
+					if (gsl_status != 0) {
+						fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Transverse Velocity Increment", s, gsl_status, vel_trans_increment_y);
+						exit(1);
+					}
+				}				
 				#endif
 
 				#if defined(__VORT_INC_STATS)
-				//------------- Get the longitudinal and transverse Vorticity increments
-				vort_long_increment  = run_data->w[i * Nx + (j + r) % Nx] - run_data->w[i * Nx + j];
-				vort_trans_increment = run_data->w[((i + r) % Ny)* Nx + j] - run_data->w[i * Nx + j];
-
-				// Update the histograms
-				gsl_status = gsl_histogram_increment(stats_data->w_incr_hist[0][r_indx], vort_long_increment);
-				if (gsl_status != 0) {
-					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Longitudinal Vorticity Increment", s, gsl_status, vort_long_increment);
-					exit(1);
+				// Increment in the x direction 
+				x_incr = j + r;
+				if (x_incr < Nx) {
+					vort_long_increment  = run_data->w[i * Nx + x_incr] - run_data->w[i * Nx + j];
+					gsl_status = gsl_histogram_increment(stats_data->w_incr_hist[0][r_indx], vort_long_increment);
+					if (gsl_status != 0) {
+						fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Longitudinal Vorticity Increment", s, gsl_status, vort_long_increment);
+						exit(1);
+					}
 				}
-				gsl_status = gsl_histogram_increment(stats_data->w_incr_hist[1][r_indx], vort_trans_increment);
-				if (gsl_status != 0) {
-					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Transverse Vorticity Increment", s, gsl_status, vort_trans_increment);
-					exit(1);
-				}			
+
+				// Increment in the y direction
+				y_incr = i + r; 
+				if (y_incr < Ny) {
+					vort_trans_increment = run_data->w[y_incr * Nx + j] - run_data->w[i * Nx + j];
+					gsl_status = gsl_histogram_increment(stats_data->w_incr_hist[1][r_indx], vort_trans_increment);
+					if (gsl_status != 0) {
+						fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Transverse Vorticity Increment", s, gsl_status, vort_trans_increment);
+						exit(1);
+					}			
+				}
 				#endif
+				// #if defined(__VEL_INC_STATS)
+				// //------------- Get the longitudinal and transverse Velocity increments
+				// vel_long_increment  = run_data->u[SYS_DIM * (i * Nx + (j + r) % Nx) + 0] - run_data->u[SYS_DIM * (i * Nx + j) + 0];
+				// vel_trans_increment = run_data->u[SYS_DIM * (i * Nx + (j + r) % Nx) + 1] - run_data->u[SYS_DIM * (i * Nx + j) + 1];
+
+				// // Update the histograms
+				// gsl_status = gsl_histogram_increment(stats_data->u_incr_hist[0][r_indx], vel_long_increment);
+				// if (gsl_status != 0) {
+				// 	fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Longitudinal Velocity Increment", s, gsl_status, vel_long_increment);
+				// 	exit(1);
+				// }
+				// gsl_status = gsl_histogram_increment(stats_data->u_incr_hist[1][r_indx], vel_trans_increment);
+				// if (gsl_status != 0) {
+				// 	fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Transverse Velocity Increment", s, gsl_status, vel_trans_increment);
+				// 	exit(1);
+				// }
+				// #endif
+
+				// #if defined(__VORT_INC_STATS)
+				// //------------- Get the longitudinal and transverse Vorticity increments
+				// vort_long_increment  = run_data->w[i * Nx + (j + r) % Nx] - run_data->w[i * Nx + j];
+				// vort_trans_increment = run_data->w[((i + r) % Ny)* Nx + j] - run_data->w[i * Nx + j];
+
+				// // Update the histograms
+				// gsl_status = gsl_histogram_increment(stats_data->w_incr_hist[0][r_indx], vort_long_increment);
+				// if (gsl_status != 0) {
+				// 	fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Longitudinal Vorticity Increment", s, gsl_status, vort_long_increment);
+				// 	exit(1);
+				// }
+				// gsl_status = gsl_histogram_increment(stats_data->w_incr_hist[1][r_indx], vort_trans_increment);
+				// if (gsl_status != 0) {
+				// 	fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Transverse Vorticity Increment", s, gsl_status, vort_trans_increment);
+				// 	exit(1);
+				// }			
+				// #endif
 			}
 			#endif
 		}
