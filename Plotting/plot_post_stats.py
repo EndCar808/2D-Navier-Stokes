@@ -28,7 +28,7 @@ import time as TIME
 from subprocess import Popen, PIPE
 from matplotlib.pyplot import cm
 from functions import tc, sim_data, import_data, import_spectra_data, import_post_processing_data, import_sys_msr
-from plot_functions import plot_sector_phase_sync_snaps
+from plot_functions import plot_sector_phase_sync_snaps, plot_str_func_fit
 np.seterr(divide='ignore')
 ###############################
 ##       FUNCTION DEFS       ##
@@ -404,27 +404,26 @@ if __name__ == '__main__':
 
     ## Velocity
     ax1 = fig.add_subplot(gs[0, 0])
-    p, = ax1.plot(r / L, 3.0 / 2.0 * (r / L), linestyle = '--', label = r"$\frac{3}{2} \epsilon_l r$")
-    ax1.plot(r / L, post_data.mxd_vel_str_func[:], linestyle = '-.', color = p.get_color(), label = r"Mixed; $3\left\langle\delta u_{\parallel}(r)\left[\delta u_{\perp}(r)\right]^2\right\rangle$")
-    ax1.plot(r / L, post_data.vel_long_str_func[2, :], linestyle = ':', color = p.get_color(), label = r"Third Order; $\left\langle\left[\delta u_{\|}(r)\right]^3\right\rangle$")
-    ax1.set_xlabel(r"$r / L$")
+    p, = ax1.plot(r, (r)**2, linestyle = '--', label = r"$r^2$")
+    ax1.plot(r, post_data.vel_long_str_func_abs[1, :]/sys_vars.ndata, label = r"Second Order; $\left\langle\left[\delta u_{\|}(r)\right]^2\right\rangle$") ##linestyle = ':', color = p.get_color(),
+    ax1.set_xlabel(r"$r$")
     ax1.set_xscale('log')
     ax1.set_yscale('log')
     ax1.grid(color = 'k', linewidth = .5, linestyle = ':')
-    ax1.set_title("Holds For Inverse Cascade")
+    ax1.set_title("2nd Order")
     ax1.legend()
 
     ## Vorticity
     ax2 = fig.add_subplot(gs[0, 1])
-    p, = ax2.plot(r / L, -2.0 * r / L, linestyle = '--', label = r"$-2 \eta_I r$")
-    ax2.plot(r / L, post_data.mxd_vel_str_func[:], linestyle = '-.', color = p.get_color(), label = r"Mixed; $\left\langle\delta u_{\|}(r)[\delta \omega(r)]^2\right\rangle$")
-    p, = ax2.plot(r / L, 1.0 / 8.0 * (r / L) ** 3, linestyle = '--', label = r"$\frac{1}{8} \eta_I r^3$")
-    ax2.plot(r / L, post_data.vel_long_str_func[2, :], '-.', color = p.get_color(), label = r"Third Order; $\left\langle\left[\delta u_{\|}(r)\right]^3\right\rangle$")
-    ax2.set_xlabel(r"$r / L$")
+    p, = ax2.plot(r, 2.0 * r, linestyle = '--', label = r"$\eta_I r$")
+    ax2.plot(r, np.absolute(post_data.mxd_vort_str_func[:])/sys_vars.ndata, color = p.get_color(), label = r"Mixed; $\left\langle\delta u_{\|}(r)[\delta \omega(r)]^2\right\rangle$") 
+    p, = ax2.plot(r, 1.0 / 8.0 * (r) ** 3, linestyle = '--', label = r"$\frac{1}{8} r^3$")
+    ax2.plot(r, post_data.vel_long_str_func_abs[2, :]/sys_vars.ndata, label = r"Third Order; $\left\langle\left[\delta u_{\|}(r)\right]^3\right\rangle$") ## '-.', color = p.get_color(), 
+    ax2.set_xlabel(r"$r$")
     ax2.set_xscale('log')
     ax2.set_yscale('log')
     ax2.grid(color = 'k', linewidth = .5, linestyle = ':')
-    ax2.set_title("Holds For Direct Cascade")
+    ax2.set_title("3rd Order")
     ax2.legend()
 
     plt.suptitle(r"Compare Structure Funcitons")
@@ -443,7 +442,6 @@ if __name__ == '__main__':
     L = np.minimum(sys_vars.Nx, sys_vars.Ny) / 2
     powers = [0.1, 0.5, 1.0, 1.5, 2.0, 2.5]
     ax1 = fig.add_subplot(gs[0, 0])
-    print(post_data.vel_long_str_func[0, :])
     for i in range(post_data.vel_long_str_func.shape[0]):
         # ax1.plot(r / L, np.absolute(post_data.vel_long_str_func[i, :]))
         ax1.plot(np.log2(r), np.log2(np.absolute(post_data.vel_long_str_func[i, :])))
@@ -507,7 +505,6 @@ if __name__ == '__main__':
     # L = np.minimum(sys_vars.Nx, sys_vars.Ny) / 2
     powers = [0.1, 0.5, 1.0, 1.5, 2.0, 2.5]
     ax1 = fig.add_subplot(gs[0, 0])
-    print(post_data.vort_long_str_func[0, :])
     for i in range(post_data.vort_long_str_func.shape[0]):
         # ax1.plot(r / , np.absolute(post_data.vort_long_str_func[i, :]))
         ax1.plot(np.log2(r), np.log2(np.absolute(post_data.vort_long_str_func[i, :])))
@@ -561,6 +558,59 @@ if __name__ == '__main__':
     plt.close()
 
 
+    # -----------------------------------------
+    # # --------  Plot Structure Functions w/ fit
+    # -----------------------------------------
+    powers = np.array([0.1, 0.5, 1.0, 1.5, 2.0, 2.5])
+    # powers = np.array([1, 2, 3, 4, 5, 6])
+    r      = np.arange(1, np.minimum(sys_vars.Nx, sys_vars.Ny) / 2 + 1)
+    fig   = plt.figure(figsize = (16, 8))
+    gs    = GridSpec(1, 2, hspace = 0.3)
+    ax1   = fig.add_subplot(gs[0, 0])
+    vort_long_zeta_p, vort_long_zeta_p_resid = plot_str_func_fit(fig, ax1, r, post_data.vort_long_str_func_abs/sys_vars.ndata, powers, inert_range, insert_fig=False)
+    # --------  Plot Anomalous Exponent
+    ax2   = fig.add_subplot(gs[0, 1])
+    p = powers
+    ax2.plot(p, vort_long_zeta_p[:] / vort_long_zeta_p[2], marker= 'o', markersize = 5.0, markevery = 1, label = "DNS")
+    ax2.plot(p, p, 'k--', label = "K41")
+    ax2.set_xlabel(r"$p$")
+    ax2.set_ylabel(r"$\zeta_{p}$")
+    ax2.set_xlim(powers[0], powers[-1])
+    ax2.set_ylim(powers[0], powers[-1])
+    ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+    ax2.set_title(r"Longitudinal $\zeta_{p}$")
+    ax2.legend()
+    plt.suptitle('Longitudinal Vorticity Structure Functions')
+    plt.savefig(cmdargs.out_dir_stats + "Vorticity_SF_Anonalous_Exponent_Zeta_p.png", bbox_inches='tight')
+    plt.close()
+
+    # -----------------------------------------
+    # # --------  Plot Structure Functions w/ fit
+    # -----------------------------------------
+    powers = np.array([0.1, 0.5, 1.0, 1.5, 2.0, 2.5])
+    # powers = np.array([1, 2, 3, 4, 5, 6])
+    r      = np.arange(1, np.minimum(sys_vars.Nx, sys_vars.Ny) / 2 + 1)
+    fig   = plt.figure(figsize = (16, 8))
+    gs    = GridSpec(1, 2, hspace = 0.3)
+    ax1   = fig.add_subplot(gs[0, 0])
+    vel_long_zeta_p, vel_long_zeta_p_resid = plot_str_func_fit(fig, ax1, r, post_data.vel_long_str_func_abs/sys_vars.ndata, powers, inert_range, insert_fig=False)
+    # --------  Plot Anomalous Exponent
+    ax2   = fig.add_subplot(gs[0, 1])
+    p = powers
+    ax2.plot(p, vel_long_zeta_p[:] / vel_long_zeta_p[2], marker= 'o', markersize = 5.0, markevery = 1, label = "DNS")
+    ax2.plot(p, p, 'k--', label = "KLB")
+    ax2.set_xlabel(r"$p$")
+    ax2.set_ylabel(r"$\zeta_{p}$")
+    ax2.set_xlim(powers[0], powers[-1])
+    ax2.set_ylim(powers[0], powers[-1])
+    ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+    ax2.set_title(r"Longitudinal $\zeta_{p}$")
+    ax2.legend()
+    plt.suptitle('Longitudinal Velicity Structure Functions')
+    plt.savefig(cmdargs.out_dir_stats + "Velocity_SF_Anonalous_Exponent_Zeta_p.png", bbox_inches='tight')
+    plt.close()
+
+
 
     # -----------------------------------------------------------------------------
     # # --------  Plot Vorticity Structure Functions w/ Fit & Anomonlous Exponent
@@ -594,7 +644,7 @@ if __name__ == '__main__':
         pfit_slope = pfit_info[0]
         pfit_c     = pfit_info[1]
         zeta_p_long.append(np.absolute(pfit_slope))
-        print(i, pfit_slope, pfit_c)
+        print(i + 1, pfit_slope, pfit_c)
         ax1.plot(np.log2(r[inert_lim_low:inert_lim_high]), np.log2(r[inert_lim_low:inert_lim_high])*pfit_slope + pfit_c + 0.25, '--', color = p.get_color())
         ## Compute the local derivative and plot in insert
         # d_str_func  = np.diff(np.log2(post_data.vort_long_str_func_abs[i, :]))
@@ -647,7 +697,7 @@ if __name__ == '__main__':
         pfit_slope = pfit_info[0]
         pfit_c     = pfit_info[1]
         zeta_p_trans.append(np.absolute(pfit_slope))
-        print(i, pfit_slope, pfit_c)
+        print(i + 1, pfit_slope, pfit_c)
         ax3.plot(np.log2(r[inert_lim_low:inert_lim_high]), np.log2(r[inert_lim_low:inert_lim_high])*pfit_slope + pfit_c + 0.25, '--', color = p.get_color())
         ## Compute the local derivative and plot in insert
         # d_str_func  = np.diff(np.log2(post_data.vort_trans_str_func_abs[i, :]))

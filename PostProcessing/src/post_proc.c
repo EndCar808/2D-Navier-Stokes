@@ -153,7 +153,7 @@ void Precompute(void) {
 	int N_max_incr = (int) (GSL_MIN(Ny, Nx) / 2);
 	double vel_long_increment_x, vel_trans_increment_x;
 	double vel_long_increment_y, vel_trans_increment_y;
-	double x_incr, y_incr;
+	int x_incr, y_incr;
 	double vort_long_increment, vort_trans_increment;
 	double norm_fac = 1.0 / (Ny * Nx);
 	double std_u, std_w;

@@ -39,16 +39,16 @@ void RealSpaceStats(int s) {
 	#if defined(__VEL_INC_STATS) || defined(__VORT_INC_STATS) || defined(__VORT_STR_FUNC_STATS) || defined(__VORT_RADIAL_STR_FUNC_STATS) || defined(__VEL_STR_FUNC_STATS) || defined(__VEL_GRAD_STATS) || defined(__VORT_GRAD_STATS)  || defined(__MIXED_VEL_STR_FUNC_STAS) || defined(__MIXED_VORT_STR_FUNC_STATS)
 	int r;
 	const long int Nx_Fourier = sys_vars->N[1] / 2 + 1;
-	double x_incr, y_incr;
-	double vel_long_increment_x, vel_trans_increment_x, mixed_vel_increment;
-	double vel_long_increment_y, vel_trans_increment_y;
+	int x_incr, y_incr;
+	double vel_long_increment, vel_trans_increment, mixed_vel_increment;
 	double vel_long_increment_abs, vel_trans_increment_abs;
 	double vort_long_increment, vort_trans_increment, mixed_vort_increment;
 	double vort_long_increment_abs, vort_trans_increment_abs;
 	int N_max_incr = (int) (GSL_MIN(Ny, Nx) / 2);
 	double norm_fac = 1.0 / (Ny * Nx);
 	double radial_pow_p[8] = {0.1, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5};
-	double pow_p[8] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0};
+	// double pow_p[8] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0};
+	double pow_p[8] = {0.1, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5};
 	double delta_x = 2.0 * M_PI / Nx;
 	double delta_y = 2.0 * M_PI / Ny;
 	int tmp_r, indx_r;
@@ -219,18 +219,18 @@ void RealSpaceStats(int s) {
 				x_incr = j + r;
 				if (x_incr < Nx) {
 					// Longitudinal increment in the x direction
-					vel_long_increment_x  = run_data->u[SYS_DIM * (i * Nx + x_incr) + 0] - run_data->u[SYS_DIM * (i * Nx + j) + 0];
-					gsl_status = gsl_histogram_increment(stats_data->u_incr_hist[0][r_indx], vel_long_increment_x);
+					vel_long_increment  = run_data->u[SYS_DIM * (i * Nx + x_incr) + 0] - run_data->u[SYS_DIM * (i * Nx + j) + 0];
+					gsl_status = gsl_histogram_increment(stats_data->u_incr_hist[0][r_indx], vel_long_increment);
 					if (gsl_status != 0) {
-						fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Longitudinal Velocity Increment", s, gsl_status, vel_long_increment_x);
+						fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Longitudinal Velocity Increment", s, gsl_status, vel_long_increment);
 						exit(1);
 					}
 					
 					// Transverse increment in the x direction
-					vel_trans_increment_x = run_data->u[SYS_DIM * (i * Nx + x_incr) + 1] - run_data->u[SYS_DIM * (i * Nx + j) + 1];
-					gsl_status = gsl_histogram_increment(stats_data->u_incr_hist[1][r_indx], vel_trans_increment_x);
+					vel_trans_increment = run_data->u[SYS_DIM * (i * Nx + x_incr) + 1] - run_data->u[SYS_DIM * (i * Nx + j) + 1];
+					gsl_status = gsl_histogram_increment(stats_data->u_incr_hist[1][r_indx], vel_trans_increment);
 					if (gsl_status != 0) {
-						fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Transverse Velocity Increment", s, gsl_status, vel_trans_increment_x);
+						fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Transverse Velocity Increment", s, gsl_status, vel_trans_increment);
 						exit(1);
 					}
 				}
@@ -239,18 +239,18 @@ void RealSpaceStats(int s) {
 				y_incr = i + r;
 				if (y_incr < Ny) {
 					// Longitudinal increment in the y direction
-					vel_long_increment_y  = run_data->u[SYS_DIM * (y_incr * Nx + j) + 1] - run_data->u[SYS_DIM * (i * Nx + j) + 1];
-					gsl_status = gsl_histogram_increment(stats_data->u_incr_hist[0][r_indx], vel_long_increment_y);
+					vel_long_increment  = run_data->u[SYS_DIM * (y_incr * Nx + j) + 1] - run_data->u[SYS_DIM * (i * Nx + j) + 1];
+					gsl_status = gsl_histogram_increment(stats_data->u_incr_hist[0][r_indx], vel_long_increment);
 					if (gsl_status != 0) {
-						fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Longitudinal Velocity Increment", s, gsl_status, vel_long_increment_y);
+						fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Longitudinal Velocity Increment", s, gsl_status, vel_long_increment);
 						exit(1);
 					}
 					
 					// Transverse increment in the y direction
-					vel_trans_increment_y = run_data->u[SYS_DIM * (y_incr * Nx + j) + 0] - run_data->u[SYS_DIM * (i * Nx + j) + 0];
-					gsl_status = gsl_histogram_increment(stats_data->u_incr_hist[1][r_indx], vel_trans_increment_y);
+					vel_trans_increment = run_data->u[SYS_DIM * (y_incr * Nx + j) + 0] - run_data->u[SYS_DIM * (i * Nx + j) + 0];
+					gsl_status = gsl_histogram_increment(stats_data->u_incr_hist[1][r_indx], vel_trans_increment);
 					if (gsl_status != 0) {
-						fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Transverse Velocity Increment", s, gsl_status, vel_trans_increment_y);
+						fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Transverse Velocity Increment", s, gsl_status, vel_trans_increment);
 						exit(1);
 					}
 				}				
@@ -356,9 +356,9 @@ void RealSpaceStats(int s) {
 						#endif
 						#if defined(__MIXED_VORT_STR_FUNC_STATS)
 						mixed_vort_increment = 0.0;
-						int mixed_vort_count = 0;
 						#endif	
 					}
+					int mixed_vort_count = 0;
 
 					// Loop over space and average 
 					for (int i = 0; i < Ny; ++i) {
@@ -375,8 +375,8 @@ void RealSpaceStats(int s) {
 							if (i + r_inc < Ny) {
 								vel_long_increment      += 0.5 * pow(sgn(run_data->u[SYS_DIM * ((i + r_inc) * Nx + j) + 1] - run_data->u[SYS_DIM * (i * Nx + j) + 1]), 2.0 * pow_p[p - 1]) * pow(fabs(run_data->u[SYS_DIM * ((i + r_inc) * Nx + j) + 1] - run_data->u[SYS_DIM * (i * Nx + j) + 1]), 2.0 * pow_p[p - 1]);
 								vel_trans_increment     += 0.5 * pow(sgn(run_data->u[SYS_DIM * ((i + r_inc) * Nx + j) + 0] - run_data->u[SYS_DIM * (i * Nx + j) + 0]), 2.0 * pow_p[p - 1]) * pow(fabs(run_data->u[SYS_DIM * ((i + r_inc) * Nx + j) + 0] - run_data->u[SYS_DIM * (i * Nx + j) + 0]), 2.0 * pow_p[p - 1]);
-								vel_long_increment_abs  += 0.5 * pow(fabs(run_data->u[SYS_DIM * ((i + r_incr) * Nx + j) + 1] - run_data->u[SYS_DIM * (i * Nx + j) + 1]), 2.0 * pow_p[p - 1]);
-								vel_trans_increment_abs += 0.5 * pow(fabs(run_data->u[SYS_DIM * ((i + r_incr) * Nx + j) + 0] - run_data->u[SYS_DIM * (i * Nx + j) + 0]), 2.0 * pow_p[p - 1]);
+								vel_long_increment_abs  += 0.5 * pow(fabs(run_data->u[SYS_DIM * ((i + r_inc) * Nx + j) + 1] - run_data->u[SYS_DIM * (i * Nx + j) + 1]), 2.0 * pow_p[p - 1]);
+								vel_trans_increment_abs += 0.5 * pow(fabs(run_data->u[SYS_DIM * ((i + r_inc) * Nx + j) + 0] - run_data->u[SYS_DIM * (i * Nx + j) + 0]), 2.0 * pow_p[p - 1]);
 								vel_y_incr_count++;
 							}
 							#endif

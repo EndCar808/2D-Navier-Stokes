@@ -234,39 +234,39 @@ if __name__ == '__main__':
         ax1.set_title(r"Root Mean Square Velocity")
         ax1.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
         ## Plot the Eddy TurnOver Time
-        ax1 = fig.add_subplot(gs[0, 1])
-        ax1.plot(sys_msr.tot_time, sys_msr.eddy_turnover_1, label=r"$\ell/u_{rms}$")
-        ax1.plot(sys_msr.tot_time, sys_msr.eddy_turnover_2, label=r"$2 \pi/u_{rms}$")
-        ax1.set_xlabel(r"$t$")
-        ax1.set_title(r"Eddy Turnover Time")
-        ax1.legend()
-        ax1.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+        ax2 = fig.add_subplot(gs[0, 1])
+        ax2.plot(sys_msr.tot_time, sys_msr.eddy_turnover_1, label=r"$\ell/u_{rms}$")
+        ax2.plot(sys_msr.tot_time, sys_msr.eddy_turnover_2, label=r"$2 \pi/u_{rms}$")
+        ax2.set_xlabel(r"$t$")
+        ax2.set_title(r"Eddy Turnover Time")
+        ax2.legend()
+        ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
         ## Plot the Kolmogrov Length Scale
-        ax1 = fig.add_subplot(gs[1, 0])
-        ax1.plot(sys_msr.tot_time, sys_msr.kolm_scale, label=r"$\eta$")
-        ax1.set_xlabel(r"$t$")
-        ax1.set_title(r"Kolmogorov Length Scale")
-        ax1.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+        ax3 = fig.add_subplot(gs[1, 0])
+        ax3.plot(sys_msr.tot_time, sys_msr.kolm_scale, label=r"$\eta$")
+        ax3.set_xlabel(r"$t$")
+        ax3.set_title(r"Kolmogorov Length Scale")
+        ax3.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
         ## Plot the Kolmogrov Length Scale
-        ax1 = fig.add_subplot(gs[1, 1])
-        ax1.plot(sys_msr.tot_time, sys_msr.taylor_micro, label=r"$\lambda$")
-        ax1.set_xlabel(r"$t$")
-        ax1.set_title(r"Taylor Microscale")
-        ax1.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+        ax4 = fig.add_subplot(gs[1, 1])
+        ax4.plot(sys_msr.tot_time, sys_msr.taylor_micro, label=r"$\lambda$")
+        ax4.set_xlabel(r"$t$")
+        ax4.set_title(r"Taylor Microscale")
+        ax4.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
         plt.savefig(snaps_output_dir + "Turbulent_Measures.png")
         plt.close()
         ## Plot the Energy Dissipative Wavenumber
-        ax1 = fig.add_subplot(gs[0, 2])
-        ax1.plot(sys_msr.tot_time, sys_msr.enrg_diss_k, label=r"$k_{\eta}$")
-        ax1.set_xlabel(r"$t$")
-        ax1.set_title(r"Energy Dissipative k")
-        ax1.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+        ax5 = fig.add_subplot(gs[0, 2])
+        ax5.plot(sys_msr.tot_time, sys_msr.enrg_diss_k, label=r"$k_{\eta}$")
+        ax5.set_xlabel(r"$t$")
+        ax5.set_title(r"Energy Dissipative k")
+        ax5.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
         ## Plot the Enstrophy Dissipative Wavenumber
-        ax1 = fig.add_subplot(gs[1, 2])
-        ax1.plot(sys_msr.tot_time, sys_msr.enst_diss_k, label=r"$k_{\eta}$")
-        ax1.set_xlabel(r"$t$")
-        ax1.set_title(r"Enstrophy Dissipative k")
-        ax1.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+        ax6 = fig.add_subplot(gs[1, 2])
+        ax6.plot(sys_msr.tot_time, sys_msr.enst_diss_k, label=r"$k_{\eta}$")
+        ax6.set_xlabel(r"$t$")
+        ax6.set_title(r"Enstrophy Dissipative k")
+        ax6.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
         plt.savefig(snaps_output_dir + "Turbulent_Measures.png")
         plt.close()
 
@@ -479,9 +479,9 @@ if __name__ == '__main__':
         # -----------------------------------------
         # # --------  Plot Structure Functions w/ fit
         # -----------------------------------------
-        if hasattr(post_data, 'vort_long_str_func'):
-            # powers = np.array([0.1, 0.5, 1.0, 1.5, 2.0, 2.5])
-            powers = np.array([1, 2, 3, 4, 5, 6])
+        if hasattr(post_data, 'vort_long_str_func_abs'):
+            powers = np.array([0.1, 0.5, 1.0, 1.5, 2.0, 2.5])
+            # powers = np.array([1, 2, 3, 4, 5, 6])
             r      = np.arange(1, np.minimum(sys_vars.Nx, sys_vars.Ny) / 2 + 1)
             fig   = plt.figure(figsize = (16, 8))
             gs    = GridSpec(1, 2, hspace = 0.3)
@@ -490,7 +490,7 @@ if __name__ == '__main__':
             # --------  Plot Anomalous Exponent
             ax2   = fig.add_subplot(gs[0, 1])
             p = powers
-            ax2.plot(p, vort_long_zeta_p[:], marker= 'o', markersize = 5.0, markevery = 1, label = "DNS")
+            ax2.plot(p, vort_long_zeta_p[:] / vort_long_zeta_p[2], marker= 'o', markersize = 5.0, markevery = 1, label = "DNS")
             ax2.plot(p, p, 'k--', label = "K41")
             ax2.set_xlabel(r"$p$")
             ax2.set_ylabel(r"$\zeta_{p}$")
@@ -501,6 +501,33 @@ if __name__ == '__main__':
             ax2.legend()
             plt.suptitle('Longitudinal Vorticity Structure Functions')
             plt.savefig(snaps_output_dir + "Vorticity_Structure_Func_Anonalous_Exponent_Zeta_p.png", bbox_inches='tight')
+            plt.close()
+
+        # -----------------------------------------
+        # # --------  Plot Structure Functions w/ fit
+        # -----------------------------------------
+        if hasattr(post_data, 'vel_long_str_func_abs'):
+            powers = np.array([0.1, 0.5, 1.0, 1.5, 2.0, 2.5])
+            # powers = np.array([1, 2, 3, 4, 5, 6])
+            r      = np.arange(1, np.minimum(sys_vars.Nx, sys_vars.Ny) / 2 + 1)
+            fig   = plt.figure(figsize = (16, 8))
+            gs    = GridSpec(1, 2, hspace = 0.3)
+            ax1   = fig.add_subplot(gs[0, 0])
+            vort_long_zeta_p, vort_long_zeta_p_resid = plot_str_func_fit(fig, ax1, r, post_data.vel_long_str_func_abs/sys_vars.ndata, powers, inert_range, insert_fig=False)
+            # --------  Plot Anomalous Exponent
+            ax2   = fig.add_subplot(gs[0, 1])
+            p = powers
+            ax2.plot(p, vel_long_zeta_p[:] / vel_long_zeta_p[2], marker= 'o', markersize = 5.0, markevery = 1, label = "DNS")
+            ax2.plot(p, p, 'k--', label = "K41")
+            ax2.set_xlabel(r"$p$")
+            ax2.set_ylabel(r"$\zeta_{p}$")
+            ax2.set_xlim(powers[0], powers[-1])
+            ax2.set_ylim(powers[0], powers[-1])
+            ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+            ax2.set_title(r"Longitudinal $\zeta_{p}$")
+            ax2.legend()
+            plt.suptitle('Longitudinal Velicity Structure Functions')
+            plt.savefig(snaps_output_dir + "Velocity_Structure_Func_Anonalous_Exponent_Zeta_p.png", bbox_inches='tight')
             plt.close()
 
 
