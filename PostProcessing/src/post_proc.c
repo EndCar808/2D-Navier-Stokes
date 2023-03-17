@@ -151,7 +151,9 @@ void Precompute(void) {
 	const long int Nx_Fourier = Nx / 2 + 1;
 	int r;
 	int N_max_incr = (int) (GSL_MIN(Ny, Nx) / 2);
-	double vel_long_increment, vel_trans_increment;
+	double vel_long_increment_x, vel_trans_increment_x;
+	double vel_long_increment_y, vel_trans_increment_y;
+	double x_incr, y_incr;
 	double vort_long_increment, vort_trans_increment;
 	double norm_fac = 1.0 / (Ny * Nx);
 	double std_u, std_w;
@@ -254,12 +256,29 @@ void Precompute(void) {
 
 					//------------- Get the longitudinal and transverse Velocity increments
 					#if defined(__VEL_INC_STATS)
-					vel_long_increment  = run_data->u[SYS_DIM * (i * Nx + (j + r) % Nx) + 0] - run_data->u[SYS_DIM * (i * Nx + j) + 0];
-					vel_trans_increment = run_data->u[SYS_DIM * (i * Nx + (j + r) % Nx) + 1] - run_data->u[SYS_DIM * (i * Nx + j) + 1];
+					// Increments in the x direction
+					x_incr = j + r;
+					if (x_incr < Nx) {
+						// Longitudinal increment in the x direction
+						vel_long_increment_x  = run_data->u[SYS_DIM * (i * Nx + x_incr) + 0] - run_data->u[SYS_DIM * (i * Nx + j) + 0];
+						gsl_rstat_add(vel_long_increment_x, stats_data->u_incr_stats[0][r_indx]);
+						
+						// Transverse increment in the x direction
+						vel_trans_increment_x = run_data->u[SYS_DIM * (i * Nx + x_incr) + 1] - run_data->u[SYS_DIM * (i * Nx + j) + 1];
+						gsl_rstat_add(vel_trans_increment_x, stats_data->u_incr_stats[1][r_indx]);
+					}
 
-					// Update the stats accumulators
-					gsl_rstat_add(vel_long_increment, stats_data->u_incr_stats[0][r_indx]);
-					gsl_rstat_add(vel_trans_increment, stats_data->u_incr_stats[1][r_indx]);
+					// Increments in the y direction
+					y_incr = i + r;
+					if (y_incr < Ny) {
+						// Longitudinal increment in the y direction
+						vel_long_increment_y  = run_data->u[SYS_DIM * (y_incr * Nx + j) + 1] - run_data->u[SYS_DIM * (i * Nx + j) + 1];
+						gsl_rstat_add(vel_long_increment_y, stats_data->u_incr_stats[0][r_indx]);
+						
+						// Transverse increment in the y direction
+						vel_trans_increment_y = run_data->u[SYS_DIM * (y_incr * Nx + j) + 0] - run_data->u[SYS_DIM * (i * Nx + j) + 0];
+						gsl_rstat_add(vel_trans_increment_y, stats_data->u_incr_stats[1][r_indx]);
+					}
 					#endif
 
 					//------------- Get the longitudinal and transverse Vorticity increments
@@ -271,6 +290,26 @@ void Precompute(void) {
 					gsl_rstat_add(vort_long_increment, stats_data->w_incr_stats[0][r_indx]);
 					gsl_rstat_add(vort_trans_increment, stats_data->w_incr_stats[1][r_indx]);			
 					#endif
+
+					// //------------- Get the longitudinal and transverse Velocity increments
+					// #if defined(__VEL_INC_STATS)
+					// vel_long_increment  = run_data->u[SYS_DIM * (i * Nx + (j + r) % Nx) + 0] - run_data->u[SYS_DIM * (i * Nx + j) + 0];
+					// vel_trans_increment = run_data->u[SYS_DIM * (i * Nx + (j + r) % Nx) + 1] - run_data->u[SYS_DIM * (i * Nx + j) + 1];
+
+					// // Update the stats accumulators
+					// gsl_rstat_add(vel_long_increment, stats_data->u_incr_stats[0][r_indx]);
+					// gsl_rstat_add(vel_trans_increment, stats_data->u_incr_stats[1][r_indx]);
+					// #endif
+
+					// //------------- Get the longitudinal and transverse Vorticity increments
+					// #if defined(__VORT_INC_STATS)
+					// vort_long_increment  = run_data->w[i * Nx + (j + r) % Nx] - run_data->w[i * Nx + j];
+					// vort_trans_increment = run_data->w[((i + r) % Ny) * Nx + j] - run_data->w[i * Nx + j];
+
+					// // Update the stats accumulators
+					// gsl_rstat_add(vort_long_increment, stats_data->w_incr_stats[0][r_indx]);
+					// gsl_rstat_add(vort_trans_increment, stats_data->w_incr_stats[1][r_indx]);			
+					// #endif
 				}
 			}
 		}

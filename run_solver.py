@@ -239,6 +239,8 @@ if __name__ == '__main__':
                 num_post_fftw_threads = int(parser[section]['num_post_fftw_threads'])
             if 'post_tag' in parser[section]:
                 post_tag = str(parser[section]['post_tag'])
+            if 'check_point' in parser[section]:
+                check_point = int(parser[section]['check_point'])
         if section in ['DIRECTORIES']:
             if 'solver_input_dir' in parser[section]:
                 input_dir = str(parser[section]['solver_input_dir'])
@@ -398,7 +400,7 @@ if __name__ == '__main__':
         
         ## Generate command list 
         if solver_mode == "FULL":
-            post_cmd_list = [["{} -i {} -o {} -v {:g} -v {} -v {:1.1f} -d {:g} -d {} -d {:1.1f} -d {:g} -f {} -f {} -f {} -a {} -a {} -k {} -p {} -p {} -t {} {}".format(
+            post_cmd_list = [["{} -i {} -o {} -v {:g} -v {} -v {:1.1f} -d {:g} -d {} -d {:1.1f} -d {:g} -f {} -f {} -f {} -a {} -a {} -k {} -p {} -p {} -t {} -c {} {}".format(
                                                         post_executable,
                                                         post_input_dir + "N[{},{}]_T[{:1.1f},{},{:1.3f}]_NU[{:g},{},{:1.1f}]_DRAG[{:g},{:g},{},{:1.1f}]_FORC[{},{},{:g}]_u0[{}]_TAG[{}]/".format(nx, ny, t0, h, t, v, int(hype), hypervisc_pow, ekmn_alpha_low_k, a_hk, int(ekmn_hypo_diff), ekmn_hypo_pow, forcing, force_k, force_scale, u0, s_tag), 
                                                         post_output_dir + "N[{},{}]_T[{:1.1f},{},{:1.3f}]_NU[{:g},{},{:1.1f}]_DRAG[{:g},{:g},{},{:1.1f}]_FORC[{},{},{:g}]_u0[{}]_TAG[{}]/".format(nx, ny, t0, h, t, v, int(hype), hypervisc_pow, ekmn_alpha_low_k, a_hk, int(ekmn_hypo_diff), ekmn_hypo_pow, forcing, force_k, force_scale, u0, s_tag),
@@ -409,9 +411,10 @@ if __name__ == '__main__':
                                                         k_f, 
                                                         num_threads, num_post_fftw_threads,
                                                         post_tag,
+                                                        check_point,
                                                         post_options)] for nx, ny in zip(Nx, Ny) for h in dt for t in T for a_hk in ekmn_alpha_high_k for n_k3 in num_k3_sectors for n_k1 in num_k1_sectors for k_f in k_frac for v in nu for hype in hyper_visc for u0 in ic for s_tag in solver_tag for num_threads in num_post_omp_threads]
         elif solver_mode == "PHASEONLY":
-            post_cmd_list = [["{} -i {} -o {} -f {} -f {} -f {} -a {} -a {} -k {} -p {} -p {} -t {} {}".format(
+            post_cmd_list = [["{} -i {} -o {} -f {} -f {} -f {} -a {} -a {} -k {} -p {} -p {} -t {} -c {} {} ".format(
                                                         post_executable,
                                                         post_input_dir + "N[{},{}]_T[{:1.1f},{},{:1.3f}]_SLOPE[{:1.3f}]_FORC[{},{},{:g}]_u0[{}]_TAG[{}]/".format(nx, ny, t0, h, t, po_s, forcing, force_k, force_scale, u0, s_tag), 
                                                         post_output_dir + "N[{},{}]_T[{:1.1f},{},{:1.3f}]_SLOPE[{:1.3f}]_FORC[{},{},{:g}]_u0[{}]_TAG[{}]/".format(nx, ny, t0, h, t, po_s, forcing, force_k, force_scale, u0, s_tag),                                
@@ -420,6 +423,7 @@ if __name__ == '__main__':
                                                         k_f, 
                                                         num_threads, num_post_fftw_threads,
                                                         post_tag,
+                                                        check_point,
                                                         post_options)] for nx, ny in zip(Nx, Ny) for h in dt for t in T for po_s in po_slope for n_k3 in num_k3_sectors for n_k1 in num_k1_sectors for k_f in k_frac for u0 in ic for s_tag in solver_tag for num_threads in num_post_omp_threads]
 
         if cmdargs.cmd_only:

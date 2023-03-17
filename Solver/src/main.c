@@ -74,7 +74,6 @@ int main(int argc, char** argv) {
 		exit(1);
 	}
 
-	printf("\n\nHERE\n\n\n");
 	
 	//////////////////////////////////
 	// Call Solver

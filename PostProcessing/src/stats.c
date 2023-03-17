@@ -39,7 +39,8 @@ void RealSpaceStats(int s) {
 	#if defined(__VEL_INC_STATS) || defined(__VORT_INC_STATS) || defined(__VORT_STR_FUNC_STATS) || defined(__VORT_RADIAL_STR_FUNC_STATS) || defined(__VEL_STR_FUNC_STATS) || defined(__VEL_GRAD_STATS) || defined(__VORT_GRAD_STATS)  || defined(__MIXED_VEL_STR_FUNC_STAS) || defined(__MIXED_VORT_STR_FUNC_STATS)
 	int r;
 	const long int Nx_Fourier = sys_vars->N[1] / 2 + 1;
-	double vel_long_increment, vel_trans_increment, mixed_vel_increment;
+	double vel_long_increment_x, vel_trans_increment_x, mixed_vel_increment;
+	double vel_long_increment_y, vel_trans_increment_y;
 	double vel_long_increment_abs, vel_trans_increment_abs;
 	double vort_long_increment, vort_trans_increment, mixed_vort_increment;
 	double vort_long_increment_abs, vort_trans_increment_abs;
