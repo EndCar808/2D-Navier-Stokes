@@ -63,7 +63,7 @@
 #define __VEL_STR_FUNC_STATS
 #define __VORT_STR_FUNC_STATS
 // #define __VORT_RADIAL_STR_FUNC_STATS
-#define __MIXED_VEL_STR_FUNC_STATS
+// #define __MIXED_VEL_STR_FUNC_STATS
 #define __MIXED_VORT_STR_FUNC_STATS
 #endif
 #if defined(__POST_FIELD) || defined(__POST_SYNC)
