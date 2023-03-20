@@ -80,6 +80,14 @@
 #if defined(__PHASE_ONLY_FXD_AMP) // Turn on phase only mode if called for at compilation
 #define PHASE_ONLY_FXD_AMP
 #endif
+// Allow for Amp Only mode via direct integration
+#if defined(__AMP_ONLY)		// Turn on phase only mode if called for at compilation
+#define AMP_ONLY
+#endif
+// Allow for Phase Only mode by fixing the amplitudes
+#if defined(__AMP_ONLY_FXD_AMP) // Turn on phase only mode if called for at compilation
+#define AMP_ONLY_FXD_AMP
+#endif
 // Testing the solver will be decided at compilation
 #if defined(__TESTING)
 #define TESTING
