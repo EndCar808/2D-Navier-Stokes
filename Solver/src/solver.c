@@ -64,6 +64,11 @@ void SpectralSolve(void) {
 	struct Int_data_struct Int_data_tmp; 	// Initialize a Int_data_struct
 	Int_data = &Int_data_tmp;		        // Point the ptr to this new Int_data_struct
 
+	// Create compound datatype for the complex datasets
+    #if (defined(__VORT_FOUR) || defined(__MODES) || defined(__NONLIN)) && !defined(DEBUG)
+	file_info->COMPLEX_DTYPE = CreateComplexDatatype();
+	#endif
+
 	// -------------------------------
 	// Allocate memory
 	// -------------------------------
@@ -81,7 +86,7 @@ void SpectralSolve(void) {
 	#if defined(DEBUG)
 	OpenTestingFile();
 	#endif
-
+	
 	// Initialize the collocation points and wavenumber space 
 	InitializeSpaceVariables(run_data->x, run_data->k, N);
 
@@ -231,7 +236,7 @@ void SpectralSolve(void) {
 			#if defined(__DPRK5CN)
 			t += dt;
 			#else
-			t = iters * dt;
+			t = t0 + iters * dt;
 			#endif
 		}
 
@@ -274,6 +279,9 @@ void AB4Step(const double dt, const long int* N, const int iters, const ptrdiff_
 	const long int Nx_Fourier = N[1] / 2 + 1;
 	#if defined(PHASE_ONLY_FXD_AMP)
 	double tmp_a_k_norm;
+	#endif
+	#if defined(AMP_ONLY_FXD_PHASE)
+	double tmp_phi_k;
 	#endif
 
 	/////////////////////
@@ -326,16 +334,20 @@ void AB4Step(const double dt, const long int* N, const int iters, const ptrdiff_
 			for (int j = 0; j < Nx_Fourier; ++j) {
 				indx = tmp + j;
 
-				if ((run_data->k[0][i] != 0) || (run_data->k[1][j]  != 0)) {
+				if ((run_data->k[0][i] != 0) || (run_data->k[1][j] != 0)) {
+					//---------------------------- Prerecord before update step if in fixed amp/phase mode
 					#if defined(PHASE_ONLY_FXD_AMP)
-					// Pre-record the amplitudes
 					tmp_a_k_norm = cabs(run_data->w_hat[indx]);
 					#endif
+					#if defined(AMP_ONLY_FXD_PHASE)
+					tmp_phi_k = carg(run_data->w_hat[indx]);
+					#endif
 
+					//---------------------------- Update Step
 					#if defined(__EULER) && !defined(PHASE_ONLY)
 					// Update the Fourier space vorticity with the RHS
 					run_data->w_hat[indx] = run_data->w_hat[indx] + dt * (AB4_1 * Int_data->AB_tmp[indx]) + dt * (AB4_2 * Int_data->AB_tmp_nonlin[2][indx]) + dt * (AB4_3 * Int_data->AB_tmp_nonlin[1][indx]) + dt * (AB4_4 * Int_data->AB_tmp_nonlin[0][indx]);
-					#elif defined(__NAVIER) && !defined(PHASE_ONLY)
+					#elif (defined(__NAVIER) || defined(AMP_ONLY)) && !defined(PHASE_ONLY)
 					// Compute the pre factors for the RK4CN update step
 					k_sqr = (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 					
@@ -344,22 +356,35 @@ void AB4Step(const double dt, const long int* N, const int iters, const ptrdiff_
 					D_fac *= dt;
 
 					// Complete the update step
+					#if defined(AMP_ONLY)
+					run_data->a_k[indx] = run_data->a_k[indx] * ((2.0 - D_fac) / (2.0 + D_fac)) + (2.0 * dt / (2.0 + D_fac)) * ((AB4_1 * Int_data->AB_tmp[indx]) + (AB4_2 * Int_data->AB_tmp_nonlin[2][indx]) + (AB4_3 * Int_data->AB_tmp_nonlin[1][indx]) + (AB4_4 * Int_data->AB_tmp_nonlin[0][indx]));
+					#else
 					run_data->w_hat[indx] = run_data->w_hat[indx] * ((2.0 - D_fac) / (2.0 + D_fac)) + (2.0 * dt / (2.0 + D_fac)) * ((AB4_1 * Int_data->AB_tmp[indx]) + (AB4_2 * Int_data->AB_tmp_nonlin[2][indx]) + (AB4_3 * Int_data->AB_tmp_nonlin[1][indx]) + (AB4_4 * Int_data->AB_tmp_nonlin[0][indx]));
+					#endif
 					#elif defined(PHASE_ONLY)
 					run_data->phi_k[indx] = run_data->phi_k[indx] + dt * (AB4_1 * Int_data->AB_tmp[indx]) + dt * (AB4_2 * Int_data->AB_tmp_nonlin[2][indx]) + dt * (AB4_3 * Int_data->AB_tmp_nonlin[1][indx]) + dt * (AB4_4 * Int_data->AB_tmp_nonlin[0][indx]);
 					#endif
 
+					//---------------------------- Reset if in fixed amp/phase mode
 					#if defined(PHASE_ONLY_FXD_AMP)
-					// Reset the amplitudes
 					if (cabs(run_data->w_hat[indx]) != 0.0)
 						run_data->w_hat[indx] *= (tmp_a_k_norm / cabs(run_data->w_hat[indx]));
 					else {
 						run_data->w_hat[indx] = 0.0 + 0.0 * I;					
 					}
 					#endif
+					#if defined(AMP_ONLY_FXD_PHASE)
+					run_data->w_hat[indx] = cabs(run_data->w_hat[indx]) * cexp(I * tmp_phi_k);
+					#endif
 				}
 				else {
+					#if defined(PHASE_ONLY) || defined(PHASE_ONLY_FXD_AMP)
+					run_data->phi_k[indx] = 0.0;
+					#elif defined(AMP_ONLY) || defined(AMP_ONLY_FXD_PHASE)
+					run_data->a_k[indx] = 0.0;
+					#else
 					run_data->w_hat[indx] = 0.0 + 0.0 * I;
+					#endif
 				}
 			}
 		}
@@ -401,6 +426,9 @@ void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdif
 	#endif
 	#if defined(PHASE_ONLY_FXD_AMP)
 	double tmp_a_k_norm;
+	#endif
+	#if defined(AMP_ONLY_FXD_PHASE)
+	double tmp_phi_k;
 	#endif
 
 	//------------------- Get the forcing
@@ -531,10 +559,15 @@ void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdif
 			indx = tmp + j;
 
 			if ((run_data->k[0][i] != 0) || (run_data->k[1][j]  != 0)) {
+				//---------------------------- Prerecord before update step if in fixed amp/phase mode
 				#if defined(PHASE_ONLY_FXD_AMP)
 				tmp_a_k_norm = cabs(run_data->w_hat[indx]);
 				#endif
+				#if defined(AMP_ONLY_FXD_PHASE)
+				tmp_phhi_k = carg(run_data->w_hat[indx]);
+				#endif
 
+				//---------------------------- Update Step
 				#if defined(__EULER) && !defined(PHASE_ONLY)
 				// Update the Fourier space vorticity with the RHS
 				run_data->w_hat[indx] = run_data->w_hat[indx] + (dt * (RK5_B1 * Int_data->RK1[indx]) + dt * (RK5_B3 * Int_data->RK3[indx]) + dt * (RK5_B4 * Int_data->RK4[indx]) + dt * (RK5_B5 * Int_data->RK5[indx]) + dt * (RK5_B6 * Int_data->RK6[indx]));
@@ -552,13 +585,16 @@ void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdif
 				run_data->phi_k[indx] = run_data->phi_k[indx] + (dt * (RK5_B1 * Int_data->RK1[indx]) + dt * (RK5_B3 * Int_data->RK3[indx]) + dt * (RK5_B4 * Int_data->RK4[indx]) + dt * (RK5_B5 * Int_data->RK5[indx]) + dt * (RK5_B6 * Int_data->RK6[indx]));
 				#endif
 
+				//---------------------------- Reset if in fixed amp/phase mode
 				#if defined(PHASE_ONLY_FXD_AMP)
-				// Reset the amplitudes
 				if (cabs(run_data->w_hat[indx]) != 0.0)
 					run_data->w_hat[indx] *= (tmp_a_k_norm / cabs(run_data->w_hat[indx]));
 				else {
 					run_data->w_hat[indx] = 0.0 + 0.0 * I;					
 				}
+				#endif
+				#if defined(AMP_ONLY_FXD_PHASE)
+				run_data->w_hat[indx] = cabs(run_data->w_hat[indx]) * cexp(I * tmp_phi_k);
 				#endif
 				
 				#if defined(__DPRK5CN)
@@ -584,8 +620,10 @@ void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdif
 				#endif
 			}
 			else {
-				#if defined(PHASE_ONLY)
+				#if defined(PHASE_ONLY) || defined(PHASE_ONLY_FXD_AMP)
 				run_data->phi_k[indx] = 0.0;
+				#elif defined(AMP_ONLY) || defined(AMP_ONLY_FXD_PHASE)
+				run_data->a_k[indx] = 0.0;
 				#else
 				run_data->w_hat[indx] = 0.0 + 0.0 * I;
 				#endif
@@ -691,6 +729,9 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Ny, Int_d
 	#if defined(PHASE_ONLY_FXD_AMP)
 	double tmp_a_k_norm;
 	#endif
+	#if defined(AMP_ONLY_FXD_PHASE)
+	double tmp_phi_k;
+	#endif
 
 	//------------------- Get the forcing
 	ComputeForcing(dt);
@@ -702,7 +743,7 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Ny, Int_d
 		for (int j = 0; j < Nx_Fourier; ++j) {
 			indx = tmp + j;
 
-			#if defined(PHASE_ONLY)
+			#if (defined(PHASE_ONLY) || defined(AMP_ONLY))
 			// Get the Fourier vorticity from the Fourier phases and amplitudes
 			Int_data->RK_tmp[indx] = run_data->a_k[indx] * cexp(I * run_data->phi_k[indx]);
 			#else
@@ -736,6 +777,8 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Ny, Int_d
 			// Update temporary input for nonlinear term
 			#if defined(PHASE_ONLY)
 			Int_data->RK_tmp[indx] = run_data->a_k[indx] * cexp(I * (run_data->phi_k[indx] + RK4_A21 * (dt * Int_data->RK1[indx])));
+			#elif defined(AMP_ONLY)
+			Int_data->RK_tmp[indx] = (run_data->a_k[indx] + RK4_A21 * (dt * Int_data->RK1[indx])) * cexp(I * run_data->phi_k[indx]);
 			#else
 			Int_data->RK_tmp[indx] = run_data->w_hat[indx] + RK4_A21 * (dt * Int_data->RK1[indx]);
 			#endif
@@ -768,6 +811,8 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Ny, Int_d
 			// Update temporary input for nonlinear term
 			#if defined(PHASE_ONLY)
 			Int_data->RK_tmp[indx] = run_data->a_k[indx] * cexp(I * (run_data->phi_k[indx] + RK4_A32 * (dt * Int_data->RK2[indx])));
+			#elif defined(AMP_ONLY)
+			Int_data->RK_tmp[indx] = (run_data->a_k[indx] + RK4_A32 * (dt * Int_data->RK2[indx])) * cexp(I * run_data->phi_k[indx]);
 			#else
 			Int_data->RK_tmp[indx] = run_data->w_hat[indx] + RK4_A32 * (dt * Int_data->RK2[indx]);
 			#endif
@@ -795,9 +840,10 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Ny, Int_d
 
 			// Update temporary input for nonlinear term
 			#if defined(PHASE_ONLY)
-			Int_data->RK_tmp[indx] = run_data->a_k[indx] * cexp(I * (run_data->phi_k[indx] + RK4_A43 * (dt * Int_data->RK4[indx])));
+			Int_data->RK_tmp[indx] = run_data->a_k[indx] * cexp(I * (run_data->phi_k[indx] + RK4_A43 * (dt * Int_data->RK3[indx])));
+			#elif defined(AMP_ONLY)
+			Int_data->RK_tmp[indx] = (run_data->a_k[indx] + RK4_A43 * (dt * Int_data->RK3[indx])) * cexp(I * run_data->phi_k[indx]);
 			#else
-			// Update temporary input for nonlinear term
 			Int_data->RK_tmp[indx] = run_data->w_hat[indx] + RK4_A43 * (dt * Int_data->RK3[indx]);
 			#endif
 		}
@@ -828,17 +874,21 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Ny, Int_d
 		for (int j = 0; j < Nx_Fourier; ++j) {
 			indx = tmp + j;
 
-			if ((run_data->k[0][i] != 0) || (run_data->k[1][j]  != 0)) {
+			if ((run_data->k[0][i] != 0) || (run_data->k[1][j] != 0)) {
+				//---------------------------- Prerecord before update step if in fixed amp/phase mode
 				#if defined(PHASE_ONLY_FXD_AMP)
-				// Pre-record the amplitudes
 				tmp_a_k_norm = cabs(run_data->w_hat[indx]);
 				#endif
+				#if defined(AMP_ONLY_FXD_PHASE)
+				tmp_phi_k = carg(run_data->w_hat[indx]);
+				#endif
 
+				//---------------------------- Update Step
 				#if defined(__EULER) || (defined(__NAVIER) && defined(__RK4))
 				// Update Fourier vorticity with the RHS
 				run_data->w_hat[indx] = run_data->w_hat[indx] + (dt * (RK4_B1 * Int_data->RK1[indx]) + dt * (RK4_B2 * Int_data->RK2[indx]) + dt * (RK4_B3 * Int_data->RK3[indx]) + dt * (RK4_B4 * Int_data->RK4[indx]));
 				
-				#elif defined(__NAVIER) && (defined(__RK4CN) || defined(__AB4CN)) && !defined(PHASE_ONLY)
+				#elif (defined(__NAVIER) || defined(AMP_ONLY)) && (defined(__RK4CN) || defined(__AB4CN)) && !defined(PHASE_ONLY)
 				// Compute the pre factors for the RK4CN update step
 				k_sqr = (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 				
@@ -847,12 +897,20 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Ny, Int_d
 				D_fac *= dt; 
 
 				// Update Fourier vorticity
+				#if defined(AMP_ONLY)
+				run_data->a_k[indx] = run_data->a_k[indx] * ((2.0 - D_fac) / (2.0 + D_fac)) + (2.0 * dt / (2.0 + D_fac)) * (RK4_B1 * Int_data->RK1[indx] + RK4_B2 * Int_data->RK2[indx] + RK4_B3 * Int_data->RK3[indx] + RK4_B4 * Int_data->RK4[indx]);
+				#else
 				run_data->w_hat[indx] = run_data->w_hat[indx] * ((2.0 - D_fac) / (2.0 + D_fac)) + (2.0 * dt / (2.0 + D_fac)) * (RK4_B1 * Int_data->RK1[indx] + RK4_B2 * Int_data->RK2[indx] + RK4_B3 * Int_data->RK3[indx] + RK4_B4 * Int_data->RK4[indx]);
-				#elif defined(PHASE_ONLY)
-				// Update Fourier vorticity
-				run_data->phi_k[indx] = run_data->phi_k[indx] + (dt * (RK4_B1 * Int_data->RK1[indx]) + dt * (RK4_B2 * Int_data->RK2[indx]) + dt * (RK4_B3 * Int_data->RK3[indx]) + dt * (RK4_B4 * Int_data->RK4[indx]));
 				#endif
-					
+				#elif defined(PHASE_ONLY)
+				// Update Fourier Phase
+				run_data->phi_k[indx] = run_data->phi_k[indx] + (dt * (RK4_B1 * Int_data->RK1[indx]) + dt * (RK4_B2 * Int_data->RK2[indx]) + dt * (RK4_B3 * Int_data->RK3[indx]) + dt * (RK4_B4 * Int_data->RK4[indx]));
+				#elif defined(AMP_ONLY) && defined(__RK4)
+				// Update Fourier Amplitude
+				run_data->a_k[indx] = run_data->a_k[indx] + (dt * (RK4_B1 * Int_data->RK1[indx]) + dt * (RK4_B2 * Int_data->RK2[indx]) + dt * (RK4_B3 * Int_data->RK3[indx]) + dt * (RK4_B4 * Int_data->RK4[indx]));
+				#endif
+				
+				//---------------------------- Reset if in fixed amp/phase mode
 				#if defined(PHASE_ONLY_FXD_AMP)
 				if (cabs(run_data->w_hat[indx]) != 0.0)
 					run_data->w_hat[indx] *= (tmp_a_k_norm / cabs(run_data->w_hat[indx]));
@@ -860,10 +918,15 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Ny, Int_d
 					run_data->w_hat[indx] = 0.0 + 0.0 * I;					
 				}
 				#endif
+				#if defined(AMP_ONLY_FXD_PHASE)
+				run_data->w_hat[indx] = cabs(run_data->w_hat[indx]) * cexp(I * tmp_phi_k);
+				#endif
 			}
 			else {
-				#if defined(PHASE_ONLY)
+				#if defined(PHASE_ONLY) || defined(PHASE_ONLY_FXD_AMP)
 				run_data->phi_k[indx] = 0.0;
+				#elif defined(AMP_ONLY) || defined(AMP_ONLY_FXD_PHASE)
+				run_data->a_k[indx] = 0.0;
 				#else
 				run_data->w_hat[indx] = 0.0 + 0.0 * I;
 				#endif
@@ -909,6 +972,9 @@ void NonlinearTermAndForcing(fftw_complex* input_array, fftw_complex* output_arr
     		else {
     			output_array[indx] = 0.0;
     		}
+    		#elif defined(AMP_ONLY)
+    		// Get the Amp only RHS
+   			output_array[indx] = creal(tmp_output * cexp(-I * run_data->phi_k[indx]));
     		#else
     		// Get the fully systems Nonlinear term and forcing
     		output_array[indx] = tmp_output;
@@ -1166,8 +1232,118 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
     init_genrand64(123456789 * (sys_vars->rank + 1));
 
 
+	if(!(strcmp(sys_vars->u0, "INPUT_FILE"))) {
+		// ------------------------------------------------
+		// Fourier Vorticity From Input File
+		// ------------------------------------------------
+		// Initialize variables
+		char tmp_iter_string[64];
 
-	if(!(strcmp(sys_vars->u0, "TG_VEL"))) {
+		// Generate iteration sting
+		sprintf(tmp_iter_string, "/%s", file_info->iter_string, 64);
+
+		// Print Input file details to screen
+		if ( !(sys_vars->rank) ) {
+			printf("Using Input File: "CYAN"%s"RESET"\nIter: "CYAN"%s"RESET"\nDataset: "CYAN"%s"RESET"\n\n", file_info->input_file_name, file_info->iter_string, file_info->dset_string);
+		}
+		// Read in input data 
+		ReadInputFile(sys_vars->t0, 0, tmp_iter_string, file_info->dset_string, "VORT");
+	}
+	else if(!(strcmp(sys_vars->u0, "PO_AVG_AMP_RAND")) || !(strcmp(sys_vars->u0, "PO_AVG_AMP_ZERO"))) {
+		// ------------------------------------------------
+		// Average Amps from File
+		// ------------------------------------------------
+		// Print Input file details to screen
+		if(!(sys_vars->rank)) {
+			printf("Using Input File: "CYAN"%s"RESET"\nIter: "CYAN"%s"RESET"\nDataset: "CYAN"%s"RESET"\n\n", file_info->input_file_name, file_info->iter_string, file_info->dset_string);
+		}
+		// Read in input data 
+		ReadInputFile(sys_vars->t0, 0, "", file_info->dset_string, "AMP");
+
+
+		// Initialize the phases
+		double r1;
+		for (int i = 0; i < local_Ny; ++i) {
+			tmp = i * (Nx_Fourier);
+			for (int j = 0; j < Nx_Fourier; ++j) {
+				indx = tmp + j;
+
+				// Get the energy for this mode
+				if ((run_data->k[0][i] != 0) || (run_data->k[1][j] != 0)){
+					if (!(strcmp(sys_vars->u0, "PO_AVG_AMP_RAND"))) {
+						// Get random uniform number
+						r1 = genrand64_real1();
+						run_data->phi_k[indx] = r1 * 2.0 * M_PI;
+						
+						// Fill vorticity
+						w_hat[indx] = run_data->a_k[indx] * cexp(I * run_data->phi_k[indx]);
+					}
+					else if (!(strcmp(sys_vars->u0, "PO_AVG_AMP_ZERO"))) {
+						run_data->phi_k[indx] = 0.0;
+						
+						// Fill vorticity
+						w_hat[indx] = run_data->a_k[indx] * cexp(I * run_data->phi_k[indx]);
+					}	
+				}
+				else {
+					// Set Vorticity, phases and amplitudes of the zero mode to 0
+					w_hat[indx]           = 0.0 + 0.0 * I;
+					run_data->a_k[indx]   = 0.0;
+					run_data->phi_k[indx] = 0.0;
+				}
+			}
+		}
+	}
+	else if(!(strcmp(sys_vars->u0, "AO_AVG_PHASE_RAND")) || !(strcmp(sys_vars->u0, "AO_AVG_PHASE_POWER"))) {
+		// ------------------------------------------------
+		// Average Phases from File
+		// ------------------------------------------------
+		// Print Input file details to screen
+		if(!(sys_vars->rank)) {
+			printf("Using Input File: "CYAN"%s"RESET"\nIter: "CYAN"%s"RESET"\nDataset: "CYAN"%s"RESET"\n\n", file_info->input_file_name, file_info->iter_string, file_info->dset_string);
+		}
+		// Read in input data 
+		ReadInputFile(sys_vars->t0, 0, "", file_info->dset_string, "PHASE");
+
+
+		// Initialize the phases
+		double r1;
+		double sqrt_k;
+		for (int i = 0; i < local_Ny; ++i) {
+			tmp = i * (Nx_Fourier);
+			for (int j = 0; j < Nx_Fourier; ++j) {
+				indx = tmp + j;
+
+				// Get the |k|
+				sqrt_k = sqrt(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
+
+				// Get the energy for this mode
+				if ((run_data->k[0][i] != 0) || (run_data->k[1][j] != 0)){
+					if (!(strcmp(sys_vars->u0, "AO_AVG_PHASE_RAND"))) {
+						// Get random uniform number
+						r1 = genrand64_real1();
+						run_data->a_k[indx] = r1;
+						
+						// Fill vorticity
+						w_hat[indx] = run_data->a_k[indx] * cexp(I * run_data->phi_k[indx]);
+					}
+					else if (!(strcmp(sys_vars->u0, "AO_AVG_PHASE_POWER"))) {
+						run_data->a_k[indx] = 1.0 / pow(sqrt_k, sys_vars->PO_SLOPE);
+						
+						// Fill vorticity
+						w_hat[indx] = run_data->a_k[indx] * cexp(I * run_data->phi_k[indx]);
+					}	
+				}
+				else {
+					// Set Vorticity, phases and amplitudes of the zero mode to 0
+					w_hat[indx]           = 0.0 + 0.0 * I;
+					run_data->a_k[indx]   = 0.0;
+					run_data->phi_k[indx] = 0.0;
+				}
+			}
+		}
+	}
+	else if(!(strcmp(sys_vars->u0, "TG_VEL"))) {
 		// ------------------------------------------------
 		// Taylor Green Initial Condition - Real Space
 		// ------------------------------------------------
@@ -2006,7 +2182,7 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 		// Initialize variables
 		double amp_k, energy_k;
 		double sqrt_k;
-		double energy_norm;
+		double energy_norm = 0.0;
 		double r1;
 
 		for (int i = 0; i < local_Ny; ++i) {
@@ -2018,13 +2194,7 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 				sqrt_k = sqrt(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 
 				// Get the energy for this mode
-				if (sqrt_k == 0.0) {
-					// Set Vorticity, phases and amplitudes to 0
-					w_hat[indx]           = 0.0 + 0.0 * I;
-					run_data->a_k[indx]   = 0.0;
-					run_data->phi_k[indx] = 0.0;
-				}
-				else {
+				if ((run_data->k[0][i] != 0) || (run_data->k[1][j] != 0)){
 					// Get the amplitude
 					amp_k = 1.0 / pow(sqrt_k, sys_vars->PO_SLOPE);
 
@@ -2032,14 +2202,14 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 						// Get random uniform number
 						r1 = genrand64_real1();
 
-						run_data->a_k[indx]   = amp_k;
+						run_data->a_k[indx]   = sqrt(amp_k / (2.0 * M_PI));
 						run_data->phi_k[indx] = r1 * 2.0 * M_PI;
 						
 						// Fill vorticity
 						w_hat[indx] = run_data->a_k[indx] * cexp(I * run_data->phi_k[indx]);
 					}
 					else if (!(strcmp(sys_vars->u0, "PO_ZERO"))) {
-						run_data->a_k[indx]   = amp_k;
+						run_data->a_k[indx]   = sqrt(amp_k / (2.0 * M_PI));
 						run_data->phi_k[indx] = 0.0;
 						
 						// Fill vorticity
@@ -2047,9 +2217,14 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 					}
 
 					// Compute the enstrophy norm
-					energy_norm += pow(cabs(w_hat[indx]), 2.0) * (1.0 / pow(sqrt_k, 2.0));
+					energy_norm += pow(cabs(w_hat[indx]), 2.0) * (1.0 / pow(sqrt_k, 2.0));	
 				}
-
+				else {
+					// Set Vorticity, phases and amplitudes of the zero mode to 0
+					w_hat[indx]           = 0.0 + 0.0 * I;
+					run_data->a_k[indx]   = 0.0;
+					run_data->phi_k[indx] = 0.0;
+				}
 			}
 		}
 
@@ -2143,7 +2318,7 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
     // -------------------------------------------------
     // Get Phase and Amplitudes in Phase Only Mode
     // -------------------------------------------------
-    #if defined(PHASE_ONLY) || defined(PHASE_ONLY_FXD_AMP)
+    #if defined(PHASE_ONLY) || defined(PHASE_ONLY_FXD_AMP) || defined(AMP_ONLY) || defined(AMP_ONLY_FXD_PHASE)
     if (strcmp(sys_vars->u0, "PO_RANDOM") || strcmp(sys_vars->u0, "PO_ZERO")) {
 	    for (int i = 0; i < local_Ny; ++i) {
 	    	tmp = i * Nx_Fourier;
@@ -2163,10 +2338,6 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 	// Force conjugacy to the phases
 	ForceConjugacy(run_data->phi_k, N, 1);
     #endif
-
-    // PrintScalarFourier(run_data->w_hat, sys_vars->N, "wh");
-    // PrintAmps(run_data->a_k, sys_vars->N, "a");
-    // PrintPhases(run_data->phi_k, sys_vars->N, "p");
 
    	// -------------------------------------------------
    	// Get Max of Initial Condition
@@ -2897,7 +3068,7 @@ void AllocateMemory(const long int* NBatch, Int_data_struct* Int_data) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Temporary Fourier Space Velocities");
 		exit(1);
 	}
-	#if defined(PHASE_ONLY) || defined(PHASE_ONLY_FXD_AMP)
+	#if defined(PHASE_ONLY) || defined(PHASE_ONLY_FXD_AMP) || defined(AMP_ONLY) || defined(AMP_ONLY_FXD_PHASE)
 	// Allocate array for the Fourier amplitudes
 	run_data->a_k = (double* )fftw_malloc(sizeof(double) * sys_vars->alloc_local_batch);
 	if (run_data->a_k == NULL) {
@@ -2927,10 +3098,18 @@ void AllocateMemory(const long int* NBatch, Int_data_struct* Int_data) {
 		exit(1);
 	}
 	#endif
-	#if defined(__AMPS_T_AVG)
+	#if defined(__AMPS_AVG)
 	// Allocate memory for recording the time averaged amplitudes
-	run_data->a_k_t_avg = (double* )fftw_malloc(sizeof(double) * sys_vars->alloc_local_batch);
-	if (run_data->a_k_t_avg == NULL) {
+	run_data->a_k_avg = (double* )fftw_malloc(sizeof(double) * sys_vars->alloc_local_batch);
+	if (run_data->a_k_avg == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Time Averaged Fourier Amplitudes");
+		exit(1);
+	}
+	#endif
+	#if defined(__PHASES_AVG)
+	// Allocate memory for recording the time averaged phases
+	run_data->phi_k_avg = (double* )fftw_malloc(sizeof(double) * sys_vars->alloc_local_batch);
+	if (run_data->phi_k_avg == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Time Averaged Fourier Amplitudes");
 		exit(1);
 	}
@@ -3039,13 +3218,17 @@ void AllocateMemory(const long int* NBatch, Int_data_struct* Int_data) {
 			Int_data->nabla_psi[SYS_DIM * indx_real + 0] = 0.0;
 			Int_data->nabla_psi[SYS_DIM * indx_real + 1] = 0.0;
 			#if defined(TESTING)
-			run_data->tg_soln[indx_real]                = 0.0;
+			run_data->tg_soln[indx_real] = 0.0;
 			#endif
-			run_data->w[indx_real]                      = 0.0;
+			run_data->w[indx_real] = 0.0;
 			if (j < Nx_Fourier) {
-				#if defined(PHASE_ONLY) || defined(PHASE_ONLY_FXD_AMP)
-				run_data->a_k[indx_four] 				= 0.0;
-				run_data->phi_k[indx_four]			    = 0.0;
+				#if defined(PHASE_ONLY) || defined(PHASE_ONLY_FXD_AMP) || defined(AMP_ONLY) || defined(AMP_ONLY_FXD_PHASE)
+				run_data->a_k[indx_four]   = 0.0;
+				run_data->phi_k[indx_four] = 0.0;
+				#endif
+				#if defined(__AMP_AVG) || defined(__PHASES_AVG) 
+				run_data->a_k_avg[indx_four]   = 0.0;
+				run_data->phi_k_avg[indx_four] = 0.0;
 				#endif
 				run_data->w_hat[indx_four]               	  = 0.0 + 0.0 * I;
 				run_data->w_hat_tmp[indx_four]             	  = 0.0 + 0.0 * I;
@@ -3160,7 +3343,7 @@ void FreeMemory(Int_data_struct* Int_data) {
 		fftw_free(run_data->forcing_indx);
 		fftw_free(run_data->forcing_scaling);
 	}
-	#if defined(PHASE_ONLY) || defined(PHASE_ONLY_FXD_AMP)
+	#if defined(PHASE_ONLY) || defined(PHASE_ONLY_FXD_AMP) || defined(AMP_ONLY) || defined(AMP_ONLY_FXD_PHASE)
 	fftw_free(run_data->a_k);
 	fftw_free(run_data->phi_k);
 	#endif
@@ -3239,8 +3422,11 @@ void FreeMemory(Int_data_struct* Int_data) {
 		fftw_free(run_data->tot_time);
 	}
 	#endif
-	#if defined(__AMPS_T_AVG)
-	fftw_free(run_data->a_k_t_avg);
+	#if defined(__AMPS_AVG)
+	fftw_free(run_data->a_k_avg);
+	#endif
+	#if defined(__PHASES_AVG)
+	fftw_free(run_data->phi_k_avg);
 	#endif
 
 	// Free integration variables

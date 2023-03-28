@@ -64,14 +64,19 @@ SOLVER_FLAGS := -D__NAVIER -D__AB4CN
 
 # Phase only flags to be passed to solver
 PHASE_ONLY_FLAGS := -D__NAVIER -D__PHASE_ONLY -D__AB4CN
-
 # Phase only flags to be passed to solver
 FXD_AMP_PHASE_ONLY_FLAGS := -D__NAVIER -D__PHASE_ONLY_FXD_AMP -D__AB4CN
+
+# Phase only flags to be passed to solver
+AMP_ONLY_FLAGS := -D__NAVIER -D__AMP_ONLY -D__AB4CN
+# Phase only flags to be passed to solver
+FXD_PHASE_AMP_ONLY_FLAGS := -D__NAVIER -D__AMP_ONLY_FXD_PHASE -D__AB4CN
 
 # Dataset Flags to be passed to the solver
 DSET_FLAGS = -D__VORT_FOUR -D__SYS_MEASURES 
 DSET_FLAGS += -D__ENST_FLUX -D__ENRG_FLUX -D__ENST_SPECT -D__ENRG_SPECT -D__ENST_FLUX_SPECT -D__ENRG_FLUX_SPECT 
 DSET_FLAGS += -D__ENST_SPECT_T_AVG -D__ENRG_SPECT_T_AVG -D__ENST_FLUX_SPECT_T_AVG -D__ENRG_FLUX_SPECT_T_AVG 
+DSET_FLAGS += -D__AMPS_AVG -D__PHASES_AVG
 DSET_FLAGS += -D__PHASE_SYNC
 #DSET_FLAGS += -D__STATS
 #DSET_FLAGS += -D__NONLIN -D__VORT_REAL -D__REALSPACE -D__MODES
@@ -100,6 +105,9 @@ SRCOBJ     := $(patsubst $(SRCDIR)/%.c, $(OBJBIN)/%.o, $(SRCFILE))
 ## Phase Only Objects
 SRCOBJ_PO  := $(patsubst $(SRCDIR)/%.c, $(OBJBIN)/%_phase_only.o, $(SRCFILE))
 SRCOBJ_PO_FXD_AMP  := $(patsubst $(SRCDIR)/%.c, $(OBJBIN)/%_phase_only_fxd_amp.o, $(SRCFILE))
+## Amp Only Objects
+SRCOBJ_AO  := $(patsubst $(SRCDIR)/%.c, $(OBJBIN)/%_amp_only.o, $(SRCFILE))
+SRCOBJ_AO_FXD_PHASE := $(patsubst $(SRCDIR)/%.c, $(OBJBIN)/%_amp_only_fxd_phase.o, $(SRCFILE))
 ## Testing Src Objects
 SRCOBJ_TG  := $(patsubst $(SRCDIR)/%.c, $(OBJBIN)/%_TG_test.o, $(SRCFILE))
 SRCOBJ_DSL := $(patsubst $(SRCDIR)/%.c, $(OBJBIN)/%_DB_SL_test.o, $(SRCFILE))
@@ -116,7 +124,7 @@ DEPS = $(wildcard *.h)
 ############
 
 
-all: $(BIN)/solver $(BIN)/solver_phase_only $(BIN)/solver_phase_only_fxd_amp $(BIN)/solver_TG_test $(BIN)/solver_DB_SL_test $(BIN)/solver_DT_test $(BIN)/solver_DT2_test
+all: $(BIN)/solver $(BIN)/solver_phase_only $(BIN)/solver_phase_only_fxd_amp $(BIN)/solver_amp_only $(BIN)/solver_amp_only_fxd_phase $(BIN)/solver_TG_test $(BIN)/solver_DB_SL_test $(BIN)/solver_DT_test $(BIN)/solver_DT2_test
 
 
 ##################################
@@ -131,7 +139,7 @@ $(OBJBIN)/%.o: $(SRCDIR)/%.c $(DEPS)
 	$(GCC) $(CCFLAG) $(SOLVER_FLAGS) $(DSET_FLAGS) -c $^ -o $@ ${INCDIR} ${LIBDIR} $(LIBFLAG) $(GSLFLAG)
 
 ##################################
-##  		PHASE O   		##
+##  		PHASE ONLY   		##
 ##################################
 solver_phase_only: $(BIN)/solver_phase_only 
 
@@ -144,10 +152,29 @@ $(OBJBIN)/%_phase_only.o: $(SRCDIR)/%.c $(DEPS)
 solver_phase_only_fxd_amp: $(BIN)/solver_phase_only_fxd_amp 
 
 $(BIN)/solver_phase_only_fxd_amp: $(SRCOBJ_PO_FXD_AMP) $(DEPS)
-	$(GCC) $(CCFLAG) $(PHASE_ONLY_FLAGS) $(DSET_FLAGS) -o $@ $^ ${INCDIR} ${LIBDIR} $(LIBFLAG) $(GSLFLAG)
+	$(GCC) $(CCFLAG) $(FXD_AMP_PHASE_ONLY_FLAGS) $(DSET_FLAGS) -o $@ $^ ${INCDIR} ${LIBDIR} $(LIBFLAG) $(GSLFLAG)
 
 $(OBJBIN)/%_phase_only_fxd_amp.o: $(SRCDIR)/%.c $(DEPS)
 	$(GCC) $(CCFLAG) $(FXD_AMP_PHASE_ONLY_FLAGS) $(DSET_FLAGS) -c $^ -o $@ ${INCDIR} ${LIBDIR} $(LIBFLAG) $(GSLFLAG)
+
+##################################
+##  		AMP ONLY    		##
+##################################
+solver_amp_only: $(BIN)/solver_amp_only 
+
+$(BIN)/solver_amp_only: $(SRCOBJ_AO) $(DEPS)
+	$(GCC) $(CCFLAG) $(AMP_ONLY_FLAGS) $(DSET_FLAGS) -o $@ $^ ${INCDIR} ${LIBDIR} $(LIBFLAG) $(GSLFLAG)
+
+$(OBJBIN)/%_amp_only.o: $(SRCDIR)/%.c $(DEPS)
+	$(GCC) $(CCFLAG) $(AMP_ONLY_FLAGS) $(DSET_FLAGS) -c $^ -o $@ ${INCDIR} ${LIBDIR} $(LIBFLAG) $(GSLFLAG)
+
+solver_amp_only_fxd_phase: $(BIN)/solver_amp_only_fxd_phase 
+
+$(BIN)/solver_amp_only_fxd_phase: $(SRCOBJ_AO_FXD_PHASE) $(DEPS)
+	$(GCC) $(CCFLAG) $(FXD_PHASE_AMP_ONLY_FLAGS) $(DSET_FLAGS) -o $@ $^ ${INCDIR} ${LIBDIR} $(LIBFLAG) $(GSLFLAG)
+
+$(OBJBIN)/%_amp_only_fxd_phase.o: $(SRCDIR)/%.c $(DEPS)
+	$(GCC) $(CCFLAG) $(FXD_PHASE_AMP_ONLY_FLAGS) $(DSET_FLAGS) -c $^ -o $@ ${INCDIR} ${LIBDIR} $(LIBFLAG) $(GSLFLAG)
 
 ##############################
 ##  		TESTING	   		##

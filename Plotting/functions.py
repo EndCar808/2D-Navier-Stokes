@@ -14,6 +14,7 @@ import h5py
 import sys
 import os
 import re
+import getopt
 from numba import njit
 import pyfftw
 from collections.abc import Iterable
@@ -40,6 +41,56 @@ class tc:
 #################################
 ##          MISC               ##
 #################################
+def parse_cml(argv):
+
+    """
+    Parses command line arguments
+    """
+
+    ## Create arguments class
+    class cmd_args:
+
+        """
+        Class for command line arguments
+        """
+
+        def __init__(self, in_dir = None, out_dir = None, in_file = None, incr = False, wghtd = False):
+            self.in_dir  = in_dir
+            self.out_dir = out_dir
+            self.in_file = out_dir
+
+    ## Initialize class
+    cargs = cmd_args()
+
+    try:
+        ## Gather command line arguments
+        opts, args = getopt.getopt(argv, "i:o:f:", ["incr", "wghtd"])
+    except:
+        print("[" + tc.R + "ERROR" + tc.Rst + "] ---> Incorrect Command Line Arguements.")
+        sys.exit()
+
+    ## Parse command line args
+    for opt, arg in opts:
+
+        if opt in ['-i']:
+            ## Read input directory
+            cargs.in_dir = str(arg)
+            print("Input Folder: " + tc.C + "{}".format(cargs.in_dir) + tc.Rst)
+
+            cargs.out_dir = str(arg)
+            print("Output Folder: " + tc.C + "{}".format(cargs.out_dir) + tc.Rst)
+
+        if opt in ['-f']:
+            ## Read input directory
+            cargs.in_file = str(arg)
+            print("Input Post Processing File: " + tc.C + "{}".format(cargs.in_file) + tc.Rst)
+
+
+    return cargs
+
+def get_flux_spectrum(flux_spectra):
+    return np.fliplr(np.fliplr(flux_spectra).cumsum(axis=1))
+    
 def import_bren_data(input_dir):
 
     ## Define a data class for the solver data
@@ -747,6 +798,10 @@ def import_sys_msr(input_file, sim_data, method = "default"):
             data.enst_spect_t_avg = f['TimeAveragedEnstrophySpectrum'][:]
         if 'TimeAveragedEnergySpectrum' in list(f.keys()):
             data.enrg_spect_t_avg = f['TimeAveragedEnergySpectrum'][:]
+        if 'TimeAveragedAmplitudes' in list(f.keys()):
+            data.a_k_t_avg = f['TimeAveragedAmplitudes'][:, :]
+        if 'TimeAveragedPhases' in list(f.keys()):
+            data.phi_k_t_avg = f['TimeAveragedPhases'][:, :]
 
         ## Get inv wavenumbers
         if 'kx' in list(f.keys()) and 'ky' in list(f.keys()):
@@ -970,6 +1025,16 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                     self.enrg_flux_C = f["EnergyFluxC"][:]
                 if 'EnergyDissC' in list(f.keys()):
                     self.enrg_diss_C = f["EnergyDissC"][:]
+
+                ## Time averaged field data
+                if 'TimeAveragedFullFieldPhases' in list(f.keys()):
+                    self.phases_t_avg = f["TimeAveragedFullFieldPhases"][:, :] / sim_data.ndata
+                if 'TimeAveragedFullFieldAmplitudes' in list(f.keys()):
+                    self.amp_t_avg = f["TimeAveragedFullFieldAmplitudes"][:, :] / sim_data.ndata
+                if 'TimeAveragedFullFieldEnstrophySpectrum' in list(f.keys()):
+                    self.enst_spectrum_t_avg = f["TimeAveragedFullFieldEnstrophySpectrum"][:, :] / sim_data.ndata
+                if 'TimeAveragedFullFieldEnergySpectrum' in list(f.keys()):
+                    self.enrg_spectrum_t_avg = f["TimeAveragedFullFieldEnergySpectrum"][:, :] / sim_data.ndata
 
                 ############# STATS DATA
                 ## Get the Velocity increment histogram data

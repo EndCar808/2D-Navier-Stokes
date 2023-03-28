@@ -1482,6 +1482,47 @@ void FinalWriteAndClose(char* filename) {
 	#endif	
 
 
+	// -------------------------------
+	// Write Full Field Data T Avg
+	// -------------------------------
+	#if defined(__FULL_FIELD)
+	// The full field phases
+	dset_dims_2d[0] = 2 * sys_vars->kmax + 1;
+	dset_dims_2d[1] = 2 * sys_vars->kmax + 1;
+	status = H5LTmake_dataset(file_info->output_file_handle, "TimeAveragedFullFieldPhases", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, proc_data->phases_t_avg);	
+	if (status < 0) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Time Averaged Full Field Phases");
+		exit(1);
+	}
+
+	// The full field amplitudes
+	dset_dims_2d[0] = 2 * sys_vars->kmax + 1;
+	dset_dims_2d[1] = 2 * sys_vars->kmax + 1;
+	status = H5LTmake_dataset(file_info->output_file_handle, "TimeAveragedFullFieldAmplitudes", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, proc_data->amps_t_avg);	
+	if (status < 0) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Time Averaged Full Field Amplitudes");
+		exit(1);
+	}
+
+	// The full field energy spectrum
+	dset_dims_2d[0] = 2 * sys_vars->kmax + 1;
+	dset_dims_2d[1] = 2 * sys_vars->kmax + 1;
+	status = H5LTmake_dataset(file_info->output_file_handle, "TimeAveragedFullFieldEnergySpectrum", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, proc_data->enrg_t_avg);		
+	if (status < 0) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Time Averaged Full Field Energy Spectrum");
+		exit(1);
+	}
+
+	// The full field enstrophy spectrum
+	dset_dims_2d[0] = 2 * sys_vars->kmax + 1;
+	dset_dims_2d[1] = 2 * sys_vars->kmax + 1;
+	status = H5LTmake_dataset(file_info->output_file_handle, "TimeAveragedFullFieldEnstrophySpectrum", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, proc_data->enst_t_avg);
+	if (status < 0) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Time Averaged Full Field Enstrophy Spectrum");
+		exit(1);
+	}
+	#endif
+
 
 	// -------------------------------
 	// Write Flux

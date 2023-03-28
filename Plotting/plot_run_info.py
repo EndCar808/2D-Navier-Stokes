@@ -32,8 +32,8 @@ import time as TIME
 from subprocess import Popen, PIPE, run
 from matplotlib.pyplot import cm
 from functions import tc, sim_data, import_data, import_spectra_data, import_post_processing_data, import_sys_msr, energy_spectrum, enstrophy_spectrum
-from functions import compute_pdf
-from plot_functions import plot_flow_summary, plot_flow_summary_stream, plot_phase_snaps_stream, plot_phase_snaps
+from functions import compute_pdf, get_flux_spectrum
+from plot_functions import plot_flow_summary, plot_flow_summary_stream, plot_phase_snaps_stream, plot_phase_snaps, plot_time_averaged_full_field
 from plot_functions import plot_vort, plot_time_averaged_spectra_both, plot_spectrum, plot_str_funcs, plot_str_func_fit
 ###############################
 ##       FUNCTION DEFS       ##
@@ -176,119 +176,124 @@ if __name__ == '__main__':
         snaps_indx = [0, sys_vars.ndata//4, sys_vars.ndata//2, -1]
         plot_vort(snaps_output_dir, run_data.w, sys_msr.x, sys_msr.y, sys_msr.time, snaps_indx)
 
-        ##-------------------------
-        ## Plot System Measures
-        ##-------------------------
-        ##---------- Energy Enstrophy
-        fig = plt.figure(figsize = (32, 8))
-        gs  = GridSpec(2, 3, hspace = 0.35)
-        ## Plot the energy dissipation
-        ax1 = fig.add_subplot(gs[0, 0])
-        ax1.plot(sys_msr.tot_time, sys_msr.enrg_diss)
-        ax1.set_xlabel(r"$t$")
-        ax1.set_title(r"Energy Dissipation")
-        ax1.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
-        ## Plot the enstrophy dissipation
-        ax2 = fig.add_subplot(gs[0, 1])
-        ax2.plot(sys_msr.tot_time, sys_msr.enst_diss)
-        ax2.set_xlabel(r"$t$")
-        ax2.set_title(r"Enstrophy Dissipation")
-        ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
-        ## Plot the relative energy
-        ax1 = fig.add_subplot(gs[1, 0])
-        ax1.plot(sys_msr.tot_time, sys_msr.tot_enrg)
-        ax1.set_xlabel(r"$t$")
-        ax1.set_title(r"Total Energy")
-        ax1.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
-        ## Plot the relative helicity
-        ax2 = fig.add_subplot(gs[1, 1])
-        ax2.plot(sys_msr.tot_time, sys_msr.tot_enst)
-        ax2.set_xlabel(r"$t$")
-        ax2.set_title(r"Total Enstrophy")
-        ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
-        ## Plot the relative helicity
-        ax2 = fig.add_subplot(gs[0, 2])
-        ax2.plot(sys_msr.tot_time, sys_msr.tot_enrg_forc, label=r"Energy Forcing Input")
-        ax2.plot(sys_msr.tot_time, sys_msr.tot_enst_forc, label=r"Enstrophy Forcing Input")
-        ax2.set_xlabel(r"$t$")
-        ax2.set_title(r"Total Forcing Input")
-        ax2.legend()
-        ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
-        ax2 = fig.add_subplot(gs[1, 2])
-        ax2.plot(sys_msr.tot_time, sys_msr.tot_palin)
-        ax2.set_xlabel(r"$t$")
-        ax2.set_title(r"Total Palinstrophy")
-        ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
-        plt.savefig(snaps_output_dir + "System_Measures.png")
-        plt.close()
+        if hasattr(run_data, 'tot_time'):
+            ##-------------------------
+            ## Plot System Measures
+            ##-------------------------
+            ##---------- Energy Enstrophy
+            fig = plt.figure(figsize = (32, 8))
+            gs  = GridSpec(2, 3, hspace = 0.35)
+            ## Plot the energy dissipation
+            ax1 = fig.add_subplot(gs[0, 0])
+            ax1.plot(sys_msr.tot_time, sys_msr.enrg_diss)
+            ax1.set_xlabel(r"$t$")
+            ax1.set_title(r"Energy Dissipation")
+            ax1.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+            ## Plot the enstrophy dissipation
+            ax2 = fig.add_subplot(gs[0, 1])
+            ax2.plot(sys_msr.tot_time, sys_msr.enst_diss)
+            ax2.set_xlabel(r"$t$")
+            ax2.set_title(r"Enstrophy Dissipation")
+            ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+            ## Plot the relative energy
+            ax1 = fig.add_subplot(gs[1, 0])
+            ax1.plot(sys_msr.tot_time, sys_msr.tot_enrg)
+            ax1.set_xlabel(r"$t$")
+            ax1.set_title(r"Total Energy")
+            ax1.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+            ## Plot the relative helicity
+            ax2 = fig.add_subplot(gs[1, 1])
+            ax2.plot(sys_msr.tot_time, sys_msr.tot_enst)
+            ax2.set_xlabel(r"$t$")
+            ax2.set_title(r"Total Enstrophy")
+            ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+            ## Plot the relative helicity
+            ax2 = fig.add_subplot(gs[0, 2])
+            ax2.plot(sys_msr.tot_time, sys_msr.tot_enrg_forc, label=r"Energy Forcing Input")
+            ax2.plot(sys_msr.tot_time, sys_msr.tot_enst_forc, label=r"Enstrophy Forcing Input")
+            ax2.set_xlabel(r"$t$")
+            ax2.set_title(r"Total Forcing Input")
+            ax2.legend()
+            ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+            ax2 = fig.add_subplot(gs[1, 2])
+            ax2.plot(sys_msr.tot_time, sys_msr.tot_palin)
+            ax2.set_xlabel(r"$t$")
+            ax2.set_title(r"Total Palinstrophy")
+            ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+            plt.savefig(snaps_output_dir + "System_Measures.png")
+            plt.close()
+
+            ##-------------------------
+            ## Plot Turbulecne Measures
+            ##-------------------------
+            fig = plt.figure(figsize = (32, 8))
+            gs  = GridSpec(2, 3, hspace = 0.35)
+            ## Plot the u_rms
+            ax1 = fig.add_subplot(gs[0, 0])
+            ax1.plot(sys_msr.tot_time, sys_msr.u_rms)
+            ax1.set_xlabel(r"$t$")
+            ax1.set_title(r"Root Mean Square Velocity")
+            ax1.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+            ## Plot the Eddy TurnOver Time
+            ax2 = fig.add_subplot(gs[0, 1])
+            ax2.plot(sys_msr.tot_time, sys_msr.eddy_turnover_1, label=r"$\ell/u_{rms}$")
+            ax2.plot(sys_msr.tot_time, sys_msr.eddy_turnover_2, label=r"$2 \pi/u_{rms}$")
+            ax2.set_xlabel(r"$t$")
+            ax2.set_title(r"Eddy Turnover Time")
+            ax2.legend()
+            ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+            ## Plot the Kolmogrov Length Scale
+            ax3 = fig.add_subplot(gs[1, 0])
+            ax3.plot(sys_msr.tot_time, sys_msr.kolm_scale, label=r"$\eta$")
+            ax3.set_xlabel(r"$t$")
+            ax3.set_title(r"Kolmogorov Length Scale")
+            ax3.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+            ## Plot the Kolmogrov Length Scale
+            ax4 = fig.add_subplot(gs[1, 1])
+            ax4.plot(sys_msr.tot_time, sys_msr.taylor_micro, label=r"$\lambda$")
+            ax4.set_xlabel(r"$t$")
+            ax4.set_title(r"Taylor Microscale")
+            ax4.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+            ## Plot the Energy Dissipative Wavenumber
+            ax5 = fig.add_subplot(gs[0, 2])
+            ax5.plot(sys_msr.tot_time, sys_msr.enrg_diss_k, label=r"$k_{\eta}$")
+            ax5.set_xlabel(r"$t$")
+            ax5.set_title(r"Energy Dissipative k")
+            ax5.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+            ## Plot the Enstrophy Dissipative Wavenumber
+            ax6 = fig.add_subplot(gs[1, 2])
+            ax6.plot(sys_msr.tot_time, sys_msr.enst_diss_k, label=r"$k_{\eta}$")
+            ax6.set_xlabel(r"$t$")
+            ax6.set_title(r"Enstrophy Dissipative k")
+            ax6.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+            plt.savefig(snaps_output_dir + "Turbulent_Measures.png")
+            plt.close()
 
         ##-------------------------
-        ## Plot Turbulecne Measures
+        ## Plot Time Averaged Full Field
         ##-------------------------
-        fig = plt.figure(figsize = (24, 8))
-        gs  = GridSpec(2, 3, hspace = 0.35)
-        ## Plot the u_rms
-        ax1 = fig.add_subplot(gs[0, 0])
-        ax1.plot(sys_msr.tot_time, sys_msr.u_rms)
-        ax1.set_xlabel(r"$t$")
-        ax1.set_title(r"Root Mean Square Velocity")
-        ax1.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
-        ## Plot the Eddy TurnOver Time
-        ax2 = fig.add_subplot(gs[0, 1])
-        ax2.plot(sys_msr.tot_time, sys_msr.eddy_turnover_1, label=r"$\ell/u_{rms}$")
-        ax2.plot(sys_msr.tot_time, sys_msr.eddy_turnover_2, label=r"$2 \pi/u_{rms}$")
-        ax2.set_xlabel(r"$t$")
-        ax2.set_title(r"Eddy Turnover Time")
-        ax2.legend()
-        ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
-        ## Plot the Kolmogrov Length Scale
-        ax3 = fig.add_subplot(gs[1, 0])
-        ax3.plot(sys_msr.tot_time, sys_msr.kolm_scale, label=r"$\eta$")
-        ax3.set_xlabel(r"$t$")
-        ax3.set_title(r"Kolmogorov Length Scale")
-        ax3.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
-        ## Plot the Kolmogrov Length Scale
-        ax4 = fig.add_subplot(gs[1, 1])
-        ax4.plot(sys_msr.tot_time, sys_msr.taylor_micro, label=r"$\lambda$")
-        ax4.set_xlabel(r"$t$")
-        ax4.set_title(r"Taylor Microscale")
-        ax4.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
-        plt.savefig(snaps_output_dir + "Turbulent_Measures.png")
-        plt.close()
-        ## Plot the Energy Dissipative Wavenumber
-        ax5 = fig.add_subplot(gs[0, 2])
-        ax5.plot(sys_msr.tot_time, sys_msr.enrg_diss_k, label=r"$k_{\eta}$")
-        ax5.set_xlabel(r"$t$")
-        ax5.set_title(r"Energy Dissipative k")
-        ax5.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
-        ## Plot the Enstrophy Dissipative Wavenumber
-        ax6 = fig.add_subplot(gs[1, 2])
-        ax6.plot(sys_msr.tot_time, sys_msr.enst_diss_k, label=r"$k_{\eta}$")
-        ax6.set_xlabel(r"$t$")
-        ax6.set_title(r"Enstrophy Dissipative k")
-        ax6.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
-        plt.savefig(snaps_output_dir + "Turbulent_Measures.png")
-        plt.close()
+        if hasattr(post_data, 'amp_t_avg'):
+            plot_time_averaged_full_field(snaps_output_dir, post_data.amp_t_avg, post_data.phases_t_avg, post_data.enrg_spectrum_t_avg, post_data.enst_spectrum_t_avg,  sys_vars.Nx, sys_vars.Ny, file_type=".png", fig_size=(16, 12))
 
         #------------------------------------------
         # Plot Time Averaged Spectra
         #------------------------------------------
-        plot_time_averaged_spectra_both(snaps_output_dir, spec_data.enrg_spectrum, spec_data.enrg_flux_spectrum, sys_vars.Nx//3, spect_type="Energy")
-        plot_time_averaged_spectra_both(snaps_output_dir, spec_data.enst_spectrum, spec_data.enst_flux_spectrum, sys_vars.Nx//3, spect_type="Enstrophy")
+        plot_time_averaged_spectra_both(snaps_output_dir, spec_data.enrg_spectrum, get_flux_spectrum(spec_data.enrg_flux_spectrum[:, :sys_vars.Nx//3]), sys_vars.Nx//3, spect_type="Energy")
+        plot_time_averaged_spectra_both(snaps_output_dir, spec_data.enst_spectrum, get_flux_spectrum(spec_data.enst_flux_spectrum[:, :sys_vars.Nx//3]), sys_vars.Nx//3, spect_type="Enstrophy")
 
         # Get nonzero data from flux spectra
-        plot_spectrum(snaps_output_dir, np.mean(np.cumsum(spec_data.enrg_flux_spectrum, axis=1), axis=0), sys_vars.Nx//3, title="Energy Flux Spectrum", filename="TimeAverage_CumEnergyFlux")
-        plot_spectrum(snaps_output_dir, np.mean(np.cumsum(spec_data.enst_flux_spectrum, axis=1), axis=0), sys_vars.Nx//3, title="Enstrophy Flux Spectrum", filename="TimeAverage_CumEnstrophyFlux")
+        plot_spectrum(snaps_output_dir, np.mean(get_flux_spectrum(spec_data.enrg_flux_spectrum[:, :sys_vars.Nx//3]), axis=0), sys_vars.Nx//3, title="Energy Flux Spectrum", filename="TimeAverage_CumEnergyFlux")
+        plot_spectrum(snaps_output_dir, np.mean(get_flux_spectrum(spec_data.enst_flux_spectrum[:, :sys_vars.Nx//3]), axis=0), sys_vars.Nx//3, title="Enstrophy Flux Spectrum", filename="TimeAverage_CumEnstrophyFlux")
 
         #------------------------------------------
         # Spectra Scaling Exponent
         #------------------------------------------
-        k_range = np.arange(1, int(sys_vars.Nx/3))
-        inert_range = np.arange(9, (sys_vars.Nx//3)//2)
+        k_range        = np.arange(1, int(sys_vars.Nx/3))
+        inert_range    = np.arange(9, (sys_vars.Nx//3)//2)
         mean_enrg_spec = np.mean(spec_data.enrg_spectrum[:, 1:int(sys_vars.Nx/3)], axis = 0)
+        p_enrg         = np.polyfit(np.log(k_range[inert_range]), np.log(mean_enrg_spec[inert_range]), 1)
         mean_enst_spec = np.mean(spec_data.enst_spectrum[:, 1:int(sys_vars.Nx/3)], axis = 0)
-        p_enrg = np.polyfit(np.log(k_range[inert_range]), np.log(mean_enrg_spec[inert_range]), 1)
-        p_enst = np.polyfit(np.log(k_range[inert_range]), np.log(mean_enst_spec[inert_range]), 1)
+        p_enst         = np.polyfit(np.log(k_range[inert_range]), np.log(mean_enst_spec[inert_range]), 1)
 
         fig = plt.figure(figsize = (21, 8))
         gs  = GridSpec(1, 2)
@@ -301,7 +306,6 @@ if __name__ == '__main__':
         ax2.legend()
         ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
         ax2.set_title(r"Energy Spectrum: $\mathcal{K}(|\mathbf{k}|) \sim k^{-(3 + \xi)}$")
-
         ax2 = fig.add_subplot(gs[0, 1])
         ax2.plot(k_range, mean_enst_spec, 'k')
         ax2.plot(k_range[inert_range], np.exp(p_enst[1]) * k_range[inert_range]**p_enst[0], '--', color='orangered',label=r"$E(k) \propto k^{:.2f}$;".format(p_enst[0]) + r" $\xi = {:.2f}$".format(np.absolute(p_enst[0]) - 1)) ## \propto$ k^{-(1 + \qi)} \Rightarrow , \qi = {:.2f} np.absolute(np.absolute(p_enst[0]) - 3))
@@ -310,8 +314,7 @@ if __name__ == '__main__':
         ax2.set_yscale('log')
         ax2.legend()
         ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
-        ax2.set_title(r"Enstrophy Spectrum: $\mathcal{E}(|\mathbf{k}|) \sim k^{-(1 + \xi)}$")
-        
+        ax2.set_title(r"Enstrophy Spectrum: $\mathcal{E}(|\mathbf{k}|) \sim k^{-(1 + \xi)}$")        
         plt.savefig(snaps_output_dir + "SpectraScaling.png")
         plt.close()
 
@@ -513,7 +516,7 @@ if __name__ == '__main__':
             fig   = plt.figure(figsize = (16, 8))
             gs    = GridSpec(1, 2, hspace = 0.3)
             ax1   = fig.add_subplot(gs[0, 0])
-            vort_long_zeta_p, vort_long_zeta_p_resid = plot_str_func_fit(fig, ax1, r, post_data.vel_long_str_func_abs/sys_vars.ndata, powers, inert_range, insert_fig=False)
+            vel_long_zeta_p, vel_long_zeta_p_resid = plot_str_func_fit(fig, ax1, r, post_data.vel_long_str_func_abs/sys_vars.ndata, powers, inert_range, insert_fig=False)
             # --------  Plot Anomalous Exponent
             ax2   = fig.add_subplot(gs[0, 1])
             p = powers

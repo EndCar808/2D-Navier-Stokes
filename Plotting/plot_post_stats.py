@@ -22,11 +22,11 @@ import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import getopt
+from matplotlib.pyplot import cm
 from itertools import zip_longest
 import multiprocessing as mprocs
 import time as TIME
 from subprocess import Popen, PIPE
-from matplotlib.pyplot import cm
 from functions import tc, sim_data, import_data, import_spectra_data, import_post_processing_data, import_sys_msr
 from plot_functions import plot_sector_phase_sync_snaps, plot_str_func_fit
 np.seterr(divide='ignore')

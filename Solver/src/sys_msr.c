@@ -64,7 +64,7 @@ void ComputeSystemMeasurables(double t, int iter, int save_iter, int tot_iter, I
     // Record the initial time
     #if defined(__TIME)
     if (!(sys_vars->rank)) {
-		run_data->time[save_iter]         = t;
+		run_data->time[save_iter]    = t;
 		run_data->tot_time[tot_iter] = t;
     }
 	#endif
@@ -137,7 +137,7 @@ void ComputeSystemMeasurables(double t, int iter, int save_iter, int tot_iter, I
 	#endif
 
 	//------------------- Compute the Fourier vorticity if in Phase Only Mode
-	#if defined(PHASE_ONLY)
+	#if defined(PHASE_ONLY) || defined(AMP_ONLY)
 	for (int i = 0; i < local_Ny; ++i) {
 		tmp = i * Nx_Fourier;
 		for (int j = 0; j < Nx_Fourier; ++j) {
@@ -192,8 +192,11 @@ void ComputeSystemMeasurables(double t, int iter, int save_iter, int tot_iter, I
 
 			// Record the time averaged amplitudes
 			if (iter >= sys_vars->trans_iters) {
-				#if defined(__AMPS_T_AVG)
-				run_data->a_k_t_avg[indx] += cabs(run_data->w_hat[indx]);
+				#if defined(__AMPS_AVG)
+				run_data->a_k_avg[indx] += cabs(run_data->w_hat[indx]);
+				#endif	
+				#if defined(__PHASES_AVG)
+				run_data->phi_k_avg[indx] += carg(run_data->w_hat[indx]);
 				#endif				
 			}
 
@@ -824,7 +827,7 @@ void InitializeSystemMeasurables(Int_data_struct* Int_data) {
 	// ----------------------------
 	// Get Measurables of the ICs
 	// ----------------------------
-	ComputeSystemMeasurables(0.0, 0, 0, 0, Int_data);
+	ComputeSystemMeasurables(sys_vars->t0, 0, 0, 0, Int_data);
 }
 /**
  * Function used to compute the energy spectrum of the current iteration. The energy spectrum is defined as all(sum) of the energy contained in concentric annuli in
@@ -1339,7 +1342,7 @@ void EnstrophyFlux(double* d_e_dt, double* enst_flux, double* enst_diss, Int_dat
 	}
 
 	//------------------- Compute the Fourier vorticity if in Phase Only Mode
-	#if defined(PHASE_ONLY)
+	#if defined(PHASE_ONLY) || defined(AMP_ONLY)
 	for (int i = 0; i < local_Ny; ++i) {
 		tmp = i * Nx_Fourier;
 		for (int j = 0; j < Nx_Fourier; ++j) {
@@ -1486,7 +1489,7 @@ void EnergyFlux(double* d_e_dt, double* enrg_flux, double* enrg_diss, Int_data_s
 	}
 
 	//------------------- Compute the Fourier vorticity if in Phase Only Mode
-	#if defined(PHASE_ONLY)
+	#if defined(PHASE_ONLY) || defined(AMP_ONLY)
 	for (int i = 0; i < local_Ny; ++i) {
 		tmp = i * Nx_Fourier;
 		for (int j = 0; j < Nx_Fourier; ++j) {
@@ -1644,7 +1647,7 @@ void EnergyFluxSpectrum(Int_data_struct* Int_data) {
 	}
 
 	//------------------- Compute the Fourier vorticity if in Phase Only Mode
-	#if defined(PHASE_ONLY)
+	#if defined(PHASE_ONLY) || defined(AMP_ONLY)
 	for (int i = 0; i < local_Ny; ++i) {
 		tmp = i * Nx_Fourier;
 		for (int j = 0; j < Nx_Fourier; ++j) {
@@ -1771,7 +1774,7 @@ void EnstrophyFluxSpectrum(Int_data_struct* Int_data) {
 	}
 
 	//------------------- Compute the Fourier vorticity if in Phase Only Mode
-	#if defined(PHASE_ONLY)
+	#if defined(PHASE_ONLY) || defined(AMP_ONLY)
 	for (int i = 0; i < local_Ny; ++i) {
 		tmp = i * Nx_Fourier;
 		for (int j = 0; j < Nx_Fourier; ++j) {

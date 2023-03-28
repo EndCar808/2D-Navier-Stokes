@@ -52,7 +52,7 @@ void ComputeStats(int iters) {
 
 
 	//------------------- Compute the Fourier vorticity if in Phase Only Mode
-	#if defined(PHASE_ONLY)
+	#if defined(PHASE_ONLY) || defined(AMP_ONLY)
 	for (int i = 0; i < sys_vars->local_Ny; ++i) {
 		tmp = i * (sys_vars->N[1] / 2 + 1);
 		for (int j = 0; j < (sys_vars->N[1] / 2 + 1); ++j) {

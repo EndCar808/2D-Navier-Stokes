@@ -152,6 +152,9 @@ if __name__ == '__main__':
     num_k1_sectors       = []
     k_frac               = []
     num_post_omp_threads = []
+    input_file           = []
+    iter_string          = []
+    dset_string          = []
 
     ## Parse input parameters
     for section in parser.sections():
@@ -242,8 +245,15 @@ if __name__ == '__main__':
             if 'check_point' in parser[section]:
                 check_point = int(parser[section]['check_point'])
         if section in ['DIRECTORIES']:
-            if 'solver_input_dir' in parser[section]:
-                input_dir = str(parser[section]['solver_input_dir'])
+            if 'solver_input_file' in parser[section]:
+                for n in parser[section]['solver_input_file'].lstrip('[').rstrip(']').split(', '):
+                    input_file.append(str(n))
+            if 'solver_input_iter_string' in parser[section]:
+                for n in parser[section]['solver_input_iter_string'].lstrip('[').rstrip(']').split(', '):
+                    iter_string.append(str(n))
+            if 'solver_input_dset_string' in parser[section]:
+                for n in parser[section]['solver_input_dset_string'].lstrip('[').rstrip(']').split(', '):
+                    dset_string.append(str(n))
             if 'solver_output_dir' in parser[section]:
                 output_dir = str(parser[section]['solver_output_dir'])
             if 'solver_tag' in parser[section]:
@@ -259,8 +269,16 @@ if __name__ == '__main__':
                 system_tag = str(parser[section]['system_tag'])
                 if system_tag.split('_')[-2] == "FULL":
                     solver_mode = "FULL"
+                elif system_tag.split('_')[-2] == "PO":
+                    solver_mode = "PO"
+                elif system_tag.split('_')[-2] == "POFXDAMP":
+                    solver_mode = "POFXDAMP"
                 elif system_tag.split('_')[-2] == "PHASEONLY":
                     solver_mode = "PHASEONLY"
+                elif system_tag.split('_')[-2] == "AO":
+                    solver_mode = "AO"
+                elif system_tag.split('_')[-2] == "AOFXDPHASE":
+                    solver_mode = "AOFXDPHASE"
                 else:
                     solver_mode = None 
         if section in ['JOB']:
@@ -317,21 +335,22 @@ if __name__ == '__main__':
             solver_error  = []
 
         ## Generate command list 
-        cmd_list = [["mpirun -n {} {} -o {} -n {} -n {} -s {:3.5f} -e {:3.5f} -T {} -c {} -c {:1.6f} -h {:1.6f} -h {} -v {:g} -v {} -v {:1.1f} -d {:g} -d {} -d {:1.1f} -d {:g} -i {} -t {} -f {} -f {} -f {} -P {} -p {} -p {}".format(
-                                                                                                                                                                                    solver_procs, 
-                                                                                                                                                                                    executable, 
-                                                                                                                                                                                    output_dir, 
-                                                                                                                                                                                    nx, ny, 
-                                                                                                                                                                                    t0, t, trans_iters, 
+        cmd_list = [["mpirun -n {} {} -z {} -z {} -z {} -o {} -n {} -n {} -s {:3.5f} -e {:3.5f} -T {} -c {} -c {:1.6f} -h {:1.6f} -h {} -v {:g} -v {} -v {:1.1f} -d {:g} -d {} -d {:1.1f} -d {:g} -i {} -t {} -f {} -f {} -f {} -P {} -p {} -p {}".format(
+                                                                                                                                                                                    solver_procs,
+                                                                                                                                                                                    executable,
+                                                                                                                                                                                    in_file, it_s, dset_s,
+                                                                                                                                                                                    output_dir,
+                                                                                                                                                                                    nx, ny,
+                                                                                                                                                                                    t0, t, trans_iters,
                                                                                                                                                                                     cfl_cond, c,
-                                                                                                                                                                                    h, step_type, 
-                                                                                                                                                                                    v, int(hype), hypervisc_pow, 
+                                                                                                                                                                                    h, step_type,
+                                                                                                                                                                                    v, int(hype), hypervisc_pow,
                                                                                                                                                                                     ekmn_alpha_low_k, ekmn_hypo_diff, ekmn_hypo_pow, a_hk,
-                                                                                                                                                                                    u0, 
-                                                                                                                                                                                    s_tag, 
-                                                                                                                                                                                    forcing, force_k, force_scale, 
+                                                                                                                                                                                    u0,
+                                                                                                                                                                                    s_tag,
+                                                                                                                                                                                    forcing, force_k, force_scale,
                                                                                                                                                                                     po_s,
-                                                                                                                                                                                    save_every, stats_every)] for nx, ny in zip(Nx, Ny) for t in T for h in dt for a_hk in ekmn_alpha_high_k for u0 in ic for v in nu for hype in hyper_visc for c in cfl for po_s in po_slope for s_tag in solver_tag]
+                                                                                                                                                                                    save_every, stats_every)] for in_file in input_file for it_s in iter_string for dset_s in dset_string for nx, ny in zip(Nx, Ny) for t in T for h in dt for a_hk in ekmn_alpha_high_k for u0 in ic for v in nu for hype in hyper_visc for c in cfl for po_s in po_slope for s_tag in solver_tag]
 
         if cmdargs.cmd_only:
             print(tc.C + "\nSolver Commands:\n" + tc.Rst)
@@ -413,7 +432,7 @@ if __name__ == '__main__':
                                                         post_tag,
                                                         check_point,
                                                         post_options)] for nx, ny in zip(Nx, Ny) for h in dt for t in T for a_hk in ekmn_alpha_high_k for n_k3 in num_k3_sectors for n_k1 in num_k1_sectors for k_f in k_frac for v in nu for hype in hyper_visc for u0 in ic for s_tag in solver_tag for num_threads in num_post_omp_threads]
-        elif solver_mode == "PHASEONLY":
+        elif solver_mode == "PO" or solver_mode == "PHASEONLY" or solver_mode == "POFXDAMP" or solver_mode == "AO" or solver_mode == "AOFXDPHASE":
             post_cmd_list = [["{} -i {} -o {} -f {} -f {} -f {} -a {} -a {} -k {} -p {} -p {} -t {} -c {} {} ".format(
                                                         post_executable,
                                                         post_input_dir + "N[{},{}]_T[{:1.1f},{},{:1.3f}]_SLOPE[{:1.3f}]_FORC[{},{},{:g}]_u0[{}]_TAG[{}]/".format(nx, ny, t0, h, t, po_s, forcing, force_k, force_scale, u0, s_tag), 
@@ -498,7 +517,7 @@ if __name__ == '__main__':
                                             post_input_dir + "N[{},{}]_T[{:1.1f},{},{:1.3f}]_NU[{:g},{},{:1.1f}]_DRAG[{:g},{:g},{},{:1.1f}]_FORC[{},{},{:g}]_u0[{}]_TAG[{}]/".format(nx, ny, t0, h, t, v, int(hype), hypervisc_pow, ekmn_alpha_low_k, a_hk, int(ekmn_hypo_diff), ekmn_hypo_pow, forcing, force_k, force_scale, u0, s_tag), 
                                             "PostProcessing_HDF_Data_THREADS[{},{}]_SECTORS[{},{}]_KFRAC[{:1.2f}]_TAG[{}].h5".format(num_threads, num_post_fftw_threads, n_k3, n_k1, k_f, post_tag),
                                             plot_options)] for nx, ny in zip(Nx, Ny) for h in dt for t in T for v in nu for a_hk in ekmn_alpha_high_k for n_k3 in num_k3_sectors for n_k1 in num_k1_sectors for k_f in k_frac for hype in hyper_visc for u0 in ic for s_tag in solver_tag for num_threads in num_post_omp_threads]
-        elif solver_mode == "PHASEONLY":
+        elif solver_mode == "PO" or solver_mode == "PHASEONLY" or solver_mode == "POFXDAMP" or solver_mode == "AO" or solver_mode == "AOFXDPHASE":
             plot_cmd_list = [["python3 {} -i {} -f {} {} ".format(
                                             plot_script, 
                                             post_input_dir + "N[{},{}]_T[{:1.1f},{},{:1.3f}]_SLOPE[{:1.3f}]_FORC[{},{},{:g}]_u0[{}]_TAG[{}]/".format(nx, ny, t0, h, t, po_s, forcing, force_k, force_scale, u0, s_tag), 

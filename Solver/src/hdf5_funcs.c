@@ -43,7 +43,7 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 	#if defined(__PHASE_SYNC)
 	hid_t sync_group_id = (hid_t) NULL;
 	#endif
-	#if defined(__VORT_REAL) || defined(__MODES) || defined(__REALSPACE) || defined(__PHASE_ONLY_FXD_AMP) 
+	#if defined(__VORT_REAL) || defined(__MODES) || defined(__REALSPACE) || defined(PHASE_ONLY_FXD_AMP) || defined(AMP_ONLY_FXD_PHASE) || defined(PHASE_ONLY) || defined(AMP_ONLY) 
 	int tmp;
 	int indx;
 	#endif
@@ -51,10 +51,7 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 	herr_t status;
 	hid_t plist_id;
 
-    #if (defined(__VORT_FOUR) || defined(__MODES) || defined(__NONLIN)) && !defined(DEBUG)
-	// Create compound datatype for the complex datasets
-	file_info->COMPLEX_DTYPE = CreateComplexDatatype();
-	#endif
+   
 		
 	///////////////////////////
 	/// Create & Open Files
@@ -146,6 +143,17 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 		hsize_t mem_space_dims3D[d_set_rank3D];   // Array to hold the dimensions of the memoray space - for real data this will be different to slab_dims due to 0 padding
 		#endif
 
+		///-------------------------------------- If in PO or AO mode get the Fourier space voriticity
+		#if (defined(PHASE_ONLY) || defined(AMP_ONLY))
+		for (int i = 0; i < sys_vars->local_Ny; ++i) {
+			tmp = i * Nx_Fourier;
+			for (int j = 0; j < Nx_Fourier; ++j) {
+				indx = tmp + j;
+
+				run_data->w_hat[indx] = run_data->a_k[indx] * cexp(I * run_data->phi_k[indx]);
+			}
+		}
+		#endif
 
 		///-------------------------------------- Real Space Voriticity
 		#if defined(__VORT_REAL)
@@ -297,7 +305,7 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 		#endif
 
 		///-------------------------------------- Fourier Phases & Amplitudes of the Vorticity
-		#if defined(PHASE_ONLY_FXD_AMP)
+		#if defined(PHASE_ONLY_FXD_AMP) || defined(AMP_ONLY_FXD_PHASE)
 		// Record the Fourier amplitudes and phases
 		for (int i = 0; i < sys_vars->local_Ny; ++i) {
 			tmp = i * Nx_Fourier;
@@ -312,7 +320,7 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 		}
 		#endif
 		
-		#if defined(PHASE_ONLY_FXD_AMP) || defined(PHASE_ONLY)
+		#if defined(PHASE_ONLY_FXD_AMP) || defined(PHASE_ONLY) || defined(AMP_ONLY_FXD_PHASE) || defined(AMP_ONLY)
 		// Create dimension arrays for the Fourier amplitudes and phases
 		dset_dims2D[0] 	  = Ny;
 		dset_dims2D[1] 	  = Nx_Fourier;
@@ -517,8 +525,14 @@ void GetOutputDirPath(void) {
 		#else 
 		sprintf(solv_type, "%s", "UKN");
 		#endif
-		#if defined(__PHASE_ONLY)
+		#if defined(PHASE_ONLY)
 		sprintf(model_type, "%s", "PO");
+		#elif defined(PHASE_ONLY_FXD_AMP)
+		sprintf(model_type, "%s", "POFXDAMP");
+		#elif defined(AMP_ONLY)
+		sprintf(model_type, "%s", "AO");
+		#elif defined(AMP_ONLY_FXD_PHASE)
+		sprintf(model_type, "%s", "AOFXDPHASE");
 		#else
 		sprintf(model_type, "%s", "FULL");
 		#endif
@@ -527,7 +541,7 @@ void GetOutputDirPath(void) {
 		// Get File Label from Simulation Data
 		// -------------------------------------
 		// Construct file label from simulation data
-		#if defined(PHASE_ONLY) || defined(PHASE_ONLY_FXD_AMP)
+		#if defined(PHASE_ONLY) || defined(PHASE_ONLY_FXD_AMP) || defined(AMP_ONLY) || defined(AMP_ONLY_FXD_PHASE) 
 		sprintf(file_data, "_SIM[%s-%s-%s]_N[%ld,%ld]_T[%1.1lf,%g,%1.3lf]_SLOPE[%1.3lf]_FORC[%s,%d,%g]_u0[%s].h5", 
 											sys_type, solv_type, model_type, 
 											sys_vars->N[0], sys_vars->N[1], 
@@ -604,8 +618,14 @@ void GetOutputDirPath(void) {
 		#else 
 		sprintf(solv_type, "%s", "SOLVUKN");
 		#endif
-		#if defined(__PHASE_ONLY)
+		#if defined(PHASE_ONLY)
 		sprintf(model_type, "%s", "PO");
+		#elif defined(PHASE_ONLY_FXD_AMP)
+		sprintf(model_type, "%s", "POFXDAMP");
+		#elif defined(AMP_ONLY)
+		sprintf(model_type, "%s", "AO");
+		#elif defined(AMP_ONLY_FXD_PHASE)
+		sprintf(model_type, "%s", "AOFXDPHASE");
 		#else
 		sprintf(model_type, "%s", "FULL");
 		#endif
@@ -614,7 +634,7 @@ void GetOutputDirPath(void) {
 		// Construct Output folder
 		// ----------------------------------
 		// Construct file label from simulation data
-		#if defined(PHASE_ONLY) || defined(PHASE_ONLY_FXD_AMP)
+		#if defined(PHASE_ONLY) || defined(PHASE_ONLY_FXD_AMP) || defined(AMP_ONLY) || defined(AMP_ONLY_FXD_PHASE) 
 		sprintf(file_data, "%s_%s_%s_N[%ld,%ld]_T[%1.1lf,%g,%1.3lf]_SLOPE[%1.3lf]_FORC[%s,%d,%g]_u0[%s]_TAG[%s]/", 
 											sys_type, solv_type, model_type, 
 											sys_vars->N[0], sys_vars->N[1], 
@@ -663,7 +683,7 @@ void GetOutputDirPath(void) {
 		strncpy(file_info->sys_msr_file_name, file_info->output_dir, 1024); 
 		strcat(file_info->sys_msr_file_name, "SystemMeasures_HDF_Data.h5");
 		if ( !(sys_vars->rank) ) {
-			printf("\nSystem Measures File: "CYAN"%s"RESET"\n\n", file_info->sys_msr_file_name);
+			printf("System Measures File: "CYAN"%s"RESET"\n\n", file_info->sys_msr_file_name);
 		}
 
 		#if defined(__ENST_SPECT) || defined(__ENRG_SPECT) || defined(__ENST_FLUX_SPECT) || defined(__ENRG_FLUX_SPECT)
@@ -697,6 +717,178 @@ void GetOutputDirPath(void) {
 	MPI_Barrier(MPI_COMM_WORLD);
 }
 /**
+ * Function to read in data from a given input file
+ * @param t           The current time in the simulation
+ * @param iters       The current iteration in the simulation
+ * @param iter_string The input iteration string
+ * @param dset_string The dataset to read in
+ * @param data_type   Indicates whether to read in the Fouorier space vorticity or other
+ */
+void ReadInputFile(double t, long int iters, char* iter_string, char* dset_string, char* data_type) {
+
+	// Initialize variables
+	char group_string[128];
+	const long int Ny 		  = sys_vars->N[0];
+	const long int Nx 		  = sys_vars->N[1];
+	const long int Nx_Fourier = Nx / 2 + 1;
+	hsize_t Dims[SYS_DIM];
+	herr_t status;
+	hid_t main_group_id;
+	hid_t file_plist_id;
+	hid_t dset_plist_id;
+	hid_t read_plist_id;
+	hid_t dset;
+	hid_t dset_space;
+	hid_t mem_space;
+	static const int d_set_rank2D = 2;
+	hsize_t dset_dims2D[d_set_rank2D];       
+	hsize_t slab_dims2D[d_set_rank2D];	     
+	hsize_t mem_space_dims2D[d_set_rank2D];  
+	hsize_t mem_offset_dims2D[d_set_rank2D];  
+	hsize_t dset_offset_dims2D[d_set_rank2D];  
+
+	// --------------------------------------
+	// Open Input File
+	// --------------------------------------
+	// Create property list for setting parallel I/O access properties for file
+	file_plist_id = H5Pcreate(H5P_FILE_ACCESS);
+	H5Pset_fapl_mpio(file_plist_id, MPI_COMM_WORLD, MPI_INFO_NULL);
+
+
+	if (access(file_info->input_file_name, F_OK) != 0) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Input file ["CYAN"%s"RESET"] does not exist!\n-->> Exiting...\n", file_info->input_file_name);
+		FinalWriteAndCloseOutputFiles(sys_vars->N, iters, iters);
+		exit(1);		
+	}
+	else {
+		file_info->input_file_handle = H5Fopen(file_info->input_file_name, H5F_ACC_RDWR, file_plist_id);
+		if (file_info->input_file_handle < 0) {
+			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to open input file ["CYAN"%s"RESET"] at: Iter = ["CYAN"%ld"RESET"] t = ["CYAN"%lf"RESET"] \n-->> Exiting...\n", file_info->input_file_name, iters, t);
+			FinalWriteAndCloseOutputFiles(sys_vars->N, iters, iters);
+			exit(1);
+		}
+	}
+	H5Pclose(file_plist_id);
+
+	// --------------------------------------
+	// Open Dataset Space
+	// --------------------------------------
+	// Parallel dataset access
+	dset_plist_id = H5Pcreate(H5P_DATASET_ACCESS);
+
+	// Create group string for dataset
+	sprintf(group_string, "%s/%s", iter_string, dset_string);
+	
+	// Open dataset
+	dset = H5Dopen(file_info->input_file_handle, group_string, dset_plist_id);
+	if(dset < 0) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to open dataset ["CYAN"%s"RESET"] in input file ["CYAN"%s"RESET"] at: Iter = ["CYAN"%ld"RESET"] t = ["CYAN"%lf"RESET"] \n-->> Exiting...\n", group_string, file_info->input_file_name, iters, t);
+		FinalWriteAndCloseOutputFiles(sys_vars->N, iters, iters);
+		exit(1);		
+	} 
+	H5Pclose(dset_plist_id);
+
+	// --------------------------------------
+	// Check Dataspace
+	// --------------------------------------
+	// Get dataspace ID
+	dset_space = H5Dget_space(dset);
+
+	// Get dims from dataspace
+	if(H5Sget_simple_extent_ndims(dset_space) != SYS_DIM) {
+ 	  fprintf(stderr, "\n["RED"ERROR"RESET"] --- Number of dimensions in HDF5 Dataset ["CYAN"%s"RESET"] is not 2!\n-->> Exiting...\n", group_string);
+		exit(1);		 
+	}
+	if((H5Sget_simple_extent_dims(dset_space, Dims, NULL)) < 0 ) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- unable to get data extents(dimensions) from HDF5 dataset ["CYAN"%s"RESET"]\n-->> Exiting...\n", group_string);
+		exit(1);		
+	}
+	if (Dims[0] != (hsize_t) Ny || Dims[1] != (hsize_t) Nx_Fourier) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Dataset dimensions for ["CYAN"%s"RESET"] do not match simulation dimensions\n-->> Exiting...\n", group_string);
+		exit(1);
+	}
+
+	// --------------------------------------
+	// Create Hyperslab in Memory
+	// --------------------------------------
+	// Initialize hyperslab dimension arrays
+	dset_dims2D[0]        = Ny;
+	dset_dims2D[1]        = Nx_Fourier;
+	slab_dims2D[0]        = sys_vars->local_Ny;
+	slab_dims2D[1]        = Nx_Fourier;
+	mem_space_dims2D[0]   = sys_vars->local_Ny;
+	mem_space_dims2D[1]   = Nx_Fourier;
+	mem_offset_dims2D[0]  = 0;
+	mem_offset_dims2D[1]  = 0;
+	dset_offset_dims2D[0] = sys_vars->local_Ny_start;
+	dset_offset_dims2D[1] = 0;
+
+	// Create the memory space for the hyperslabs for each process
+	mem_space = H5Screate_simple(d_set_rank2D, mem_space_dims2D, NULL);
+
+	// Select local hyperslab from the memoryspace (slab size adjusted to ignore 0 padding) - local to each process
+	if((H5Sselect_hyperslab(mem_space, H5S_SELECT_SET, mem_offset_dims2D, NULL, slab_dims2D, NULL)) < 0 ) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- unable to select local hyperslab for input datset ["CYAN"%s"RESET"] at: Iter = ["CYAN"%ld"RESET"] t = ["CYAN"%lf"RESET"]\n-->> Exiting...\n", group_string, iters, t);
+		FinalWriteAndCloseOutputFiles(sys_vars->N, iters, iters);
+		exit(1);		
+	}
+
+	// -------------------------------
+	// Select Hyperslab in File
+	// -------------------------------
+	// Select the hyperslab in the dataset on file to write to
+	if((H5Sselect_hyperslab(dset_space, H5S_SELECT_SET, dset_offset_dims2D, NULL, slab_dims2D, NULL)) < 0 ) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to select hyperslab in file for input datset ["CYAN"%s"RESET"] at: Iter = ["CYAN"%ld"RESET"] t = ["CYAN"%lf"RESET"]\n-->> Exiting...\n", group_string, iters, t);
+		FinalWriteAndCloseOutputFiles(sys_vars->N, iters, iters);
+		exit(1);		
+	}
+
+	// --------------------------------------
+	// Read Dataset
+	// -------------------------------------- 
+	// Create parallel property list for reading dataset
+	read_plist_id = H5Pcreate(H5P_DATASET_XFER);
+  	H5Pset_dxpl_mpio(read_plist_id, H5FD_MPIO_COLLECTIVE);
+
+  	if (!(strcmp(data_type, "VORT"))) {
+	  	// Read in The Fourier vorticity from datatset using hyperslabs
+	  	if(H5Dread(dset, file_info->COMPLEX_DTYPE, mem_space, dset_space, read_plist_id, run_data->w_hat) < 0) {
+	  		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to read input datset ["CYAN"%s"RESET"] at: Iter = ["CYAN"%ld"RESET"] t = ["CYAN"%lf"RESET"]\n-->> Exiting...\n", group_string, iters, t);
+			FinalWriteAndCloseOutputFiles(sys_vars->N, iters, iters);
+			exit(1);			
+	  	}  		
+  	}
+  	else if (!(strcmp(data_type, "PHASE"))) {
+	  	// Read in The Fourier phases from datatset using hyperslabs
+	  	if(H5Dread(dset, H5T_NATIVE_DOUBLE, mem_space, dset_space, read_plist_id, run_data->phi_k) < 0) {
+	  		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to read input datset ["CYAN"%s"RESET"] at: Iter = ["CYAN"%ld"RESET"] t = ["CYAN"%lf"RESET"]\n-->> Exiting...\n", group_string, iters, t);
+			FinalWriteAndCloseOutputFiles(sys_vars->N, iters, iters);
+			exit(1);			
+	  	}
+	}
+	else if (!(strcmp(data_type, "AMP"))) {
+	  	// Read in The Fourier amps from datatset using hyperslabs
+	  	if(H5Dread(dset, H5T_NATIVE_DOUBLE, mem_space, dset_space, read_plist_id, run_data->a_k) < 0) {
+	  		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to read input datset ["CYAN"%s"RESET"] at: Iter = ["CYAN"%ld"RESET"] t = ["CYAN"%lf"RESET"]\n-->> Exiting...\n", group_string, iters, t);
+			FinalWriteAndCloseOutputFiles(sys_vars->N, iters, iters);
+			exit(1);			
+	  	}	
+	}
+
+	// --------------------------------------
+	// Close Identifiers
+	// -------------------------------------- 
+	status = H5Dclose(dset);
+	status = H5Sclose(dset_space);
+	status = H5Sclose(mem_space);
+	status = H5Fclose(file_info->input_file_handle);
+	if (status < 0) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close input file ["CYAN"%s"RESET"] at: Iter = ["CYAN"%ld"RESET"] t = ["CYAN"%lf"RESET"]\n-->> Exiting...\n", file_info->input_file_name, iters, t);
+		FinalWriteAndCloseOutputFiles(sys_vars->N, iters, iters);
+		exit(1);
+	}
+}
+/**
  * Wrapper function that writes the data to file by openining it, creating a group for the current iteration and writing the data under this group. The file is then closed again 
  * @param t     The current time of the simulation
  * @param dt    The current timestep being used
@@ -705,7 +897,7 @@ void GetOutputDirPath(void) {
 void WriteDataToFile(double t, double dt, long int iters) {
 
 	// Initialize Variables
-	#if defined(__VORT_REAL) || defined(__MODES) || defined(__REALSPACE) || defined(__PHASE_ONLY_FXD_AMP)
+	#if defined(__VORT_REAL) || defined(__MODES) || defined(__REALSPACE) || defined(PHASE_ONLY_FXD_AMP) || defined(AMP_ONLY_FXD_PHASE) || defined(PHASE_ONLY) || defined(AMP_ONLY) 
 	int tmp;
 	int indx;
 	#endif
@@ -831,6 +1023,18 @@ void WriteDataToFile(double t, double dt, long int iters) {
 	// -------------------------------
 	// Write Data to File
 	// -------------------------------
+	///-------------------------------------- If in PO or AO mode get the Fourier space voriticity
+	#if (defined(PHASE_ONLY) || defined(AMP_ONLY))
+	for (int i = 0; i < sys_vars->local_Ny; ++i) {
+		tmp = i * Nx_Fourier;
+		for (int j = 0; j < Nx_Fourier; ++j) {
+			indx = tmp + j;
+
+			run_data->w_hat[indx] = run_data->a_k[indx] * cexp(I * run_data->phi_k[indx]);
+		}
+	}
+	#endif
+
 	///--------------------------------------- Real Space Vorticity
 	#if defined(__VORT_REAL)
 	// Write w_hat to temporary array for transform back to real space
@@ -980,7 +1184,7 @@ void WriteDataToFile(double t, double dt, long int iters) {
 	#endif
 
 	///--------------------------------------- Foureir Phases & Amplitudes of the Vorticity
-	#if defined(PHASE_ONLY_FXD_AMP)
+	#if defined(PHASE_ONLY_FXD_AMP) || defined(AMP_ONLY_FXD_PHASE)
 	// Record the Fourier amplitudes and phases
 	for (int i = 0; i < sys_vars->local_Ny; ++i) {
 		tmp = i * Nx_Fourier;
@@ -995,7 +1199,7 @@ void WriteDataToFile(double t, double dt, long int iters) {
 	}
 	#endif
 	
-	#if defined(PHASE_ONLY_FXD_AMP) || defined(PHASE_ONLY)
+	#if defined(PHASE_ONLY_FXD_AMP) || defined(PHASE_ONLY) || defined(AMP_ONLY_FXD_PHASE) || defined(AMP_ONLY)
 	// Create dimension arrays for the Fourier amplitudes and phases
 	dset_dims2D[0] 	  = Ny;
 	dset_dims2D[1] 	  = Nx_Fourier;
@@ -1485,7 +1689,7 @@ void FinalWriteAndCloseOutputFiles(const long int* N, int iters, int save_data_i
 	static const hsize_t D3 = 3;
 	hsize_t dims3D[D3];
 	#endif
-	#if defined(__STATS) && defined(__VEL_STR_FUNC)
+	#if (defined(__STATS) && defined(__VEL_STR_FUNC)) || defined(__AMPS_AVG) || defined(__PHASES_AVG) 
 	static const hsize_t D2 = 2;
 	hsize_t dims2D[D2];
 	#endif
@@ -1715,8 +1919,26 @@ void FinalWriteAndCloseOutputFiles(const long int* N, int iters, int save_data_i
 		#if defined(__ENST_SPECT_T_AVG)
 		MPI_Reduce(MPI_IN_PLACE, run_data->enst_spect_t_avg, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		#endif
-		#if defined(__AMP_T_AVG)
-		MPI_Reduce(MPI_IN_PLACE, run_data->a_k_t_avg, sys_vars->N[0] * (sys_vars->N[1] / 2 + 1), MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		///------------------ Time Averaged Amps and Phases
+		#if defined(__AMPS_AVG)
+		// Allocate memory for gathering time averaged amps
+		double* tmp_amp_avg = (double* )fftw_malloc(sizeof(double) * sys_vars->N[0] * (sys_vars->N[1] / 2 + 1));
+		for (int i = 0; i < sys_vars->N[0]; ++i) {
+			for (int j = 0; j < (sys_vars->N[1]/2 + 1); ++j) {
+				tmp_amp_avg[i * (sys_vars->N[1]/2 + 1) + j] = 0.0;
+			}
+		}
+		MPI_Gather(run_data->a_k_avg, sys_vars->local_Ny * (sys_vars->N[1] / 2 + 1), MPI_DOUBLE, tmp_amp_avg, sys_vars->local_Ny * (sys_vars->N[1] / 2 + 1), MPI_DOUBLE, 0, MPI_COMM_WORLD);
+		#endif
+		#if defined(__PHASES_AVG)
+		// Allocate memory for gathering time averaged phases
+		double* tmp_phases_avg = (double* )fftw_malloc(sizeof(double) * sys_vars->N[0] * (sys_vars->N[1] / 2 + 1));
+		for (int i = 0; i < sys_vars->N[0]; ++i) {
+			for (int j = 0; j < (sys_vars->N[1]/2 + 1); ++j) {
+				tmp_phases_avg[i * (sys_vars->N[1]/2 + 1) + j] = 0.0;
+			}
+		}
+		MPI_Gather(run_data->phi_k_avg, sys_vars->local_Ny * (sys_vars->N[1] / 2 + 1), MPI_DOUBLE, tmp_phases_avg, sys_vars->local_Ny * (sys_vars->N[1] / 2 + 1), MPI_DOUBLE, 0, MPI_COMM_WORLD);
 		#endif
 		#if defined(__STATS)
 		///------------------ Structure functions
@@ -1936,8 +2158,6 @@ void FinalWriteAndCloseOutputFiles(const long int* N, int iters, int save_data_i
 		fftw_free(vort_inc_ranges);
 		#endif
 		#endif
-
-
 		#if defined(__ENRG_FLUX_SPECT_T_AVG)
 		for (int i = 0; i < sys_vars->n_spect; ++i) {
 			run_data->enrg_flux_spect_t_avg[i] /= sys_vars->num_sys_msr_counts;
@@ -1974,17 +2194,35 @@ void FinalWriteAndCloseOutputFiles(const long int* N, int iters, int save_data_i
 			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "TimeAveragedEnstrophySpectrum");
 		}
 		#endif
-		#if defined(__AMP_T_AVG)
+		#if defined(__AMPS_AVG)
 		for (int i = 0; i < sys_vars->N[0]; ++i) {
 			for (int j = 0; j < sys_vars->N[1] / 2 + 1; ++j) {
-				run_data->a_k_t_avg[i * (sys_vars->N[1] / 2 + 1) + j] /= sys_vars->num_sys_msr_counts;
+				tmp_amp_avg[i * (sys_vars->N[1] / 2 + 1) + j] /= sys_vars->num_sys_msr_counts;
 			}
 		}
 		dims2D[0] = sys_vars->N[0];
 		dims2D[1] = sys_vars->N[1] / 2 + 1;
-		if ( (H5LTmake_dataset(file_info->stats_file_handle, "TimeAveragedAmplitudes", D2, dims2D, H5T_NATIVE_DOUBLE, run_data->a_k_t_avg)) < 0) {
+		if ( (H5LTmake_dataset(file_info->sys_msr_file_handle, "TimeAveragedAmplitudes", D2, dims2D, H5T_NATIVE_DOUBLE, tmp_amp_avg)) < 0) {
 			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "TimeAveragedAmplitudes");
 		}
+
+		// Free the temp memory
+		fftw_free(tmp_amp_avg);
+		#endif
+		#if defined(__PHASES_AVG)
+		for (int i = 0; i < sys_vars->N[0]; ++i) {
+			for (int j = 0; j < sys_vars->N[1] / 2 + 1; ++j) {
+				tmp_phases_avg[i * (sys_vars->N[1] / 2 + 1) + j] /= sys_vars->num_sys_msr_counts;
+			}
+		}
+		dims2D[0] = sys_vars->N[0];
+		dims2D[1] = sys_vars->N[1] / 2 + 1;
+		if ( (H5LTmake_dataset(file_info->sys_msr_file_handle, "TimeAveragedPhases", D2, dims2D, H5T_NATIVE_DOUBLE, tmp_phases_avg)) < 0) {
+			printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "TimeAveragedPhases");
+		}
+
+		// Free the temp memory
+		fftw_free(tmp_phases_avg);
 		#endif
 	}
 	else {
@@ -2045,8 +2283,11 @@ void FinalWriteAndCloseOutputFiles(const long int* N, int iters, int save_data_i
 		#if defined(__ENST_SPECT_T_AVG)
 		MPI_Reduce(run_data->enst_spect_t_avg, NULL, sys_vars->n_spect, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		#endif
-		#if defined(__AMP_T_AVG)
-		MPI_Reduce(run_data->a_k_t_avg, NULL, sys_vars->N[0] * (sys_vars->N[1] / 2 + 1), MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		#if defined(__AMPS_AVG)
+		MPI_Gather(run_data->a_k_avg, sys_vars->local_Ny * (sys_vars->N[1] / 2 + 1), MPI_DOUBLE, NULL, sys_vars->local_Ny * (sys_vars->N[1] / 2 + 1), MPI_DOUBLE, 0, MPI_COMM_WORLD);
+		#endif
+		#if defined(__PHASES_AVG)
+		MPI_Gather(run_data->phi_k_avg, sys_vars->local_Ny * (sys_vars->N[1] / 2 + 1), MPI_DOUBLE, NULL, sys_vars->local_Ny * (sys_vars->N[1] / 2 + 1), MPI_DOUBLE, 0, MPI_COMM_WORLD);
 		#endif
 	}
 

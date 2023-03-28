@@ -75,6 +75,79 @@ def plot_vort(outdir, w, x, y, time, snaps, file_type=".png", fig_size=(16, 8)):
 	plt.savefig(outdir + "Vorticity" + file_type, bbox_inches='tight')
 	plt.close()
 
+def plot_time_averaged_full_field(outdir, amp, phases, enrg, enst,  Nx, Ny, file_type=".png", fig_size=(16, 12)):
+
+
+    fig = plt.figure(figsize = fig_size)
+    gs  = GridSpec(2, 2, hspace = 0.3, wspace=0.15) 
+
+    ## Generate colour maps
+    my_hsv = cm.jet
+    my_hsv.set_under(color = "white")
+    my_magma = mpl.colors.ListedColormap(cm.magma.colors[::-1])
+    my_magma.set_under(color = "white")
+
+    #--------------------------
+    # Plot Phases   
+    #--------------------------
+    ax2  = fig.add_subplot(gs[0, 0])
+    im2  = ax2.imshow(amp, extent = (-Ny / 3 + 1, Ny / 3, -Nx / 3 + 1, Nx / 3), cmap = my_magma, norm = mpl.colors.LogNorm())
+    ax2.set_xlabel(r"$k_y$")
+    ax2.set_ylabel(r"$k_x$")
+    ax2.set_title(r"Amps")
+    ## Plot colourbar
+    div2  = make_axes_locatable(ax2)
+    cbax2 = div2.append_axes("right", size = "10%", pad = 0.05)
+    cb2   = plt.colorbar(im2, cax = cbax2)
+    cb2.set_label(r"$a_{\mathbf{k}}$")
+
+    #--------------------------
+    # Plot Phases   
+    #--------------------------
+    ax2  = fig.add_subplot(gs[0, 1])
+    im2  = ax2.imshow(phases, extent = (-Ny / 3 + 1, Ny / 3, -Nx / 3 + 1, Nx / 3), cmap = my_hsv, vmin = 0., vmax = 2. * np.pi)
+    ax2.set_xlabel(r"$k_y$")
+    ax2.set_ylabel(r"$k_x$")
+    ax2.set_title(r"Phases")
+    ## Plot colourbar
+    div2  = make_axes_locatable(ax2)
+    cbax2 = div2.append_axes("right", size = "10%", pad = 0.05)
+    cb2   = plt.colorbar(im2, cax = cbax2)
+    cb2.set_label(r"$\phi_{\mathbf{k}}$")
+    cb2.set_ticks([0.0, np.pi/2.0, np.pi, 3.0*np.pi/2.0, 2.0*np.pi])
+    cb2.set_ticklabels([r"$0$", r"$\frac{\pi}{2}$", r"$\pi$", r"$\frac{3\pi}{2}$", r"$2\pi$"])
+
+    #--------------------------
+    # Plot 2D Enstrophy Spectra   
+    #--------------------------
+    ax3  = fig.add_subplot(gs[1, 0])
+    im3  = ax3.imshow(enst, extent = (-Ny / 3 + 1, Ny / 3, -Nx / 3 + 1, Nx / 3), cmap = my_magma, norm = mpl.colors.LogNorm())
+    ax3.set_xlabel(r"$k_y$")
+    ax3.set_ylabel(r"$k_x$")
+    ax3.set_title("Enstrophy Spectrum")
+    ## Plot colourbar
+    div3  = make_axes_locatable(ax3)
+    cbax3 = div3.append_axes("right", size = "10%", pad = 0.05)
+    cb3   = plt.colorbar(im3, cax = cbax3)
+    cb3.set_label(r"$\mathcal{E}(\hat{\omega}_\mathbf{k})$")
+
+    ##-------------------------
+    ## Plot 2D Energy Spectra  
+    ##-------------------------
+    ax4  = fig.add_subplot(gs[1, 1])
+    im4  = ax4.imshow(enrg, extent = (-Ny / 3 + 1, Ny / 3, -Nx / 3 + 1, Nx / 3), cmap = my_magma, norm = mpl.colors.LogNorm())
+    ax4.set_xlabel(r"$k_y$")
+    ax4.set_ylabel(r"$k_x$")
+    ax4.set_title("Energy Spectrum")
+    ## Plot colourbar
+    div4  = make_axes_locatable(ax4)
+    cbax4 = div4.append_axes("right", size = "10%", pad = 0.05)
+    cb4   = plt.colorbar(im4, cax = cbax4)
+    cb4.set_label(r"$\mathcal{K}(\hat{\omega}_\mathbf{k})$")
+
+    plt.savefig(outdir + "TimeAveraged_FullField" + file_type, bbox_inches='tight')
+    plt.close()
+
 
 def plot_time_averaged_spectra_both(outdir, spect, flux_spect, kmax, spect_type, file_type=".png", fig_size=(21, 8)):
 

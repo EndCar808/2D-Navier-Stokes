@@ -218,6 +218,10 @@ typedef struct postprocess_data_struct {
 	double* phases;			   		 							             	// Array to hold the full field zero centred phases
 	double* enrg;			   		 							             	// Array to hold the full field zero centred energy
 	double* enst;			   		 							             	// Array to hold the full field zero centred enstrophy
+	double* amps_t_avg;											             	// Array to hold the time averaged full field zero centred amplitudes
+	double* phases_t_avg;		   		 							            // Array to hold the time averaged full field zero centred phases
+	double* enrg_t_avg;		   		 							             	// Array to hold the time averaged full field zero centred energy
+	double* enst_t_avg;		   		 							             	// Array to hold the time averaged full field zero centred enstrophy
 	double* enst_spec; 		   		 							             	// Array to hold the enstrophy spectrum
     double* enrg_spec; 		   		 							             	// Array to hold the energy spectrum
     double dtheta_k3; 												         	// The angle between sector mid points for k3

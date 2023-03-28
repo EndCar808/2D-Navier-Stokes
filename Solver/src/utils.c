@@ -44,6 +44,7 @@ int GetCMLArgs(int argc, char** argv) {
 	int output_dir_flag = 0;
 	int trans_iter_flag = 0;
 	int time_step_flag  = 0;
+	int input_file_flag = 0;
 
 	// -------------------------------
 	// Initialize Default Values
@@ -51,6 +52,8 @@ int GetCMLArgs(int argc, char** argv) {
 	// Input file path
 	strncpy(file_info->input_file_name, "NONE", 1024);
 	strncpy(file_info->input_dir, "./Data/Solver/InitialConditions/", 1024);  // Set default to Initial Conditions folder
+	strncpy(file_info->iter_string, "Iter_00000", 64);
+	strncpy(file_info->dset_string, "w_hat", 64);
 	// Output file directory
 	strncpy(file_info->output_dir, "./Data/Tmp/", 1024);  // Set default output directory to the Tmp folder
 	strncpy(file_info->output_tag, "No-Tag", 64);
@@ -376,6 +379,36 @@ int GetCMLArgs(int argc, char** argv) {
 					strncpy(sys_vars->u0, "PO_AMP_FILE", 64);
 					break;
 				}
+				else if (!(strcmp(optarg,"PO_AVG_AMP_RAND"))) {
+					// Phase Only - Read in time averaged amps - with random phases
+					strncpy(sys_vars->u0, "PO_AVG_AMP_RAND", 64);
+					break;
+				}
+				else if (!(strcmp(optarg,"PO_AVG_AMP_ZERO"))) {
+					// Phase Only - Read in time averaged amps - with zero phases
+					strncpy(sys_vars->u0, "PO_AVG_AMP_ZERO", 64);
+					break;
+				}
+				else if (!(strcmp(optarg,"AO_PHASE_FILE"))) {
+					// Amp Only - Phases From File
+					strncpy(sys_vars->u0, "AO_PHASE_FILE", 64);
+					break;
+				}
+				else if (!(strcmp(optarg,"AO_AVG_PHASE_RAND"))) {
+					// Amp Only - Read in time averaged phases - with random amps
+					strncpy(sys_vars->u0, "AO_AVG_PHASE_RAND", 64);
+					break;
+				}
+				else if (!(strcmp(optarg,"AO_AVG_PHASE_POWER"))) {
+					// Amp Only - Read in time averaged phases - with power law amps
+					strncpy(sys_vars->u0, "AO_AVG_PHASE_POWER", 64);
+					break;
+				}
+				else if (!(strcmp(optarg,"INPUT_FILE"))) {
+					// Read in vorticity from input file -> input file path must be provided by -z
+					strncpy(sys_vars->u0, "INPUT_FILE", 64);
+					break;
+				}
 				else {
 					// No initial conditions specified -> this will default to random initial conditions
 					strncpy(sys_vars->u0, "NONE", 64);
@@ -531,10 +564,22 @@ int GetCMLArgs(int argc, char** argv) {
 				}
 				break;
 			case 'z':
-				strncpy((file_info->input_file_name), optarg, 1024);	// copy the input file name given as a command line argument
-				if ( access((file_info->input_file_name), F_OK) != 0) {
-					fprintf(stderr, "\n["RED"ERROR"RESET"] Parsing of Command Line Arguements Failed: The input file [%s] cannot be found, please ensure correct path to file is specified.\n", (file_info->input_file_name));		
-					exit(1);					
+				if (input_file_flag == 0) {
+					strncpy((file_info->input_file_name), optarg, 1024);	// copy the input file name given as a command line argument
+					input_file_flag = 1;
+					break;
+				}
+				else if (input_file_flag == 1) {
+					// Read in the input iteration string
+					strncpy(file_info->iter_string, optarg, 64);
+					input_file_flag = 2;
+					break;
+				}
+				else if (input_file_flag == 2) {
+					// Read in the dataset name string
+					strncpy(file_info->dset_string, optarg, 64);
+					input_file_flag = 3;
+					break;
 				}
 				break;
 			default:
@@ -619,6 +664,8 @@ void PrintSimulationDetails(int argc, char** argv, double sim_time) {
 	#endif
 	#if defined(PHASE_ONLY) || defined(PHASE_ONLY_FXD_AMP)
 	sprintf(model_type, "%s", "PHASEONLY");
+	#elif defined(AMP_ONLY) || defined(AMP_ONLY_FXD_PHASE)
+	sprintf(model_type, "%s", "AMPONLY");
 	#else
 	sprintf(model_type, "%s", "FULL");
 	#endif
@@ -693,8 +740,13 @@ void PrintSimulationDetails(int argc, char** argv, double sim_time) {
 	
 	// Printing
 	fprintf(sim_file, "Data Saved Every: %d\n", sys_vars->print_every);
-	fprintf(sim_file, "Total Saving Steps: %ld\n", sys_vars->tot_save_steps);
+	fprintf(sim_file, "Total Saving Steps: %ld\n\n", sys_vars->tot_save_steps);
 
+	// Input file details
+	fprintf(sim_file, "Input File: %s\n", file_info->input_file_name);
+	fprintf(sim_file, "Iter String: %s\n", file_info->iter_string);
+	fprintf(sim_file, "Dataset: %s\n\n", file_info->dset_string);
+	
 	// Flux subset details
 	#if defined(__SPECT)
 	fprintf(sim_file, "\nFlux Subset Details: \n\tLower Limit: %d\n\tUpper Limit: %d\n", LWR_SBST_LIM, UPR_SBST_LIM);

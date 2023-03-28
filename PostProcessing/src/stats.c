@@ -47,8 +47,8 @@ void RealSpaceStats(int s) {
 	int N_max_incr = (int) (GSL_MIN(Ny, Nx) / 2);
 	double norm_fac = 1.0 / (Ny * Nx);
 	double radial_pow_p[8] = {0.1, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5};
-	// double pow_p[8] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0};
-	double pow_p[8] = {0.1, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5};
+	double pow_p[8] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0};
+	// double pow_p[8] = {0.1, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5};
 	double delta_x = 2.0 * M_PI / Nx;
 	double delta_y = 2.0 * M_PI / Ny;
 	int tmp_r, indx_r;

@@ -18,6 +18,7 @@
 void CreateOutputFilesWriteICs(const long int* N, double dt);
 void GetOutputDirPath(void);
 hid_t CreateComplexDatatype(void);
+void ReadInputFile(double t, long int iters, char* iter_string, char* dset_string, char* data_type);
 void FinalWriteAndCloseOutputFiles(const long int* N, int iters, int save_data_indx);
 void WriteDataFourier(double t, int iters, hid_t group_id, char* dset_name, hid_t dtype, int dset_rank, hsize_t* dset_dims, hsize_t* slab_dims, hsize_t* mem_space_dims, int offset_Ny, fftw_complex* data);
 void WriteDataReal(double t, int iters, hid_t group_id, char* dset_name, hid_t dtype, int dset_rank, hsize_t* dset_dims, hsize_t* slab_dims, hsize_t* mem_space_dims, int offset_Ny, double* data);

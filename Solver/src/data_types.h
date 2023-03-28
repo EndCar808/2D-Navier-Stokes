@@ -73,20 +73,18 @@
 #define TRANSIENT_ITERS 1       // Indicator for transient iterations
 #define TRANSIENT_FRAC 0.2      // Fraction of total iteration = transient iterations
 // Allow for Phase Only mode via direct integration
-#if defined(__PHASE_ONLY)		// Turn on phase only mode if called for at compilation
+#if defined(__PHASE_ONLY)	
 #define PHASE_ONLY
 #endif
-// Allow for Phase Only mode by fixing the amplitudes
-#if defined(__PHASE_ONLY_FXD_AMP) // Turn on phase only mode if called for at compilation
+#if defined(__PHASE_ONLY_FXD_AMP)
 #define PHASE_ONLY_FXD_AMP
 #endif
 // Allow for Amp Only mode via direct integration
-#if defined(__AMP_ONLY)		// Turn on phase only mode if called for at compilation
+#if defined(__AMP_ONLY)	
 #define AMP_ONLY
 #endif
-// Allow for Phase Only mode by fixing the amplitudes
-#if defined(__AMP_ONLY_FXD_AMP) // Turn on phase only mode if called for at compilation
-#define AMP_ONLY_FXD_AMP
+#if defined(__AMP_ONLY_FXD_PHASE)
+#define AMP_ONLY_FXD_PHASE
 #endif
 // Testing the solver will be decided at compilation
 #if defined(__TESTING)
@@ -278,7 +276,8 @@ typedef struct runtime_data_struct {
 	double* w;				  			// Real space vorticity
 	double* u;				  			// Real space velocity
 	double* a_k;			  			// Fourier vorticity amplitudes
-	double* a_k_t_avg;					// Time averaged Fourier vorticity amplitudes
+	double* a_k_avg;					// Time averaged Fourier vorticity amplitudes
+	double* phi_k_avg;					// Time averaged Fourier vorticity phases
 	double* phi_k;			  			// Fourier vorticity phases
 	double* tot_div;		  			// Array to hold the total diverence
 	double* tot_energy;       			// Array to hold the total energy over the simulation
@@ -388,10 +387,10 @@ typedef struct stats_data_struct {
 // HDF5 file info struct
 typedef struct HDF_file_info_struct {
 	char input_file_name[1024];		// Array holding input file name
-	char output_file_name[1024];     // Output file name array
-	char spectra_file_name[1024];    // Spectra file name array
+	char output_file_name[1024];    // Output file name array
+	char spectra_file_name[1024];   // Spectra file name array
 	char stats_file_name[1024];    	// Stats file name array
-	char sys_msr_file_name[1024];    // System measures file name array
+	char sys_msr_file_name[1024];   // System measures file name array
 	char sync_file_name[1024]; 	    // Phase Sync file name array
 	char input_dir[1024];			// Inputs directory
 	char output_dir[1024];			// Output directory
@@ -405,7 +404,9 @@ typedef struct HDF_file_info_struct {
 	hid_t COMPLEX_DTYPE;			// Complex datatype handle
 	int file_only;					// Indicates if output should be file only with no output folder created
 	hid_t test_file_handle;         // File handle for testing
-	char test_file_name[1024];       // File name for testing
+	char test_file_name[1024];      // File name for testing
+	char iter_string[64];			// Input file iteration String
+	char dset_string[64];			// Input file dataset  String
 } HDF_file_info_struct;
 
 // Complex datatype struct for HDF5
