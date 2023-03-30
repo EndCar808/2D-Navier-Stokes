@@ -40,6 +40,31 @@ class tc:
 #################################
 ##          MISC               ##
 #################################
+def compute_pdf(bin_ranges, bin_counts, normalized = False):
+
+    ## Get nonzero bin indexs
+    non_zero_args = np.where(bin_counts != 0)
+
+    ## Get the bin centres
+    bin_centres = (bin_ranges[1:] + bin_ranges[:-1]) * 0.5
+    bin_centres = bin_centres[non_zero_args]
+
+    ## Compute the bin width
+    bin_width = bin_ranges[1] - bin_ranges[0]
+
+    ## Compute the pdf
+    bin_counts = bin_counts[non_zero_args]
+    pdf = bin_counts / (np.sum(bin_counts) * bin_width)
+
+    if normalized:
+        var         = np.sqrt(np.sum(pdf * bin_centres**2 * bin_width))
+        pdf         *= var
+        bin_centres /= var 
+        bin_width   /= var
+
+    return bin_centres, pdf
+
+
 def get_flux_spectrum(flux_spectra):
     return np.fliplr(np.fliplr(flux_spectra).cumsum(axis=1))
 

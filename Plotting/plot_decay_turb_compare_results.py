@@ -26,7 +26,7 @@ import getopt
 import pyfftw as fftw
 
 from functions import tc, sim_data, import_data, import_spectra_data, import_post_processing_data, enstrophy_spectrum, energy_spectrum, total_energy, fftw_init_2D, fft, ifft
-
+from functions import compute_pdf
 ###############################
 ##       FUNCTION DEFS       ##
 ###############################
@@ -365,7 +365,7 @@ if __name__ == '__main__':
     ax1.set_xlabel(r"$t$")
     ax1.set_ylabel(r"$\mathcal{K}(t) / \mathcal{K}(0)$")
     ax1.set_xlim(run_data.time[0], run_data.time[-1])
-    ax1.set_ylim(0.7, 1.0)
+    ax1.set_ylim(0.5, 1.0)
     ax2 = fig.add_subplot(gs[0, 1])
     ax2.plot(run_data.time, run_data.tot_enst[:] / run_data.tot_enst[0])
     ax2.set_xlabel(r"$t$")
@@ -385,7 +385,7 @@ if __name__ == '__main__':
     if sys_vars.T == 1:
         indexes = [1, 3, 10]
     else:
-        indexes = [11, 31, 110]
+        indexes = [11, 31, 100]
     for i, indx in enumerate(indexes):
         ax = fig.add_subplot(gs[0, i])
         im = ax.imshow(run_data.w[indx, :, :], extent = (run_data.y[0], run_data.y[-1], run_data.x[-1], run_data.x[0]), cmap = "jet")
@@ -413,7 +413,7 @@ if __name__ == '__main__':
     ax1.plot(kk, spec_data.enrg_spectrum[0, 1:kmax], '*-')
     ax1.plot(kk, post_data.enrg_spectrum_1d[0, 1:kmax], '.-')
     # ax1.plot(kk, post_data.enrg_spectrum_1d_alt[0, 1:kmax])
-    if sys_vars.u0 == "DECAY_TURB_II" or sys_vars.u0 == "GAUSS_DECAY_TURB":
+    if sys_vars.u0 == "DECAY_TURB_II" or sys_vars.u0 == "GAUSS_DECAY_TURB" or sys_vars.u0 == "DECAY_TURB_NB":
         spec_ic = (kk**6) / ((1 + kk/60)**18) / (10**7.6)
     elif sys_vars.u0 == "DECAY_TURB" :
         spec_ic = (kk) / ((1 + (kk**4)/6)) / (10**0.7)
@@ -433,7 +433,7 @@ if __name__ == '__main__':
     ax2.plot(kk, spec_data.enst_spectrum[0, 1:kmax], '*-')
     ax2.plot(kk, post_data.enst_spectrum_1d[0, 1:kmax], '.-')
     # ax2.plot(kk, post_data.enst_spectrum_1d_alt[0, 1:kmax])
-    if sys_vars.u0 == "DECAY_TURB_II" or sys_vars.u0 == "GAUSS_DECAY_TURB":
+    if sys_vars.u0 == "DECAY_TURB_II" or sys_vars.u0 == "GAUSS_DECAY_TURB" or sys_vars.u0 == "DECAY_TURB_NB":
         spec_ic = (kk**8) / ((1 + kk/60)**18) / (10**7.6)
     elif sys_vars.u0 == "DECAY_TURB" :
         spec_ic = (kk**3) / ((1 + (kk**4)/6)) / (10**0.6)
@@ -471,7 +471,7 @@ if __name__ == '__main__':
             spec_indx_arr_int[i, j] = int(spec_indx)            
             if int(spec_indx) < kmax - 1:
                 kk_spec[int(spec_indx)] = spec_indx
-    if sys_vars.u0 == "DECAY_TURB_II" or sys_vars.u0 == "GAUSS_DECAY_TURB":
+    if sys_vars.u0 == "DECAY_TURB_II" or sys_vars.u0 == "GAUSS_DECAY_TURB" or sys_vars.u0 == "DECAY_TURB_NB":
         spec_ic = (kk**6) / ((1 + kk/60)**18) / (10**7.6)
         spec_kk = (kk_spec**6) / ((1 + (kk_spec)/60)**18) / (10**7.6)
     elif sys_vars.u0 == "DECAY_TURB" :
@@ -512,7 +512,7 @@ if __name__ == '__main__':
     kmax = int(sys_vars.Nx/3 + 1)
     kk = np.arange(1, kmax)
     spec_ic = np.ones((kmax - 1, ))
-    if sys_vars.u0 == "DECAY_TURB_II" or sys_vars.u0 == "GAUSS_DECAY_TURB":
+    if sys_vars.u0 == "DECAY_TURB_II" or sys_vars.u0 == "GAUSS_DECAY_TURB" or sys_vars.u0 == "DECAY_TURB_NB":
         spec_ic = (kk**8) / ((1 + kk/60)**18) / (10**7.6)
     elif sys_vars.u0 == "DECAY_TURB" :
         spec_ic = (kk**3) / ((1 + (kk**4)/6)) / (10**0.6)
@@ -562,10 +562,12 @@ if __name__ == '__main__':
     gs  = GridSpec(1, 2)
     ax1 = fig.add_subplot(gs[0, 0])
     for i in [0, int(sys_vars.ndata/2), sys_vars.ndata - 1]:
-        bin_width   = post_data.w_pdf_ranges[i, 1] - post_data.w_pdf_ranges[i, 0]
-        bin_centres = (post_data.w_pdf_ranges[i, 1:] + post_data.w_pdf_ranges[i, :-1]) * 0.5
-        pdf = post_data.w_pdf_counts[i, :] / (np.sum((post_data.w_pdf_counts[i, :])) * bin_width)
-        var = np.sqrt(np.sum(pdf * bin_centres**2 * bin_width))
+        # bin_width   = post_data.w_pdf_ranges[i, 1] - post_data.w_pdf_ranges[i, 0]
+        # bin_centres = (post_data.w_pdf_ranges[i, 1:] + post_data.w_pdf_ranges[i, :-1]) * 0.5
+        # pdf = post_data.w_pdf_counts[i, :] / (np.sum((post_data.w_pdf_counts[i, :])) * bin_width)
+        # var = np.sqrt(np.sum(pdf * bin_centres**2 * bin_width))
+        bin_counts, bin_ranges = np.histogram(run_data.w[i, :], bins=100)
+        bin_centres, pdf = compute_pdf(bin_ranges,bin_counts)
         ax1.plot(bin_centres, pdf)
     ax1.set_xlabel(r"$\omega$")
     ax1.set_ylabel(r"PDF")
@@ -573,10 +575,12 @@ if __name__ == '__main__':
     ax1.legend([r"$t = {:0.2}$".format(i * (run_data.time[1] - run_data.time[0])) for i in [0, int(sys_vars.ndata/2), sys_vars.ndata - 1]])
     ax2 = fig.add_subplot(gs[0, 1])
     for i in [0, int(sys_vars.ndata/2), sys_vars.ndata - 1]:
-        bin_width   = post_data.u_pdf_ranges[i, 1] - post_data.u_pdf_ranges[i, 0]
-        bin_centres = (post_data.u_pdf_ranges[i, 1:] + post_data.u_pdf_ranges[i, :-1]) * 0.5
-        pdf = post_data.u_pdf_counts[i, :] / (np.sum((post_data.u_pdf_counts[i, :])) * bin_width)
-        var = np.sqrt(np.sum(pdf * bin_centres**2 * bin_width))
+        # bin_width   = post_data.u_pdf_ranges[i, 1] - post_data.u_pdf_ranges[i, 0]
+        # bin_centres = (post_data.u_pdf_ranges[i, 1:] + post_data.u_pdf_ranges[i, :-1]) * 0.5
+        # pdf = post_data.u_pdf_counts[i, :] / (np.sum((post_data.u_pdf_counts[i, :])) * bin_width)
+        # var = np.sqrt(np.sum(pdf * bin_centres**2 * bin_width))
+        bin_counts, bin_ranges = np.histogram(run_data.u[i, :], bins=100)
+        bin_centres, pdf = compute_pdf(bin_ranges,bin_counts)
         ax2.plot(bin_centres, pdf)
     ax2.set_xlabel(r"$\mathbf{u}$")
     ax2.set_ylabel(r"PDF")

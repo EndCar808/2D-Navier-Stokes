@@ -158,6 +158,85 @@ void ApplyDealiasing(fftw_complex* array, int array_dim, const long int* N) {
 	}
 }
 /**
+ * Function to force conjugacy of the initial condition
+ * @param w_hat The Fourier space worticity field
+ * @param N     The array containing the size of the system in each dimension
+ */
+void ForceConjugacy(fftw_complex* w_hat, const long int* N) {
+
+	// Initialize variables
+	int tmp;
+	const long int Nx         = N[0];
+	const long int Ny_Fourier = N[1] / 2 + 1;
+
+	// Allocate tmp memory to hold the data to be conjugated
+	fftw_complex* conj_data = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * Nx);
+
+	// Loop through local process and store data in appropriate location in conj_data
+	for (int i = 0; i < Nx; ++i) {
+		tmp = i * Ny_Fourier;
+		conj_data[i] = w_hat[tmp];
+	}
+
+	// Now ensure the 
+	for (int i = 0; i < Nx; ++i) {
+		if (run_data->k[0][i] < 0) {
+			tmp = i * Ny_Fourier;
+
+			// Fill the conjugate modes with the conjugate of the postive k modes
+			w_hat[tmp] = conj(conj_data[abs(run_data->k[0][i])]);
+		}
+	}
+
+	// Free memory
+	fftw_free(conj_data);
+}
+/**
+ * Wrapper function for computing the dissipative terms in the equation of motion
+ * @param diss  The result of computing the dissipative terms
+ * @param k_sqr The input which is |k|^2
+ */
+void GetDissipativeTerm(double* diss, double* k_sqr) {
+
+	// ----------------------------------------
+ 	// Compute Dissipative Term 
+ 	// ----------------------------------------
+	if((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
+		// // Both Hyperviscosity and Ekman drag
+		// if (round(sqrt((*k_sqr))) <= EKMN_DRAG_K) {
+		// 	// Drag at low wavenumbers
+		// 	(*diss) = (sys_vars->NU * pow((*k_sqr), sys_vars->HYPER_VISC_POW) + sys_vars->EKMN_ALPHA_LOW_K * pow((*k_sqr), sys_vars->EKMN_DRAG_POW)); 
+		// }
+		// else {
+		// 	// Drag at high wavenumbers
+		// 	(*diss) = (sys_vars->NU * pow((*k_sqr), sys_vars->HYPER_VISC_POW) + sys_vars->EKMN_ALPHA_HIGH_K * pow((*k_sqr), sys_vars->EKMN_DRAG_POW)); 					
+		// }
+		// Both Hyperviscosity and Ekman drag
+		(*diss) = sys_vars->NU * pow((*k_sqr), sys_vars->HYPER_VISC_POW) + sys_vars->EKMN_ALPHA * pow((*k_sqr), sys_vars->EKMN_DRAG_POW); 
+	}
+	else if((sys_vars->HYPER_VISC_FLAG != HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
+		// // No hyperviscosity but we have Ekman drag
+		// if (round(sqrt((*k_sqr))) <= EKMN_DRAG_K) {
+		// 	// Drag at low wavenumbers
+		// 	(*diss) = (sys_vars->NU * (*k_sqr) + sys_vars->EKMN_ALPHA_LOW_K * pow((*k_sqr), sys_vars->EKMN_DRAG_POW));
+		// }
+		// else {
+		// 	// Drag at high wavenumbers
+		// 	(*diss) = (sys_vars->NU * (*k_sqr) + sys_vars->EKMN_ALPHA_HIGH_K * pow((*k_sqr), sys_vars->EKMN_DRAG_POW));					
+		// }
+		// Both Hyperviscosity and Ekman drag
+		(*diss) = sys_vars->NU * (*k_sqr) + sys_vars->EKMN_ALPHA * pow((*k_sqr), sys_vars->EKMN_DRAG_POW); 
+	}
+	else if((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG != EKMN_DRAG)) {
+		// Hyperviscosity only
+		(*diss) = (sys_vars->NU * pow((*k_sqr), sys_vars->HYPER_VISC_POW));
+	}
+	else {
+		// No hyper viscosity or no ekman drag -> just normal viscosity
+		(*diss) = (sys_vars->NU * (*k_sqr));
+	}
+}
+/**
  * Function to compute the nonlinear term of the equation motion for the Fourier space vorticity
  * @param w_hat      The Fourier space vorticity
  * @param dw_hat_dt  The result of the nonlinear term
@@ -257,9 +336,11 @@ void NonlinearRHS(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* nonlinte
 	}
 
 	// ----------------------------------
-	//  Perform Dealiasing
+	//  Perform Dealiasing & Force Conjugacy
 	// ----------------------------------
 	ApplyDealiasing(dw_hat_dt, 1, sys_vars->N);
+
+	ForceConjugacy(dw_hat_dt, sys_vars->N);
 }
 /**
 * Function to compute 1Denergy spectrum from the Fourier vorticity
@@ -427,23 +508,8 @@ void FluxSpectra(int snap) {
 				// Compute |k|^2
 				k_sqr = (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 
-				// Get the appropriate prefactor
-				if ((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
-					// Both Hyperviscosity and Ekman drag
-					pre_fac = sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW) + sys_vars->EKMN_ALPHA * pow(k_sqr, sys_vars->EKMN_DRAG_POW);
-				}
-				else if ((sys_vars->HYPER_VISC_FLAG != HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
-					// No hyperviscosity but we have Ekman drag
-					pre_fac = sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA * pow(k_sqr, sys_vars->EKMN_DRAG_POW);
-				}
-				else if ((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG != EKMN_DRAG)) {
-					// Hyperviscosity only
-					pre_fac = sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW);
-				}
-				else {
-					// No hyper viscosity or no ekman drag -> just normal viscosity
-					pre_fac = sys_vars->NU * k_sqr; 
-				}
+				// Get dissipative term
+				GetDissipativeTerm(&pre_fac, &k_sqr);
 
 				// Get the spectrum index
 				spec_indx = (int) round(sqrt(k_sqr));

@@ -37,6 +37,7 @@ double DPMax(double a, double b);
 double DPMin(double a, double b);
 #endif
 void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* nonlinear, double* u, double* w);
+void GetDissipativeTerm(double* diss, double* k_sqr);
 void ApplyDealiasing(fftw_complex* array, int array_dim, const long int* N);
 void ForceConjugacy(fftw_complex* w_hat, const long int* N);
 // Initialize the system functions

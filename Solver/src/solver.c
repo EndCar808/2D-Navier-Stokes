@@ -311,22 +311,9 @@ void AB4Step(const double dt, const long int* N, const int iters, const ptrdiff_
 					// Compute the pre factors for the RK4CN update step
 					k_sqr = (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 					
-					if((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
-						// Both Hyperviscosity and Ekman drag
-						D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW) + sys_vars->EKMN_ALPHA * pow(k_sqr, sys_vars->EKMN_DRAG_POW)); 
-					}
-					else if((sys_vars->HYPER_VISC_FLAG != HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
-						// No hyperviscosity but we have Ekman drag
-						D_fac = dt * (sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA * pow(k_sqr, sys_vars->EKMN_DRAG_POW)); 
-					}
-					else if((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG != EKMN_DRAG)) {
-						// Hyperviscosity only
-						D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW)); 
-					}
-					else { 
-						// No hyper viscosity or no ekman drag -> just normal viscosity
-						D_fac = dt * (sys_vars->NU * k_sqr); 
-					}
+					// Compute the dissipative term
+					GetDissipativeTerm(&D_fac, &k_sqr);
+					D_fac *= dt;
 					
 					// Complete the update step
 					run_data->w_hat[indx] = run_data->w_hat[indx] * ((2.0 - D_fac) / (2.0 + D_fac)) + (2.0 * dt / (2.0 + D_fac)) * ((AB4_1 * Int_data->AB_tmp[indx]) + (AB4_2 * Int_data->AB_tmp_nonlin[2][indx]) + (AB4_3 * Int_data->AB_tmp_nonlin[1][indx]) + (AB4_4 * Int_data->AB_tmp_nonlin[0][indx]));
@@ -486,22 +473,9 @@ void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdif
 				// Compute the pre factors for the RK4CN update step
 				k_sqr = (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 				
-				if((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
-					// Both Hyperviscosity and Ekman drag
-					D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW) + sys_vars->EKMN_ALPHA * pow(k_sqr, sys_vars->EKMN_DRAG_POW)); 
-				}
-				else if((sys_vars->HYPER_VISC_FLAG != HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
-					// No hyperviscosity but we have Ekman drag
-					D_fac = dt * (sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA * pow(k_sqr, sys_vars->EKMN_DRAG_POW)); 
-				}
-				else if((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG != EKMN_DRAG)) {
-					// Hyperviscosity only
-					D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW)); 
-				}
-				else { 
-					// No hyper viscosity or no ekman drag -> just normal viscosity
-					D_fac = dt * (sys_vars->NU * k_sqr); 
-				}
+				// Compute the dissipative term
+				GetDissipativeTerm(&D_fac, &k_sqr);
+				D_fac *= dt;
 				
 				// Complete the update step
 				run_data->w_hat[indx] = run_data->w_hat[indx] * ((2.0 - D_fac) / (2.0 + D_fac)) + (2.0 * dt / (2.0 + D_fac)) * (RK5_B1 * Int_data->RK1[indx] + RK5_B3 * Int_data->RK3[indx] + RK5_B4 * Int_data->RK4[indx] + RK5_B5 * Int_data->RK5[indx] + RK5_B6 * Int_data->RK6[indx]);
@@ -513,7 +487,7 @@ void RK5DPStep(const double dt, const long int* N, const int iters, const ptrdif
 				#if defined(__DPRK5)
 				if (iters > 1) {
 					// Get the higher order update step
-					dp_ho_step = run_data->w_hat[indx] + (dt * (RK5_Bs1 * Int_data->RK1[indx]) + dt * (RK5_Bs3 * Int_data->RK3[indx]) + dt * (RK5_Bs4 * Int_data->RK4[indx]) + dt * (RK5_Bs5 * Int_data->RK5[indx]) + dt * (RK5_Bs6 * Int_data->RK6[indx])) + dt * (RK5_Bs7 * Int_data->RK7[indx]));
+					dp_ho_step = run_data->w_hat[indx] + (dt * (RK5_Bs1 * Int_data->RK1[indx]) + dt * (RK5_Bs3 * Int_data->RK3[indx]) + dt * (RK5_Bs4 * Int_data->RK4[indx]) + dt * (RK5_Bs5 * Int_data->RK5[indx]) + dt * (RK5_Bs6 * Int_data->RK6[indx]) + dt * (RK5_Bs7 * Int_data->RK7[indx]));
 					#if defined(PHASE_ONLY)
 					// Reset the amplitudes
 					dp_ho_step *= (tmp_a_k_norm / cabs(run_data->w_hat[indx]))
@@ -712,22 +686,9 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Nx, Int_d
 				// Compute the pre factors for the RK4CN update step
 				k_sqr = (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 				
-				if((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
-					// Both Hyperviscosity and Ekman drag
-					D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW) + sys_vars->EKMN_ALPHA * pow(k_sqr, sys_vars->EKMN_DRAG_POW)); 
-				}
-				else if((sys_vars->HYPER_VISC_FLAG != HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
-					// No hyperviscosity but we have Ekman drag
-					D_fac = dt * (sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA * pow(k_sqr, sys_vars->EKMN_DRAG_POW));
-				}
-				else if((sys_vars->HYPER_VISC_FLAG = HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG != EKMN_DRAG)) {
-					// Hyperviscosity only
-					D_fac = dt * (sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW));
-				}
-				else {
-					// No hyper viscosity or no ekman drag -> just normal viscosity
-					D_fac = dt * (sys_vars->NU * k_sqr);
-				}
+				// Compute the dissipative term
+				GetDissipativeTerm(&D_fac, &k_sqr);
+				D_fac *= dt;
 				
 				// Update Fourier vorticity
 				run_data->w_hat[indx] = run_data->w_hat[indx] * ((2.0 - D_fac) / (2.0 + D_fac)) + (2.0 * dt / (2.0 + D_fac)) * (RK4_B1 * Int_data->RK1[indx] + RK4_B2 * Int_data->RK2[indx] + RK4_B3 * Int_data->RK3[indx] + RK4_B4 * Int_data->RK4[indx]);
@@ -878,7 +839,7 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* non
  	// Add the forcing
 	if (sys_vars->local_forcing_proc) {
 		for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
-	 		// printf("scale: %lf\t-\tk[%d, %d]: %1.16lf\t%1.16lfi\t\tforc: %1.16lf\t%1.16lfi\tamp: %1.16lf\tamp_f:%1.16lf\tratio:%1.16lf\n", 
+	 		// printf("scale: %lf\t-\tk[%d, %d]: %1.16lf\t%1.16lfi\t\t forc: %1.16lf\t%1.16lfi\tamp: %1.16lf\tamp_f:%1.16lf\tratio:%1.16lf\n", 
 	 		// 				sys_vars->force_scale_var, 
 	 		// 				run_data->forcing_k[0][i], run_data->forcing_k[1][i], 
 	 		// 				creal(dw_hat_dt[run_data->forcing_indx[i]]), cimag(dw_hat_dt[run_data->forcing_indx[i]]), 
@@ -891,6 +852,51 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* non
 
 	// Ensure conjugacy in the ky = 0 modes of the intial condition
     ForceConjugacy(w_hat, sys_vars->N);
+}
+/**
+ * Wrapper function for computing the dissipative terms in the equation of motion
+ * @param diss  The result of computing the dissipative terms
+ * @param k_sqr The input which is |k|^2
+ */
+void GetDissipativeTerm(double* diss, double* k_sqr) {
+
+	// ----------------------------------------
+ 	// Compute Dissipative Term 
+ 	// ----------------------------------------
+	if((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
+		// // Both Hyperviscosity and Ekman drag
+		// if (round(sqrt((*k_sqr))) <= EKMN_DRAG_K) {
+		// 	// Drag at low wavenumbers
+		// 	(*diss) = (sys_vars->NU * pow((*k_sqr), sys_vars->HYPER_VISC_POW) + sys_vars->EKMN_ALPHA_LOW_K * pow((*k_sqr), sys_vars->EKMN_DRAG_POW)); 
+		// }
+		// else {
+		// 	// Drag at high wavenumbers
+		// 	(*diss) = (sys_vars->NU * pow((*k_sqr), sys_vars->HYPER_VISC_POW) + sys_vars->EKMN_ALPHA_HIGH_K * pow((*k_sqr), sys_vars->EKMN_DRAG_POW)); 					
+		// }
+		// Both Hyperviscosity and Ekman drag
+		(*diss) = sys_vars->NU * pow((*k_sqr), sys_vars->HYPER_VISC_POW) + sys_vars->EKMN_ALPHA * pow((*k_sqr), sys_vars->EKMN_DRAG_POW); 
+	}
+	else if((sys_vars->HYPER_VISC_FLAG != HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
+		// // No hyperviscosity but we have Ekman drag
+		// if (round(sqrt((*k_sqr))) <= EKMN_DRAG_K) {
+		// 	// Drag at low wavenumbers
+		// 	(*diss) = (sys_vars->NU * (*k_sqr) + sys_vars->EKMN_ALPHA_LOW_K * pow((*k_sqr), sys_vars->EKMN_DRAG_POW));
+		// }
+		// else {
+		// 	// Drag at high wavenumbers
+		// 	(*diss) = (sys_vars->NU * (*k_sqr) + sys_vars->EKMN_ALPHA_HIGH_K * pow((*k_sqr), sys_vars->EKMN_DRAG_POW));					
+		// }
+		// Both Hyperviscosity and Ekman drag
+		(*diss) = sys_vars->NU * (*k_sqr) + sys_vars->EKMN_ALPHA * pow((*k_sqr), sys_vars->EKMN_DRAG_POW); 
+	}
+	else if((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG != EKMN_DRAG)) {
+		// Hyperviscosity only
+		(*diss) = (sys_vars->NU * pow((*k_sqr), sys_vars->HYPER_VISC_POW));
+	}
+	else {
+		// No hyper viscosity or no ekman drag -> just normal viscosity
+		(*diss) = (sys_vars->NU * (*k_sqr));
+	}
 }
 /**
  * Function to apply the selected dealiasing filter to the input array. Can be Fourier vorticity or velocity

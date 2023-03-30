@@ -19,6 +19,8 @@
 //  Function Prototypes
 // ---------------------------------------------------------------------
 void AllocateFullFieldMemory(const long int* N);
+void ForceConjugacy(fftw_complex* w_hat, const long int* N);
+void GetDissipativeTerm(double* diss, double* k_sqr);
 void FullFieldData(void);
 void FluxSpectra(int snap);
 void NonlinearRHS(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* nonlinterm, double* u, double* nabla_w);

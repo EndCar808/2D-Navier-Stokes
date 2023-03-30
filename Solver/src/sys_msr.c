@@ -151,23 +151,8 @@ void ComputeSystemMeasurables(double t, int iter, Int_data_struct* Int_data) {
 			// The |k|^2 prefactor
 			k_sqr = (double )(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 
-			// Get the appropriate prefactor
-			if((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {  
-				// Both Hyperviscosity and Ekman drag
-				pre_fac = sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW) + sys_vars->EKMN_ALPHA * pow(k_sqr, sys_vars->EKMN_DRAG_POW);
-			}
-			else if((sys_vars->HYPER_VISC_FLAG != HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG == EKMN_DRAG)) {
-				// No hyperviscosity but we have Ekman drag
-				pre_fac = sys_vars->NU * k_sqr + sys_vars->EKMN_ALPHA * pow(k_sqr, sys_vars->EKMN_DRAG_POW);
-			}
-			else if ((sys_vars->HYPER_VISC_FLAG == HYPER_VISC) && (sys_vars->EKMN_DRAG_FLAG != EKMN_DRAG)) {
-			 	// Hyperviscosity only
-				pre_fac = sys_vars->NU * pow(k_sqr, sys_vars->HYPER_VISC_POW);
-			}
-			else { 
-				// No hyper viscosity or no ekman drag -> just normal viscosity
-				pre_fac = sys_vars->NU * k_sqr; 
-			}
+			// Compute the dissipative term
+			GetDissipativeTerm(&pre_fac, &k_sqr);
 
 			///--------------------------------- System Measures
 			#if defined(__SYS_MEASURES)
