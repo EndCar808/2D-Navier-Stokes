@@ -143,6 +143,7 @@
 #define EXTRM_ENS_POW 1.5 		// The power for wavevectors for the Exponential enstrophy distribution
 #define UNIF_MIN_K 2.5
 #define UNIF_MAX_K 9.5
+#define RAND_ENST0 0.5
 // Forcing parameters
 #define STOC_FORC_K_MIN	0.5		// The minimum value of the modulus forced wavevectors for the stochasitc (Gaussian) forcing
 #define STOC_FORC_K_MAX 2.5     // The maximum value of the modulus forced wavevectors for the stochastic (Gaussian) forcing

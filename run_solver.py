@@ -109,6 +109,7 @@ if __name__ == '__main__':
     ## Job parameters
     executable                  = "Solver/bin/main"
     plot_options                = "--full_snap --base_snap --plot --vid"
+    post_options                = " "
     plotting                    = True
     solver                      = True
     postprocessing              = True
@@ -128,15 +129,22 @@ if __name__ == '__main__':
     parser.read(cmdargs.init_file)
 
     ## Create list objects
-    Nx         = []
-    Ny         = []
-    Nk         = []
-    nu         = []
-    ic         = []
-    T          = []
-    dt         = []
-    cfl        = []
-    solver_tag = []
+    Nx                   = []
+    Ny                   = []
+    Nk                   = []
+    nu                   = []
+    ekmn_alpha_high_k    = []
+    po_slope             = []
+    ic                   = []
+    T                    = []
+    dt                   = []
+    cfl                  = []
+    solver_tag           = []
+    hyper_visc           = []
+    num_k3_sectors       = []
+    num_k1_sectors       = []
+    k_frac               = []
+    num_post_omp_threads = []
 
     ## Parse input parameters
     for section in parser.sections():
@@ -156,7 +164,11 @@ if __name__ == '__main__':
             if 'drag_coefficient' in parser[section]:
                 ekmn_alpha = float(parser[section]['drag_coefficient'])
             if 'hyperviscosity' in parser[section]:
-                hypervisc = int(parser[section]['hyperviscosity'] == 'True')
+                for n in parser[section]['hyperviscosity'].lstrip('[').rstrip(']').split(', '):
+                    if n == "True":
+                        hyper_visc.append(True)
+                    else: 
+                        hyper_visc.append(False)
             if 'hypo_diffusion' in parser[section]:
                 ekmn_hypo_diff = int(parser[section]['hypo_diffusion'] == 'True')
             if 'hyperviscosity_pow' in parser[section]:
@@ -209,6 +221,25 @@ if __name__ == '__main__':
                 file_only_mode = bool(utils.strtobool(parser[section]['solver_file_only_mode']))
             if 'system_tag' in parser[section]:
                 system_tag = str(parser[section]['system_tag'])
+        if section in ['POST']:
+            if 'post_executable' in parser[section]:
+                post_executable = str(parser[section]['post_executable'])
+            if 'num_k3_sectors' in parser[section]:
+                for n in parser[section]['num_k3_sectors'].lstrip('[').rstrip(']').split(', '):
+                    num_k3_sectors.append(int(n))
+            if 'num_k1_sectors' in parser[section]:    
+                for n in parser[section]['num_k1_sectors'].lstrip('[').rstrip(']').split(', '):
+                    num_k1_sectors.append(int(n))
+            if 'k_max_fraction' in parser[section]:
+                for n in parser[section]['k_max_fraction'].lstrip('[').rstrip(']').split(', '):
+                    k_frac.append(float(n))
+            if 'num_post_omp_threads' in parser[section]:
+                for n in parser[section]['num_post_omp_threads'].lstrip('[').rstrip(']').split(', '):
+                    num_post_omp_threads.append(int(n))
+            if 'num_post_fftw_threads' in parser[section]:
+                num_post_fftw_threads = int(parser[section]['num_post_fftw_threads'])
+            if 'post_tag' in parser[section]:
+                post_tag = str(parser[section]['post_tag'])
         if section in ['JOB']:
             if 'executable' in parser[section]:
                 executable = str(parser[section]['executable'])
@@ -218,6 +249,8 @@ if __name__ == '__main__':
                 plot_script = str(parser[section]['plot_script'])
             if 'plot_options' in parser[section]:
                 plot_options = str(parser[section]['plot_options'])
+            if 'post_options' in parser[section]:
+                post_options = str(parser[section]['post_options'])
             if 'call_solver' in parser[section]:
                 solver = bool(utils.strtobool(parser[section]['call_solver']))
             if 'call_postprocessing' in parser[section]:
@@ -234,6 +267,8 @@ if __name__ == '__main__':
                 num_postprocess_job_threads = int(parser[section]['num_postprocess_job_threads'])
             if 'num_plotting_job_threads' in parser[section]:
                 num_plotting_job_threads = int(parser[section]['num_plotting_job_threads'])
+
+    
 
     ## Get the path to the runs output directory
     par_runs_output_dir = os.path.split(output_dir)[0]
@@ -258,7 +293,7 @@ if __name__ == '__main__':
             solver_error  = []
 
         ## Generate command list 
-        cmd_list = [["mpirun -n {} {} -o {} -n {} -n {} -s {:3.5f} -e {:3.5f} -T {} -c {} -c {:1.6f} -h {:1.6f} -h {} -v {:1.10f} -v {} -v {:1.1f} -d {:1.6f} -d {} -d {:1.1f} -i {} -t {} -f {} -f {} -f {:1.3f} -p {}".format(
+        cmd_list = [["mpirun -n {} {} -o {} -n {} -n {} -s {:3.5f} -e {:3.5f} -T {} -c {} -c {:1.6f} -h {:1.6f} -h {} -v {:g} -v {} -v {:1.1f} -d {:g} -d {} -d {:1.1f} -i {} -t {} -f {} -f {} -f {:1.3f} -p {}".format(
                                                                                                                                                                                     solver_procs, 
                                                                                                                                                                                     executable, 
                                                                                                                                                                                     output_dir, 
@@ -266,12 +301,12 @@ if __name__ == '__main__':
                                                                                                                                                                                     t0, t, trans_iters, 
                                                                                                                                                                                     cfl_cond, c, 
                                                                                                                                                                                     h, step_type, 
-                                                                                                                                                                                    v, hypervisc, hypervisc_pow, 
-                                                                                                                                                                                    ekmn_alpha, ekmn_hypo_diff, ekmn_hypo_pow,
+                                                                                                                                                                                    v, int(hype), hypervisc_pow, 
+                                                                                                                                                                                    ekmn_alpha, int(ekmn_hypo_diff), ekmn_hypo_pow,
                                                                                                                                                                                     u0, 
                                                                                                                                                                                     s_tag, 
                                                                                                                                                                                     forcing, force_k, force_scale, 
-                                                                                                                                                                                    save_every)] for nx, ny in zip(Nx, Ny) for t in T for h in dt for u0 in ic for v in nu for c in cfl for s_tag in solver_tag]
+                                                                                                                                                                                    save_every)] for nx, ny in zip(Nx, Ny) for t in T for h in dt for u0 in ic for hype in hyper_visc for v in nu for c in cfl for s_tag in solver_tag]
 
         if cmdargs.cmd_only:
             print(tc.C + "\nSolver Commands:\n" + tc.Rst)
@@ -339,13 +374,18 @@ if __name__ == '__main__':
         
 
         ## Generate command list 
-        cmd_list = [["PostProcessing/bin/main -i {} -o {} -v {:1.10f} -v {} -v {:1.1f} -d {:1.6f} -d {} -d {:1.1f} -f {} -f {} -f {} {}".format(
-                                                        post_input_dir + "N[{},{}]_T[{}-{}]_NU[{:1.6f}]_CFL[{:1.2f}]_u0[{}]_TAG[{}]/".format(nx, ny, int(t0), int(t), v, c, u0, s_tag), 
-                                                        post_output_dir + "N[{},{}]_T[{}-{}]_NU[{:1.6f}]_CFL[{:1.2f}]_u0[{}]_TAG[{}]/".format(nx, ny, int(t0), int(t), v, c, u0, s_tag),
+        cmd_list = [["{} -i {} -o {} -v {:g} -v {} -v {:1.1f} -d {:g} -d {} -d {:1.1f} -f {} -f {} -f {} -a {} -a {} -k {} -p {} -p {} -t {} {}".format(
+                                                        post_executable,
+                                                        post_input_dir + "N[{},{}]_T[{:1.1f},{},{:1.3f}]_NU[{:g},{},{:1.1f}]_DRAG[{:g},{},{:1.1f}]_FORC[{},{},{:g}]_u0[{}]_TAG[{}]/".format(nx, ny, t0, h, t, v, int(hype), hypervisc_pow, ekmn_alpha, int(ekmn_hypo_diff), ekmn_hypo_pow, forcing, force_k, force_scale,  u0, s_tag), 
+                                                        post_output_dir + "N[{},{}]_T[{:1.1f},{},{:1.3f}]_NU[{:g},{},{:1.1f}]_DRAG[{:g},{},{:1.1f}]_FORC[{},{},{:g}]_u0[{}]_TAG[{}]/".format(nx, ny, t0, h, t, v, int(hype), hypervisc_pow, ekmn_alpha, int(ekmn_hypo_diff), ekmn_hypo_pow, forcing, force_k, force_scale,  u0, s_tag),
                                                         v, hypervisc, hypervisc_pow, 
                                                         ekmn_alpha, ekmn_hypo_diff, ekmn_hypo_pow,
                                                         forcing, force_k, force_scale,
-                                                        post_options)] for nx, ny in zip(Nx, Ny) for t in T for v in nu for c in cfl for u0 in ic for s_tag in solver_tag]
+                                                        n_k3, n_k1, 
+                                                        k_f, 
+                                                        num_threads, num_post_fftw_threads,
+                                                        post_tag,
+                                                        post_options)] for nx, ny in zip(Nx, Ny) for t in T for v in nu for hype in hyper_visc for h in dt for u0 in ic for s_tag in solver_tag for n_k3 in num_k3_sectors for n_k1 in num_k1_sectors for k_f in k_frac for num_threads in num_post_omp_threads]
 
         if cmdargs.cmd_only:
             print(tc.C + "\nPost Processing Commands:\n" + tc.Rst)
@@ -413,10 +453,16 @@ if __name__ == '__main__':
             plot_error  = []
 
         ## Generate command list 
-        cmd_list = [["python3 {} -i {} {}".format(
+        # cmd_list = [["python3 {} -i {} {}".format(
+        #                                     plot_script, 
+        #                                     post_input_dir + "N[{},{}]_T[{}-{}]_NU[{:1.6f}]_CFL[{:1.2f}]_u0[{}]_TAG[{}]/".format(nx, ny, int(t0), int(t), v, c, u0, s_tag), 
+        #                                     plot_options)] for nx, ny in zip(Nx, Ny) for t in T for v in nu for c in cfl for u0 in ic for s_tag in solver_tag]
+        cmd_list = [["python3 {} -i {} -f {} {} ".format(
                                             plot_script, 
-                                            post_input_dir + "N[{},{}]_T[{}-{}]_NU[{:1.6f}]_CFL[{:1.2f}]_u0[{}]_TAG[{}]/".format(nx, ny, int(t0), int(t), v, c, u0, s_tag), 
-                                            plot_options)] for nx, ny in zip(Nx, Ny) for t in T for v in nu for c in cfl for u0 in ic for s_tag in solver_tag]
+                                            post_input_dir + "N[{},{}]_T[{:1.1f},{},{:1.3f}]_NU[{:g},{},{:1.1f}]_DRAG[{:g},{},{:1.1f}]_FORC[{},{},{:g}]_u0[{}]_TAG[{}]/".format(nx, ny, t0, h, t, v, int(hype), hypervisc_pow, ekmn_alpha, int(ekmn_hypo_diff), ekmn_hypo_pow, forcing, force_k, force_scale, u0, s_tag), 
+                                            "PostProcessing_HDF_Data_THREADS[{},{}]_SECTORS[{},{}]_KFRAC[{:1.2f}]_TAG[{}].h5".format(num_threads, num_post_fftw_threads, n_k3, n_k1, k_f, post_tag),
+                                            plot_options)] for nx, ny in zip(Nx, Ny) for h in dt for t in T for v in nu for n_k3 in num_k3_sectors for n_k1 in num_k1_sectors for k_f in k_frac for hype in hyper_visc for u0 in ic for s_tag in solver_tag for num_threads in num_post_omp_threads]
+        
 
         if cmdargs.cmd_only:
             print(tc.C + "\nPlotting Commands:\n" + tc.Rst)

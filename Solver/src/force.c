@@ -43,9 +43,11 @@ void InitializeForcing(void) {
 	// -----------------------------------
 	//--------------------------------- Apply Kolmogorov forcing
 	if(!(strcmp(sys_vars->forcing, "KOLM"))) {
+		// Pure Kolmoorov forcing -> f_omega(x, y) = - n cos(n * y) 
+		// f_k = -n/2 on modes (k_x, k_y) = (0, +/-n)
 		// Loop through modes to identify local process(es) containing the modes to be forced
-		for (int i = 0; i < sys_vars->local_Nx; ++i) {
-			if (run_data->k[0][i] == 0) {
+		for (int i = 0; i < Ny_Fourier; ++i) {
+			if (run_data->k[1][i] == sys_vars->force_k && run_data->k[0][0] == 0) {
 				sys_vars->local_forcing_proc = 1;
 				num_forced_modes++;
 			}
@@ -89,15 +91,80 @@ void InitializeForcing(void) {
 			// -----------------------------------
 			// Fill Forcing Info
 			// -----------------------------------
-			// Get the forcing index
-			run_data->forcing_indx[0] = sys_vars->force_k;
+			force_mode_counter = 0;
+			for (int i = 0; i < Ny_Fourier; ++i) {
+				if (run_data->k[1][i] == sys_vars->force_k && run_data->k[0][0] == 0) {
+					// Get the forcing info
+					run_data->forcing_indx[force_mode_counter] = i;
+					run_data->forcing_k[0][force_mode_counter] = 0;
+					run_data->forcing_k[1][force_mode_counter] = run_data->k[1][i];
+					run_data->forcing_scaling[force_mode_counter] = sys_vars->force_scale_var;
+					// increment counter
+					force_mode_counter++;
+				}
+			}
+		}
+	}
+	//--------------------------------- Apply Body Forcing
+	if(!(strcmp(sys_vars->forcing, "BODY_FORC_COS"))) {
+		// BODY_FORC_COS -> f_omeage(x, y) = cos(2 x) -> see Yue-Kin Tsang, Edward Ott, Thomas M. Antonsen, Jr., and Parvez N. Guzdar2, Phys. Rev E, 2005
+		for (int i = 0; i < sys_vars->local_Nx; ++i) {
+			if (run_data->k[0][i] == sys_vars->force_k || run_data->k[0][i] == -sys_vars->force_k) { 
+				sys_vars->local_forcing_proc = 1;
+				num_forced_modes++;
+			}
+		} 
 
-			// Get the forcing wavenumbers
-			run_data->forcing_k[0][0] = 0;
-			run_data->forcing_k[1][0] = run_data->k[1][sys_vars->force_k];
+		// Get the number of forced modes
+		sys_vars->num_forced_modes = num_forced_modes;
 
-			// Get the forcing scaling 
-			run_data->forcing_scaling[0] = 1.0;
+		// Allocate forcing data on the local forcing process only
+		if (sys_vars->local_forcing_proc) {
+			// -----------------------------------
+			// Allocate Memory 
+			// -----------------------------------
+			// Allocate the forcing array to hold the forcing
+			run_data->forcing = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * num_forced_modes);
+			if (run_data->forcing == NULL) {
+				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Forcing");
+				exit(1);
+			}
+			// Allocate array for the forced mode index
+			run_data->forcing_indx = (int* )fftw_malloc(sizeof(int) * num_forced_modes);
+			if (run_data->forcing_indx == NULL) {
+				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Forcing Indices");
+				exit(1);
+			}
+			// Allocate array for the scaling 
+			run_data->forcing_scaling = (double* )fftw_malloc(sizeof(double) * num_forced_modes);
+			if (run_data->forcing_scaling == NULL) {
+				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Forcing Scaling");
+				exit(1);
+			}
+			// Allocate array for the forced mode wavenumbers
+			for (int i = 0; i < SYS_DIM; ++i) {
+				run_data->forcing_k[i] = (int* )fftw_malloc(sizeof(int) * num_forced_modes);
+				if (run_data->forcing_k[i] == NULL) {
+					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Forcing Wavevectors");
+					exit(1);
+				}
+			}
+
+			// -----------------------------------
+			// Fill Forcing Info
+			// -----------------------------------
+			force_mode_counter = 0;
+			for (int i = 0; i < sys_vars->local_Nx; ++i) {
+				if (run_data->k[0][i] == sys_vars->force_k || run_data->k[0][i] == -sys_vars->force_k ) { 
+					// Get the forcing info
+					run_data->forcing_indx[force_mode_counter] = i * Ny_Fourier;
+					run_data->forcing_k[0][force_mode_counter] = run_data->k[0][i];
+					run_data->forcing_k[1][force_mode_counter] = 0;
+					run_data->forcing_scaling[force_mode_counter] = sys_vars->force_scale_var;
+					// increment counter
+					force_mode_counter++;
+				}
+			}	
 		}
 	}
 	//--------------------------------- Apply Stochastic forcing
@@ -411,10 +478,19 @@ void ComputeForcing(void) {
 				run_data->w_hat[run_data->forcing_indx[i]] = 0.0 + 0.0 * I;
 			}
 		}
-		//---------------------------- Compute Kolmogorov forcing -> f(u) = (sin(n y), 0); f(w) = -n cos(n y) -> f_k = -1/2 * n \delta(n)
+		//---------------------------- Compute Kolmogorov forcing -> f(u) = (scale sin(n y), 0); f(w) = -n scale cos(n y) -> f_k = -1/2 * n * scale \delta(n)
 		else if(!(strcmp(sys_vars->forcing, "KOLM"))) {
 			// Compute the Kolmogorov forcing
-			run_data->forcing[0] = -0.5 * sys_vars->force_scale_var * (sys_vars->force_k + 0.0 * I);
+			for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
+				run_data->forcing[i] = - sys_vars->force_scale_var * (0.5 *sys_vars->force_k + 0.0 * I);
+			}
+		}
+		//---------------------------- Compute Body Forcing Cos -> f_omega(x, y) = cos(2x); -> f_k = (1/2) * scale * \delta(n - 2); scale = 1 to match the paper
+		else if(!(strcmp(sys_vars->forcing, "BODY_FORC_COS"))) {
+			// Compute the Body Forcing
+			for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
+				run_data->forcing[i] = 0.5 * sys_vars->force_scale_var + 0.0 * I;
+			}
 		}
 		//---------------------------- Compute Stochastic forcing
 		else if(!(strcmp(sys_vars->forcing, "STOC"))) {

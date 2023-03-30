@@ -11,6 +11,7 @@
 import numpy as np
 import sys
 import os
+import h5py as h5
 import matplotlib as mpl
 mpl.rcParams['text.usetex'] = True
 mpl.rcParams['font.family'] = 'serif'
@@ -40,6 +41,37 @@ class tc:
 ##########################################
 ##       SOLVER SUMMARY FUNCTIONS       ##
 ##########################################
+def plot_vort(outdir, w, x, y, time, snaps, file_type=".png", fig_size=(16, 8)):
+
+       fig = plt.figure(figsize = fig_size)
+       gs  = GridSpec(2, 2, hspace = 0.3, wspace=0.15) 
+
+       ax1 = []
+       for i in range(2):
+              for j in range(2):
+                     ax1.append(fig.add_subplot(gs[i, j]))
+       indx_list = snaps
+       for j, i in enumerate(indx_list):
+              im1 = ax1[j].imshow(w[i, :], extent = (y[0], y[-1], x[-1], x[0]), cmap = "jet") #, vmin = w_min, vmax = w_max 
+              ax1[j].set_xlabel(r"$y$")
+              ax1[j].set_ylabel(r"$x$")
+              ax1[j].set_xlim(0.0, y[-1])
+              ax1[j].set_ylim(0.0, x[-1])
+              ax1[j].set_xticks([0.0, np.pi/2.0, np.pi, 1.5*np.pi, y[-1]])
+              ax1[j].set_xticklabels([r"$0$", r"$\frac{\pi}{2}$", r"$\pi$", r"$\frac{3\pi}{2}$", r"$2 \pi$"])
+              ax1[j].set_yticks([0.0, np.pi/2.0, np.pi, 1.5*np.pi, x[-1]])
+              ax1[j].set_yticklabels([r"$0$", r"$\frac{\pi}{2}$", r"$\pi$", r"$\frac{3\pi}{2}$", r"$2 \pi$"])
+              ax1[j].set_title(r"$t = {:0.5f}$".format(time[i]))
+              ## Plot colourbar
+              div1  = make_axes_locatable(ax1[j])
+              cbax1 = div1.append_axes("right", size = "10%", pad = 0.05)
+              cb1   = plt.colorbar(im1, cax = cbax1)
+              cb1.set_label(r"$\omega(x, y)$")
+
+       plt.savefig(outdir + "Vorticity" + file_type, bbox_inches='tight')
+       plt.close()
+
+
 def plot_summary_snaps(out_dir, i, w, x, y, w_min, w_max, kx, ky, kx_max, tot_en, tot_ens, tot_pal, enrg_spec, enst_spec, enrg_diss, enst_diss, enrg_flux_sb, enrg_diss_sb, enst_flux_sb, enst_diss_sb, time, Nx, Ny):
 
     """
@@ -147,6 +179,69 @@ def plot_summary_snaps(out_dir, i, w, x, y, w_min, w_max, kx, ky, kx_max, tot_en
     plt.savefig(out_dir + "SNAP_{:05d}.png".format(i), bbox_inches='tight') 
     plt.close()
 
+def plot_flow_summary_stream(input_dir, output_dir, i, Nx, Ny):
+
+       ## Open Main data file to get vorticity
+       with h5.File(input_dir + "Main_HDF_Data.h5", "r") as main_file:
+              ## Group name
+              group_name = "Iter_{:05d}".format(i)
+              if "w" in list(main_file[group_name].keys()):
+                     w = main_file[group_name]["w"][:, :]
+              else:
+                     w_hat = main_file[group_name]["w_hat"][:, :]
+                     w = np.fft.irfft2(w_hat) * Nx * Nx
+
+              tot_en      = main_file["TotalEnergy"][:]
+              tot_ens     = main_file["TotalEnstrophy"][:]
+              tot_en_diss = main_file["EnergyDissipation"][:]
+              x = main_file["x"][:]
+              y = main_file["y"][:]
+              time = main_file["Time"][:]
+              kx = main_file["kx"][:]
+              ky = main_file["ky"][:]
+
+       ## Get spectra data
+       with h5.File(input_dir + "Spectra_HDF_Data.h5") as spectra_file:
+              group_name = "Iter_{:05d}".format(i)
+              enrg_spec = spectra_file[group_name]["EnergySpectrum"][:]
+              enst_spec = spectra_file[group_name]["EnstrophySpectrum"][:]
+
+       ## Call plot flow summary function
+       plot_flow_summary(output_dir, i, w, np.amin(w), np.amax(w), None, None, np.amin(enrg_spec), np.amax(enrg_spec), np.amin(enst_spec), np.amax(enst_spec), None, x, y, time, Nx, Ny, kx, ky, enrg_spec, enst_spec, tot_en, tot_ens, tot_en_diss)
+
+
+def plot_phase_snaps_stream(input_dir, output_dir, post_file, i, Nx, Ny):
+
+       ## Open Main data file to get vorticity
+       with h5.File(input_dir + "Main_HDF_Data.h5", "r") as main_file:
+              x = main_file["x"][:]
+              y = main_file["y"][:]
+              time = main_file["Time"][:]
+              kx = main_file["kx"][:]
+              ky = main_file["ky"][:]
+              ## Group name
+              group_name = "Iter_{:05d}".format(i)
+              if "w" in list(main_file[group_name].keys()):
+                     w = main_file[group_name]["w"][:, :]
+              else:
+                     w_hat = main_file[group_name]["w_hat"][:, :]
+                     w = np.fft.irfft2(w_hat) * Nx * Nx
+              
+       ## Get spectra data
+       with h5.File(input_dir + post_file) as post_file:
+              group_name = "Snap_{:05d}".format(i)
+              enrg_spec = post_file[group_name]["FullFieldEnergySpectrum"][:]
+              enst_spec = post_file[group_name]["FullFieldEnstrophySpectrum"][:]
+              min_enrg  = np.amin(np.delete(enrg_spec.flatten(), np.where(enrg_spec.flatten() == -50.0)))
+              max_enrg  = np.amax(np.delete(enrg_spec.flatten(), np.where(enrg_spec.flatten() == -50.0)))
+              min_enst  = np.amin(np.delete(enst_spec.flatten(), np.where(enst_spec.flatten() == -50.0)))
+              max_enst  = np.amax(np.delete(enst_spec.flatten(), np.where(enst_spec.flatten() == -50.0)))
+              spec_lims = np.array([min_enrg, max_enrg, min_enst, max_enst])
+              spec_lims[spec_lims[:] == 0.0] = 1e-12
+              phases    = post_file[group_name]["FullFieldPhases"][:]
+
+       ## Call plot flow summary function
+       plot_phase_snaps(output_dir, i, w, phases, enrg_spec, enst_spec, spec_lims, None, None, x, y, time, Nx, Ny, kx, ky)
 
 
 def plot_phase_snaps(out_dir, i, w, phases, enrg_spec, enst_spec, spec_lims, w_min, w_max, x, y, time, Nx, Ny, kx, ky):
@@ -790,7 +885,9 @@ def plot_sector_phase_sync_snaps_full_sec(i, out_dir, w, enst_spec, enst_flux, e
        my_hsv.set_under(color = "white")
        my_hot = cm.hot
        my_hot.set_under(color = "white")
-       my_magma = cm.magma
+       # my_magma = cm.magma
+       # my_magma.set_under(color = "white")
+       my_magma = mpl.colors.ListedColormap(cm.magma.colors[::-1])
        my_magma.set_under(color = "white")
 
        ## Create appropriate ticks and ticklabels for the sector angles

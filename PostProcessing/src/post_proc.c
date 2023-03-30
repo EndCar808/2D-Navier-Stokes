@@ -62,8 +62,9 @@ void PostProcessing(void) {
 	printf("\n\nStarting Snapshot Processing:\n");
 	for (int s = 0; s <  sys_vars->num_snaps; ++s) {
 		
-		// Print update to screen
-		printf("Snapshot: %d\n", s);
+		// Start timer
+		double loop_begin = omp_get_wtime();
+		
 	
 		// --------------------------------
 		//  Read in Data
@@ -101,12 +102,20 @@ void PostProcessing(void) {
 		// --------------------------------
 		#if defined(__SEC_PHASE_SYNC) 
 		PhaseSyncSector(s);
+		PhaseSync(s);
 		#endif
 
 		// --------------------------------
 		//  Write Data to File
 		// --------------------------------
 		WriteDataToFile(run_data->time[s], s);
+
+
+		// End timer for current loop
+		double loop_end = omp_get_wtime();
+
+		// Print update to screen
+		printf("Snapshot: %d/%ld\tTime: %g(s)\n", s + 1, sys_vars->num_snaps, (loop_end - loop_begin));
 	}
 	///////////////////////////////
 	// End Snapshot Processing
@@ -312,6 +321,14 @@ void AllocateMemory(const long int* N) {
 	const long int Nx = N[0];
 	const long int Ny = N[1];
 	const long int Ny_Fourier = Ny / 2 + 1;
+
+	// Compute maximum wavenumber
+	sys_vars->kmax = (int) (Nx / 3.0);
+	
+	// Get the various kmax variables
+	sys_vars->kmax_sqr   = pow(sys_vars->kmax, 2.0);
+	sys_vars->kmax_C   	 = (int) ceil(sys_vars->kmax_frac * sys_vars->kmax);
+	sys_vars->kmax_C_sqr = pow(sys_vars->kmax_C, 2.0);
 
 	// --------------------------------
 	//  Allocate Field Data

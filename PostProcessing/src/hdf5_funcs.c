@@ -422,7 +422,7 @@ void OpenOutputFile(void) {
 	if (strcmp(file_info->output_dir, "NONE") == -1) {
 		// Construct pathh
 		strcpy(file_info->output_file_name, file_info->output_dir);
-		sprintf(file_name, "PostProcessing_HDF_Data_SECTORS[%d,%d]_KFRAC[%1.2lf]_TAG[%s].h5", sys_vars->num_k3_sectors, sys_vars->num_k1_sectors, sys_vars->kmax_frac, file_info->output_tag);
+		sprintf(file_name, "PostProcessing_HDF_Data_THREADS[%d,%d]_SECTORS[%d,%d]_KFRAC[%1.2lf]_TAG[%s].h5", sys_vars->num_threads, sys_vars->num_fftw_threads, sys_vars->num_k3_sectors, sys_vars->num_k1_sectors, sys_vars->kmax_frac, file_info->output_tag);
 		strcat(file_info->output_file_name, file_name);
 
 		// Print output file path to screen
@@ -433,7 +433,7 @@ void OpenOutputFile(void) {
 
 		// Construct pathh
 		strcpy(file_info->output_file_name, file_info->input_dir);
-		sprintf(file_name, "PostProcessing_HDF_Data_SECTORS[%d,%d]_KFRAC[%1.2lf]_TAG[%s].h5", sys_vars->num_k3_sectors, sys_vars->num_k1_sectors, sys_vars->kmax_frac, file_info->output_tag);
+		sprintf(file_name, "PostProcessing_HDF_Data_THREADS[%d,%d]_SECTORS[%d,%d]_KFRAC[%1.2lf]_TAG[%s].h5", sys_vars->num_threads, sys_vars->num_fftw_threads, sys_vars->num_k3_sectors, sys_vars->num_k1_sectors, sys_vars->kmax_frac, file_info->output_tag);
 		strcat(file_info->output_file_name, file_name);
 
 		// Print output file path to screen
@@ -918,6 +918,12 @@ void WriteDataToFile(double t, long int snap) {
     status = H5LTmake_dataset(group_id, "CollectivePhaseOrder_C_theta", Dims1D, dset_dims_1d, file_info->COMPLEX_DTYPE, proc_data->phase_order_C_theta);
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Collective Phase Order C_theta", t, snap);
+        exit(1);
+    }
+    dset_dims_1d[0] = sys_vars->num_k3_sectors;
+    status = H5LTmake_dataset(group_id, "CollectivePhaseOrder_C_theta_Normed", Dims1D, dset_dims_1d, file_info->COMPLEX_DTYPE, proc_data->phase_order_C_theta_norm);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Collective Phase Order C_theta_Normed", t, snap);
         exit(1);
     }
     fftw_complex* tmp_cmplx = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * (NUM_TRIAD_TYPES + 1) * sys_vars->num_k3_sectors);

@@ -190,7 +190,7 @@ int GetCMLArgs(int argc, char** argv) {
 				if (visc_flag == 0) {
 					// Read in the viscosity
 					sys_vars->NU = atof(optarg);
-					if (sys_vars->NU <= 0) {
+					if (sys_vars->NU < 0) {
 						fprintf(stderr, "\n["RED"ERROR"RESET"] Parsing of Command Line Arguements Failed: The provided viscosity: [%lf] must be strictly positive\n-->> Exiting!\n\n", sys_vars->NU);		
 						exit(1);
 					}
@@ -246,7 +246,7 @@ int GetCMLArgs(int argc, char** argv) {
 				else if (drag_flag == 2) {
 					// Read in the hypodiffusivity power
 					sys_vars->EKMN_DRAG_POW = atof(optarg);
-					if (sys_vars->EKMN_DRAG_POW >= 0.0) {
+					if (sys_vars->EKMN_DRAG_POW > 0.0) {
 						fprintf(stderr, "\n["RED"ERROR"RESET"] Parsing of Command Line Arguements Failed: The provided Hypodiffusibity power: [%lf] must be strictly negative\n-->> Exiting!\n\n", sys_vars->EKMN_DRAG_POW);		
 						exit(1);
 					}
@@ -326,6 +326,11 @@ int GetCMLArgs(int argc, char** argv) {
 					strncpy(sys_vars->u0, "RANDOM", 64);
 					break;
 				}
+				else if (!(strcmp(optarg,"RANDOM_ENRG"))) {
+					// Random initial conditions
+					strncpy(sys_vars->u0, "RANDOM_ENRG", 64);
+					break;
+				}
 				else if (!(strcmp(optarg,"GAUSS_BLOB"))) {
 					// Gaussian Blob conditions
 					strncpy(sys_vars->u0, "GAUSS_BLOB", 64);
@@ -398,6 +403,12 @@ int GetCMLArgs(int argc, char** argv) {
 				else if (!(strcmp(optarg,"STOC"))  && (force_flag == 0)) {
 					// Stochastic forcing
 					strncpy(sys_vars->forcing, "STOC", 64);
+					force_flag = 1;
+					break;
+				}
+				else if (!(strcmp(optarg,"BODY_FORC_COS"))  && (force_flag == 0)) {
+					// Body Forcing: f_omeage(x, y) = cos(2 x) -> see Yue-Kin Tsang, Edward Ott, Thomas M. Antonsen, Jr., and Parvez N. Guzdar2, Phys. Rev E, 2005
+					strncpy(sys_vars->forcing, "BODY_FORC_COS", 64);
 					force_flag = 1;
 					break;
 				}

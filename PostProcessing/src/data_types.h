@@ -53,27 +53,37 @@
 #define EKMN_POW -2.0 			// The power of the Eckman drag term -> 0.0 means no drag
 #define FORCING 1 				// Indicates if forcing was used in simulation
 // Post processing Modes
-#define __REAL_STATS
+#if defined(__POST_STATS)
+// #define __REAL_STATS
 #define __VEL_INC_STATS
-// #define __STR_FUNC_STATS
-#define __GRAD_STATS
+#define __VORT_INC_STATS
+#define __VEL_GRAD_STATS
+#define __VORT_GRAD_STATS
+#define __VEL_STR_FUNC_STATS
+#define __VORT_STR_FUNC_STATS
+// #define __VORT_RADIAL_STR_FUNC_STATS
+#define __MIXED_VEL_STR_FUNC_STATS
+#define __MIXED_VORT_STR_FUNC_STATS
+#endif
+#if defined(__POST_FIELD) || defined(__POST_SYNC)
 #define __FULL_FIELD
 #define __SPECTRA
-// #define __SEC_PHASE_SYNC
-// #define __SEC_PHASE_SYNC_STATS
 #define __ENST_FLUX
 #define __ENRG_FLUX
-
-
+#endif
+#if defined(__POST_SYNC)
+#define __SEC_PHASE_SYNC
+// #define __SEC_PHASE_SYNC_STATS
+#endif
 // Postprocessing data sets
-#define __VORT_FOUR
+// #define __VORT_FOUR
 // #define __VORT_REAL
 // #define __MODES
 // #define __REALSPACE
 // #define __NONLIN
-#define __TIME
-#define __COLLOC_PTS
-#define __WAVELIST
+// #define __TIME
+// #define __COLLOC_PTS
+// #define __WAVELIST
 
 #define __DEALIAS_23
 // #define __DEALIAS_HOU_LI
@@ -167,9 +177,11 @@ typedef struct system_vars_struct {
 	int REAL_VORT_FLAG;					// Flag to indicate if the Real space vorticity exists in solver data
 	int REAL_VEL_FLAG;					// Flag to indicate if the Real space velocity exists in solver data
 	int num_threads;					// The number of OMP threads to use
+	int num_fftw_threads;				// The number of FFTW threads to use
 	int thread_id;						// The ID of the OMP threads
 	int num_triad_per_sec_est;          // The estimate number of triads per sector
     int REDUCED_K1_SEARCH_FLAG;			// Flag to control whether we are doing a reduced search over specifc sectors of k1 or not
+    int chk_pt_every;					// Checkpoint every n iterations
 } system_vars_struct;
 
 // Runtime data struct
@@ -217,6 +229,7 @@ typedef struct postprocess_data_struct {
     double* enrg_diss_C;										             	// Array to hold the energy dissipation in the set C defined by radius sys_vars->kmax_frac * sys_vars->kmax
     fftw_complex* enst_diss_field;											 	// Array to holde the enstrophy dissipation field in Fourier space.
     fftw_complex* phase_order_C_theta;										 	// Array to hold the phase order parameter for each C_theta
+    fftw_complex* phase_order_C_theta_norm;										 	// Array to hold the phase order parameter for each C_theta normed
     fftw_complex phase_order_C_theta_triads_test[NUM_TRIAD_TYPES + 1];		 	// Array to hold the phase order parameter for each C_theta triads
     fftw_complex* phase_order_C_theta_triads[NUM_TRIAD_TYPES + 1];			 	// Array to hold the phase order parameter for each C_theta triads
     fftw_complex* phase_order_C_theta_triads_1d[NUM_TRIAD_TYPES + 1];		 	// Array to hold the phase order parameter for each C_theta triads for 1d contributions

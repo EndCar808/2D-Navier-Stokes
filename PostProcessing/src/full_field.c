@@ -378,6 +378,7 @@ void FluxSpectra(int snap) {
 	double norm_fac  = 0.5 / pow(Nx * Ny, 2.0);
 	double const_fac = 4.0 * pow(M_PI, 2.0);
 	double tmp_deriv, tmp_diss;
+	double tmp_phase_order;
 
 	// ------------------------------------
 	// Initialize Arrays
@@ -399,9 +400,10 @@ void FluxSpectra(int snap) {
 	// Initialize Collective phase order array
 	#if defined(__SEC_PHASE_SYNC)
 	for (int i = 0; i < sys_vars->num_k3_sectors; ++i) {
-		proc_data->enst_flux_C_theta[i]   = 0.0;
-		proc_data->enst_diss_C_theta[i]   = 0.0;
-		proc_data->phase_order_C_theta[i] = 0.0 + 0.0 * I;
+		proc_data->enst_flux_C_theta[i]        = 0.0;
+		proc_data->enst_diss_C_theta[i]        = 0.0;
+		proc_data->phase_order_C_theta[i]      = 0.0 + 0.0 * I;
+		proc_data->phase_order_C_theta_norm[i] = 0.0 + 0.0 * I;
 	}
 	#endif
 
@@ -452,6 +454,7 @@ void FluxSpectra(int snap) {
 					// Get temporary values
 					tmp_deriv = creal(run_data->w_hat[indx] * conj(proc_data->dw_hat_dt[indx]) + conj(run_data->w_hat[indx]) * proc_data->dw_hat_dt[indx]) * const_fac * norm_fac;
 					tmp_diss  = pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * const_fac * norm_fac;
+					tmp_phase_order = run_data->w_hat[indx] * conj(proc_data->dw_hat_dt[indx]) * const_fac * norm_fac;
 					#endif
 
 					// Update the current bin sum 
@@ -480,8 +483,11 @@ void FluxSpectra(int snap) {
 								proc_data->enst_flux_C_theta[a] += tmp_deriv;
 
 								// Record the phase sync
-								if (run_data->k[0][i] > 0 && cabs(tmp_deriv) != 0.0) {
-									proc_data->phase_order_C_theta[a] += (tmp_deriv + tmp_diss) / cabs(tmp_deriv);
+								if (run_data->k[0][i] > 0) {
+									proc_data->phase_order_C_theta[a] += tmp_phase_order;
+									if (cabs(tmp_phase_order) != 0.0) {
+										proc_data->phase_order_C_theta_norm[a] += tmp_phase_order / cabs(tmp_phase_order);
+									}
 								}
 							}
 						}
@@ -493,6 +499,7 @@ void FluxSpectra(int snap) {
 					// Get temporary values
 					tmp_deriv = creal(run_data->w_hat[indx] * conj(proc_data->dw_hat_dt[indx]) + conj(run_data->w_hat[indx]) * proc_data->dw_hat_dt[indx]) * const_fac * norm_fac;
 					tmp_diss  = pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * const_fac * norm_fac;
+					tmp_phase_order = run_data->w_hat[indx] * conj(proc_data->dw_hat_dt[indx]) * const_fac * norm_fac;
 					#endif
 
 					// Update the running sum for the flux
@@ -521,8 +528,9 @@ void FluxSpectra(int snap) {
 								proc_data->enst_flux_C_theta[a] += tmp_deriv;
 
 								// Record the phase sync
-								if (cabs(tmp_deriv) != 0.0) {
-									proc_data->phase_order_C_theta[a] += (tmp_deriv + tmp_diss) / cabs(tmp_deriv);
+								proc_data->phase_order_C_theta[a] += tmp_phase_order;
+								if (cabs(tmp_phase_order) != 0.0) {
+									proc_data->phase_order_C_theta_norm[a] += tmp_phase_order / cabs(tmp_phase_order);
 								}
 							}
 						}
@@ -562,9 +570,7 @@ void AllocateFullFieldMemory(const long int* N) {
 	const long int Nx = N[0];
 	const long int Ny = N[1];
 	const long int Ny_Fourier = Ny / 2 + 1;
-
-	// Compute maximum wavenumber
-	sys_vars->kmax = (int) (Nx / 3.0);	
+	
 
 	// --------------------------------	
 	//  Allocate Full Field Arrays
@@ -686,18 +692,24 @@ void AllocateFullFieldMemory(const long int* N) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Enstrophy Dissipation In/Out C_theta");
 		exit(1);
 	}
-	// Allocate phase order for C_theta
-	proc_data->phase_order_C_theta = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->num_snaps);
-	if (proc_data->phase_order_C_theta == NULL) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Collective Phase Order for C_theta");
-		exit(1);
-	}
 	// Allocate enstorphy dissipation field
 	proc_data->enst_diss_field = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * Nx * Ny_Fourier);
 	if (proc_data->enst_diss_field == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Enstrophy Dissipation Field Fourier Space");
 		exit(1);
 	}	
+	// Allocate phase order for C_theta
+	proc_data->phase_order_C_theta_norm = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->num_snaps);
+	if (proc_data->phase_order_C_theta_norm == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Collective Phase Order for C_theta Normed");
+		exit(1);
+	}
+	// Allocate phase order for C_theta
+	proc_data->phase_order_C_theta = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->num_snaps);
+	if (proc_data->phase_order_C_theta == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Collective Phase Order for C_theta");
+		exit(1);
+	}
 	#endif
 
 	// --------------------------------	
@@ -841,6 +853,7 @@ void FreeFullFieldObjects(void) {
 	fftw_free(proc_data->enst_flux_C_theta);
 	fftw_free(proc_data->enst_diss_C_theta);
 	fftw_free(proc_data->phase_order_C_theta);
+	fftw_free(proc_data->phase_order_C_theta_norm);
 	fftw_free(proc_data->enst_diss_field);
 	#endif
 	#if defined(__ENST_FLUX)

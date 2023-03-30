@@ -1135,11 +1135,6 @@ void AllocatePhaseSyncMemory(const long int* N) {
 	const long int Ny = N[1];
 	const long int Ny_Fourier = Ny / 2 + 1;
 
-	// Get the various kmax variables
-	sys_vars->kmax_sqr   = pow(sys_vars->kmax, 2.0);
-	sys_vars->kmax_C   	 = (int) ceil(sys_vars->kmax_frac * sys_vars->kmax);
-	sys_vars->kmax_C_sqr = pow(sys_vars->kmax_C, 2.0);
-
 
 	// --------------------------------	
 	//  Allocate Sector Angles
@@ -1608,7 +1603,7 @@ void AllocatePhaseSyncMemory(const long int* N) {
 		exit(1);
 	}	
 	// Estimate for the number of triads across sectors -> we will resize this dimension to correct size after search is performed NOTE: Needs to be bigger than all triads in the cirlce i.e., one sector
-	int num_triad_est               = (int) ceil(M_PI * pow(sys_vars->N[0], 2.0) + 2.0 * sqrt(2) * M_PI * sys_vars->N[0]) * 100;
+	int num_triad_est               = (int) ceil(M_PI * pow(sys_vars->N[0], 2.0) + 2.0 * sqrt(2) * M_PI * sys_vars->N[0]) * 5000;
 	sys_vars->num_triad_per_sec_est = num_triad_est;
 	for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
 		for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
@@ -1734,12 +1729,13 @@ void AllocatePhaseSyncMemory(const long int* N) {
 		double k1_sqr, k1_angle, k2_sqr, k2_angle, k3_sqr, k3_angle;
 		double k3_angle_neg, k1_angle_neg, k2_angle_neg;
 		double C_theta_k3_lwr, C_theta_k3_upr, C_theta_k1_upr, C_theta_k1_lwr;
+		long int total_terms = 0;
 		
 		// Print to screen that a pre computation search is needed for the phase sync wavevectors and begin timeing it
 		printf("\n["YELLOW"NOTE"RESET"] --- Performing search over wavevectors for Phase Sync computation...\n");
 		printf("\nNumber of k_3 Sectors: ["CYAN"%d"RESET"]\nNumber of k_1 Sectors: ["CYAN"%d"RESET"]\n\n", sys_vars->num_k3_sectors, sys_vars->num_k1_sectors);
-		struct timeval begin, end;
-		gettimeofday(&begin, NULL);
+		// Start timer
+		double loop_begin = omp_get_wtime();
 
 		// Loop through the sectors for k3
 		for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
@@ -1963,6 +1959,7 @@ void AllocatePhaseSyncMemory(const long int* N) {
 				}
 				// Record the number of triad wavevectors
 				proc_data->num_wave_vecs[a][k1_sec_indx] = nn;
+				total_terms += nn;
 			}
 		}
 
@@ -2048,9 +2045,10 @@ void AllocatePhaseSyncMemory(const long int* N) {
 		printf("\n["YELLOW"NOTE"RESET"] --- Saved wavevector data to file at ["CYAN"%s"RESET"]...\n", file_info->wave_vec_data_name);
 
 		
-		// Finish timing pre compute step and print to screen
-		gettimeofday(&end, NULL);
-		// PrintTime(begin.tv_sec, end.tv_sec);
+		// End timer 
+		double loop_end = omp_get_wtime();
+		printf("\n["YELLOW"NOTE"RESET"] --- Total Triad Terms: %ld\n", total_terms);
+		printf("["YELLOW"NOTE"RESET"] --- Total Time for sector search: %g(s)\n", (loop_end - loop_begin));
 	}
 }
 /**

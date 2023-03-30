@@ -40,6 +40,10 @@ class tc:
 #################################
 ##          MISC               ##
 #################################
+def get_flux_spectrum(flux_spectra):
+    return np.fliplr(np.fliplr(flux_spectra).cumsum(axis=1))
+
+
 def fft_ishift_freq(w_h, axes = None):
 
     """
@@ -379,6 +383,8 @@ def import_data(input_file, sim_data, method = "default"):
             data.tot_enrg = f['TotalEnergy'][:]
         if 'TotalEnstrophy' in list(f.keys()):
             data.tot_enst = f['TotalEnstrophy'][:]
+        if 'TotalForcing' in list(f.keys()):
+            data.tot_forc = f['TotalForcing'][:]
         if 'TotalPalinstrophy' in list(f.keys()):
             data.tot_palin = f['TotalPalinstrophy'][:]
         if 'EnergyDissipation' in list(f.keys()):
@@ -580,14 +586,14 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                 ## Get the number of sectors
                 if 'SectorAngles_k3' in list(f.keys()):
                     self.theta_k3 = f["SectorAngles_k3"][:]
-                    self.num_sect = self.theta_k3.shape[0]
+                    self.num_k3_sect = self.theta_k3.shape[0]
                 if 'SectorAngles_k3' not in list(f.keys()):
-                    self.num_sect = int(in_f.split('_')[-3].split(',')[0].lstrip('SECTORS['))
+                    self.num_k3_sect = int(in_f.split('_')[-3].split(',')[0].lstrip('SECTORS['))
                 if 'SectorAngles_k1' not in list(f.keys()):
-                    self.num_k1_sects = int(in_f.split('_')[-3].split(',')[-1].rstrip(']'))
+                    self.num_k1_sect = int(in_f.split('_')[-3].split(',')[-1].rstrip(']'))
                 if 'SectorAngles_k1' in list(f.keys()):
                     self.theta_k1     = f["SectorAngles_k1"][:]
-                    self.num_k1_sects = self.theta_k1.shape[0]
+                    self.num_k1_sect = self.theta_k1.shape[0]
                 ## Get the number of triads per sector
                 if 'NumTriadsPerSector' in list(f.keys()):
                     self.num_triads = f["NumTriadsPerSector"][:, :]
@@ -663,13 +669,13 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
 
             ## Read in Wavevector Data
             pre_data_path = re.search(r"[^Data]*", in_f).group()
-            wave_data_file = pre_data_path + 'Data/PostProcess/PhaseSync/Wavevector_Data_N[{},{}]_SECTORS[{},{}]_KFRAC[{:0.2f}].h5'.format(sim_data.Nx, sim_data.Ny, int(self.num_sect), int(self.num_k1_sects), self.kmax_frac)
+            wave_data_file = pre_data_path + 'Data/PostProcess/PhaseSync/Wavevector_Data_N[{},{}]_SECTORS[{},{}]_KFRAC[{:0.2f}].h5'.format(sim_data.Nx, sim_data.Ny, int(self.num_k3_sect), int(self.num_k1_sect), self.kmax_frac)
             if os.path.isfile(wave_data_file):
                 with h5py.File(wave_data_file) as f:
                     self.num_wv = f["NumWavevectors"][:, :]
-                    self.wv = np.zeros((self.num_sect, self.num_k1_sects, 16, np.amax(self.num_wv)))
-                    for a in range(self.num_sect):
-                        for l in range(self.num_k1_sects):
+                    self.wv = np.zeros((self.num_k3_sect, self.num_k1_sect, 16, np.amax(self.num_wv)))
+                    for a in range(self.num_k3_sect):
+                        for l in range(self.num_k1_sect):
                             tmp_arr = f["WVData_Sector_{}_{}".format(a, l)][:, :]
                             for k in range(16):
                                 for n in range(self.num_wv[a, l]):
@@ -715,36 +721,38 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
             self.enrg_diss_spec = np.zeros((sim_data.ndata, sim_data.spec_size))
             self.d_enrg_dt_spec = np.zeros((sim_data.ndata, sim_data.spec_size))
             ## Enstorphy Flux and Diss from C_theta
-            self.enst_flux_C_theta = np.zeros((sim_data.ndata, self.num_sect))
-            self.enst_diss_C_theta = np.zeros((sim_data.ndata, self.num_sect))
-            ## Collective Phase order parameter for C_theta
-            self.phase_order_C_theta                    = np.ones((sim_data.ndata, NUM_TRIAD_TYPES, self.num_sect)) * np.complex(0.0, 0.0)
-            self.phase_order_C_theta_triads             = np.ones((sim_data.ndata, NUM_TRIAD_TYPES, self.num_sect)) * np.complex(0.0, 0.0)
-            self.phase_order_C_theta_triads_1d          = np.ones((sim_data.ndata, NUM_TRIAD_TYPES, self.num_sect)) * np.complex(0.0, 0.0)
-            self.phase_order_C_theta_triads_2d          = np.ones((sim_data.ndata, NUM_TRIAD_TYPES, self.num_sect, self.num_k1_sects)) * np.complex(0.0, 0.0)
-            self.phase_order_C_theta_triads_unidirec    = np.ones((sim_data.ndata, NUM_TRIAD_TYPES, self.num_sect)) * np.complex(0.0, 0.0)
-            self.phase_order_C_theta_triads_unidirec_1d = np.ones((sim_data.ndata, NUM_TRIAD_TYPES, self.num_sect)) * np.complex(0.0, 0.0)
-            self.phase_order_C_theta_triads_unidirec_2d = np.ones((sim_data.ndata, NUM_TRIAD_TYPES, self.num_sect, self.num_k1_sects)) * np.complex(0.0, 0.0)
+            self.enst_flux_C_theta = np.zeros((sim_data.ndata, self.num_k3_sect))
+            self.enst_diss_C_theta = np.zeros((sim_data.ndata, self.num_k3_sect))
+            ## Collective Phase order parameter for C_theta - NL
+            self.phase_order_C_theta      = np.ones((sim_data.ndata, self.num_k3_sect)) * np.complex(0.0, 0.0)
+            self.phase_order_C_theta_norm = np.ones((sim_data.ndata, self.num_k3_sect)) * np.complex(0.0, 0.0)
+            ## Collective Phase order parameter for C_theta - Direct
+            self.phase_order_C_theta_triads             = np.ones((sim_data.ndata, NUM_TRIAD_TYPES, self.num_k3_sect)) * np.complex(0.0, 0.0)
+            self.phase_order_C_theta_triads_1d          = np.ones((sim_data.ndata, NUM_TRIAD_TYPES, self.num_k3_sect)) * np.complex(0.0, 0.0)
+            self.phase_order_C_theta_triads_2d          = np.ones((sim_data.ndata, NUM_TRIAD_TYPES, self.num_k3_sect, self.num_k1_sect)) * np.complex(0.0, 0.0)
+            self.phase_order_C_theta_triads_unidirec    = np.ones((sim_data.ndata, NUM_TRIAD_TYPES, self.num_k3_sect)) * np.complex(0.0, 0.0)
+            self.phase_order_C_theta_triads_unidirec_1d = np.ones((sim_data.ndata, NUM_TRIAD_TYPES, self.num_k3_sect)) * np.complex(0.0, 0.0)
+            self.phase_order_C_theta_triads_unidirec_2d = np.ones((sim_data.ndata, NUM_TRIAD_TYPES, self.num_k3_sect, self.num_k1_sect)) * np.complex(0.0, 0.0)
             ## Enstrophy Flux Per Sector
-            self.enst_flux_per_sec    = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_sect))
-            self.enst_flux_per_sec_1d = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_sect))
-            self.enst_flux_per_sec_2d = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_sect, self.num_k1_sects))
+            self.enst_flux_per_sec    = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_k3_sect))
+            self.enst_flux_per_sec_1d = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_k3_sect))
+            self.enst_flux_per_sec_2d = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_k3_sect, self.num_k1_sect))
             ## Phase Sync arrays
-            self.phase_R      = np.zeros((sim_data.ndata, self.num_sect))
-            self.phase_Phi    = np.zeros((sim_data.ndata, self.num_sect))
-            self.triad_R      = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_sect))
-            self.triad_Phi    = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_sect))
-            self.triad_R_1d   = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_sect))
-            self.triad_Phi_1d = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_sect))
-            self.triad_R_2d   = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_sect, self.num_k1_sects))
-            self.triad_Phi_2d = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_sect, self.num_k1_sects))
+            self.phase_R      = np.zeros((sim_data.ndata, self.num_k3_sect))
+            self.phase_Phi    = np.zeros((sim_data.ndata, self.num_k3_sect))
+            self.triad_R      = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_k3_sect))
+            self.triad_Phi    = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_k3_sect))
+            self.triad_R_1d   = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_k3_sect))
+            self.triad_Phi_1d = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_k3_sect))
+            self.triad_R_2d   = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_k3_sect, self.num_k1_sect))
+            self.triad_Phi_2d = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_k3_sect, self.num_k1_sect))
             ## Phase Sync Stats
-            self.phase_sector_counts = np.zeros((sim_data.ndata, self.num_sect, 200))
-            self.phase_sector_ranges = np.zeros((sim_data.ndata, self.num_sect, 201))
-            self.triad_sector_counts = np.zeros((sim_data.ndata, self.num_sect, 200, NUM_TRIAD_TYPES))
-            self.triad_sector_ranges = np.zeros((sim_data.ndata, self.num_sect, 201, NUM_TRIAD_TYPES))
-            self.triad_sector_wghtd_counts = np.zeros((sim_data.ndata, self.num_sect, 200, NUM_TRIAD_TYPES))
-            self.triad_sector_wghtd_ranges = np.zeros((sim_data.ndata, self.num_sect, 201, NUM_TRIAD_TYPES))
+            self.phase_sector_counts = np.zeros((sim_data.ndata, self.num_k3_sect, 200))
+            self.phase_sector_ranges = np.zeros((sim_data.ndata, self.num_k3_sect, 201))
+            self.triad_sector_counts = np.zeros((sim_data.ndata, self.num_k3_sect, 200, NUM_TRIAD_TYPES))
+            self.triad_sector_ranges = np.zeros((sim_data.ndata, self.num_k3_sect, 201, NUM_TRIAD_TYPES))
+            self.triad_sector_wghtd_counts = np.zeros((sim_data.ndata, self.num_k3_sect, 200, NUM_TRIAD_TYPES))
+            self.triad_sector_wghtd_ranges = np.zeros((sim_data.ndata, self.num_k3_sect, 201, NUM_TRIAD_TYPES))
 
             ## Test phase sync data
             self.enst_flux_test = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES))
@@ -803,14 +811,14 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                     data.enst_diss_C_theta[nn, :] = f[group]["EnstrophyDiss_C_theta"][:]
                 if 'CollectivePhaseOrder_C_theta' in list(f[group].keys()):
                     data.phase_order_C_theta[nn, :] = f[group]["CollectivePhaseOrder_C_theta"][:]
+                if 'CollectivePhaseOrder_C_theta_Normed' in list(f[group].keys()):
+                    data.phase_order_C_theta_norm[nn, :] = f[group]["CollectivePhaseOrder_C_theta_Normed"][:]
                 if 'CollectivePhaseOrder_C_theta_Triads' in list(f[group].keys()):
                     data.phase_order_C_theta_triads[nn, :, :] = f[group]["CollectivePhaseOrder_C_theta_Triads"][:, :]
                 if 'CollectivePhaseOrder_C_theta_Triads_1D' in list(f[group].keys()):
                     data.phase_order_C_theta_triads_1d[nn, :, :] = f[group]["CollectivePhaseOrder_C_theta_Triads_1D"][:, :]
                 if 'CollectivePhaseOrder_C_theta_Triads_2D' in list(f[group].keys()):
                     data.phase_order_C_theta_triads_2d[nn, :, :, :] = f[group]["CollectivePhaseOrder_C_theta_Triads_2D"][:, :, :]
-                if 'CollectivePhaseOrder_C_theta' in list(f[group].keys()):
-                    data.phase_order_C_theta[nn, :] = f[group]["CollectivePhaseOrder_C_theta"][:]
                 if 'CollectivePhaseOrder_C_theta_Triads_Unidirectional' in list(f[group].keys()):
                     data.phase_order_C_theta_triads_unidirec[nn, :, :] = f[group]["CollectivePhaseOrder_C_theta_Triads_Unidirectional"][:, :]
                 if 'CollectivePhaseOrder_C_theta_Triads_1D_Unidirectional' in list(f[group].keys()):

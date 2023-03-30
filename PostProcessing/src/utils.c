@@ -42,6 +42,7 @@ int GetCMLArgs(int argc, char** argv) {
 	int visc_flag 	    = 0;
 	int drag_flag       = 0;
 	int force_flag      = 0;
+	int threads_flag    = 0;
 
 	// -------------------------------
 	// Initialize Default Values
@@ -60,6 +61,7 @@ int GetCMLArgs(int argc, char** argv) {
 	sys_vars->kmax_frac = 1.0;
 	// Set the default amount of threads to use
 	sys_vars->num_threads = 1;
+	sys_vars->num_fftw_threads = 1;
 	// Viscosity
 	sys_vars->NU = 1e-4;
 	// Default number of k1 sectors
@@ -125,6 +127,7 @@ int GetCMLArgs(int argc, char** argv) {
 						fprintf(stderr, "\n["RED"ERROR"RESET"]: Error in reading in command line agument ["CYAN"%s"RESET"], number of sector angles must be strictly positive, number provided ["CYAN"%d"RESET"]\n--->> Now Exiting!\n", "sys_vars->num_k3_sectors", sys_vars->num_k3_sectors);
 						exit(1);
 					}
+					break;
 				}
 				else if (sector_flag == 2) {
 					// If reduced k1 sectors search is selected set to NUM_K1_SECTORS and turn on flag
@@ -136,11 +139,24 @@ int GetCMLArgs(int argc, char** argv) {
 					break;
 				}				
 			case 'p':
-				// Get the number of omp threads to use
-				sys_vars->num_threads = atoi(optarg); 
-				if (sys_vars->num_threads <= 0) {
-					fprintf(stderr, "\n["RED"ERROR"RESET"]: Error in reading in command line agument ["CYAN"%s"RESET"], number of OMP threads must be greater than or equal to 1, umber provided ["CYAN"%d"RESET"]\n--->> Now Exiting!\n", "sys_vars->num_k3_sectors", sys_vars->num_threads);
-					exit(1);
+				// Get the number of threads to use
+				if (threads_flag == 0) {
+					sys_vars->num_threads = atoi(optarg); 
+					if (sys_vars->num_threads <= 0) {
+						fprintf(stderr, "\n["RED"ERROR"RESET"]: Error in reading in command line agument ["CYAN"%s"RESET"], number of OMP threads must be greater than or equal to 1, umber provided ["CYAN"%d"RESET"]\n--->> Now Exiting!\n", "sys_vars->num_threads", sys_vars->num_threads);
+						exit(1);
+					}
+					threads_flag = 1;
+					break;
+				}
+				else if (threads_flag == 1) {
+					sys_vars->num_fftw_threads = atoi(optarg); 
+					if (sys_vars->num_fftw_threads <= 0 || sys_vars->num_fftw_threads > 16) {
+						fprintf(stderr, "\n["RED"ERROR"RESET"]: Error in reading in command line agument ["CYAN"%s"RESET"], number of FFTW threads must be greater than or equal to 1 and less than 16, number provided ["CYAN"%d"RESET"]\n--->> Now Exiting!\n", "sys_vars->num_fftw_threads", sys_vars->num_fftw_threads);
+						exit(1);
+					}
+					threads_flag = 2;
+					break;	
 				}
 				break;
 			case 'k':
@@ -177,7 +193,7 @@ int GetCMLArgs(int argc, char** argv) {
 				else if (visc_flag == 2) {
 					// Read in the hyperviscosity power
 					sys_vars->HYPER_VISC_POW = atof(optarg);
-					if (sys_vars->HYPER_VISC_POW <= 0.0) {
+					if (sys_vars->HYPER_VISC_POW < 0.0) {
 						fprintf(stderr, "\n["RED"ERROR"RESET"] Parsing of Command Line Arguements Failed: The provided hyperviscosity power: [%lf] must be strictly positive\n-->> Exiting!\n\n", sys_vars->HYPER_VISC_POW);		
 						exit(1);
 					}
@@ -211,7 +227,7 @@ int GetCMLArgs(int argc, char** argv) {
 				else if (drag_flag == 2) {
 					// Read in the hypodiffusivity power
 					sys_vars->EKMN_DRAG_POW = atof(optarg);
-					if (sys_vars->EKMN_DRAG_POW >= 0.0) {
+					if (sys_vars->EKMN_DRAG_POW > 0.0) {
 						fprintf(stderr, "\n["RED"ERROR"RESET"] Parsing of Command Line Arguements Failed: The provided Hypodiffusibity power: [%lf] must be strictly negative\n-->> Exiting!\n\n", sys_vars->EKMN_DRAG_POW);		
 						exit(1);
 					}

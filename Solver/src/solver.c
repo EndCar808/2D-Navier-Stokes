@@ -167,6 +167,8 @@ void SpectralSolve(void) {
 		}
 		#endif
 
+		// exit(1);
+
 		// -------------------------------
 		// Write To File
 		// -------------------------------
@@ -876,7 +878,13 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* non
  	// Add the forcing
 	if (sys_vars->local_forcing_proc) {
 		for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
-	 		// printf("scale: %lf\t-\tk[%d, %d]: %1.16lf\t%1.16lfi\t\t%1.16lf\t%1.16lfi\tamp: %1.16lf\tamp_f:%1.16lf\tratio:%1.16lf\n", sys_vars->force_scale_var, run_data->forcing_k[0][i], run_data->forcing_k[1][i], creal(dw_hat_dt[run_data->forcing_indx[i]]), cimag(dw_hat_dt[run_data->forcing_indx[i]]), creal(run_data->forcing[i]), cimag(run_data->forcing[i]), cimag(dw_hat_dt[run_data->forcing_indx[i]]), cabs(dw_hat_dt[run_data->forcing_indx[i]]), cabs(run_data->forcing[i]), cabs(dw_hat_dt[run_data->forcing_indx[i]]) / cabs(run_data->forcing[i]));
+	 		// printf("scale: %lf\t-\tk[%d, %d]: %1.16lf\t%1.16lfi\t\tforc: %1.16lf\t%1.16lfi\tamp: %1.16lf\tamp_f:%1.16lf\tratio:%1.16lf\n", 
+	 		// 				sys_vars->force_scale_var, 
+	 		// 				run_data->forcing_k[0][i], run_data->forcing_k[1][i], 
+	 		// 				creal(dw_hat_dt[run_data->forcing_indx[i]]), cimag(dw_hat_dt[run_data->forcing_indx[i]]), 
+	 		// 				creal(run_data->forcing[i]), cimag(run_data->forcing[i]), cimag(dw_hat_dt[run_data->forcing_indx[i]]), 
+	 		// 				cabs(dw_hat_dt[run_data->forcing_indx[i]]), cabs(run_data->forcing[i]), 
+	 		// 				cabs(dw_hat_dt[run_data->forcing_indx[i]]) / cabs(run_data->forcing[i]));
 			dw_hat_dt[run_data->forcing_indx[i]] += run_data->forcing[i]; 
 		}
 	}
@@ -1582,6 +1590,88 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 				}
 			}
 		}
+	}
+	else if (!(strcmp(sys_vars->u0, "RANDOM_ENRG"))) {
+		// ---------------------------------------
+		// Random Initial Conditions
+		// ---------------------------------------
+		// Initialize variables
+		double enrg_k, enst_k;
+		double sqrt_k;
+		double enst_norm = 0.0;
+		double r1;
+
+		for (int i = 0; i < local_Nx; ++i) {	
+			tmp = i * (Ny_Fourier);
+			for (int j = 0; j < Ny_Fourier; ++j) {
+				indx = tmp + j;
+
+				// Get the |k|
+				sqrt_k = sqrt(run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
+
+				// Get the energy for this mode
+				if (sqrt_k > UNIF_MIN_K && sqrt_k < UNIF_MAX_K) {
+					enrg_k = 1.0 / sqrt_k;
+					
+					// Get the enstrophy for this mode
+					enst_k = pow(sqrt_k, 2.0) * enrg_k;
+
+					// Get random uniform number
+					// r1 = genrand64_real1();
+					r1 = (double) rand() / (double) RAND_MAX;
+
+					// Fill vorticity
+					#if defined(PHASE_ONLY)
+					run_data->a_k[indx]   = sqrt(enst_k / enrg_k);
+					run_data->phi_k[indx] = r1 * 2.0 * M_PI;
+					#endif
+					w_hat[indx] = sqrt(enst_k / enrg_k) * cexp(r1 * 2.0 * M_PI * I);
+				}
+				else {
+					// Set Vorticity to 0
+					#if defined(PHASE_ONLY)
+					run_data->a_k[indx]   = 0.0;
+					run_data->phi_k[indx] = 0.0;
+					#endif
+					w_hat[indx] = 0.0 + 0.0 * I;
+				}
+
+				// Compute the enstrophy norm
+				enst_norm += pow(cabs(w_hat[indx]), 2.0);
+			}
+		}
+
+		// ---------------------------------------
+		// Sync Norm Factor
+		// ---------------------------------------
+		// Synchronize normalization factor amongst the processes
+		MPI_Allreduce(MPI_IN_PLACE, &enst_norm, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+		enst_norm *= 2.0;
+
+		// ---------------------------------------
+		// Normalize
+		// ---------------------------------------
+		for (int i = 0; i < local_Nx; ++i) {	
+			tmp = i * (Ny_Fourier);
+			for (int j = 0; j < Ny_Fourier; ++j) {
+				indx = tmp + j;
+
+				// Fill vorticity
+				if ((run_data->k[0][i] != 0) || (run_data->k[1][j] != 0)){
+					#if defined(PHASE_ONLY)
+					run_data->a_k[indx] *= sqrt(RAND_ENST0 / enst_norm);
+					#endif
+					w_hat[indx] *= sqrt(RAND_ENST0 / enst_norm);
+				}
+				else {
+					// Zero mode is always 0 + 0 * I
+					#if defined(PHASE_ONLY)
+					run_data->a_k[indx] = 0.0;
+					#endif
+					w_hat[indx] = 0.0 + 0.0 * I;
+				}			
+			}
+		}		
 	}
 	else if (!(strcmp(sys_vars->u0, "MAX_PALIN"))) {
 	
