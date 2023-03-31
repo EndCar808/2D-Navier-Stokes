@@ -119,7 +119,7 @@ void PostProcessing(void) {
 		double loop_end = omp_get_wtime();
 
 		// Print update to screen
-		printf("Snapshot: %d/%ld\tSaving Index: %d \t Time: %g(s)\n", s, sys_vars->num_snaps, chk_pt_indx, (loop_end - loop_begin));
+		printf("Snapshot: %d/%ld\tSaving Index: %d \t Time: %g(s)\n", s + 1, sys_vars->num_snaps, chk_pt_indx, (loop_end - loop_begin));
 	}
 	///////////////////////////////
 	// End Snapshot Processing

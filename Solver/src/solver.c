@@ -1077,7 +1077,7 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* u) 
  			indx = tmp + j;
 
  			if ((run_data->k[0][i] != 0) || (run_data->k[1][j]  != 0)) {
- 				dw_hat_dt[indx] = (-I * run_data->k[1][j] * dw_hat_dt[SYS_DIM * indx + 0] -I * run_data->k[0][i] * dw_hat_dt[SYS_DIM * indx + 1]) * pow(norm_fac, 1.0);
+ 				dw_hat_dt[indx] = (-I * run_data->k[0][i] * dw_hat_dt[SYS_DIM * indx + 0] -I * run_data->k[1][j] * dw_hat_dt[SYS_DIM * indx + 1]) * pow(norm_fac, 1.0);
  			}
  			else {
  				dw_hat_dt[indx] = 0.0 + 0.0 * I;
