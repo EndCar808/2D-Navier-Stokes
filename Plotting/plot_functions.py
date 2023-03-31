@@ -13,9 +13,10 @@ import sys
 import os
 import h5py as h5
 import matplotlib as mpl
-mpl.rcParams['text.usetex'] = True
-mpl.rcParams['font.family'] = 'serif'
-mpl.rcParams['font.serif']  = 'Computer Modern Roman'
+if mpl.__version__ > '2':    
+    mpl.rcParams['text.usetex'] = True
+    mpl.rcParams['font.family'] = 'serif'
+    mpl.rcParams['font.serif']  = 'Computer Modern Roman'
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 from matplotlib.pyplot import cm
@@ -848,7 +849,7 @@ def plot_sector_phase_sync_snaps_full(i, out_dir, w, enst_spec, enst_flux, phase
        plt.close()
 
 
-def plot_sector_phase_sync_snaps_full_sec(i, out_dir, w, enst_spec, enst_flux, enst_flux_a_sec, phases, theta_k3, R, R_a_sec, Phi, Phi_a_sec, flux_min, flux_max, t, x, y, Nx, Ny):
+def plot_sector_phase_sync_snaps_full_sec(i, out_dir, w, enst_spec, enst_flux, enst_flux_a_sec, phases, theta_k3, R, R_a_sec, Phi, Phi_a_sec, flux_lims, t, x, y, Nx, Ny):
 
        """
        Plots the phases and average phase and sync per sector of the phases
@@ -938,7 +939,7 @@ def plot_sector_phase_sync_snaps_full_sec(i, out_dir, w, enst_spec, enst_flux, e
        # Plot Vorticity  
        #--------------------------
        ax2 = fig.add_subplot(gs[0, 2])
-       im2 = ax2.imshow(w, extent = (y[0], y[-1], x[-1], x[0]), cmap = "jet") #, vmin = w_min, vmax = w_max 
+       im2 = ax2.imshow(w, extent = (y[0], y[-1], x[-1], x[0]), cmap = "RdBu", vmin = -6, vmax = 6) #, vmin = w_min, vmax = w_max 
        ax2.set_xlabel(r"$y$")
        ax2.set_ylabel(r"$x$")
        ax2.set_xlim(0.0, y[-1])
@@ -968,7 +969,7 @@ def plot_sector_phase_sync_snaps_full_sec(i, out_dir, w, enst_spec, enst_flux, e
        axtop3.set_yticklabels([r"$-\pi$", r"$\frac{-\pi}{2}$", r"$0$", r"$\frac{\pi}{2}$", r"$\pi$"])
        axtop3.grid(which = 'both', axis = 'both', linestyle = ':', linewidth = '0.6', alpha = 0.8)
        axtop3.set_title(r"Order Parameters (1D)")
-       axtop3.set_ylabel(r"$\Phi^{\text{1D}}$")
+       axtop3.set_ylabel(r"$\Phi^{1D}$")
        ax3.plot(theta_k3, R)
        ax3.set_xlim(theta_k3_min, theta_k3_max)
        ax3.set_xticks(angticks)
@@ -976,10 +977,10 @@ def plot_sector_phase_sync_snaps_full_sec(i, out_dir, w, enst_spec, enst_flux, e
        ax3.set_ylim(0 - 0.05, 1 + 0.05)
        ax3.set_xlabel(r"$\theta$")
        ax3.grid(which = 'both', axis = 'both', linestyle = ':', linewidth = '0.6', alpha = 0.8)
-       ax3.set_ylabel(r"$\mathcal{R}^{\text{1D}}$")
+       ax3.set_ylabel(r"$\mathcal{R}^{1D}$")
 
        #--------------------------------
-       # Plot Enstrophy Flux Per Sector  
+       # Plot Enstrophy Flux Per Sector  (1D)
        #--------------------------------
        ax4 = fig.add_subplot(gs[1, 1])
        ax4.plot(theta_k3, enst_flux, '.-')
@@ -987,14 +988,13 @@ def plot_sector_phase_sync_snaps_full_sec(i, out_dir, w, enst_spec, enst_flux, e
        ax4.set_xticks(angticks)
        ax4.set_xticklabels(angtickLabels)
        ax4.set_xlabel(r"$\theta$")
-       ax4.set_ylabel(r"$\Pi_{\mathcal{C}}^{\text{1D}}$")
-       ax4.set_yscale('symlog')
-       ax4.set_ylim(flux_min, flux_max)
+       ax4.set_ylabel(r"$\Pi_{\mathcal{C}}^{1D}$")
+       ax4.set_ylim(flux_lims[0], flux_lims[1])
        ax4.grid(which = 'both', axis = 'both', linestyle = ':', linewidth = '0.6', alpha = 0.8)
        ax4.set_title(r"Enstrophy Flux Per Sector (1D)")
 
        #--------------------------------
-       # Plot Enstrophy Spectrum  
+       # Plot Enstrophy Spectrum  (2D)
        #--------------------------------
        ax5  = fig.add_subplot(gs[1, 2])
        enst_spec[Ny//3, Nx//3] = -10
@@ -1008,7 +1008,7 @@ def plot_sector_phase_sync_snaps_full_sec(i, out_dir, w, enst_spec, enst_flux, e
        cb5.set_label(r"$\mathcal{E}(\hat{\omega}_\mathbf{k})$")
 
        #--------------------------------
-       # Plot Sync Across Sectors 
+       # Plot Sync Across Sectors (2D)
        #--------------------------------
        ax6 = fig.add_subplot(gs[2, 0])
        im6 = ax6.imshow(np.flipud(R_a_sec), extent = (theta_k3_min, theta_k3_max, alpha_min, alpha_max), cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1]), vmin = 0.0, vmax = 1.0)
@@ -1025,7 +1025,7 @@ def plot_sector_phase_sync_snaps_full_sec(i, out_dir, w, enst_spec, enst_flux, e
        cb6.set_label(r"$\mathcal{R}^{2D}$")
 
        #--------------------------------
-       # Plot Avg Phase Across Sectors  
+       # Plot Avg Phase Across Sectors (2D)
        #--------------------------------
        ax7 = fig.add_subplot(gs[2, 1])
        im7 = ax7.imshow(np.flipud(Phi_a_sec), extent = (theta_k3_min, theta_k3_max, alpha_min, alpha_max), cmap = "bwr", vmin = -np.pi, vmax = np.pi)
@@ -1044,10 +1044,10 @@ def plot_sector_phase_sync_snaps_full_sec(i, out_dir, w, enst_spec, enst_flux, e
        cb7.set_label(r"$\Phi^{2D}$")
 
        #--------------------------------
-       # Plot Enstrophy Flux Across Sectors  
+       # Plot Enstrophy Flux Across Sectors  (2D)
        #--------------------------------
        ax8 = fig.add_subplot(gs[2, 2])
-       im8 = ax8.imshow(np.flipud(enst_flux_a_sec), extent = (theta_k3_min, theta_k3_max, alpha_min, alpha_max), cmap = "bwr", norm = mpl.colors.SymLogNorm(linthresh = 0.1))
+       im8 = ax8.imshow(np.flipud(enst_flux_a_sec), extent = (theta_k3_min, theta_k3_max, alpha_min, alpha_max), cmap = "bwr") #vmin = flux_lims[2], vmax = flux_lims[3] #, norm = mpl.colors.SymLogNorm(linthresh = 0.1)
        ax8.set_xticks(angticks)
        ax8.set_xticklabels(angtickLabels_alpha)
        ax8.set_yticks(angticks)

@@ -26,6 +26,8 @@ dist/
 # JetBrains IDE
 .idea/
 
+.bash_history
+
 # Unit test reports
 TEST*.xml
 

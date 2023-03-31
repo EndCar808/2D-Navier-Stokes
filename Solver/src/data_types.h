@@ -280,12 +280,12 @@ typedef struct Int_data_struct {
 
 // HDF5 file info struct
 typedef struct HDF_file_info_struct {
-	char input_file_name[512];		// Array holding input file name
-	char output_file_name[512];     // Output file name array
-	char spectra_file_name[512];    // Spectra file name array
-	char sync_file_name[512]; 	    // Phase Sync file name array
-	char input_dir[512];			// Inputs directory
-	char output_dir[512];			// Output directory
+	char input_file_name[1024];		// Array holding input file name
+	char output_file_name[1024];     // Output file name array
+	char spectra_file_name[1024];    // Spectra file name array
+	char sync_file_name[1024]; 	    // Phase Sync file name array
+	char input_dir[1024];			// Inputs directory
+	char output_dir[1024];			// Output directory
 	char output_tag[64]; 			// Tag to be added to the output directory
 	hid_t input_file_handle;		// File handle for the input file
 	hid_t output_file_handle;		// Main file handle for the output file 
@@ -294,7 +294,7 @@ typedef struct HDF_file_info_struct {
 	hid_t COMPLEX_DTYPE;			// Complex datatype handle
 	int file_only;					// Indicates if output should be file only with no output folder created
 	hid_t test_file_handle;         // File handle for testing
-	char test_file_name[512];       // File name for testing
+	char test_file_name[1024];       // File name for testing
 } HDF_file_info_struct;
 
 // Complex datatype struct for HDF5

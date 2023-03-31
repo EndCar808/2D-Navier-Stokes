@@ -53,12 +53,12 @@ void OpenInputAndInitialize(void) {
 		// Check input file mode
 		if (!(file_info->input_file_only)) {
 			// If input folder construct input file path
-			strcpy(file_info->input_file_name, file_info->input_dir);
+			strncpy(file_info->input_file_name, file_info->input_dir, 1024);
 			strcat(file_info->input_file_name, "Main_HDF_Data.h5");
 		}
 		else {
 			// If file only mode construct input file path
-			strcpy(file_info->input_file_name, file_info->input_dir);
+			strncpy(file_info->input_file_name, file_info->input_dir, 1024);
 		}
 
 		// Print input file path to screen
@@ -412,16 +412,16 @@ void ReadInData(int snap_indx) {
 void OpenOutputFile(void) {
 
 	// Initialize variables
-	char file_name[512];
+	char file_name[1024];
 	herr_t status;
 	struct stat st = {0};	// this is used to check whether the output directories exist or not.
 
 	// --------------------------------
 	//  Generate Output File Path
 	// --------------------------------
-	if (strcmp(file_info->output_dir, "NONE") == -1) {
+	if (strcmp(file_info->output_dir, "NONE") != 0) {
 		// Construct pathh
-		strcpy(file_info->output_file_name, file_info->output_dir);
+		strncpy(file_info->output_file_name, file_info->output_dir, 1024);
 		sprintf(file_name, "PostProcessing_HDF_Data_THREADS[%d,%d]_SECTORS[%d,%d]_KFRAC[%1.2lf]_TAG[%s].h5", sys_vars->num_threads, sys_vars->num_fftw_threads, sys_vars->num_k3_sectors, sys_vars->num_k1_sectors, sys_vars->kmax_frac, file_info->output_tag);
 		strcat(file_info->output_file_name, file_name);
 
@@ -432,7 +432,7 @@ void OpenOutputFile(void) {
 		printf("\n["YELLOW"NOTE"RESET"] --- No Output directory provided. Using input directory instead \n");
 
 		// Construct pathh
-		strcpy(file_info->output_file_name, file_info->input_dir);
+		strncpy(file_info->output_file_name, file_info->input_dir, 1024);
 		sprintf(file_name, "PostProcessing_HDF_Data_THREADS[%d,%d]_SECTORS[%d,%d]_KFRAC[%1.2lf]_TAG[%s].h5", sys_vars->num_threads, sys_vars->num_fftw_threads, sys_vars->num_k3_sectors, sys_vars->num_k1_sectors, sys_vars->kmax_frac, file_info->output_tag);
 		strcat(file_info->output_file_name, file_name);
 

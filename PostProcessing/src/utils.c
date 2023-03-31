@@ -48,8 +48,8 @@ int GetCMLArgs(int argc, char** argv) {
 	// Initialize Default Values
 	// -------------------------------
 	// Output & Input file directory
-	strncpy(file_info->output_dir, "NONE", 512);  // Set default output directory to the Tmp folder
-	strncpy(file_info->input_dir, "NONE", 512);  // Set default output directory to the Tmp folder
+	strncpy(file_info->output_dir, "NONE", 1024);  // Set default output directory to the Tmp folder
+	strncpy(file_info->input_dir, "NONE", 1024);  // Set default output directory to the Tmp folder
 	strncpy(file_info->output_tag, "No-Tag", 64);
 	file_info->input_file_only = 0; // used to indicate if input file was file only i.e., not output folder
 	file_info->output_file_only = 0; // used to indicate if output file should be file only i.e., not output folder
@@ -88,7 +88,7 @@ int GetCMLArgs(int argc, char** argv) {
 			case 'o':
 				if (output_dir_flag == 0) {
 					// Read in location of output directory
-					strncpy(file_info->output_dir, optarg, 512);
+					strncpy(file_info->output_dir, optarg, 1024);
 					output_dir_flag++;
 				}
 				else if (output_dir_flag == 1) {
@@ -99,7 +99,7 @@ int GetCMLArgs(int argc, char** argv) {
 			case 'i':
 				if (input_dir_flag == 0) {
 					// Read in location of input directory
-					strncpy(file_info->input_dir, optarg, 512);
+					strncpy(file_info->input_dir, optarg, 1024);
 					input_dir_flag++;
 				}
 				else if (input_dir_flag == 1) {

@@ -310,11 +310,11 @@ typedef struct stats_data_struct {
 
 // HDF5 file info struct
 typedef struct HDF_file_info_struct {
-	char input_file_name[512];		// Array holding input file name
-	char output_file_name[512];     // Output file name array
-	char wave_vec_data_name[512];   // File path for the phase sync wavector data
-	char output_dir[512];			// Output directory
-	char input_dir[512];			// Input directory
+	char input_file_name[1024];		// Array holding input file name
+	char output_file_name[1024];     // Output file name array
+	char wave_vec_data_name[1024];   // File path for the phase sync wavector data
+	char output_dir[1024];			// Output directory
+	char input_dir[1024];			// Input directory
 	char output_tag[64]; 			// Tag to be added to the output directory
 	hid_t output_file_handle;		// File handle for the output file 
 	hid_t input_file_handle;		// File handle for the input file 

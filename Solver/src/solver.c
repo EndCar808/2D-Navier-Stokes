@@ -1800,12 +1800,12 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 		// ---------------------------------------
 		if (!sys_vars->rank) {
 			// Get input file path
-			char tmp_path[512];
-			char tmp_filename[512];
-			strcpy(tmp_path, file_info->input_dir);
+			char tmp_path[1024];
+			char tmp_filename[1024];
+			strncpy(tmp_path, file_info->input_dir, 1024);
 			sprintf(tmp_filename, "MaxPalinstrophy/maxdpdt_P10000_N%ld_IG0_psi_f.h5", sys_vars->N[0]);
 			strcat(tmp_path, tmp_filename); 
-			strcpy(file_info->input_file_name, tmp_path); 
+			strncpy(file_info->input_file_name, tmp_path, 1024); 
 
 			// Open input file containing initial condition
 			file_info->input_file_handle = H5Fopen(file_info->input_file_name, H5F_ACC_RDONLY, H5P_DEFAULT);

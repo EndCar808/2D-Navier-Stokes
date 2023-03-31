@@ -8,18 +8,36 @@
 # ---------------------------------------------------------------------
 # Get the operating system:
 # Need to strip leading and/or trailing whitespaces otherwise if statement wont work
-OS = $(strip $(shell lsb_release -si))
+OS        = $(strip $(shell lsb_release -si))
+MACH_NAME = $(strip $(shell hostname))
 
 # Set the operating system dependent compiler variables
 ifeq ($(OS), Ubuntu)
-	# CHIRP
-	GCC := mpicc
-	CCFLAG := -O3 -W -Wall -g
-	LIBFLAG := -lfftw3_mpi -lfftw3 -lm -lhdf5 -lhdf5_hl #-fopenmp -lpthread -lfftw3_omp
-	# GSLFLAG := -lgsl -lgslcblas
-	# LAPACKFLAG := -llapacke -llapack -lblas -lgfortran
-	INCDIR = -I/usr/include/hdf5/openmpi/  #-I/usr/include/gsl/
-	LIBDIR = -L/usr/lib/x86_64-linux-gnu/hdf5/openmpi 
+	ifeq ($(MACH_NAME), DESKTOP-SS58OJO)
+		# LAPTOP: WSL2
+		GCC := mpicc
+		CCFLAG := -O3 -W -Wall -g
+		LIBFLAG := -lfftw3_mpi -lfftw3 -lm -lhdf5 -lhdf5_hl
+		GSLFLAG := -lgsl -lgslcblas
+		INCDIR = -I/home/endacarroll/Downloads/hdf5-1.12.2/hdf5/include -I/usr/include/gsl/
+		LIBDIR = -L/home/endacarroll/Downloads/hdf5-1.12.2/hdf5/lib
+	else ifeq ($(MACH_NAME), turbo)
+		# TURBO
+		GCC := mpicc
+		CCFLAG := -O3 -W -Wall -g
+		LIBFLAG := -lfftw3_mpi -lfftw3 -lm -lhdf5 -lhdf5_hl
+		GSLFLAG := -lgsl -lgslcblas
+		INCDIR = -I/usr/include/hdf5/openmpi -I/opt/software/fftw-3.3.10/include/ -I/usr/include/gsl/ 
+		LIBDIR = -L/usr/lib/x86_64-linux-gnu/hdf5/openmpi -L/opt/software/fftw-3.3.10/lib/
+	else
+		# CHIRP
+		GCC := mpicc
+		CCFLAG := -O3 -W -Wall -g
+		LIBFLAG := -lfftw3_mpi -lfftw3 -lm -lhdf5 -lhdf5_hl 
+		GSLFLAG := -lgsl -lgslcblas
+		INCDIR = -I/usr/include/hdf5/openmpi/  -I/usr/include/gsl/
+		LIBDIR = -L/usr/lib/x86_64-linux-gnu/hdf5/openmpi 
+	endif
 else ifeq ($(OS), RedHatEnterpriseServer)
 	# SONIC
 	GCC := mpicc

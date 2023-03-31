@@ -16,9 +16,10 @@ from numba import njit
 import matplotlib as mpl
 # mpl.use('TkAgg') # Use this backend for displaying plots in window
 mpl.use('Agg') # Use this backend for writing plots to file
-mpl.rcParams['text.usetex'] = True
-mpl.rcParams['font.family'] = 'serif'
-mpl.rcParams['font.serif']  = 'Computer Modern Roman'
+if mpl.__version__ > '2':    
+    mpl.rcParams['text.usetex'] = True
+    mpl.rcParams['font.family'] = 'serif'
+    mpl.rcParams['font.serif']  = 'Computer Modern Roman'
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -201,8 +202,10 @@ if __name__ == '__main__':
     post_data = import_post_processing_data(post_file_path, sys_vars, method)
 
     if cmdargs.full:
-        flux_min = np.amin(post_data.enst_flux_per_sec[:, :, :])
-        flux_max = np.amax(post_data.enst_flux_per_sec[:, :, :])
+        flux_min = np.amin(post_data.enst_flux_per_sec_1d[:, 0, :])
+        flux_max = np.amax(post_data.enst_flux_per_sec_1d[:, 0, :])
+        flux_2d_min = np.amin(post_data.enst_flux_per_sec_2d[:, 0, :, :])
+        flux_2d_max = np.amax(post_data.enst_flux_per_sec_2d[:, 0, :, :])
     # -----------------------------------------
     # # --------  Make Output Directories
     # -----------------------------------------
@@ -240,6 +243,7 @@ if __name__ == '__main__':
     triad_type = int(0)
 
     ## Enstrophy Flux Compare --- Sum over sectors -> Direct w/ NL w/ Test -> 1D + 2D = All -> Complexification
+    print("Plotting Validation Checks")
     fig = plt.figure(figsize = (21, 9))
     gs  = GridSpec(1, 3)
     ax1 = fig.add_subplot(gs[0, 0])
@@ -270,6 +274,7 @@ if __name__ == '__main__':
 
     ## Enstrophy Flux Compare --- Each sector -> Direct w/ NL -> 1D + 2D = All -> Complexification
     for k3 in range(post_data.num_k3_sect):
+        print("Validation Check - Sector {}/{}".format(k3 + 1, post_data.num_k3_sect))
         fig = plt.figure(figsize = (21, 9))
         gs  = GridSpec(1, 3)
         ax1 = fig.add_subplot(gs[0, 0])
@@ -360,7 +365,7 @@ if __name__ == '__main__':
                                                     post_data.theta_k3, 
                                                     post_data.triad_R_1d[i, int(cmdargs.triad_type), :], post_data.triad_R_2d[i, int(cmdargs.triad_type), :, :], 
                                                     post_data.triad_Phi_1d[i, int(cmdargs.triad_type), :], post_data.triad_Phi_2d[i, int(cmdargs.triad_type), :, :], 
-                                                    flux_min, flux_max, 
+                                                    [flux_min, flux_max, flux_2d_min, flux_2d_max],
                                                     run_data.time[i], 
                                                     run_data.x, run_data.y, 
                                                     sys_vars.Nx, sys_vars.Ny)) for i in range(sys_vars.ndata))] * proc_lim
@@ -397,7 +402,7 @@ if __name__ == '__main__':
                                                         post_data.theta_k3, 
                                                         post_data.triad_R_1d[i, t, :], post_data.triad_R_2d[i, t, :, :], 
                                                         post_data.triad_Phi_1d[i, t, :], post_data.triad_Phi_2d[i, t, :, :], 
-                                                        flux_min, flux_max, 
+                                                        [flux_min, flux_max, flux_2d_min, flux_2d_max],
                                                         run_data.time[i], 
                                                         run_data.x, run_data.y, 
                                                         sys_vars.Nx, sys_vars.Ny)) for i in range(sys_vars.ndata))] * proc_lim
@@ -455,7 +460,7 @@ if __name__ == '__main__':
                                                                             post_data.theta_k3, 
                                                                             post_data.triad_R_1d[i, int(cmdargs.triad_type), :], post_data.triad_R_2d[i, int(cmdargs.triad_type), :, :], 
                                                                             post_data.triad_Phi_1d[i, int(cmdargs.triad_type), :], post_data.triad_Phi_2d[i, int(cmdargs.triad_type), :, :], 
-                                                                            flux_min, flux_max, 
+                                                                            [flux_min, flux_max, flux_2d_min, flux_2d_max], 
                                                                             run_data.time[i], 
                                                                             run_data.x, run_data.y, 
                                                                             sys_vars.Nx, sys_vars.Ny)
@@ -481,7 +486,7 @@ if __name__ == '__main__':
                                                                             post_data.theta_k3, 
                                                                             post_data.triad_R_1d[i, t, :], post_data.triad_R_2d[i, t, :, :], 
                                                                             post_data.triad_Phi_1d[i, t, :], post_data.triad_Phi_2d[i, t, :, :], 
-                                                                            flux_min, flux_max, 
+                                                                            [flux_min, flux_max, flux_2d_min, flux_2d_max], 
                                                                             run_data.time[i], 
                                                                             run_data.x, run_data.y, 
                                                                             sys_vars.Nx, sys_vars.Ny)

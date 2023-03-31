@@ -1662,7 +1662,7 @@ void AllocatePhaseSyncMemory(const long int* N) {
 	herr_t status;
 	char dset_name[64];
 	char wave_vec_file[128];
-	strcpy(file_info->wave_vec_data_name, "./Data/PostProcess/PhaseSync");
+	strncpy(file_info->wave_vec_data_name, "./Data/PostProcess/PhaseSync", 1024);
 	sprintf(wave_vec_file, "/Wavevector_Data_N[%d,%d]_SECTORS[%d,%d]_KFRAC[%1.2lf].h5", (int)sys_vars->N[0], (int)sys_vars->N[1], sys_vars->num_k3_sectors, sys_vars->num_k1_sectors, sys_vars->kmax_frac);	
 	strcat(file_info->wave_vec_data_name, wave_vec_file);
 
