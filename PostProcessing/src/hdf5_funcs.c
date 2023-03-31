@@ -308,7 +308,7 @@ void ReadInData(int snap_indx) {
 				indx = tmp + j;
 
 				// Normalize the vorticity
-				run_data->w[indx] /= (Nx * Ny);
+				run_data->w[indx] *= 1.0; // / (Nx * Ny);
 			}
 		}
 	}
@@ -389,8 +389,8 @@ void ReadInData(int snap_indx) {
 				indx = tmp + j;
 
 				// Normalize the velocity
-				run_data->u[SYS_DIM * indx + 0] /= (Nx * Ny);
-				run_data->u[SYS_DIM * indx + 1] /= (Nx * Ny);
+				run_data->u[SYS_DIM * indx + 0] *= 1.0; //(Nx * Ny);
+				run_data->u[SYS_DIM * indx + 1] *= 1.0; //(Nx * Ny);
 			}
 		}
 	}
@@ -577,7 +577,7 @@ void WriteDataToFile(double t, long int snap) {
 			indx = temp + j;
 
 			// Normalize the vorticity
-			run_data->w[indx] /= (Nx * Ny);
+			run_data->w[indx] *= 1.0; // /(Nx * Ny);
 		}
 	}
 
@@ -628,8 +628,8 @@ void WriteDataToFile(double t, long int snap) {
 			indx = temp + j;
 
 			// Normalize the velocity
-			run_data->u[SYS_DIM * indx + 0] /= (Nx * Ny);
-			run_data->u[SYS_DIM * indx + 1] /= (Nx * Ny);
+			run_data->u[SYS_DIM * indx + 0] *= 1.0; // /(Nx * Ny);
+			run_data->u[SYS_DIM * indx + 1] *= 1.0; // /(Nx * Ny);
 		}
 	}
 

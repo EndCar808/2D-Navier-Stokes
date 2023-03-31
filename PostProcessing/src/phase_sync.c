@@ -1730,15 +1730,22 @@ void AllocatePhaseSyncMemory(const long int* N) {
 		double k3_angle_neg, k1_angle_neg, k2_angle_neg;
 		double C_theta_k3_lwr, C_theta_k3_upr, C_theta_k1_upr, C_theta_k1_lwr;
 		long int total_terms = 0;
-		
-		// Print to screen that a pre computation search is needed for the phase sync wavevectors and begin timeing it
-		printf("\n["YELLOW"NOTE"RESET"] --- Performing search over wavevectors for Phase Sync computation...\n");
-		printf("\nNumber of k_3 Sectors: ["CYAN"%d"RESET"]\nNumber of k_1 Sectors: ["CYAN"%d"RESET"]\n\n", sys_vars->num_k3_sectors, sys_vars->num_k1_sectors);
+		long int total_terms_per_sec = 0;
+		double search_end, search_begin;
+
 		// Start timer
 		double loop_begin = omp_get_wtime();
 
+		// Print to screen that a pre computation search is needed for the phase sync wavevectors and begin timeing it
+		printf("\n["YELLOW"NOTE"RESET"] --- Performing search over wavevectors for Phase Sync computation...\n");
+		printf("\nNumber of k_3 Sectors: ["CYAN"%d"RESET"]\nNumber of k_1 Sectors: ["CYAN"%d"RESET"]\n\n", sys_vars->num_k3_sectors, sys_vars->num_k1_sectors);
+
 		// Loop through the sectors for k3
 		for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
+
+			// Initialize counter for terms per sector and start time of the current loop
+			double search_begin = omp_get_wtime();
+			total_terms_per_sec = 0;
 			
 			// Get the angles for the current sector
 			C_theta_k3 = proc_data->theta_k3[a];
@@ -1960,7 +1967,12 @@ void AllocatePhaseSyncMemory(const long int* N) {
 				// Record the number of triad wavevectors
 				proc_data->num_wave_vecs[a][k1_sec_indx] = nn;
 				total_terms += nn;
+				total_terms_per_sec += nn;
 			}
+
+			// Write Update to Screen 
+			double search_end = omp_get_wtime();
+			printf("Sector: %d/%d\tNum Terms: %ld\tTime: %g(s)\n", a, sys_vars->num_k3_sectors, total_terms_per_sec, (search_end - search_begin));
 		}
 
 		///-------------------- Realloc the last dimension in wavevector array to its correct size

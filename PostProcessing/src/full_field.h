@@ -19,7 +19,7 @@
 //  Function Prototypes
 // ---------------------------------------------------------------------
 void AllocateFullFieldMemory(const long int* N);
-void ForceConjugacy(fftw_complex* w_hat, const long int* N);
+void ForceConjugacy(fftw_complex* array, const long int* N, const int dim);
 void GetDissipativeTerm(double* diss, double* k_sqr);
 void FullFieldData(void);
 void FluxSpectra(int snap);

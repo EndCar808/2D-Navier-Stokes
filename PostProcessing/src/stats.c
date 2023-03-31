@@ -103,10 +103,10 @@ void RealSpaceStats(int s) {
 			indx = tmp + j;
 
 			// Normalize the gradients
-			proc_data->grad_w[SYS_DIM * indx + 0] *= norm_fac;
-			proc_data->grad_w[SYS_DIM * indx + 1] *= norm_fac;
-			proc_data->grad_u[SYS_DIM * indx + 0] *= norm_fac;
-			proc_data->grad_u[SYS_DIM * indx + 1] *= norm_fac;
+			proc_data->grad_w[SYS_DIM * indx + 0] *= 1.0; //norm_fac;
+			proc_data->grad_w[SYS_DIM * indx + 1] *= 1.0; //norm_fac;
+			proc_data->grad_u[SYS_DIM * indx + 0] *= 1.0; //norm_fac;
+			proc_data->grad_u[SYS_DIM * indx + 1] *= 1.0; //norm_fac;
 		}
 	}
 	#endif

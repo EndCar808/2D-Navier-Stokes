@@ -231,17 +231,17 @@ void ComputeSystemMeasurables(double t, int iter, Int_data_struct* Int_data) {
 			if ((run_data->k[0][i] != 0) || (run_data->k[1][j] != 0)) {
 				#if defined(__ENRG_FLUX_SPECT) || defined(__ENST_FLUX_SPECT)
 				// Get the derivative and dissipation terms
-				tmp_deriv = creal(run_data->w_hat[indx] * conj(Int_data->RK1[indx]) + conj(run_data->w_hat[indx]) * Int_data->RK1[indx]) * const_fac * norm_fac;
-				tmp_diss  = pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * const_fac * norm_fac;
+				tmp_deriv = creal(run_data->w_hat[indx] * conj(Int_data->RK1[indx]) + conj(run_data->w_hat[indx]) * Int_data->RK1[indx]); // * const_fac * norm_fac;
+				tmp_diss  = pre_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])); // * const_fac * norm_fac;
 				#endif
 
 				if ((j == 0) || (j == Ny_Fourier - 1)) {
 					// Update the current bin
 					#if defined(__ENRG_SPECT)
-					run_data->enrg_spect[spec_indx] += const_fac * norm_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * (1.0 / k_sqr);
+					run_data->enrg_spect[spec_indx] += cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * (1.0 / k_sqr); // const_fac * norm_fac * 
 					#endif
 					#if defined(__ENST_SPECT)
-					run_data->enst_spect[spec_indx] += const_fac * norm_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+					run_data->enst_spect[spec_indx] += cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])); // const_fac * norm_fac * 
 					#endif
 					#if defined(__ENST_FLUX_SPECT)
 					run_data->d_enst_dt_spect[spec_indx] += tmp_deriv + tmp_diss;
@@ -257,10 +257,10 @@ void ComputeSystemMeasurables(double t, int iter, Int_data_struct* Int_data) {
 				else {
 					// Update the spectra sums for the current mode
 					#if defined(__ENRG_SPECT)
-					run_data->enrg_spect[spec_indx] += 2.0 * const_fac * norm_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * (1.0 / k_sqr);
+					run_data->enrg_spect[spec_indx] += 2.0 * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])) * (1.0 / k_sqr); //* const_fac * norm_fac 
 					#endif
 					#if defined(__ENST_SPECT)
-					run_data->enst_spect[spec_indx] += 2.0 * const_fac * norm_fac * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx]));
+					run_data->enst_spect[spec_indx] += 2.0 * cabs(run_data->w_hat[indx] * conj(run_data->w_hat[indx])); //* const_fac * norm_fac 
 					#endif
 					#if defined(__ENST_FLUX_SPECT)
 					run_data->d_enst_dt_spect[spec_indx] += 2.0 * (tmp_deriv + tmp_diss);

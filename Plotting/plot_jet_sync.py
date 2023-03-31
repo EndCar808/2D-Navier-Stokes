@@ -232,8 +232,9 @@ if __name__ == '__main__':
     # -----------------------------------------
     ## Normalizing constants
     const_fac_sector = 4.0 * np.pi**2 
-    const_fac = 4.0 * np.pi**2 
-    norm_fac  = 0.5 / (sys_vars.Nx * sys_vars.Ny)**3
+    const_fac = -0.5 #4.0 * np.pi**2 
+    norm_fac  = (sys_vars.Nx * sys_vars.Ny)**2 #0.5 / (sys_vars.Nx * sys_vars.Ny)**3
+    # NL and direct are off by -0.5 (Nx * Ny)^2 
 
     # Triad type all
     triad_type = int(0)
@@ -243,7 +244,7 @@ if __name__ == '__main__':
     gs  = GridSpec(1, 3)
     ax1 = fig.add_subplot(gs[0, 0])
     ax1.plot(np.sum(post_data.enst_flux_per_sec[:, triad_type, :], axis = -1) * const_fac * norm_fac, '-', marker='o', markersize=10, markevery=5, label=r"$\sum_\theta$E Flux Per Sector $\mathcal{S}_\theta^{U}$ Direct")
-    ax1.plot(np.sum(post_data.enst_flux_C_theta[:, :], axis = -1) * 2, '*-', markevery=5, label=r"$\sum_\theta$ E Flux Per Sector $\mathcal{S}_\theta^{U}$ NL")
+    ax1.plot(np.sum(post_data.enst_flux_C_theta[:, :], axis = -1), '*-', markevery=5, label=r"$\sum_\theta$ E Flux Per Sector $\mathcal{S}_\theta^{U}$ NL")
     if hasattr(post_data, "enst_flux_test"):
         ax1.plot(post_data.enst_flux_test[:, triad_type] * const_fac * norm_fac, '--', label=r"Enstrophy Flux $\mathcal{C}$ Direct (Test)")
     ax1.set_title(r"Compare Flux: Sum over Sectors: Totals (Type 0)")
@@ -251,14 +252,14 @@ if __name__ == '__main__':
     ax1.legend()
     ax2 = fig.add_subplot(gs[0, 1])
     ax2.plot(np.sum(post_data.enst_flux_per_sec[:, triad_type, :], axis=-1) * const_fac * norm_fac, '-', marker='o', markersize=10, markevery=5, label=r"E Flux Per Sector $\mathcal{S}_\theta^{U}$ Direct")
-    ax2.plot(np.sum(post_data.enst_flux_C_theta[:, :], axis=-1)* 2, '*-', markevery=5, label=r" E Flux Per Sector $\mathcal{S}_\theta^{U}$ NL")
+    ax2.plot(np.sum(post_data.enst_flux_C_theta[:, :], axis=-1), '*-', markevery=5, label=r" E Flux Per Sector $\mathcal{S}_\theta^{U}$ NL")
     ax2.plot(np.sum(post_data.enst_flux_per_sec_1d[:, triad_type, :] + np.sum(post_data.enst_flux_per_sec_2d[:, triad_type, :, :], axis = -1), axis=-1) * const_fac * norm_fac, '--', label=r"1D + 2D Direct")
     ax2.set_title(r"Compare Flux: 1D + 2D = All - Direct w/ NL")
     ax2.grid()
     ax2.legend()
     ax3 = fig.add_subplot(gs[0, 2])
     ax3.plot(np.sum(post_data.enst_flux_per_sec[:, triad_type, :], axis = -1) * const_fac * norm_fac, '-', marker='o', markersize=10, markevery=5, label=r"$\sum_\theta\Pi_{\mathcal{S}_\theta^{U}}$ Direct")
-    ax3.plot(np.sum(np.real(post_data.phase_order_C_theta[:, :]), axis = -1) * 2 * 2, '*-', markevery=5, label=r"$\sum_\theta \Re\{Re^{\Phi}\}$ NL")
+    ax3.plot(np.sum(np.real(post_data.phase_order_C_theta[:, :]), axis = -1), '*-', markevery=5, label=r"$\sum_\theta \Re\{Re^{\Phi}\}$ NL")
     ax3.plot(np.sum(np.real(post_data.phase_order_C_theta_triads[:, triad_type, :]), axis = -1) * const_fac * norm_fac, '--', label=r"$\sum_\theta \Re\{Re^{\Phi}\}$ Direct")
     ax3.set_title(r"Compare Complexification: Sum over Sectors: Totals (Type 0)")
     ax3.grid()
@@ -272,21 +273,21 @@ if __name__ == '__main__':
         fig = plt.figure(figsize = (21, 9))
         gs  = GridSpec(1, 3)
         ax1 = fig.add_subplot(gs[0, 0])
-        ax1.plot(post_data.enst_flux_per_sec[:, triad_type, k3] * const_fac_sector * norm_fac, '-', marker='o', markersize=10, markevery=5, label=r"E Flux Per Sector $\mathcal{S}_\theta^{U}$ Direct")
-        ax1.plot(post_data.enst_flux_C_theta[:, k3] * 2, '*-', markevery=5, label=r"E Flux Per Sector $\mathcal{S}_\theta^{U}$ NL")
+        ax1.plot(post_data.enst_flux_per_sec[:, triad_type, k3] * const_fac * norm_fac, '-', marker='o', markersize=10, markevery=5, label=r"E Flux Per Sector $\mathcal{S}_\theta^{U}$ Direct")
+        ax1.plot(post_data.enst_flux_C_theta[:, k3], '*-', markevery=5, label=r"E Flux Per Sector $\mathcal{S}_\theta^{U}$ NL")
         ax1.set_title(r"Comparing Flux: Direct w/ NL: Sector {}".format(k3 + 1))
         ax1.grid()
         ax1.legend()
         ax2 = fig.add_subplot(gs[0, 1])
         ax2.plot(post_data.enst_flux_per_sec[:, triad_type, k3] * const_fac * norm_fac, '-', marker='o', markersize=10, markevery=5,  label=r"E Flux Per Sector $\mathcal{S}_\theta^{U}$ Direct")
-        ax2.plot(post_data.enst_flux_C_theta[:, k3] * 2, '*-', markevery=5, label=r"E Flux Per Sector $\mathcal{S}_\theta^{U}$ NL")
+        ax2.plot(post_data.enst_flux_C_theta[:, k3], '*-', markevery=5, label=r"E Flux Per Sector $\mathcal{S}_\theta^{U}$ NL")
         ax2.plot(post_data.enst_flux_per_sec_1d[:, triad_type, k3] * const_fac * norm_fac + np.sum(post_data.enst_flux_per_sec_2d[:, triad_type, k3, :], axis = -1) * const_fac * norm_fac, '--', label=r"1D + 2D Direct")
         ax2.set_title(r"Compare Flux: 1D + 2D = All - Direct w/ NL: Sector {}".format(k3 + 1))
         ax2.grid()
         ax2.legend()
         ax3 = fig.add_subplot(gs[0, 2])
         ax3.plot(post_data.enst_flux_per_sec[:, triad_type, k3] * const_fac * norm_fac, '-', marker='o', markersize=10, markevery=5, label=r"$\Pi_{\mathcal{S}_\theta^{U}}$")
-        ax3.plot(np.real(post_data.phase_order_C_theta[:, k3]) * 2 * 2, '*-', markevery=5, label=r"$\Re\{Re^{\Phi}\}$ NL")
+        ax3.plot(np.real(post_data.phase_order_C_theta[:, k3]), '*-', markevery=5, label=r"$\Re\{Re^{\Phi}\}$ NL")
         ax3.plot(np.real(post_data.phase_order_C_theta_triads[:, triad_type, k3]) * const_fac * norm_fac,'--', label=r"$\Re\{Re^{\Phi}\}$ Direct")
         ax3.set_title(r"Compare Complexification: Sector {}".format(k3 + 1))
         ax3.grid()

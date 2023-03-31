@@ -65,7 +65,6 @@ void PostProcessing(void) {
 		// Start timer
 		double loop_begin = omp_get_wtime();
 		
-	
 		// --------------------------------
 		//  Read in Data
 		// --------------------------------
@@ -451,40 +450,29 @@ void InitializeFFTWPlans(const long int* N) {
 	const long int Ny = N[1];
 	const int N_batch[SYS_DIM] = {Nx, Ny};
 
-	#if defined(__REAL_STATS) || defined(__VEL_INC_STATS) || defined(__STR_FUNC_STATS) || defined(__GRAD_STATS) || defined(__VORT_REAL) || defined(__VORT_REAL)
 	// Initialize Fourier Transforms
 	sys_vars->fftw_2d_dft_c2r = fftw_plan_dft_c2r_2d(Nx, Ny, run_data->w_hat, run_data->w, FFTW_MEASURE);
 	if (sys_vars->fftw_2d_dft_c2r == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to initialize basic C2R FFTW Plan\n-->> Exiting!!!\n");
 		exit(1);
 	}
-	#endif
-
-	#if defined(__ENST_FLUX) || defined(__ENRG_FLUX) || defined(__SEC_PHASE_SYNC)
 	sys_vars->fftw_2d_dft_r2c = fftw_plan_dft_r2c_2d(Nx, Ny, run_data->w, run_data->w_hat, FFTW_MEASURE);
 	if (sys_vars->fftw_2d_dft_r2c == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to initialize basic R2C FFTW Plan\n-->> Exiting!!!\n");
 		exit(1);
 	}
-	#endif
-
-	#if defined(__ENST_FLUX) || defined(__ENRG_FLUX) || defined(__SEC_PHASE_SYNC) || defined(__REAL_STATS) || defined(__GRAD_STATS) || defined(__REALSPACE)
 	// Initialize Batch Fourier Transforms
 	sys_vars->fftw_2d_dft_batch_c2r = fftw_plan_many_dft_c2r(SYS_DIM, N_batch, SYS_DIM, run_data->u_hat, NULL, SYS_DIM, 1, run_data->u, NULL, SYS_DIM, 1, FFTW_MEASURE);
 	if (sys_vars->fftw_2d_dft_batch_c2r == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to initialize batch C2R FFTW Plan\n-->> Exiting!!!\n");
 		exit(1);
 	}
-	#endif
-
-	#if defined(__GRAD_STATS) || defined(__REALSPACE)
 	// Initialize Batch Fourier Transforms
 	sys_vars->fftw_2d_dft_batch_r2c = fftw_plan_many_dft_r2c(SYS_DIM, N_batch, SYS_DIM, run_data->u, NULL, SYS_DIM, 1, run_data->u_hat, NULL, SYS_DIM, 1, FFTW_MEASURE);
 	if (sys_vars->fftw_2d_dft_batch_r2c == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to initialize batch R2C FFTW Plan\n-->> Exiting!!!\n");
 		exit(1);
 	}
-	#endif
 }
 /**
  * Wrapper function to free memory and close any objects before exiting
@@ -529,18 +517,10 @@ void FreeMemoryAndCleanUp(void) {
 	//  Free FFTW Plans
 	// --------------------------------
 	// Destroy FFTW plans
-	#if defined(__REAL_STATS) || defined(__VEL_INC_STATS) || defined(__STR_FUNC_STATS) || defined(__GRAD_STATS) || defined(__VORT_REAL) || defined(__VORT_REAL)
 	fftw_destroy_plan(sys_vars->fftw_2d_dft_c2r);
-	#endif
-	#if defined(__ENST_FLUX) || defined(__ENRG_FLUX) || defined(__SEC_PHASE_SYNC)
 	fftw_destroy_plan(sys_vars->fftw_2d_dft_r2c);
-	#endif
-	#if defined(__ENST_FLUX) || defined(__ENRG_FLUX) || defined(__SEC_PHASE_SYNC) || defined(__REAL_STATS) || defined(__GRAD_STATS) || defined(__REALSPACE)
 	fftw_destroy_plan(sys_vars->fftw_2d_dft_batch_c2r);
-	#endif
-	#if defined(__GRAD_STATS) || defined(__REALSPACE)
 	fftw_destroy_plan(sys_vars->fftw_2d_dft_batch_r2c);
-	#endif	
 
 	// --------------------------------
 	//  Close HDF5 Objects
