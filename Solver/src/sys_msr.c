@@ -309,29 +309,29 @@ void ComputeSystemMeasurables(double t, int iter, Int_data_struct* Int_data) {
 		}
 	}
 
-	// ------------------------------------
-	// Normalize Measureables 
-	// ------------------------------------	
-	#if defined(__SYS_MEASURES)
-	if (iter < sys_vars->num_print_steps) {
-		// Normalize results and take into account computation in Fourier space
-		run_data->enrg_diss[iter]  *= 2.0 * const_fac * norm_fac;
-		run_data->enst_diss[iter]  *= 2.0 * const_fac * norm_fac;
-		run_data->tot_enstr[iter]  *= const_fac * norm_fac;
-		run_data->tot_palin[iter]  *= const_fac * norm_fac;
-		run_data->tot_forc[iter]   *= const_fac * norm_fac;
-		run_data->tot_div[iter]    *= const_fac * norm_fac;
-		run_data->tot_energy[iter] *= const_fac * norm_fac;
-	}
-	#endif
-	#if defined(__ENRG_FLUX)
-	run_data->enrg_flux_sbst[iter] *= const_fac * norm_fac;
-	run_data->enrg_diss_sbst[iter] *= 2.0 * const_fac * norm_fac;
-	#endif
-	#if defined(__ENST_FLUX)
-	run_data->enst_flux_sbst[iter] *= const_fac * norm_fac;
-	run_data->enst_diss_sbst[iter] *= 2.0 * const_fac * norm_fac;
-	#endif
+	// // ------------------------------------
+	// // Normalize Measureables 
+	// // ------------------------------------	
+	// #if defined(__SYS_MEASURES)
+	// if (iter < sys_vars->num_print_steps) {
+	// 	// Normalize results and take into account computation in Fourier space
+	// 	run_data->enrg_diss[iter]  *= 2.0 * const_fac * norm_fac;
+	// 	run_data->enst_diss[iter]  *= 2.0 * const_fac * norm_fac;
+	// 	run_data->tot_enstr[iter]  *= const_fac * norm_fac;
+	// 	run_data->tot_palin[iter]  *= const_fac * norm_fac;
+	// 	run_data->tot_forc[iter]   *= const_fac * norm_fac;
+	// 	run_data->tot_div[iter]    *= const_fac * norm_fac;
+	// 	run_data->tot_energy[iter] *= const_fac * norm_fac;
+	// }
+	// #endif
+	// #if defined(__ENRG_FLUX)
+	// run_data->enrg_flux_sbst[iter] *= const_fac * norm_fac;
+	// run_data->enrg_diss_sbst[iter] *= 2.0 * const_fac * norm_fac;
+	// #endif
+	// #if defined(__ENST_FLUX)
+	// run_data->enst_flux_sbst[iter] *= const_fac * norm_fac;
+	// run_data->enst_diss_sbst[iter] *= 2.0 * const_fac * norm_fac;
+	// #endif
 }
 /**
  * Function to initialize and compute the system measurables and spectra of the initial conditions

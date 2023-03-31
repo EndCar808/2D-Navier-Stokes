@@ -144,7 +144,7 @@
 #define EXTRM_ENS_POW 1.5 		// The power for wavevectors for the Exponential enstrophy distribution
 #define UNIF_MIN_K 2.5
 #define UNIF_MAX_K 9.5
-#define RAND_ENST0 0.5
+#define RAND_ENST0 1.0
 // Forcing parameters
 #define STOC_FORC_K_MIN	0.5		// The minimum value of the modulus forced wavevectors for the stochasitc (Gaussian) forcing
 #define STOC_FORC_K_MAX 2.5     // The maximum value of the modulus forced wavevectors for the stochastic (Gaussian) forcing
@@ -216,7 +216,9 @@ typedef struct runtime_data_struct {
 	double* x[SYS_DIM];       			// Array to hold collocation pts
 	int* k[SYS_DIM];		  			// Array to hold wavenumbers
 	fftw_complex* w_hat;      			// Fourier space vorticity
+	fftw_complex* w_hat_tmp;   			// Fourier space vorticity tmp array for perform DFT on (need since FFTW overwrites input array)
 	fftw_complex* u_hat;      			// Fourier space velocity
+	fftw_complex* u_hat_tmp;   			// Fourier space velocity tmp array  for perform DFT on (need since FFTW overwrites input array)
 	fftw_complex* rhs; 		  			// Array to hold the RHS of the equation of motion
 	fftw_complex* nonlinterm; 			// Array to hold the nonlinear term
 	double* w;				  			// Real space vorticity

@@ -291,8 +291,18 @@ void AB4Step(const double dt, const long int* N, const int iters, const ptrdiff_
 		// -----------------------------------
 		// Compute Nonlinear Term
 		// -----------------------------------
+		// Compute the Fourier vorticity
+		for (int i = 0; i < local_Nx; ++i) {
+			tmp = i * Ny_Fourier;
+			for (int j = 0; j < Ny_Fourier; ++j) {
+				indx = tmp + j;
+
+				// Get the Fourier vorticity
+				Int_data->RK_tmp[indx] = run_data->w_hat[indx];
+			}
+		}
 		// Get the nonlinear term for the current step
-		NonlinearRHSBatch(run_data->w_hat, Int_data->AB_tmp, Int_data->nonlin, Int_data->nabla_psi, Int_data->nabla_w);
+		NonlinearRHSBatch(Int_data->RK_tmp, Int_data->AB_tmp, Int_data->nonlin, Int_data->nabla_psi, Int_data->nabla_w);
 
 
 		/////////////////////
@@ -624,12 +634,23 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Nx, Int_d
 	//------------------- Get the forcing
 	ComputeForcing();
 
+	//------------------- Compute the Fourier vorticity
+	for (int i = 0; i < local_Nx; ++i) {
+		tmp = i * Ny_Fourier;
+		for (int j = 0; j < Ny_Fourier; ++j) {
+			indx = tmp + j;
+			
+			// Get the Fourier vorticity
+			Int_data->RK_tmp[indx] = run_data->w_hat[indx];
+		}
+	}
+
 
 	/////////////////////
 	/// RK STAGES
 	/////////////////////
 	// ----------------------- Stage 1
-	NonlinearRHSBatch(run_data->w_hat, Int_data->RK1, Int_data->nonlin, Int_data->nabla_psi, Int_data->nabla_w);
+	NonlinearRHSBatch(Int_data->RK_tmp, Int_data->RK1, Int_data->nonlin, Int_data->nabla_psi, Int_data->nabla_w);
 	for (int i = 0; i < local_Nx; ++i) {
 		tmp = i * Ny_Fourier;
 		for (int j = 0; j < Ny_Fourier; ++j) {
@@ -673,7 +694,7 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Nx, Int_d
 		for (int j = 0; j < Ny_Fourier; ++j) {
 			indx = tmp + j;
 
-			if ((run_data->k[0][i] != 0) || (run_data->k[1][j]  != 0)) {
+			if ((run_data->k[0][i] != 0) || (run_data->k[1][j] != 0)) {
 				#if defined(PHASE_ONLY)
 				// Pre-record the amplitudes
 				tmp_a_k_norm = cabs(run_data->w_hat[indx]);
@@ -682,7 +703,7 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Nx, Int_d
 				#if defined(__EULER)
 				// Update Fourier vorticity with the RHS
 				run_data->w_hat[indx] = run_data->w_hat[indx] + (dt * (RK4_B1 * Int_data->RK1[indx]) + dt * (RK4_B2 * Int_data->RK2[indx]) + dt * (RK4_B3 * Int_data->RK3[indx]) + dt * (RK4_B4 * Int_data->RK4[indx]));
-				#elif defined(__NAVIER)
+				#elif defined(__NAVIER) && (defined(__RK4) || defined(__AB4))
 				// Compute the pre factors for the RK4CN update step
 				k_sqr = (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 				
@@ -702,15 +723,15 @@ void RK4Step(const double dt, const long int* N, const ptrdiff_t local_Nx, Int_d
 			}
 		}
 	}
-	#if defined(__NONLIN)
-	// Record the nonlinear term with the updated Fourier vorticity
-	NonlinearRHSBatch(run_data->w_hat, run_data->nonlinterm, Int_data->nonlin, Int_data->nabla_psi, Int_data->nabla_w);
-	if (sys_vars->local_forcing_proc) {
-		for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
-			run_data->nonlinterm[run_data->forcing_indx[i]] -= run_data->forcing[i];
-		}
-	}
-	#endif
+	// #if defined(__NONLIN)
+	// // Record the nonlinear term with the updated Fourier vorticity
+	// NonlinearRHSBatch(run_data->w_hat, run_data->nonlinterm, Int_data->nonlin, Int_data->nabla_psi, Int_data->nabla_w);
+	// if (sys_vars->local_forcing_proc) {
+	// 	for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
+	// 		run_data->nonlinterm[run_data->forcing_indx[i]] -= run_data->forcing[i];
+	// 	}
+	// }
+	// #endif
 }
 #endif
 /**
@@ -730,9 +751,8 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* non
 	const long int Nx         = sys_vars->N[0];
 	const long int Ny         = sys_vars->N[1];
 	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
-	fftw_complex k_sqr;
-	double vel1;
-	double vel2;
+	double k_sqr;
+	double norm_fac = 1.0 / (Ny * Nx);
 
 	// -----------------------------------
 	// Compute Fourier Space Velocities
@@ -743,13 +763,16 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* non
 		for (int j = 0; j < Ny_Fourier; ++j) {
 			indx = tmp + j;
 
+			// Write Fourier vorticity to temp array for inverse transform later
+			run_data->w_hat_tmp[indx] = w_hat[indx];
+
 			if ((run_data->k[0][i] != 0) || (run_data->k[1][j]  != 0)) {
 				// denominator
-				k_sqr = I / (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
+				k_sqr = 1.0 / (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 
 				// Fill fill fourier velocities array
-				dw_hat_dt[SYS_DIM * indx + 0] = k_sqr * ((double) run_data->k[1][j]) * w_hat[indx];
-				dw_hat_dt[SYS_DIM * indx + 1] = -1.0 * k_sqr * ((double) run_data->k[0][i]) * w_hat[indx];
+				dw_hat_dt[SYS_DIM * indx + 0] = I * ((double) run_data->k[1][j]) * k_sqr * w_hat[indx];
+				dw_hat_dt[SYS_DIM * indx + 1] = -1.0 * I * ((double) run_data->k[0][i]) * k_sqr * w_hat[indx];
 			}
 			else {
 				dw_hat_dt[SYS_DIM * indx + 0] = 0.0 + 0.0 * I;
@@ -758,39 +781,20 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* non
 		}
 	}
 
+	// Ensure conjugacy in the ky = 0 modes
+    ForceConjugacy(dw_hat_dt, sys_vars->N, 2);
+
 	// ----------------------------------
-	// Transform to Real Space
+	// Transform to Real Space Velocity
 	// ----------------------------------
 	// Batch transform both fourier velocites to real space
 	fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_batch_c2r), dw_hat_dt, u);
 
-	// ---------------------------------------------
-	// Compute Fourier Space Vorticity Derivatives
-	// ---------------------------------------------
-	// Compute \nabla\omega - i.e., d\omegahat_dx = -I kx \omegahat_k, d\omegahat_dy = -I ky \omegahat_k
-	for (int i = 0; i < local_Nx; ++i) {
-		tmp = i * (Ny_Fourier);
-		for (int j = 0; j < Ny_Fourier; ++j) {
-			indx = tmp + j;
-
-			// Fill vorticity derivatives array
-			if ((run_data->k[0][i] != 0) || (run_data->k[1][j]  != 0)) {
-				dw_hat_dt[SYS_DIM * indx + 0] = I * ((double) run_data->k[0][i]) * w_hat[indx];
-				dw_hat_dt[SYS_DIM * indx + 1] = I * ((double) run_data->k[1][j]) * w_hat[indx]; 
-			}
-			else {
-				dw_hat_dt[SYS_DIM * indx + 0] = 0.0 + 0.0 * I;
-				dw_hat_dt[SYS_DIM * indx + 1] = 0.0 + 0.0 * I;
-			}
-		}
-	}
-
 	// ----------------------------------
-	// Transform to Real Space
+	// Transform to Real Space Vorticity
 	// ----------------------------------
-	// Batch transform both fourier vorticity derivatives to real space
-	fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_batch_c2r), dw_hat_dt, nabla_w);
-	
+	// Batch transform both fourier velocites to real space
+	fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_c2r), run_data->w_hat_tmp, run_data->w);
 
 	// -----------------------------------
 	// Perform Convolution in Real Space
@@ -799,29 +803,34 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* non
 	for (int i = 0; i < local_Nx; ++i) {
 		tmp = i * (Ny + 2);
 		for (int j = 0; j < Ny; ++j) {
-			indx = tmp + j; 
- 			
- 			// Perform multiplication of the nonlinear term 
- 			vel1 = u[SYS_DIM * indx + 0];
- 			vel2 = u[SYS_DIM * indx + 1];
- 			nonlinear[indx] = 1.0 * (vel1 * nabla_w[SYS_DIM * indx + 0] + vel2 * nabla_w[SYS_DIM * indx + 1]);
- 		}
- 	}
+			indx = tmp + j;
 
- 	// -------------------------------------
+			// Perform multiplication of the nonlinear term 
+			u[SYS_DIM * indx + 0] *= run_data->w[indx]; 
+			u[SYS_DIM * indx + 1] *= run_data->w[indx]; 
+		}
+	}
+
+	// -------------------------------------
  	// Transform Nonlinear Term To Fourier
  	// -------------------------------------
  	// Transform Fourier nonlinear term back to Fourier space
- 	fftw_mpi_execute_dft_r2c((sys_vars->fftw_2d_dft_r2c), nonlinear, dw_hat_dt);
+ 	fftw_mpi_execute_dft_r2c((sys_vars->fftw_2d_dft_batch_r2c), u, dw_hat_dt);
+	
+	// Ensure conjugacy in the kx = 0 modes
+    ForceConjugacy(dw_hat_dt, sys_vars->N, 2);
 
 
+ 	// -------------------------------------
+ 	// Complete Computation of Nonlinear Term
+ 	// -------------------------------------
  	for (int i = 0; i < local_Nx; ++i) {
  		tmp = i * (Ny_Fourier);
  		for (int j = 0; j < Ny_Fourier; ++j) {
  			indx = tmp + j;
 
  			if ((run_data->k[0][i] != 0) || (run_data->k[1][j]  != 0)) {
- 				dw_hat_dt[indx] *= 1.0 / pow((Nx * Ny), 2.0);
+ 				dw_hat_dt[indx] = (-I * run_data->k[0][i] * dw_hat_dt[SYS_DIM * indx + 0] -I * run_data->k[1][j] * dw_hat_dt[SYS_DIM * indx + 1]) * pow(norm_fac, 1.0);
  			}
  			else {
  				dw_hat_dt[indx] = 0.0 + 0.0 * I;
@@ -833,9 +842,6 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* non
  	// ----------------------------------------
  	// Apply Dealiasing & Forcing & Conjugacy
  	// ----------------------------------------
- 	// Apply dealiasing 
- 	ApplyDealiasing(dw_hat_dt, 1, sys_vars->N);
-
  	// Add the forcing
 	if (sys_vars->local_forcing_proc) {
 		for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
@@ -850,8 +856,106 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* non
 		}
 	}
 
-	// Ensure conjugacy in the ky = 0 modes of the intial condition
-    ForceConjugacy(w_hat, sys_vars->N);
+ 	// Apply dealiasing 
+ 	ApplyDealiasing(dw_hat_dt, 1, sys_vars->N);
+
+	// Ensure conjugacy in the ky = 0 modes
+    ForceConjugacy(dw_hat_dt, sys_vars->N, 1);
+
+	// // ----------------------------------
+	// // Transform to Real Space
+	// // ----------------------------------
+	// // Batch transform both fourier velocites to real space
+	// fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_batch_c2r), dw_hat_dt, u);
+
+	// // ---------------------------------------------
+	// // Compute Fourier Space Vorticity Derivatives
+	// // ---------------------------------------------
+	// // Compute \nabla\omega - i.e., d\omegahat_dx = -I kx \omegahat_k, d\omegahat_dy = -I ky \omegahat_k
+	// for (int i = 0; i < local_Nx; ++i) {
+	// 	tmp = i * (Ny_Fourier);
+	// 	for (int j = 0; j < Ny_Fourier; ++j) {
+	// 		indx = tmp + j;
+
+	// 		// Fill vorticity derivatives array
+	// 		if ((run_data->k[0][i] != 0) || (run_data->k[1][j]  != 0)) {
+	// 			dw_hat_dt[SYS_DIM * indx + 0] = I * ((double) run_data->k[0][i]) * w_hat[indx];
+	// 			dw_hat_dt[SYS_DIM * indx + 1] = I * ((double) run_data->k[1][j]) * w_hat[indx]; 
+	// 		}
+	// 		else {
+	// 			dw_hat_dt[SYS_DIM * indx + 0] = 0.0 + 0.0 * I;
+	// 			dw_hat_dt[SYS_DIM * indx + 1] = 0.0 + 0.0 * I;
+	// 		}
+	// 	}
+	// }
+
+	// // ----------------------------------
+	// // Transform to Real Space
+	// // ----------------------------------
+	// // Batch transform both fourier vorticity derivatives to real space
+	// fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_batch_c2r), dw_hat_dt, nabla_w);
+	
+
+	// // -----------------------------------
+	// // Perform Convolution in Real Space
+	// // -----------------------------------
+	// // Perform the multiplication in real space
+	// for (int i = 0; i < local_Nx; ++i) {
+	// 	tmp = i * (Ny + 2);
+	// 	for (int j = 0; j < Ny; ++j) {
+	// 		indx = tmp + j; 
+ 			
+ 	// 		// Perform multiplication of the nonlinear term 
+ 	// 		vel1 = u[SYS_DIM * indx + 0];
+ 	// 		vel2 = u[SYS_DIM * indx + 1];
+ 	// 		nonlinear[indx] = 1.0 * (vel1 * nabla_w[SYS_DIM * indx + 0] + vel2 * nabla_w[SYS_DIM * indx + 1]);
+ 	// 	}
+ 	// }
+
+ 	// // -------------------------------------
+ 	// // Transform Nonlinear Term To Fourier
+ 	// // -------------------------------------
+ 	// // Transform Fourier nonlinear term back to Fourier space
+ 	// fftw_mpi_execute_dft_r2c((sys_vars->fftw_2d_dft_r2c), nonlinear, dw_hat_dt);
+
+
+ 	// for (int i = 0; i < local_Nx; ++i) {
+ 	// 	tmp = i * (Ny_Fourier);
+ 	// 	for (int j = 0; j < Ny_Fourier; ++j) {
+ 	// 		indx = tmp + j;
+
+ 	// 		if ((run_data->k[0][i] != 0) || (run_data->k[1][j]  != 0)) {
+ 	// 			dw_hat_dt[indx] *= 1.0 / pow((Nx * Ny), 2.0);
+ 	// 		}
+ 	// 		else {
+ 	// 			dw_hat_dt[indx] = 0.0 + 0.0 * I;
+ 	// 			dw_hat_dt[indx] = 0.0 + 0.0 * I;
+ 	// 		}
+ 	// 	}
+
+ 	// }
+ 	// // ----------------------------------------
+ 	// // Apply Dealiasing & Forcing & Conjugacy
+ 	// // ----------------------------------------
+ 	// // Add the forcing
+	// if (sys_vars->local_forcing_proc) {
+	// 	for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
+	//  		// printf("scale: %lf\t-\tk[%d, %d]: %1.16lf\t%1.16lfi\t\t forc: %1.16lf\t%1.16lfi\tamp: %1.16lf\tamp_f:%1.16lf\tratio:%1.16lf\n", 
+	//  		// 				sys_vars->force_scale_var, 
+	//  		// 				run_data->forcing_k[0][i], run_data->forcing_k[1][i], 
+	//  		// 				creal(dw_hat_dt[run_data->forcing_indx[i]]), cimag(dw_hat_dt[run_data->forcing_indx[i]]), 
+	//  		// 				creal(run_data->forcing[i]), cimag(run_data->forcing[i]), cimag(dw_hat_dt[run_data->forcing_indx[i]]), 
+	//  		// 				cabs(dw_hat_dt[run_data->forcing_indx[i]]), cabs(run_data->forcing[i]), 
+	//  		// 				cabs(dw_hat_dt[run_data->forcing_indx[i]]) / cabs(run_data->forcing[i]));
+	// 		dw_hat_dt[run_data->forcing_indx[i]] += run_data->forcing[i]; 
+	// 	}
+	// }
+
+ 	// // Apply dealiasing 
+ 	// ApplyDealiasing(dw_hat_dt, 1, sys_vars->N);
+
+	// // Ensure conjugacy in the ky = 0 modes of the intial condition
+    // ForceConjugacy(dw_hat_dt, sys_vars->N, 1);
 }
 /**
  * Wrapper function for computing the dissipative terms in the equation of motion
@@ -1854,7 +1958,8 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 	ApplyDealiasing(w_hat, 1, N);
     
     // Ensure conjugacy in the ky = 0 modes of the intial condition
-    ForceConjugacy(w_hat, N);
+    ForceConjugacy(w_hat, N, 1);
+    ForceConjugacy(u_hat, N, 2);
 
  
    	// -------------------------------------------------
@@ -1928,10 +2033,11 @@ void InitializeSpaceVariables(double** x, int** k, const long int* N) {
 }
 /**
  * Function to force conjugacy of the initial condition
- * @param w_hat The Fourier space worticity field
+ * @param array The Fourier space worticity field
  * @param N     The array containing the size of the system in each dimension
+ * @param dim   Dimension of the array -> 1: for scalar, 2: for vector.
  */
-void ForceConjugacy(fftw_complex* w_hat, const long int* N) {
+void ForceConjugacy(fftw_complex* array, const long int* N, const int dim) {
 
 	// Initialize variables
 	int tmp;
@@ -1941,24 +2047,28 @@ void ForceConjugacy(fftw_complex* w_hat, const long int* N) {
 	const long int Ny_Fourier = N[1] / 2 + 1;
 
 	// Allocate tmp memory to hold the data to be conjugated
-	fftw_complex* conj_data = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * Nx);
+	fftw_complex* conj_data = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * Nx * dim);
 
 	// Loop through local process and store data in appropriate location in conj_data
 	for (int i = 0; i < local_Nx; ++i) {
 		tmp = i * Ny_Fourier;
-		conj_data[local_Nx_start + i] = w_hat[tmp];
+		for (int d = 0; d < dim; ++d) {
+			conj_data[dim * (local_Nx_start + i) + d] = array[dim * tmp + d];
+		}
 	}
 
 	// Gather the data on all process
-	MPI_Allgather(MPI_IN_PLACE, (int)local_Nx, MPI_C_DOUBLE_COMPLEX, conj_data, (int)local_Nx, MPI_C_DOUBLE_COMPLEX, MPI_COMM_WORLD);
+	MPI_Allgather(MPI_IN_PLACE, (int)(local_Nx * dim), MPI_C_DOUBLE_COMPLEX, conj_data, (int)(local_Nx * dim), MPI_C_DOUBLE_COMPLEX, MPI_COMM_WORLD);
 
 	// Now ensure the 
 	for (int i = 0; i < local_Nx; ++i) {
 		if (run_data->k[0][i] < 0) {
 			tmp = i * Ny_Fourier;
 
-			// Fill the conjugate modes with the conjugate of the postive k modes
-			run_data->w_hat[tmp] = conj(conj_data[abs(run_data->k[0][i])]);
+			for (int d = 0; d < dim; ++d) {
+				// Fill the conjugate modes with the conjugate of the postive k modes
+				array[dim * tmp + d] = conj(conj_data[dim * abs(run_data->k[0][i]) + d]);
+			}
 		}
 	}
 
@@ -2053,39 +2163,47 @@ double GetMaxData(char* dtype) {
 					I_over_k_sqr = I / (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 
 					// compute the velocity in Fourier space
-					run_data->u_hat[SYS_DIM * indx + 0] = ((double) run_data->k[1][j]) * I_over_k_sqr * run_data->w_hat[indx];
-					run_data->u_hat[SYS_DIM * indx + 1] = -1.0 * ((double) run_data->k[0][i]) * I_over_k_sqr * run_data->w_hat[indx];
+					run_data->u_hat_tmp[SYS_DIM * indx + 0] = ((double) run_data->k[1][j]) * I_over_k_sqr * run_data->w_hat[indx];
+					run_data->u_hat_tmp[SYS_DIM * indx + 1] = -1.0 * ((double) run_data->k[0][i]) * I_over_k_sqr * run_data->w_hat[indx];
 				}
 				else {
-					run_data->u_hat[SYS_DIM * indx + 0] = 0.0 + 0.0 * I;
-					run_data->u_hat[SYS_DIM * indx + 1] = 0.0 + 0.0 * I;
+					run_data->u_hat_tmp[SYS_DIM * indx + 0] = 0.0 + 0.0 * I;
+					run_data->u_hat_tmp[SYS_DIM * indx + 1] = 0.0 + 0.0 * I;
 				}
 			}
 		}
 
 		// Transform back to Fourier space
-		fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_batch_c2r), run_data->u_hat, run_data->u);
+		fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_batch_c2r), run_data->u_hat_tmp, run_data->u);
 		for (int i = 0; i < sys_vars->local_Nx; ++i) {
 			tmp = i * (Ny + 2);
 			for (int j = 0; j < Ny; ++j) {
 				indx = tmp + j;
 
 				// Normalize
-				run_data->u[SYS_DIM * indx + 0] *= 1.0 / (double )(Nx * Ny);
-				run_data->u[SYS_DIM * indx + 1] *= 1.0 / (double )(Nx * Ny);
+				run_data->u[SYS_DIM * indx + 0] *= 1.0 ; /// (double )(Nx * Ny);
+				run_data->u[SYS_DIM * indx + 1] *= 1.0 ; /// (double )(Nx * Ny);
 			}
 		}
 	}
 	else if (strcmp(dtype, "VORT") == 0) {
+		// Write Fourier vorticity to temp array for inverse transform
+		for (int i = 0; i < sys_vars->local_Nx; ++i) {
+			tmp = i * Ny_Fourier;
+			for (int j = 0; j < Ny_Fourier; ++j) {
+				indx = tmp + j;
+				run_data->w_hat_tmp[indx] = run_data->w_hat[indx];
+			}
+		}
 		// Perform transform back to real space for the vorticity
-		fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_c2r), run_data->w_hat, run_data->w);
+		fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_c2r), run_data->w_hat_tmp, run_data->w);
 		for (int i = 0; i < sys_vars->local_Nx; ++i) {
 			tmp = i * (Ny + 2);
 			for (int j = 0; j < Ny; ++j) {
 				indx = tmp + j;
 
 				// Normalize
-				run_data->w[indx] *= 1.0 / (double )(Nx * Ny);
+				run_data->w[indx] *= 1.0 ; /// (double )(Nx * Ny);
 			}
 		}
 	}
@@ -2260,27 +2378,27 @@ void GetTimestep(double* dt) {
 					I_over_k_sqr = I / (double) (run_data->k[0][i] * run_data->k[0][i] + run_data->k[1][j] * run_data->k[1][j]);
 
 					// compute the velocity in Fourier space
-					run_data->u_hat[SYS_DIM * indx + 0] = ((double) run_data->k[1][j]) * I_over_k_sqr * run_data->w_hat[indx];
-					run_data->u_hat[SYS_DIM * indx + 1] = -1.0 * ((double) run_data->k[0][i]) * I_over_k_sqr * run_data->w_hat[indx];
+					run_data->u_hat_tmp[SYS_DIM * indx + 0] = ((double) run_data->k[1][j]) * I_over_k_sqr * run_data->w_hat[indx];
+					run_data->u_hat_tmp[SYS_DIM * indx + 1] = -1.0 * ((double) run_data->k[0][i]) * I_over_k_sqr * run_data->w_hat[indx];
 				}
 				else {
 					// Get the zero mode
-					run_data->u_hat[SYS_DIM * indx + 0] = 0.0 + 0.0 * I;
-					run_data->u_hat[SYS_DIM * indx + 1] = 0.0 + 0.0 * I;
+					run_data->u_hat_tmp[SYS_DIM * indx + 0] = 0.0 + 0.0 * I;
+					run_data->u_hat_tmp[SYS_DIM * indx + 1] = 0.0 + 0.0 * I;
 				}
 			}
 		}
 
 		// Transform back to Fourier space
-		fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_batch_c2r), run_data->u_hat, run_data->u);
+		fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_batch_c2r), run_data->u_hat_tmp, run_data->u);
 		for (int i = 0; i < sys_vars->local_Nx; ++i) {
 			tmp = i * (Ny + 2);
 			for (int j = 0; j < Ny; ++j) {
 				indx = tmp + j;
 
 				// Normalize
-				run_data->u[SYS_DIM * indx + 0] *= 1.0 / (double )(Nx * Ny);
-				run_data->u[SYS_DIM * indx + 1] *= 1.0 / (double )(Nx * Ny);
+				run_data->u[SYS_DIM * indx + 0] *= 1.0; // / (double )(Nx * Ny);
+				run_data->u[SYS_DIM * indx + 1] *= 1.0; // / (double )(Nx * Ny);
 			}
 		}
 
@@ -2361,6 +2479,7 @@ void TestTaylorGreenVortex(const double t, const long int* N, double* norms) {
 	int indx;
 	const long int Nx         = N[0];
 	const long int Ny         = N[1];
+	const long int Ny_Fourier = Ny / 2 + 1;
 	double norm_const = 1.0 / (double)(Nx * Ny);
 	double linf_norm  = 0.0;
 	double l2_norm    = 0.0;
@@ -2370,8 +2489,16 @@ void TestTaylorGreenVortex(const double t, const long int* N, double* norms) {
 	// --------------------------------
 	// Get the Real Space Vorticity
 	// --------------------------------
+	// Write Fourier vorticity to temp array for inverse transform
+	for (int i = 0; i < sys_vars->local_Nx; ++i) {
+		tmp = i * Ny_Fourier;
+		for (int j = 0; j < Ny_Fourier; ++j) {
+			indx = tmp + j;
+			run_data->w_hat_tmp[indx] = run_data->w_hat[indx];
+		}
+	}
 	// Transform back to Fourier space -> Don't normalize now - normalize in loop below
-	fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_c2r), run_data->w_hat, run_data->w);
+	fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_c2r), run_data->w_hat_tmp, run_data->w);
 	
 	// --------------------------------
 	// Compute The Error
@@ -2509,6 +2636,11 @@ void AllocateMemory(const long int* NBatch, Int_data_struct* Int_data) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Fourier Space Vorticity");
 		exit(1);
 	}
+	run_data->w_hat_tmp = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->alloc_local);
+	if (run_data->w_hat_tmp == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Fourier Space Vorticity Tmp");
+		exit(1);
+	}
 
 	// Allocate the Real and Fourier space velocities
 	run_data->u     = (double* )fftw_malloc(sizeof(double) * 2 * sys_vars->alloc_local_batch);
@@ -2519,6 +2651,11 @@ void AllocateMemory(const long int* NBatch, Int_data_struct* Int_data) {
 	run_data->u_hat = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->alloc_local_batch);
 	if (run_data->u_hat == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Fourier Space Velocities");
+		exit(1);
+	}
+	run_data->u_hat_tmp = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->alloc_local_batch);
+	if (run_data->u_hat_tmp == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Fourier Space Velocities Tmp");
 		exit(1);
 	}
 	#if defined(PHASE_ONLY)
@@ -2680,9 +2817,12 @@ void AllocateMemory(const long int* NBatch, Int_data_struct* Int_data) {
 				run_data->tmp_a_k[indx_four] 			= 0.0;
 				#endif
 				run_data->w_hat[indx_four]               	  = 0.0 + 0.0 * I;
+				run_data->w_hat_tmp[indx_four]             	  = 0.0 + 0.0 * I;
 				Int_data->RK_tmp[indx_four]    			 	  = 0.0 + 0.0 * I;
 				run_data->u_hat[SYS_DIM * indx_four + 0] 	  = 0.0 + 0.0 * I;
 				run_data->u_hat[SYS_DIM * indx_four + 1] 	  = 0.0 + 0.0 * I;
+				run_data->u_hat_tmp[SYS_DIM * indx_four + 0]  = 0.0 + 0.0 * I;
+				run_data->u_hat_tmp[SYS_DIM * indx_four + 1]  = 0.0 + 0.0 * I;
 				Int_data->RK1[SYS_DIM * indx_four + 0]    	  = 0.0 + 0.0 * I;
 				Int_data->RK1[SYS_DIM * indx_four + 1]    	  = 0.0 + 0.0 * I;
 				Int_data->RK2[SYS_DIM * indx_four + 0]    	  = 0.0 + 0.0 * I;
@@ -2779,8 +2919,10 @@ void FreeMemory(Int_data_struct* Int_data) {
 	// Free system variables
 	fftw_free(run_data->u);
 	fftw_free(run_data->u_hat);
+	fftw_free(run_data->u_hat_tmp);
 	fftw_free(run_data->w);
 	fftw_free(run_data->w_hat);
+	fftw_free(run_data->w_hat_tmp);
 	if (sys_vars->local_forcing_proc) {
 		fftw_free(run_data->forcing);
 		fftw_free(run_data->forcing_indx);

@@ -150,15 +150,23 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 
 		///-------------------------------------- Real Space Voriticity
 		#if defined(__VORT_REAL)
+		// Write Fourier vorticity to temp array for inverse transform
+		for (int i = 0; i < sys_vars->local_Nx; ++i) {
+			tmp = i * Ny_Fourier;
+			for (int j = 0; j < Ny_Fourier; ++j) {
+				indx = tmp + j;
+				run_data->w_hat_tmp[indx] = run_data->w_hat[indx];
+			}
+		}
 		// Transform vorticity back to real space and normalize
-		fftw_mpi_execute_dft_c2r(sys_vars->fftw_2d_dft_c2r, run_data->w_hat, run_data->w);
+		fftw_mpi_execute_dft_c2r(sys_vars->fftw_2d_dft_c2r, run_data->w_hat_tmp, run_data->w);
 		for (int i = 0; i < sys_vars->local_Nx; ++i) {
 			tmp = i * (Ny + 2);
 			for (int j = 0; j < Ny; ++j) {
 				indx = tmp + j;
 
 				// Normalize
-				run_data->w[indx] *= 1.0 / (double) (Nx * Ny);
+				run_data->w[indx] *= 1.0; // / (double) (Nx * Ny);
 			}
 		}
 
@@ -232,16 +240,25 @@ void CreateOutputFilesWriteICs(const long int* N, double dt) {
 
 		///-------------------------------------- Real Space Velocity
 		#if defined(__REALSPACE)
+		// Write Fourier vorticity to temp array for inverse transform
+		for (int i = 0; i < sys_vars->local_Nx; ++i) {
+			tmp = i * Ny_Fourier;
+			for (int j = 0; j < Ny_Fourier; ++j) {
+				indx = tmp + j;
+				run_data->u_hat_tmp[SYS_DIM * indx + 0] = run_data->u_hat[SYS_DIM * indx + 0];
+				run_data->u_hat_tmp[SYS_DIM * indx + 1] = run_data->u_hat[SYS_DIM * indx + 1];
+			}
+		}
 		// Transform velocities back to real space and normalize
-		fftw_mpi_execute_dft_c2r(sys_vars->fftw_2d_dft_batch_c2r, run_data->u_hat, run_data->u);
+		fftw_mpi_execute_dft_c2r(sys_vars->fftw_2d_dft_batch_c2r, run_data->u_hat_tmp, run_data->u);
 		for (int i = 0; i < sys_vars->local_Nx; ++i) {
 			tmp = i * (Ny + 2);
 			for (int j = 0; j < Ny; ++j) {
 				indx = tmp + j;
 
 				// Normalize
-				run_data->u[SYS_DIM * indx + 0] *= 1.0 / (double) (Nx * Ny);
-				run_data->u[SYS_DIM * indx + 1] *= 1.0 / (double) (Nx * Ny);
+				run_data->u[SYS_DIM * indx + 0] *= 1.0; // / (double) (Nx * Ny);
+				run_data->u[SYS_DIM * indx + 1] *= 1.0; // / (double) (Nx * Ny);
 			}
 		}
 
@@ -752,15 +769,23 @@ void WriteDataToFile(double t, double dt, long int iters) {
 	// -------------------------------
 	///--------------------------------------- Real Space Vorticity
 	#if defined(__VORT_REAL)
+	// Write Fourier vorticity to temp array for inverse transform
+	for (int i = 0; i < sys_vars->local_Nx; ++i) {
+		tmp = i * Ny_Fourier;
+		for (int j = 0; j < Ny_Fourier; ++j) {
+			indx = tmp + j;
+			run_data->w_hat_tmp[indx] = run_data->w_hat[indx];
+		}
+	}
 	// Transform Fourier space vorticiy to real space and normalize
-	fftw_mpi_execute_dft_c2r(sys_vars->fftw_2d_dft_c2r, run_data->w_hat, run_data->w);
+	fftw_mpi_execute_dft_c2r(sys_vars->fftw_2d_dft_c2r, run_data->w_hat_tmp, run_data->w);
 	for (int i = 0; i < sys_vars->local_Nx; ++i) {
 		tmp = i * (Ny + 2);
 		for (int j = 0; j < Ny; ++j) {
 			indx = tmp + j;
 
 			// Normalize
-			run_data->w[indx] *= 1.0 / (double) (Nx * Ny);
+			run_data->w[indx] *= 1.0; // / (double) (Nx * Ny);
 		}
 	}
 
@@ -833,16 +858,25 @@ void WriteDataToFile(double t, double dt, long int iters) {
 
 	///--------------------------------------- Real Space Velocities
 	#if defined(__REALSPACE)
+	// Write Fourier vorticity to temp array for inverse transform
+	for (int i = 0; i < sys_vars->local_Nx; ++i) {
+		tmp = i * Ny_Fourier;
+		for (int j = 0; j < Ny_Fourier; ++j) {
+			indx = tmp + j;
+			run_data->u_hat_tmp[SYS_DIM * indx + 0] = run_data->u_hat[SYS_DIM * indx + 0];
+			run_data->u_hat_tmp[SYS_DIM * indx + 1] = run_data->u_hat[SYS_DIM * indx + 1];
+		}
+	}
 	// Transform velocities back to real space and normalize
-	fftw_mpi_execute_dft_c2r(sys_vars->fftw_2d_dft_batch_c2r, run_data->u_hat, run_data->u);
+	fftw_mpi_execute_dft_c2r(sys_vars->fftw_2d_dft_batch_c2r, run_data->u_hat_tmp, run_data->u);
 	for (int i = 0; i < sys_vars->local_Nx; ++i) {
 		tmp = i * (Ny + 2);
 		for (int j = 0; j < Ny; ++j) {
 			indx = tmp + j;
 
 			// Normalize
-			run_data->u[SYS_DIM * indx + 0] *= 1.0 / (double) (Nx * Ny);
-			run_data->u[SYS_DIM * indx + 1] *= 1.0 / (double) (Nx * Ny);
+			run_data->u[SYS_DIM * indx + 0] *= 1.0; // / (double) (Nx * Ny);
+			run_data->u[SYS_DIM * indx + 1] *= 1.0; // / (double) (Nx * Ny);
 		}
 	}
 
