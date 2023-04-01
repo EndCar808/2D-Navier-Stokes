@@ -1603,7 +1603,7 @@ void AllocatePhaseSyncMemory(const long int* N) {
 		exit(1);
 	}	
 	// Estimate for the number of triads across sectors -> we will resize this dimension to correct size after search is performed NOTE: Needs to be bigger than all triads in the cirlce i.e., one sector
-	int num_triad_est               = (int) ceil(M_PI * pow(sys_vars->N[0], 2.0) + 2.0 * sqrt(2) * M_PI * sys_vars->N[0]) * 5000;
+	int num_triad_est               = (int) ceil(M_PI * pow(sys_vars->N[0], 2.0) + 2.0 * sqrt(2) * M_PI * sys_vars->N[0]) * 1000;
 	sys_vars->num_triad_per_sec_est = num_triad_est;
 	for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
 		for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
@@ -1731,6 +1731,8 @@ void AllocatePhaseSyncMemory(const long int* N) {
 		double C_theta_k3_lwr, C_theta_k3_upr, C_theta_k1_upr, C_theta_k1_lwr;
 		long int total_terms = 0;
 		long int total_terms_per_sec = 0;
+		long int total_1d_terms_per_sec = 0;
+		long int total_2d_terms_per_sec = 0;
 		double search_end, search_begin;
 
 		// Start timer
@@ -1745,7 +1747,9 @@ void AllocatePhaseSyncMemory(const long int* N) {
 
 			// Initialize counter for terms per sector and start time of the current loop
 			double search_begin = omp_get_wtime();
-			total_terms_per_sec = 0;
+			total_terms_per_sec    = 0;
+			total_1d_terms_per_sec = 0;
+			total_2d_terms_per_sec = 0;
 			
 			// Get the angles for the current sector
 			C_theta_k3 = proc_data->theta_k3[a];
@@ -1865,12 +1869,18 @@ void AllocatePhaseSyncMemory(const long int* N) {
 												&& ((k1_angle >= C_theta_k1_lwr && k1_angle < C_theta_k1_upr) || (k1_angle_neg >= C_theta_k1_lwr && k1_angle_neg < C_theta_k1_upr)) ) {
 												// 1d contribution
 												proc_data->phase_sync_wave_vecs[a][k1_sec_indx][CONTRIB_TYPE][nn] = CONTRIB_1D;
+
+												// Update count of 1d terms
+												total_1d_terms_per_sec++;
 											}
 											else if ( (k1_sqr > 0.0 && k1_sqr <= sys_vars->kmax_sqr) 
 												&& ((k1_angle >= C_theta_k1_lwr && k1_angle < C_theta_k1_upr) || (k1_angle_neg >= C_theta_k1_lwr && k1_angle_neg < C_theta_k1_upr)) 
 												&& !((k1_angle >= C_theta_k3_lwr && k1_angle < C_theta_k3_upr) || (k1_angle_neg >= C_theta_k3_lwr && k1_angle_neg < C_theta_k3_upr)) ) {
 												// 2d contribution
 												proc_data->phase_sync_wave_vecs[a][k1_sec_indx][CONTRIB_TYPE][nn] = CONTRIB_2D;
+
+												// Update count for 2d terms
+												total_2d_terms_per_sec++;
 											}
 
 											// Increment
@@ -1947,12 +1957,18 @@ void AllocatePhaseSyncMemory(const long int* N) {
 												&& ((k3_angle >= C_theta_k1_lwr && k3_angle < C_theta_k1_upr) || (k3_angle_neg >= C_theta_k1_lwr && k3_angle_neg < C_theta_k1_upr)) ) {
 												// 1d contribution
 												proc_data->phase_sync_wave_vecs[a][k1_sec_indx][CONTRIB_TYPE][nn] = CONTRIB_1D;
+
+												// Update count of 1d terms
+												total_1d_terms_per_sec++;
 											}
 											else if ( ((k3_sqr > 0.0 && k3_sqr <= sys_vars->kmax_sqr) 
 												&& ((k3_angle >= C_theta_k1_lwr && k3_angle < C_theta_k1_upr) || (k3_angle_neg >= C_theta_k1_lwr && k3_angle_neg < C_theta_k1_upr)) 
 												&& !((k3_angle >= C_theta_k3_lwr && k3_angle < C_theta_k3_upr) || (k3_angle_neg >= C_theta_k3_lwr && k3_angle_neg < C_theta_k3_upr))) ) {
 												// 2d contribution
 												proc_data->phase_sync_wave_vecs[a][k1_sec_indx][CONTRIB_TYPE][nn] = CONTRIB_2D;
+
+												// Update count for 2d terms
+												total_2d_terms_per_sec++;
 											}
 
 											// Increment
@@ -1972,7 +1988,7 @@ void AllocatePhaseSyncMemory(const long int* N) {
 
 			// Write Update to Screen 
 			double search_end = omp_get_wtime();
-			printf("Sector: %d/%d\tNum Terms: %ld\tTime: %g(s)\n", a, sys_vars->num_k3_sectors, total_terms_per_sec, (search_end - search_begin));
+			printf("Sector: %d/%d\tNum Terms: %ld (Tot) %ld (1D) %ld (2D)\tTime: %g(s)\n", a, sys_vars->num_k3_sectors, total_terms_per_sec, total_1d_terms_per_sec, total_2d_terms_per_sec, (search_end - search_begin));
 		}
 
 		///-------------------- Realloc the last dimension in wavevector array to its correct size

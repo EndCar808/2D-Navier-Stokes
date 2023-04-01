@@ -1028,7 +1028,7 @@ def plot_sector_phase_sync_snaps_full_sec(i, out_dir, w, enst_spec, enst_flux, e
        # Plot Avg Phase Across Sectors (2D)
        #--------------------------------
        ax7 = fig.add_subplot(gs[2, 1])
-       im7 = ax7.imshow(np.flipud(Phi_a_sec), extent = (theta_k3_min, theta_k3_max, alpha_min, alpha_max), cmap = "bwr", vmin = -np.pi, vmax = np.pi)
+       im7 = ax7.imshow(np.flipud(Phi_a_sec), extent = (theta_k3_min, theta_k3_max, alpha_min, alpha_max), cmap = "seismic", vmin = -np.pi, vmax = np.pi)
        ax7.set_xticks(angticks)
        ax7.set_xticklabels(angtickLabels_alpha)
        ax7.set_yticks(angticks)
@@ -1047,7 +1047,7 @@ def plot_sector_phase_sync_snaps_full_sec(i, out_dir, w, enst_spec, enst_flux, e
        # Plot Enstrophy Flux Across Sectors  (2D)
        #--------------------------------
        ax8 = fig.add_subplot(gs[2, 2])
-       im8 = ax8.imshow(np.flipud(enst_flux_a_sec), extent = (theta_k3_min, theta_k3_max, alpha_min, alpha_max), cmap = "bwr") #vmin = flux_lims[2], vmax = flux_lims[3] #, norm = mpl.colors.SymLogNorm(linthresh = 0.1)
+       im8 = ax8.imshow(np.flipud(enst_flux_a_sec), extent = (theta_k3_min, theta_k3_max, alpha_min, alpha_max), cmap = "seismic") #vmin = flux_lims[2], vmax = flux_lims[3] #, norm = mpl.colors.SymLogNorm(linthresh = 0.1)
        ax8.set_xticks(angticks)
        ax8.set_xticklabels(angtickLabels_alpha)
        ax8.set_yticks(angticks)

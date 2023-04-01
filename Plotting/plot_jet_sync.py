@@ -425,7 +425,7 @@ if __name__ == '__main__':
                                 process.join()
                     
                         ## Video variables
-                        framesPerSec = 30
+                        framesPerSec = 15
                         inputFile    = cmdargs.out_dir_triads + "Phase_Sync_SNAP_%05d.png"
                         videoName    = cmdargs.out_dir_triads + "TriadPhaseSync_N[{},{}]_u0[{}]_NSECT[{},{}]_KFRAC[{}]_TYPE[{}].mp4".format(sys_vars.Nx, sys_vars.Ny, sys_vars.u0, post_data.num_k3_sect, post_data.num_k1_sect, post_data.kmax_frac, t)
                         cmd = "ffmpeg -y -r {} -f image2 -s 1920x1080 -i {} -vf 'pad=ceil(iw/2)*2:ceil(ih/2)*2' -vcodec libx264 -crf 25 -pix_fmt yuv420p {}".format(framesPerSec, inputFile, videoName)
@@ -496,7 +496,7 @@ if __name__ == '__main__':
                                 plot_sector_phase_sync_snaps(i, cmdargs.out_dir_triads, post_data.phases[i, :, int(sys_vars.Nx/3):], post_data.theta_k3, post_data.triad_R[i, t, :], post_data.triad_Phi[i, t, :], run_data.time[i], sys_vars.Nx, sys_vars.Ny)
 
                         ## Video variables
-                        framesPerSec = 30
+                        framesPerSec = 15
                         inputFile    = cmdargs.out_dir_triads + "Phase_Sync_SNAP_%05d.png"
                         videoName    = cmdargs.out_dir_triads + "TriadPhaseSync_N[{},{}]_u0[{}]_NSECT[{},{}]_KFRAC[{}]_TYPE[{}].mp4".format(sys_vars.Nx, sys_vars.Ny, sys_vars.u0, post_data.num_k3_sect, post_data.num_k1_sect, post_data.kmax_frac, t)
                         cmd = "ffmpeg -y -r {} -f image2 -s 1920x1080 -i {} -vf 'pad=ceil(iw/2)*2:ceil(ih/2)*2' -vcodec libx264 -crf 25 -pix_fmt yuv420p {}".format(framesPerSec, inputFile, videoName)
@@ -533,7 +533,7 @@ if __name__ == '__main__':
         if cmdargs.phases:
 
             ## Video variables
-            framesPerSec = 30
+            framesPerSec = 15
             inputFile    = cmdargs.out_dir_phases + "Phase_Sync_SNAP_%05d.png"
             videoName    = cmdargs.out_dir_phases + "PhaseSync_N[{},{}]_u0[{}]_NSECT[{},{}]_KFRAC[{}]_TAG[{}].mp4".format(sys_vars.Nx, sys_vars.Ny, sys_vars.u0, post_data.num_k3_sect, post_data.num_k1_sect, post_data.kmax_frac, cmdargs.tag)
             cmd = "ffmpeg -y -r {} -f image2 -s 1920x1080 -i {} -vf 'pad=ceil(iw/2)*2:ceil(ih/2)*2' -vcodec libx264 -crf 25 -pix_fmt yuv420p {}".format(framesPerSec, inputFile, videoName)
@@ -556,7 +556,7 @@ if __name__ == '__main__':
         if cmdargs.triads and cmdargs.triad_type != "all":
 
             ## Video variables
-            framesPerSec = 30
+            framesPerSec = 15
             inputFile    = cmdargs.out_dir_triads + "Phase_Sync_SNAP_%05d.png"
             videoName    = cmdargs.out_dir_triads + "TriadPhaseSync_N[{},{}]_u0[{}]_NSECT[{},{}]_KFRAC[{}]_TYPE[{}]_TAG[{}].mp4".format(sys_vars.Nx, sys_vars.Ny, sys_vars.u0, post_data.num_k3_sect, post_data.num_k1_sect, post_data.kmax_frac, int(cmdargs.triad_type), cmdargs.tag)
             cmd = "ffmpeg -y -r {} -f image2 -s 1920x1080 -i {} -vf 'pad=ceil(iw/2)*2:ceil(ih/2)*2' -vcodec libx264 -crf 25 -pix_fmt yuv420p {}".format(framesPerSec, inputFile, videoName)
