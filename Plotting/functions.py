@@ -689,7 +689,8 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
 
             ## Get the max wavenumber
             self.kmax      = int((sim_data.Nx / 3))
-            self.kmax_frac = float(in_file.split('_')[-2].split("[")[-1].split("]")[0])
+            self.kmax_frac = float(in_file.split('_')[-2].split(',')[1].rstrip(']'))
+            self.kmin_sqr = float(in_file.split('_')[-2].split(',')[0].lstrip('KFRAC['))
             self.kmax_C    = int(self.kmax * self.kmax_frac)
 
             ## Read in Wavevector Data

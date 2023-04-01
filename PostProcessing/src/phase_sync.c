@@ -409,7 +409,7 @@ void PhaseSyncSector(int s) {
 							proc_data->num_triads_2d[0][a][l]++;
 							proc_data->enst_flux_2d[0][a][l]         += flux_term;
 							proc_data->triad_phase_order_2d[0][a][l] += cexp(I * gen_triad_phase);
-
+ 
 							// Update collective phase order parameter for C_theta
 							if (cabs(collective_phase_term) > 0.0) {
 								proc_data->phase_order_C_theta_triads_2d[0][a][l] += collective_phase_term; /// cabs(collective_phase_term);
@@ -1393,18 +1393,18 @@ void AllocatePhaseSyncMemory(const long int* N) {
 	proc_data->dtheta_k3 = M_PI / (double )sys_vars->num_k3_sectors;
 	for (int i = 0; i < sys_vars->num_k3_sectors; ++i) {
 		proc_data->theta_k3[i] = -M_PI / 2.0 + i * proc_data->dtheta_k3 + proc_data->dtheta_k3 / 2.0 + 1e-10;
-		proc_data->phase_R[i]     = 0.0;
-		proc_data->phase_Phi[i]   = 0.0;
+		proc_data->phase_R[i]     = -50.0;
+		proc_data->phase_Phi[i]   = -50.0;
 		proc_data->phase_order[i] = 0.0 + 0.0 * I;
 		for (int j = 0; j < NUM_TRIAD_TYPES + 1; ++j) {
 			proc_data->num_triads[j][i]                             = 0;
-			proc_data->enst_flux[j][i]                              = 0.0;
-			proc_data->triad_R[j][i]                                = 0.0;
-			proc_data->triad_Phi[j][i]                              = 0.0;
+			proc_data->enst_flux[j][i]                              = -50.0;
+			proc_data->triad_R[j][i]                                = -50.0;
+			proc_data->triad_Phi[j][i]                              = -50.0;
 			proc_data->num_triads_1d[j][i]                          = 0;                        
-			proc_data->enst_flux_1d[j][i]                           = 0.0;                  
-			proc_data->triad_R_1d[j][i]                             = 0.0;                  
-			proc_data->triad_Phi_1d[j][i]                           = 0.0;                    
+			proc_data->enst_flux_1d[j][i]                           = -50.0;                  
+			proc_data->triad_R_1d[j][i]                             = -50.0;                  
+			proc_data->triad_Phi_1d[j][i]                           = -50.0;                    
 			proc_data->triad_phase_order[j][i]                      = 0.0 + 0.0 * I;
 			proc_data->triad_phase_order_1d[j][i]                   = 0.0 + 0.0 * I;
 			proc_data->phase_order_C_theta_triads[j][i]             = 0.0 + 0.0 * I;
@@ -1413,9 +1413,9 @@ void AllocatePhaseSyncMemory(const long int* N) {
 			proc_data->phase_order_C_theta_triads_unidirec_1d[j][i] = 0.0 + 0.0 * I;
 			for (int k = 0; k < sys_vars->num_k1_sectors; ++k) {
 				proc_data->num_triads_2d[j][i][k]                          = 0;
-				proc_data->enst_flux_2d[j][i][k]                           = 0.0;
-				proc_data->triad_R_2d[j][i][k]                             = 0.0;
-				proc_data->triad_Phi_2d[j][i][k]                           = 0.0;
+				proc_data->enst_flux_2d[j][i][k]                           = -50.0;
+				proc_data->triad_R_2d[j][i][k]                             = -50.0;
+				proc_data->triad_Phi_2d[j][i][k]                           = -50.0;
 				proc_data->triad_phase_order_2d[j][i][k]                   = 0.0 + 0.0 * I;
 				proc_data->phase_order_C_theta_triads_2d[j][i][k]          = 0.0 + 0.0 * I;
 				proc_data->phase_order_C_theta_triads_unidirec_2d[j][i][k] = 0.0 + 0.0 * I;
@@ -1820,11 +1820,11 @@ void AllocatePhaseSyncMemory(const long int* N) {
 									k1_angle     = atan2((double) k1_x, (double) k1_y);
 									k1_angle_neg = atan2((double)-k1_x, (double)-k1_y);
 
-									if( ((k1_sqr > 0.0 && k1_sqr <= sys_vars->kmax_C_sqr) 
+									if( ((k1_sqr > sys_vars->kmin_sqr && k1_sqr <= sys_vars->kmax_C_sqr) 
 										&& ((k1_angle >= C_theta_k3_lwr && k1_angle < C_theta_k3_upr) || (k1_angle_neg >= C_theta_k3_lwr && k1_angle_neg < C_theta_k3_upr)) 
 										&& ((k1_angle >= C_theta_k1_lwr && k1_angle < C_theta_k1_upr) || (k1_angle_neg >= C_theta_k1_lwr && k1_angle_neg < C_theta_k1_upr)))
 										|| 
-										((k1_sqr > 0.0 && k1_sqr <= sys_vars->kmax_sqr) 
+										((k1_sqr > sys_vars->kmin_sqr && k1_sqr <= sys_vars->kmax_sqr) 
 										&& ((k1_angle >= C_theta_k1_lwr && k1_angle < C_theta_k1_upr) || (k1_angle_neg >= C_theta_k1_lwr && k1_angle_neg < C_theta_k1_upr)) 
 										&& !((k1_angle >= C_theta_k3_lwr && k1_angle < C_theta_k3_upr) || (k1_angle_neg >= C_theta_k3_lwr && k1_angle_neg < C_theta_k3_upr))) ) { 
 										
@@ -1837,7 +1837,7 @@ void AllocatePhaseSyncMemory(const long int* N) {
 										k2_angle     = atan2((double)k2_x, (double) k2_y);
 										k2_angle_neg = atan2((double)-k2_x, (double) -k2_y);
 
-										if ( (k2_sqr > 0.0 && k2_sqr <= sys_vars->kmax_sqr) 
+										if ( (k2_sqr > sys_vars->kmin_sqr && k2_sqr <= sys_vars->kmax_sqr) 
 											&& !((k2_sqr > sys_vars->kmax_C_sqr && k2_sqr <= sys_vars->kmax_sqr) 
 											&& ((k2_angle >= C_theta_k3_lwr && k2_angle < C_theta_k3_upr) || (k2_angle_neg >= C_theta_k3_lwr && k2_angle_neg < C_theta_k3_upr))) ) {
 
@@ -1864,7 +1864,7 @@ void AllocatePhaseSyncMemory(const long int* N) {
 											// Indicate which flux term this data is in
 											proc_data->phase_sync_wave_vecs[a][k1_sec_indx][FLUX_TERM][nn] = POS_FLUX_TERM;
 											// Indicate which type of contribution to the flux
-											if ( (k1_sqr > 0.0 && k1_sqr <= sys_vars->kmax_C_sqr) 
+											if ( (k1_sqr > sys_vars->kmin_sqr && k1_sqr <= sys_vars->kmax_C_sqr) 
 												&& ((k1_angle >= C_theta_k3_lwr && k1_angle < C_theta_k3_upr) || (k1_angle_neg >= C_theta_k3_lwr && k1_angle_neg < C_theta_k3_upr)) 
 												&& ((k1_angle >= C_theta_k1_lwr && k1_angle < C_theta_k1_upr) || (k1_angle_neg >= C_theta_k1_lwr && k1_angle_neg < C_theta_k1_upr)) ) {
 												// 1d contribution
@@ -1873,7 +1873,7 @@ void AllocatePhaseSyncMemory(const long int* N) {
 												// Update count of 1d terms
 												total_1d_terms_per_sec++;
 											}
-											else if ( (k1_sqr > 0.0 && k1_sqr <= sys_vars->kmax_sqr) 
+											else if ( (k1_sqr > sys_vars->kmin_sqr && k1_sqr <= sys_vars->kmax_sqr) 
 												&& ((k1_angle >= C_theta_k1_lwr && k1_angle < C_theta_k1_upr) || (k1_angle_neg >= C_theta_k1_lwr && k1_angle_neg < C_theta_k1_upr)) 
 												&& !((k1_angle >= C_theta_k3_lwr && k1_angle < C_theta_k3_upr) || (k1_angle_neg >= C_theta_k3_lwr && k1_angle_neg < C_theta_k3_upr)) ) {
 												// 2d contribution
@@ -1890,11 +1890,11 @@ void AllocatePhaseSyncMemory(const long int* N) {
 								}
 							}
 						}
-						else if ( ((k3_sqr > 0.0 && k3_sqr <= sys_vars->kmax_sqr) && 
+						else if ( ((k3_sqr > sys_vars->kmin_sqr && k3_sqr <= sys_vars->kmax_sqr) && 
 							((k3_angle >= C_theta_k1_lwr && k3_angle < C_theta_k1_upr) || (k3_angle_neg >= C_theta_k1_lwr && k3_angle_neg < C_theta_k1_upr)) 
 							&& !((k3_angle >= C_theta_k3_lwr && k3_angle < C_theta_k3_upr) || (k3_angle_neg >= C_theta_k3_lwr && k3_angle_neg < C_theta_k3_upr))) 
 							|| 
-							((k3_sqr > 0.0 && k3_sqr <= sys_vars->kmax_C_sqr) 
+							((k3_sqr > sys_vars->kmin_sqr && k3_sqr <= sys_vars->kmax_C_sqr) 
 							&& ((k3_angle >= C_theta_k3_lwr && k3_angle < C_theta_k3_upr) || (k3_angle_neg >= C_theta_k3_lwr && k3_angle_neg < C_theta_k3_upr)) 
 							&& ((k3_angle >= C_theta_k1_lwr && k3_angle < C_theta_k1_upr) || (k3_angle_neg >= C_theta_k1_lwr && k3_angle_neg < C_theta_k1_upr))) ) { 
 
@@ -1952,7 +1952,7 @@ void AllocatePhaseSyncMemory(const long int* N) {
 											// Indicate which flux term this data is in
 											proc_data->phase_sync_wave_vecs[a][k1_sec_indx][FLUX_TERM][nn] = NEG_FLUX_TERM;
 											// Indicate which type of contribution to the flux
-											if ( (k3_sqr > 0.0 && k3_sqr <= sys_vars->kmax_C_sqr) 
+											if ( (k3_sqr > sys_vars->kmin_sqr && k3_sqr <= sys_vars->kmax_C_sqr) 
 												&& ((k3_angle >= C_theta_k3_lwr && k3_angle < C_theta_k3_upr) || (k3_angle_neg >= C_theta_k3_lwr && k3_angle_neg < C_theta_k3_upr)) 
 												&& ((k3_angle >= C_theta_k1_lwr && k3_angle < C_theta_k1_upr) || (k3_angle_neg >= C_theta_k1_lwr && k3_angle_neg < C_theta_k1_upr)) ) {
 												// 1d contribution
@@ -1961,7 +1961,7 @@ void AllocatePhaseSyncMemory(const long int* N) {
 												// Update count of 1d terms
 												total_1d_terms_per_sec++;
 											}
-											else if ( ((k3_sqr > 0.0 && k3_sqr <= sys_vars->kmax_sqr) 
+											else if ( ((k3_sqr > sys_vars->kmin_sqr && k3_sqr <= sys_vars->kmax_sqr) 
 												&& ((k3_angle >= C_theta_k1_lwr && k3_angle < C_theta_k1_upr) || (k3_angle_neg >= C_theta_k1_lwr && k3_angle_neg < C_theta_k1_upr)) 
 												&& !((k3_angle >= C_theta_k3_lwr && k3_angle < C_theta_k3_upr) || (k3_angle_neg >= C_theta_k3_lwr && k3_angle_neg < C_theta_k3_upr))) ) {
 												// 2d contribution

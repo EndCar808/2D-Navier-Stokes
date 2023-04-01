@@ -144,6 +144,7 @@ if __name__ == '__main__':
     num_k3_sectors       = []
     num_k1_sectors       = []
     k_frac               = []
+    kmin_sqr             = []
     num_post_omp_threads = []
 
     ## Parse input parameters
@@ -233,6 +234,9 @@ if __name__ == '__main__':
             if 'k_max_fraction' in parser[section]:
                 for n in parser[section]['k_max_fraction'].lstrip('[').rstrip(']').split(', '):
                     k_frac.append(float(n))
+            if 'k_min_sqr' in parser[section]:
+                for n in parser[section]['k_min_sqr'].lstrip('[').rstrip(']').split(', '):
+                    kmin_sqr.append(float(n))
             if 'num_post_omp_threads' in parser[section]:
                 for n in parser[section]['num_post_omp_threads'].lstrip('[').rstrip(']').split(', '):
                     num_post_omp_threads.append(int(n))
@@ -374,7 +378,7 @@ if __name__ == '__main__':
         
 
         ## Generate command list 
-        cmd_list = [["{} -i {} -o {} -v {:g} -v {} -v {:1.1f} -d {:g} -d {} -d {:1.1f} -f {} -f {} -f {} -a {} -a {} -k {} -p {} -p {} -t {} {}".format(
+        cmd_list = [["{} -i {} -o {} -v {:g} -v {} -v {:1.1f} -d {:g} -d {} -d {:1.1f} -f {} -f {} -f {} -a {} -a {} -k {} -k {} -p {} -p {} -t {} {}".format(
                                                         post_executable,
                                                         post_input_dir + "N[{},{}]_T[{:1.1f},{},{:1.3f}]_NU[{:g},{},{:1.1f}]_DRAG[{:g},{},{:1.1f}]_FORC[{},{},{:g}]_u0[{}]_TAG[{}]/".format(nx, ny, t0, h, t, v, int(hype), hypervisc_pow, ekmn_alpha, int(ekmn_hypo_diff), ekmn_hypo_pow, forcing, force_k, force_scale,  u0, s_tag), 
                                                         post_output_dir + "N[{},{}]_T[{:1.1f},{},{:1.3f}]_NU[{:g},{},{:1.1f}]_DRAG[{:g},{},{:1.1f}]_FORC[{},{},{:g}]_u0[{}]_TAG[{}]/".format(nx, ny, t0, h, t, v, int(hype), hypervisc_pow, ekmn_alpha, int(ekmn_hypo_diff), ekmn_hypo_pow, forcing, force_k, force_scale,  u0, s_tag),
@@ -382,10 +386,10 @@ if __name__ == '__main__':
                                                         ekmn_alpha, int(ekmn_hypo_diff), ekmn_hypo_pow,
                                                         forcing, force_k, force_scale,
                                                         n_k3, n_k1, 
-                                                        k_f, 
+                                                        k_f, km, 
                                                         num_threads, num_post_fftw_threads,
                                                         post_tag,
-                                                        post_options)] for nx, ny in zip(Nx, Ny) for t in T for v in nu for hype in hyper_visc for h in dt for u0 in ic for s_tag in solver_tag for n_k3 in num_k3_sectors for n_k1 in num_k1_sectors for k_f in k_frac for num_threads in num_post_omp_threads]
+                                                        post_options)] for nx, ny in zip(Nx, Ny) for t in T for v in nu for hype in hyper_visc for h in dt for u0 in ic for s_tag in solver_tag for n_k3, n_k1 in zip(num_k3_sectors, num_k1_sectors) for km in kmin_sqr for k_f in k_frac for num_threads in num_post_omp_threads]
 
         if cmdargs.cmd_only:
             print(tc.C + "\nPost Processing Commands:\n" + tc.Rst)
@@ -460,8 +464,8 @@ if __name__ == '__main__':
         cmd_list = [["python3 {} -i {} -f {} {} ".format(
                                             plot_script, 
                                             post_input_dir + "N[{},{}]_T[{:1.1f},{},{:1.3f}]_NU[{:g},{},{:1.1f}]_DRAG[{:g},{},{:1.1f}]_FORC[{},{},{:g}]_u0[{}]_TAG[{}]/".format(nx, ny, t0, h, t, v, int(hype), hypervisc_pow, ekmn_alpha, int(ekmn_hypo_diff), ekmn_hypo_pow, forcing, force_k, force_scale, u0, s_tag), 
-                                            "PostProcessing_HDF_Data_THREADS[{},{}]_SECTORS[{},{}]_KFRAC[{:1.2f}]_TAG[{}].h5".format(num_threads, num_post_fftw_threads, n_k3, n_k1, k_f, post_tag),
-                                            plot_options)] for nx, ny in zip(Nx, Ny) for h in dt for t in T for v in nu for n_k3 in num_k3_sectors for n_k1 in num_k1_sectors for k_f in k_frac for hype in hyper_visc for u0 in ic for s_tag in solver_tag for num_threads in num_post_omp_threads]
+                                            "PostProcessing_HDF_Data_THREADS[{},{}]_SECTORS[{},{}]_KFRAC[{:1.2f},{:1.2f}]_TAG[{}].h5".format(num_threads, num_post_fftw_threads, n_k3, n_k1, km, k_f, post_tag),
+                                            plot_options)] for nx, ny in zip(Nx, Ny) for h in dt for t in T for v in nu for n_k3, n_k1 in zip(num_k3_sectors, num_k1_sectors) for k_f in k_frac for hype in hyper_visc for u0 in ic for s_tag in solver_tag for km in kmin_sqr for num_threads in num_post_omp_threads]
         
 
         if cmdargs.cmd_only:

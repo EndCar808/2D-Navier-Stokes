@@ -149,6 +149,7 @@ typedef struct system_vars_struct {
 	double kmax_C;						// The radius of the set C -> = kmax_frac * kmax
 	double kmax_C_sqr;					// The sqr of the radius for the set C
 	double kmax_sqr;                    // The largest dealiased wavenumber squared
+	double kmin_sqr;                    // The smallest dealiased wavenumber squared
 	int num_k3_sectors;					// The number of sectors in wavenumber space to be used when computing the Kuramoto order parameter 
 	int num_k1_sectors;					// Variable to control the number of k1 sectors
 	double t0;							// Intial time

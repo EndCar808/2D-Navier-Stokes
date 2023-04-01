@@ -43,6 +43,7 @@ int GetCMLArgs(int argc, char** argv) {
 	int drag_flag       = 0;
 	int force_flag      = 0;
 	int threads_flag    = 0;
+	int k_flag 			= 0;
 
 	// -------------------------------
 	// Initialize Default Values
@@ -59,6 +60,7 @@ int GetCMLArgs(int argc, char** argv) {
 	sys_vars->REDUCED_K1_SEARCH_FLAG = 0;
 	// Fraction of maximum wavevector
 	sys_vars->kmax_frac = 1.0;
+	sys_vars->kmin_sqr  = 0.0;
 	// Set the default amount of threads to use
 	sys_vars->num_threads = 1;
 	sys_vars->num_fftw_threads = 1;
@@ -160,11 +162,25 @@ int GetCMLArgs(int argc, char** argv) {
 				}
 				break;
 			case 'k':
-				// Get the fraction of kmax wavevectors to consider in the phase sync
-				sys_vars->kmax_frac = atof(optarg); 
-				if (sys_vars->kmax_frac <= 0 || sys_vars->kmax_frac > 1.0) {
-					fprintf(stderr, "\n["RED"ERROR"RESET"]: Error in reading in command line agument ["CYAN"%s"RESET"], the fraction of maximum wavevector must be in (0, 1], fraction provided ["CYAN"%lf"RESET"]\n--->> Now Exiting!\n", "sys_vars->kmax_frac", sys_vars->kmax_frac);
-					exit(1);
+				if (k_flag == 0) {
+					// Get the fraction of kmax wavevectors to consider in the phase sync
+					sys_vars->kmax_frac = atof(optarg); 
+					if (sys_vars->kmax_frac <= 0 || sys_vars->kmax_frac > 1.0) {
+						fprintf(stderr, "\n["RED"ERROR"RESET"]: Error in reading in command line agument ["CYAN"%s"RESET"], the fraction of maximum wavevector must be in (0, 1], fraction provided ["CYAN"%lf"RESET"]\n--->> Now Exiting!\n", "sys_vars->kmax_frac", sys_vars->kmax_frac);
+						exit(1);
+					}
+					k_flag = 1;
+					break;
+				}
+				if (k_flag == 1) {
+					sys_vars->kmin_sqr = atof(optarg); 
+					// Get the fraction of kmax wavevectors to consider in the phase sync
+					if (sys_vars->kmin_sqr < 0) {
+						fprintf(stderr, "\n["RED"ERROR"RESET"]: Error in reading in command line agument ["CYAN"%s"RESET"], the minimum wavevector squared must be greater or equal to 0, value provided ["CYAN"%lf"RESET"]\n--->> Now Exiting!\n", "sys_vars->kmax_frac", sys_vars->kmin_sqr);
+						exit(1);
+					}
+					k_flag = 2;
+					break;
 				}
 				break;
 			case 'v':
