@@ -483,7 +483,12 @@ void WriteDataToFile(double t, long int snap) {
 	hsize_t dset_dims_2d[Dims2D];   
 	static const hsize_t Dims3D = 3;
 	hsize_t dset_dims_3d[Dims3D];     
-	
+	#if defined (__SEC_PHASE_SYNC_STATS_IN_TIME)
+	static const hsize_t Dims4D = 4;
+	hsize_t dset_dims_4d[Dims4D];
+	static const hsize_t Dims5D = 5;
+	hsize_t dset_dims_5d[Dims5D]; 
+	#endif
 
 	// -------------------------------
 	// Check for Output File
@@ -1063,101 +1068,203 @@ void WriteDataToFile(double t, long int snap) {
     fftw_free(tmp1);
 
 
-    ///------------------------- Phase Order Stats Data
-    #if defined(__SEC_PHASE_SYNC_STATS)
-	// Allocate temporary memory for the phases pdfs
-	double* ranges = (double*) fftw_malloc(sizeof(double) * sys_vars->num_k3_sectors * (proc_data->phase_sect_pdf_t[0]->n + 1));
-	double* counts = (double*) fftw_malloc(sizeof(double) * sys_vars->num_k3_sectors * proc_data->phase_sect_pdf_t[0]->n);
+    ///------------------------- Phase Order Sync Stats Data
+    #if defined(__SEC_PHASE_SYNC_STATS_IN_TIME)
+	// Allocate memory for sub group strings
+	char subgroup_string[128];
+	char counts_string[128];
 
-	// Save phase data in temporary memory for writing to file
-	for (int i = 0; i < sys_vars->num_k3_sectors; ++i) {
-		for (int j = 0; j < (int) proc_data->phase_sect_pdf_t[0]->n + 1; ++j) {
-			ranges[i * ((int)proc_data->phase_sect_pdf_t[0]->n + 1) + j] = proc_data->phase_sect_pdf_t[i]->range[j];
-			if (j < (int) proc_data->phase_sect_pdf_t[0]->n) {
-				counts[i * ((int)proc_data->phase_sect_pdf_t[0]->n) + j] = proc_data->phase_sect_pdf_t[i]->bin[j];
-			}
+	// Create the Triad PDF sub group for all contributions
+	sprintf(subgroup_string, "%s/TriadPhase_All_PDF_InTime", group_name);
+	hid_t triad_all_pdf_group_id = H5Gcreate(file_info->output_file_handle, subgroup_string, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);	
+	if (triad_all_pdf_group_id < 0 ) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to create group ["CYAN"%s"RESET"] in file at Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", subgroup_string, snap);
+		exit(1);
+	}
+
+	// Create the Weighted Flux Triad PDF sub group for all contributions
+	sprintf(subgroup_string, "%s/TriadPhaseWeightedFlux_All_PDF_InTime", group_name);
+	hid_t wghtd_all_pdf_group_id = H5Gcreate(file_info->output_file_handle, subgroup_string, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);	
+	if (wghtd_all_pdf_group_id < 0 ) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to create group ["CYAN"%s"RESET"] in file at Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", subgroup_string, snap);
+		exit(1);
+	}
+
+	#if defined(__SEC_PHASE_SYNC_STATS_IN_TIME_1D)
+	// Create the Triad PDF sub group for 1d contributions
+	sprintf(subgroup_string, "%s/TriadPhase_1D_PDF_InTime", group_name);
+	hid_t triad_1d_pdf_group_id = H5Gcreate(file_info->output_file_handle, subgroup_string, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);	
+	if (triad_1d_pdf_group_id < 0 ) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to create group ["CYAN"%s"RESET"] in file at Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", subgroup_string, snap);
+		exit(1);
+	}
+
+	// Create the Weighted Flux Triad PDF sub group for 1d contributions
+	sprintf(subgroup_string, "%s/TriadPhaseWeightedFlux_1D_PDF_InTime", group_name);
+	hid_t wghtd_1d_pdf_group_id = H5Gcreate(file_info->output_file_handle, subgroup_string, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);	
+	if (wghtd_1d_pdf_group_id < 0 ) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to create group ["CYAN"%s"RESET"] in file at Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", subgroup_string, snap);
+		exit(1);
+	}
+	#endif
+
+	#if defined(__SEC_PHASE_SYNC_STATS_IN_TIME_2D)
+	// Create the Triad PDF sub group for 1d contributions
+	sprintf(subgroup_string, "%s/TriadPhase_2D_PDF_InTime", group_name);
+	hid_t triad_2d_pdf_group_id = H5Gcreate(file_info->output_file_handle, subgroup_string, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);	
+	if (triad_1d_pdf_group_id < 0 ) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to create group ["CYAN"%s"RESET"] in file at Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", subgroup_string, snap);
+		exit(1);
+	}
+
+	// Create the Weighted Flux Triad PDF sub group for 1d contributions
+	sprintf(subgroup_string, "%s/TriadPhaseWeightedFlux_2D_PDF_InTime", group_name);
+	hid_t wghtd_2d_pdf_group_id = H5Gcreate(file_info->output_file_handle, subgroup_string, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);	
+	if (wghtd_1d_pdf_group_id < 0 ) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to create group ["CYAN"%s"RESET"] in file at Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", subgroup_string, snap);
+		exit(1);
+	}
+	#endif
+
+	///----------------------------------- Write Datasets
+	for (int class = 0; class < NUM_TRIAD_CLASS; ++class) {
+		for (int type = 0; type < NUM_TRIAD_TYPES; ++type) {
+			for (int i = 0; i < sys_vars->num_k3_sectors; ++i) {
+		
+				//------------------------- Write Ranges
+				// Only need to write the ranges once as they are the same for all data at each snapshot
+			    if (class == 0 && type == 0 && i == 0 && snap == 0) {
+					//------------------------- All contributions
+			    	// Triad PDFs
+		    	    dset_dims_1d[0] = proc_data->triads_sect_all_pdf_t[0][0][0]->n + 1;
+		    		status = H5LTmake_dataset(triad_all_pdf_group_id,  "T_All_Ranges", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, proc_data->triads_sect_all_pdf_t[0][0][0]->range);
+		    		if (status < 0) {
+		    	        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file  at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Triad Phases All PDF In Time Ranges", t, snap);
+		    	        exit(1);
+		    	    }
+	    	    	// Weight Flux Triad PDFs
+	        	    dset_dims_1d[0] = proc_data->triads_sect_wghtd_all_pdf_t[0][0][0]->n + 1;
+	        		status = H5LTmake_dataset(wghtd_all_pdf_group_id,  "W_All_Ranges", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, proc_data->triads_sect_wghtd_all_pdf_t[0][0][0]->range);
+	        		if (status < 0) {
+	        	        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file  at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Triad Phases Weighted Flux All PDF In Time Ranges", t, snap);
+	        	        exit(1);
+	        	    }
+
+	        	    #if defined(__SEC_PHASE_SYNC_STATS_IN_TIME_1D)
+    		    	//------------------------- 1D contributions
+			    	// Triad PDFs
+    	    	    dset_dims_1d[0] = proc_data->triads_sect_1d_pdf_t[0][0][0]->n + 1;
+    	    		status = H5LTmake_dataset(triad_1d_pdf_group_id,  "T_1D_Ranges", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, proc_data->triads_sect_1d_pdf_t[0][0][0]->range);
+    	    		if (status < 0) {
+    	    	        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file  at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Triad Phases 1D PDF In Time Ranges", t, snap);
+    	    	        exit(1);
+    	    	    }
+        	    	// Weight Flux Triad PDFs
+            	    dset_dims_1d[0] = proc_data->triads_sect_wghtd_1d_pdf_t[0][0][0]->n + 1;
+            		status = H5LTmake_dataset(wghtd_1d_pdf_group_id,  "W_1D_Ranges", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, proc_data->triads_sect_wghtd_1d_pdf_t[0][0][0]->range);
+            		if (status < 0) {
+            	        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file  at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Triad Phases Weighted Flux 1D PDF In Time Ranges", t, snap);
+            	        exit(1);
+            	    }
+            	    #endif
+			    }
+			    
+
+				//------------------------- Write Counts
+				//------------- All contribtutions
+			    // Triad PDFs
+			    sprintf(counts_string, "T_All_Counts_TClass[%d]_TType[%d]_Sec[%d]", class, type, i);
+			    dset_dims_1d[0] = proc_data->triads_sect_all_pdf_t[class][type][i]->n;
+				status = H5LTmake_dataset(triad_all_pdf_group_id, counts_string, Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, proc_data->triads_sect_all_pdf_t[class][type][i]->bin);
+				if (status < 0) {
+			        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file  at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Triad Phases All PDF In Time Counts", t, snap);
+			        exit(1);
+			    }
+		        // Weighted Flux Triad PDFs
+			    sprintf(counts_string, "W_All_Counts_TClass[%d]_TType[%d]_Sec[%d]", class, type, i);
+		        dset_dims_1d[0] = proc_data->triads_sect_wghtd_all_pdf_t[class][type][i]->n;
+		    	status = H5LTmake_dataset(wghtd_all_pdf_group_id, counts_string, Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, proc_data->triads_sect_wghtd_all_pdf_t[class][type][i]->bin);
+		    	if (status < 0) {
+		            fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file  at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Triad Phases Weighted Flux All PDF In Time Counts", t, snap);
+		            exit(1);
+		        }
+		        #if defined(__SEC_PHASE_SYNC_STATS_IN_TIME_1D)
+			    //------------- 1D contribtutions
+			    // Triad PDFs
+			    sprintf(counts_string, "T_1D_Counts_TClass[%d]_TType[%d]_Sec[%d]", class, type, i);
+			    dset_dims_1d[0] = proc_data->triads_sect_1d_pdf_t[class][type][i]->n;
+				status = H5LTmake_dataset(triad_1d_pdf_group_id, counts_string, Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, proc_data->triads_sect_1d_pdf_t[class][type][i]->bin);
+				if (status < 0) {
+			        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file  at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Triad Phases 1D PDF In Time Counts", t, snap);
+			        exit(1);
+			    }
+		        // Weighted Flux Triad PDFs
+			    sprintf(counts_string, "W_1D_Counts_TClass[%d]_TType[%d]_Sec[%d]", class, type, i);
+		        dset_dims_1d[0] = proc_data->triads_sect_wghtd_1d_pdf_t[class][type][i]->n;
+		    	status = H5LTmake_dataset(wghtd_1d_pdf_group_id, counts_string, Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, proc_data->triads_sect_wghtd_1d_pdf_t[class][type][i]->bin);
+		    	if (status < 0) {
+		            fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file  at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Triad Phases Weighted Flux 1D PDF In Time Counts", t, snap);
+		            exit(1);
+		        }
+		        #endif
+
+		        #if defined(__SEC_PHASE_SYNC_STATS_IN_TIME_2D)
+		        ///--------------------------------------------- 2D contributions stats
+		        for (int num_k1 = 0; num_k1 < sys_vars->num_k1_sectors; ++num_k1) {
+		        	//------------------------- Write Ranges
+					// Only need to write the ranges once as they are the same for all data at each snapshot
+				    if (class == 0 && type == 0 && i == 0 && num_k1 == 0 && snap == 0) {
+	    		    	//------------------------- 1D contributions
+				    	// Triad PDFs
+	    	    	    dset_dims_1d[0] = proc_data->triads_sect_2d_pdf_t[0][0][0][0]->n + 1;
+	    	    		status = H5LTmake_dataset(triad_2d_pdf_group_id,  "T_2D_Ranges", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, proc_data->triads_sect_2d_pdf_t[0][0][0][0]->range);
+	    	    		if (status < 0) {
+	    	    	        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file  at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Triad Phases 2D PDF In Time Ranges", t, snap);
+	    	    	        exit(1);
+	    	    	    }
+	        	    	// Weight Flux Triad PDFs
+	            	    dset_dims_1d[0] = proc_data->triads_sect_wghtd_2d_pdf_t[0][0][0][0]->n + 1;
+	            		status = H5LTmake_dataset(wghtd_2d_pdf_group_id,  "W_2D_Ranges", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, proc_data->triads_sect_wghtd_2d_pdf_t[0][0][0][0]->range);
+	            		if (status < 0) {
+	            	        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file  at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Triad Phases Weighted Flux 2D PDF In Time Ranges", t, snap);
+	            	        exit(1);
+	            	    }		
+				    }
+
+					//------------------------- Write Counts
+				    //------------- 2D contribtutions
+				    // Triad PDFs
+				    sprintf(counts_string, "T_2D_Counts_TClass[%d]_TType[%d]_Sec[%d,%d]", class, type, i, num_k1);
+				    dset_dims_1d[0] = proc_data->triads_sect_2d_pdf_t[class][type][i][num_k1]->n;
+					status = H5LTmake_dataset(triad_2d_pdf_group_id, counts_string, Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, proc_data->triads_sect_2d_pdf_t[class][type][i][num_k1]->bin);
+					if (status < 0) {
+				        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file  at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Triad Phases 2D PDF In Time Counts", t, snap);
+				        exit(1);
+				    }
+			        // Weighted Flux Triad PDFs
+				    sprintf(counts_string, "W_2D_Counts_TClass[%d]_TType[%d]_Sec[%d,%d]", class, type, i, num_k1);
+			        dset_dims_1d[0] = proc_data->triads_sect_wghtd_2d_pdf_t[class][type][i][num_k1]->n;
+			    	status = H5LTmake_dataset(wghtd_2d_pdf_group_id, counts_string, Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, proc_data->triads_sect_wghtd_2d_pdf_t[class][type][i][num_k1]->bin);
+			    	if (status < 0) {
+			            fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file  at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Triad Phases Weighted Flux 2D PDF In Time Counts", t, snap);
+			            exit(1);
+			        }
+		        }
+		      	#endif	        
+		    }
 		}
 	}
 
-    dset_dims_2d[0] = sys_vars->num_k3_sectors;
-    dset_dims_2d[1] = (int) proc_data->phase_sect_pdf_t[0]->n + 1;
-	status = H5LTmake_dataset(group_id, "SectorPhasePDF_InTime_Ranges", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, ranges);
-	if (status < 0) {
-        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file  at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Sector Phases PDF In Time Ranges", t, snap);
-        exit(1);
-    }
-    dset_dims_2d[1] = proc_data->phase_sect_pdf_t[0]->n;
-	status = H5LTmake_dataset(group_id, "SectorPhasePDF_InTime_Counts", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, counts);
-	if (status < 0) {
-        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file  at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Sector Phases PDF In Time Counts", t, snap);
-        exit(1);
-    }
-
-    // Free temporary memory
-    fftw_free(ranges);
-    fftw_free(counts);
-
-    // Allocate temporary memory for the triad phases pdfs
-    double* triad_ranges = (double*) fftw_malloc(sizeof(double) * (NUM_TRIAD_TYPES + 1) * sys_vars->num_k3_sectors * (proc_data->phase_sect_pdf_t[0]->n + 1));
-    double* triad_counts = (double*) fftw_malloc(sizeof(double) * (NUM_TRIAD_TYPES + 1) * sys_vars->num_k3_sectors * proc_data->phase_sect_pdf_t[0]->n);
-
-    // Save triad phase data in temporary memory for writing to file
-	for (int i = 0; i < sys_vars->num_k3_sectors; ++i) {
-    	for (int j = 0; j < (int) proc_data->phase_sect_pdf_t[0]->n + 1; ++j) {
-    		for (int q = 0; q < NUM_TRIAD_TYPES + 1; ++q) {
-	    		triad_ranges[(NUM_TRIAD_TYPES + 1) * (i * (proc_data->triad_sect_pdf_t[q][0]->n + 1) + j) + q] = proc_data->triad_sect_pdf_t[q][i]->range[j];
-	    		if (j < (int) proc_data->triad_sect_pdf_t[q][0]->n) {
-	    			triad_counts[(NUM_TRIAD_TYPES + 1) * (i * (proc_data->triad_sect_pdf_t[q][0]->n) + j) + q] = proc_data->triad_sect_pdf_t[q][i]->bin[j];
-	    		}
-	    	}
-	    }
-    }
-
-    dset_dims_3d[0] = sys_vars->num_k3_sectors;
-    dset_dims_3d[1] = proc_data->triad_sect_pdf_t[0][0]->n + 1;
-    dset_dims_3d[2] = NUM_TRIAD_TYPES + 1;
-	status = H5LTmake_dataset(group_id, "SectorTriadPhasePDF_InTime_Ranges", Dims3D, dset_dims_3d, H5T_NATIVE_DOUBLE, triad_ranges);
-	if (status < 0) {
-        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file  at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Sector Triad Phases PDF In Time Ranges", t, snap);
-        exit(1);
-    }
-    dset_dims_3d[1] = proc_data->triad_sect_pdf_t[0][0]->n;
-	status = H5LTmake_dataset(group_id, "SectorTriadPhasePDF_InTime_Counts", Dims3D, dset_dims_3d, H5T_NATIVE_DOUBLE, triad_counts);
-	if (status < 0) {
-        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file  at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Sector Triad Phases PDF In Time Counts", t, snap);
-        exit(1);
-    }
-
-    // Save triad phase data in temporary memory for writing to file
-	for (int i = 0; i < sys_vars->num_k3_sectors; ++i) {
-    	for (int j = 0; j < (int) proc_data->phase_sect_pdf_t[0]->n + 1; ++j) {
-    		for (int q = 0; q < NUM_TRIAD_TYPES + 1; ++q) {
-	    		triad_ranges[(NUM_TRIAD_TYPES + 1) * (i * (proc_data->triad_sect_pdf_t[q][0]->n + 1) + j) + q] = proc_data->triad_sect_wghtd_pdf_t[q][i]->range[j];
-	    		if (j < (int) proc_data->triad_sect_pdf_t[q][0]->n) {
-	    			triad_counts[(NUM_TRIAD_TYPES + 1) * (i * (proc_data->triad_sect_pdf_t[q][0]->n) + j) + q] = proc_data->triad_sect_wghtd_pdf_t[q][i]->bin[j];
-	    		}
-	    	}
-	    }
-    }
-    
-    dset_dims_3d[0] = sys_vars->num_k3_sectors;
-    dset_dims_3d[1] = proc_data->triad_sect_pdf_t[0][0]->n + 1;
-    dset_dims_3d[2] = NUM_TRIAD_TYPES + 1;
-	status = H5LTmake_dataset(group_id, "SectorTriadPhaseWeightedPDF_InTime_Ranges", Dims3D, dset_dims_3d, H5T_NATIVE_DOUBLE, triad_ranges);
-	if (status < 0) {
-        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file  at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Sector Triad Phases Weighted PDF In Time Ranges", t, snap);
-        exit(1);
-    }
-    dset_dims_3d[1] = proc_data->triad_sect_pdf_t[0][0]->n;
-	status = H5LTmake_dataset(group_id, "SectorTriadPhaseWeightedPDF_InTime_Counts", Dims3D, dset_dims_3d, H5T_NATIVE_DOUBLE, triad_counts);
-	if (status < 0) {
-        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file  at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Sector Triad Phases Weighted PDF In Time Counts", t, snap);
-        exit(1);
-    }
-
-    // Free temporary memory
-    fftw_free(triad_ranges);
-    fftw_free(triad_counts);
+	status = H5Gclose(triad_all_pdf_group_id);
+	status = H5Gclose(wghtd_all_pdf_group_id);
+    #if defined(__SEC_PHASE_SYNC_STATS_IN_TIME_1D)
+	status = H5Gclose(triad_1d_pdf_group_id);
+	status = H5Gclose(wghtd_1d_pdf_group_id);
+	#endif
+    #if defined(__SEC_PHASE_SYNC_STATS_IN_TIME_2D)
+	status = H5Gclose(triad_2d_pdf_group_id);
+	status = H5Gclose(wghtd_2d_pdf_group_id);
+	#endif
     #endif
 	#endif
 
@@ -1858,16 +1965,16 @@ void FinalWriteAndClose(void) {
 
     ///-------------------------- 2D Flux Contribution Histograms
     // Allocate temporary memory
-	double* ranges = (double*) fftw_malloc(sizeof(double) * sys_vars->num_k3_sectors * sys_vars->num_k1_sectors * (proc_data->triad_R_2d_pdf[0][0]->n + 1));
-	double* counts = (double*) fftw_malloc(sizeof(double) * sys_vars->num_k3_sectors * sys_vars->num_k1_sectors * proc_data->triad_R_2d_pdf[0][0]->n);
+	double* ranges_2d = (double*) fftw_malloc(sizeof(double) * sys_vars->num_k3_sectors * sys_vars->num_k1_sectors * (proc_data->triad_R_2d_pdf[0][0]->n + 1));
+	double* counts_2d = (double*) fftw_malloc(sizeof(double) * sys_vars->num_k3_sectors * sys_vars->num_k1_sectors * proc_data->triad_R_2d_pdf[0][0]->n);
     
     // Save phase data in temporary memory for writing to file
     for (int i = 0; i < sys_vars->num_k3_sectors; ++i) {
     	for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
 	    	for (int j = 0; j < (int) proc_data->triad_R_2d_pdf[0][0]->n + 1; ++j) {
-	    		ranges[(int) (proc_data->triad_R_2d_pdf[0][0]->n + 1) * (i * (sys_vars->num_k1_sectors) + l) + j] = proc_data->triad_R_2d_pdf[i][l]->range[j];
+	    		ranges_2d[(int) (proc_data->triad_R_2d_pdf[0][0]->n + 1) * (i * (sys_vars->num_k1_sectors) + l) + j] = proc_data->triad_R_2d_pdf[i][l]->range[j];
 	    		if (j < (int) proc_data->triad_R_2d_pdf[0][0]->n) {
-	    			counts[(int) (proc_data->triad_R_2d_pdf->n) * (i * (sys_vars->num_k1_sectors) + l) + j] = proc_data->triad_R_2d_pdf[i][l]->bin[j];
+	    			counts_2d[(int) (proc_data->triad_R_2d_pdf[0][0]->n) * (i * (sys_vars->num_k1_sectors) + l) + j] = proc_data->triad_R_2d_pdf[i][l]->bin[j];
 	    		}
 	    	}
     	}
@@ -1875,13 +1982,13 @@ void FinalWriteAndClose(void) {
     dset_dims_3d[0] = sys_vars->num_k3_sectors;
     dset_dims_3d[1] = sys_vars->num_k1_sectors;
     dset_dims_3d[2] = proc_data->triad_R_2d_pdf[0][0]->n + 1;
-	status = H5LTmake_dataset(file_info->output_file_handle, "Phase_Sync_2D_PDFRanges", Dims3D, dset_dims_3d, H5T_NATIVE_DOUBLE, ranges);
+	status = H5LTmake_dataset(file_info->output_file_handle, "Phase_Sync_2D_PDFRanges", Dims3D, dset_dims_3d, H5T_NATIVE_DOUBLE, ranges_2d);
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Phase Sync PDF Ranges");
         exit(1);
     }
-    dset_dims_3d[2] = proc_data->triad_R_2d_pdf[0][l]->n;
-	status = H5LTmake_dataset(file_info->output_file_handle, "Phase_Sync_2D_PDFCounts", Dims3D, dset_dims_3d, H5T_NATIVE_DOUBLE, counts);
+    dset_dims_3d[2] = proc_data->triad_R_2d_pdf[0][0]->n;
+	status = H5LTmake_dataset(file_info->output_file_handle, "Phase_Sync_2D_PDFCounts", Dims3D, dset_dims_3d, H5T_NATIVE_DOUBLE, counts_2d);
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Phase Sync PDF Counts");
         exit(1);
@@ -1891,21 +1998,21 @@ void FinalWriteAndClose(void) {
     for (int i = 0; i < sys_vars->num_k3_sectors; ++i) {
     	for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
 	    	for (int j = 0; j < (int) proc_data->triad_Phi_2d_pdf[0][0]->n + 1; ++j) {
-	    		ranges[(int) (proc_data->triad_Phi_2d_pdf[0][0]->n + 1) * (i * (sys_vars->num_k1_sectors) + l) + j] = proc_data->triad_Phi_2d_pdf[i][l]->range[j];
+	    		ranges_2d[(int) (proc_data->triad_Phi_2d_pdf[0][0]->n + 1) * (i * (sys_vars->num_k1_sectors) + l) + j] = proc_data->triad_Phi_2d_pdf[i][l]->range[j];
 	    		if (j < (int) proc_data->triad_Phi_2d_pdf[0][0]->n) {
-	    			counts[(int) (proc_data->triad_Phi_2d_pdf->n) * (i * (sys_vars->num_k1_sectors) + l) + j] = proc_data->triad_Phi_2d_pdf[i][l]->bin[j];
+	    			counts_2d[(int) (proc_data->triad_Phi_2d_pdf[0][0]->n) * (i * (sys_vars->num_k1_sectors) + l) + j] = proc_data->triad_Phi_2d_pdf[i][l]->bin[j];
 	    		}
 	    	}
     	}
     }
     dset_dims_3d[2] = proc_data->triad_Phi_2d_pdf[0][0]->n + 1;
-	status = H5LTmake_dataset(file_info->output_file_handle, "Average_Phase_2D_PDFRanges", Dims3D, dset_dims_3d, H5T_NATIVE_DOUBLE, ranges);
+	status = H5LTmake_dataset(file_info->output_file_handle, "Average_Phase_2D_PDFRanges", Dims3D, dset_dims_3d, H5T_NATIVE_DOUBLE, ranges_2d);
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Average Phase PDF Ranges");
         exit(1);
     }
     dset_dims_3d[2] = proc_data->triad_Phi_2d_pdf[0][0]->n;
-	status = H5LTmake_dataset(file_info->output_file_handle, "Average_Phase_2D_PDFCounts", Dims3D, dset_dims_3d, H5T_NATIVE_DOUBLE, counts);
+	status = H5LTmake_dataset(file_info->output_file_handle, "Average_Phase_2D_PDFCounts", Dims3D, dset_dims_3d, H5T_NATIVE_DOUBLE, counts_2d);
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Average Phase PDF Counts");
         exit(1);
@@ -1915,29 +2022,29 @@ void FinalWriteAndClose(void) {
     for (int i = 0; i < sys_vars->num_k3_sectors; ++i) {
     	for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
 	    	for (int j = 0; j < (int) proc_data->enst_flux_2d_pdf[0][0]->n + 1; ++j) {
-	    		ranges[(int) (proc_data->enst_flux_2d_pdf[0][0]->n + 1) * (i * (sys_vars->num_k1_sectors) + l) + j] = proc_data->enst_flux_2d_pdf[i][l]->range[j];
+	    		ranges_2d[(int) (proc_data->enst_flux_2d_pdf[0][0]->n + 1) * (i * (sys_vars->num_k1_sectors) + l) + j] = proc_data->enst_flux_2d_pdf[i][l]->range[j];
 	    		if (j < (int) proc_data->enst_flux_2d_pdf[0][0]->n) {
-	    			counts[(int) (proc_data->enst_flux_2d_pdf->n) * (i * (sys_vars->num_k1_sectors) + l) + j] = proc_data->enst_flux_2d_pdf[i][l]->bin[j];
+	    			counts_2d[(int) (proc_data->enst_flux_2d_pdf[0][0]->n) * (i * (sys_vars->num_k1_sectors) + l) + j] = proc_data->enst_flux_2d_pdf[i][l]->bin[j];
 	    		}
 	    	}
     	}
     }
     dset_dims_3d[2] = proc_data->enst_flux_2d_pdf[0][0]->n + 1;
-	status = H5LTmake_dataset(file_info->output_file_handle, "Enstrophy_Flux_2D_PDFRanges", Dims3D, dset_dims_3d, H5T_NATIVE_DOUBLE, ranges);
+	status = H5LTmake_dataset(file_info->output_file_handle, "Enstrophy_Flux_2D_PDFRanges", Dims3D, dset_dims_3d, H5T_NATIVE_DOUBLE, ranges_2d);
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Enstrophy Flux PDF Ranges");
         exit(1);
     }
     dset_dims_3d[2] = proc_data->enst_flux_2d_pdf[0][0]->n;
-	status = H5LTmake_dataset(file_info->output_file_handle, "Enstrophy_Flux_2D_PDFCounts", Dims3D, dset_dims_3d, H5T_NATIVE_DOUBLE, counts);
+	status = H5LTmake_dataset(file_info->output_file_handle, "Enstrophy_Flux_2D_PDFCounts", Dims3D, dset_dims_3d, H5T_NATIVE_DOUBLE, counts_2d);
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Enstrophy Flux PDF Counts");
         exit(1);
     }
 
     // Free temporary memory
-    fftw_free(ranges);
-    fftw_free(counts);
+    fftw_free(ranges_2d);
+    fftw_free(counts_2d);
     #endif
     #endif
     // -------------------------------

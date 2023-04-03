@@ -797,6 +797,9 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
         # Read in the spectra
         for group in f.keys():
             if "Snap" in group:
+                # if 'TriadPhase_All_PDF_InTime' in list(f[group].keys()):
+                #     for sub_group in list(f[group]['TriadPhase_All_PDF_InTime'].keys()):
+
                 if 'FullFieldPhases' in list(f[group].keys()):
                     data.phases[nn, :] = f[group]["FullFieldPhases"][:, :]
                 if 'FullFieldEnstrophySpectrum' in list(f[group].keys()):

@@ -26,7 +26,8 @@
 //  Function Definitions
 // ---------------------------------------------------------------------
 /**
- * Function to compute the phase synchroniztion data sector by sector in wavenumber space for the current snaphsot
+ * Function to compute the phase synchroniztion, enstrophy flux etc in the set \amthcal{S}^{U} for the current snaphsot. 
+ * What is computed here is the equivalent of summming over all setcors.
  * @param s The index of the current snapshot
  */
 void PhaseSync(int s) {
@@ -292,6 +293,7 @@ void PhaseSyncSector(int s) {
 	double k1_angle_neg, k2_angle_neg, k3_angle_neg;
 	int gsl_status;
 	double flux_term;
+	double phase_val[NUM_TRIAD_CLASS];
 	fftw_complex collective_phase_term;
 
 
@@ -358,7 +360,8 @@ void PhaseSyncSector(int s) {
 					flux_wght = flux_pre_fac * (proc_data->amps[tmp_k1 + sys_vars->kmax + k1_y] * proc_data->amps[tmp_k2 + sys_vars->kmax + k2_y] * proc_data->amps[tmp_k3 + sys_vars->kmax + k3_y]);
 
 					// Get the triad phase
-					triad_phase = proc_data->phases[tmp_k1 + sys_vars->kmax + k1_y] + proc_data->phases[tmp_k2 + sys_vars->kmax + k2_y] - proc_data->phases[tmp_k3 + sys_vars->kmax + k3_y];
+					triad_phase  = proc_data->phases[tmp_k1 + sys_vars->kmax + k1_y] + proc_data->phases[tmp_k2 + sys_vars->kmax + k2_y] - proc_data->phases[tmp_k3 + sys_vars->kmax + k3_y];
+					phase_val[0] = fmod(triad_phase + 2.0 * M_PI, 2.0 * M_PI) - M_PI;
 
 					// Get flux term
 					flux_term = flux_wght * cos(triad_phase);
@@ -373,6 +376,7 @@ void PhaseSyncSector(int s) {
 
 						// Define the generalized triad phase for the first term in the flux
 						gen_triad_phase = fmod(triad_phase + 2.0 * M_PI + carg(flux_wght), 2.0 * M_PI) - M_PI;
+						phase_val[1]    = gen_triad_phase;
 						
 						//------------------------------------------ TRIAD TYPE 0
 						// Update the combined triad phase order parameter with the appropriate contribution
@@ -420,22 +424,50 @@ void PhaseSyncSector(int s) {
 							}
 						}
 
-						// ------ Update the PDFs of the combined triads
-						#if defined(__SEC_PHASE_SYNC_STATS)
-						gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf[0][a], gen_triad_phase);
-						if (gsl_status != 0) {
-							fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 0", a, s, gsl_status, gen_triad_phase);
-							exit(1);
-						}
-						gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf_t[0][a], gen_triad_phase);
-						if (gsl_status != 0) {
-							fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 0 In Time", a, s, gsl_status, gen_triad_phase);
-							exit(1);
-						}
-						gsl_status = gsl_histogram_accumulate(proc_data->triad_sect_wghtd_pdf_t[0][a], gen_triad_phase, fabs(flux_wght));
-						if (gsl_status != 0) {
-							fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase Weighted PDF Type 0 In Time", a, s, gsl_status, gen_triad_phase);
-							exit(1);
+						//------ Update the PDFs of the triad phases and weighted flux densisties
+						#if defined(__SEC_PHASE_SYNC_STATS_IN_TIME)
+						for (int triad_class = 0; triad_class < NUM_TRIAD_CLASS; ++triad_class) {
+							// Update the PDFs for all: both 1d and 2d contributions
+							gsl_status = gsl_histogram_increment(proc_data->triads_sect_all_pdf_t[triad_class][0][a], phase_val[triad_class]);
+							if (gsl_status != 0) {
+								fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 0 In Time", a, s, gsl_status, phase_val[triad_class]);
+								exit(1);
+							}
+							gsl_status = gsl_histogram_accumulate(proc_data->triads_sect_wghtd_all_pdf_t[triad_class][0][a], phase_val[triad_class], fabs(flux_wght));
+							if (gsl_status != 0) {
+								fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase Weighted PDF Type 0 In Time", a, s, gsl_status, phase_val[triad_class]);
+								exit(1);
+							}
+							if (a == l) {
+				        	    #if defined(__SEC_PHASE_SYNC_STATS_IN_TIME_1D)
+								// Update the PDFs for 1d contributions
+								gsl_status = gsl_histogram_increment(proc_data->triads_sect_1d_pdf_t[triad_class][0][a], phase_val[triad_class]);
+								if (gsl_status != 0) {
+									fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 0 In Time", a, s, gsl_status, phase_val[triad_class]);
+									exit(1);
+								}
+								gsl_status = gsl_histogram_accumulate(proc_data->triads_sect_wghtd_1d_pdf_t[triad_class][0][a], phase_val[triad_class], fabs(flux_wght));
+								if (gsl_status != 0) {
+									fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase Weighted PDF Type 0 In Time", a, s, gsl_status, phase_val[triad_class]);
+									exit(1);
+								}
+								#endif
+							}
+							else {
+				        	    #if defined(__SEC_PHASE_SYNC_STATS_IN_TIME_2D)
+								// Update the PDFs for 2d contributions
+								gsl_status = gsl_histogram_increment(proc_data->triads_sect_2d_pdf_t[triad_class][0][a][l], phase_val[triad_class]);
+								if (gsl_status != 0) {
+									fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 0 In Time", a, s, gsl_status, phase_val[triad_class]);
+									exit(1);
+								}
+								gsl_status = gsl_histogram_accumulate(proc_data->triads_sect_wghtd_2d_pdf_t[triad_class][0][a][l], phase_val[triad_class], fabs(flux_wght));
+								if (gsl_status != 0) {
+									fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase Weighted PDF Type 0 In Time", a, s, gsl_status, phase_val[triad_class]);
+									exit(1);
+								}
+								#endif
+							}
 						}
 						#endif
 
@@ -443,8 +475,8 @@ void PhaseSyncSector(int s) {
 							
 							//------------------------------------------ TRIAD TYPE 1
 							proc_data->num_triads[1][a]++;		
-							proc_data->enst_flux[1][a]                  += flux_term;
-							proc_data->triad_phase_order[1][a]          += cexp(I * gen_triad_phase);
+							proc_data->enst_flux[1][a]         += flux_term;
+							proc_data->triad_phase_order[1][a] += cexp(I * gen_triad_phase);
 							if (cabs(collective_phase_term) > 0.0) {
 								proc_data->phase_order_C_theta_triads[1][a] += collective_phase_term; /// cabs(collective_phase_term);
 								if (k3_y >= 0) {
@@ -486,22 +518,50 @@ void PhaseSyncSector(int s) {
 								}
 							}
 
-							// Update the PDFs
-							#if defined(__SEC_PHASE_SYNC_STATS)
-							gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf[1][a], gen_triad_phase);
-							if (gsl_status != 0) {
-								fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 1", a, s, gsl_status, gen_triad_phase);
-								exit(1);
-							}
-							gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf_t[1][a], gen_triad_phase);
-							if (gsl_status != 0) {
-								fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 1 In Time", a, s, gsl_status, gen_triad_phase);
-								exit(1);
-							}
-							gsl_status = gsl_histogram_accumulate(proc_data->triad_sect_wghtd_pdf_t[1][a], gen_triad_phase, fabs(flux_wght));
-							if (gsl_status != 0) {
-								fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase Weighted PDF Type 1 In Time", a, s, gsl_status, gen_triad_phase);
-								exit(1);
+							//------ Update the PDFs of the triad phases and weighted flux densisties
+							#if defined(__SEC_PHASE_SYNC_STATS_IN_TIME)
+							for (int triad_class = 0; triad_class < NUM_TRIAD_CLASS; ++triad_class) {
+								// Update the PDFs for all: both 1d and 2d contributions
+								gsl_status = gsl_histogram_increment(proc_data->triads_sect_all_pdf_t[triad_class][1][a], phase_val[triad_class]);
+								if (gsl_status != 0) {
+									fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 1 In Time", a, s, gsl_status, phase_val[triad_class]);
+									exit(1);
+								}
+								gsl_status = gsl_histogram_accumulate(proc_data->triads_sect_wghtd_all_pdf_t[triad_class][1][a], phase_val[triad_class], fabs(flux_wght));
+								if (gsl_status != 0) {
+									fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase Weighted PDF Type 1 In Time", a, s, gsl_status, phase_val[triad_class]);
+									exit(1);
+								}
+								if (a == l) {
+									#if defined(__SEC_PHASE_SYNC_STATS_IN_TIME_1D)
+									// Update the PDFs for 1d contributions
+									gsl_status = gsl_histogram_increment(proc_data->triads_sect_1d_pdf_t[triad_class][1][a], phase_val[triad_class]);
+									if (gsl_status != 0) {
+										fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 1 In Time", a, s, gsl_status, phase_val[triad_class]);
+										exit(1);
+									}
+									gsl_status = gsl_histogram_accumulate(proc_data->triads_sect_wghtd_1d_pdf_t[triad_class][1][a], phase_val[triad_class], fabs(flux_wght));
+									if (gsl_status != 0) {
+										fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase Weighted PDF Type 1 In Time", a, s, gsl_status, phase_val[triad_class]);
+										exit(1);
+									}
+									#endif
+								}
+								else {
+									#if defined(__SEC_PHASE_SYNC_STATS_IN_TIME_2D)
+									// Update the PDFs for 2d contributions
+									gsl_status = gsl_histogram_increment(proc_data->triads_sect_2d_pdf_t[triad_class][1][a][l], phase_val[triad_class]);
+									if (gsl_status != 0) {
+										fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 1 In Time", a, s, gsl_status, phase_val[triad_class]);
+										exit(1);
+									}
+									gsl_status = gsl_histogram_accumulate(proc_data->triads_sect_wghtd_2d_pdf_t[triad_class][1][a][l], phase_val[triad_class], fabs(flux_wght));
+									if (gsl_status != 0) {
+										fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase Weighted PDF Type 1 In Time", a, s, gsl_status, phase_val[triad_class]);
+										exit(1);
+									}
+									#endif
+								}
 							}
 							#endif
 						}
@@ -509,8 +569,8 @@ void PhaseSyncSector(int s) {
 							
 							//------------------------------------------ TRIAD TYPE 2
 							proc_data->num_triads[2][a]++;		
-							proc_data->enst_flux[2][a]                  += flux_term;
-							proc_data->triad_phase_order[2][a]          += cexp(I * gen_triad_phase);
+							proc_data->enst_flux[2][a]         += flux_term;
+							proc_data->triad_phase_order[2][a] += cexp(I * gen_triad_phase);
 							if (cabs(collective_phase_term) > 0.0) {
 								proc_data->phase_order_C_theta_triads[2][a] += collective_phase_term; /// cabs(collective_phase_term);
 								if (k3_y >= 0) {
@@ -552,34 +612,59 @@ void PhaseSyncSector(int s) {
 								}
 							}
 
-							// Update the PDFs
-							#if defined(__SEC_PHASE_SYNC_STATS)
-							gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf[2][a], gen_triad_phase);
-							if (gsl_status != 0) {
-								fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase Type 2 PDF", a, s, gsl_status, gen_triad_phase);
-								exit(1);
-							}
-							gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf_t[2][a], gen_triad_phase);
-							if (gsl_status != 0) {
-								fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 2 In Time", a, s, gsl_status, gen_triad_phase);
-								exit(1);
-							}
-							gsl_status = gsl_histogram_accumulate(proc_data->triad_sect_wghtd_pdf_t[2][a], gen_triad_phase, fabs(flux_wght));
-							if (gsl_status != 0) {
-								fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase Weighted PDF Type 2 In Time", a, s, gsl_status, gen_triad_phase);
-								exit(1);
+							//------ Update the PDFs of the triad phases and weighted flux densisties
+							#if defined(__SEC_PHASE_SYNC_STATS_IN_TIME)
+							for (int triad_class = 0; triad_class < NUM_TRIAD_CLASS; ++triad_class) {
+								// Update the PDFs for all: both 1d and 2d contributions
+								gsl_status = gsl_histogram_increment(proc_data->triads_sect_all_pdf_t[triad_class][2][a], phase_val[triad_class]);
+								if (gsl_status != 0) {
+									fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 0 In Time", a, s, gsl_status, phase_val[triad_class]);
+									exit(1);
+								}
+								gsl_status = gsl_histogram_accumulate(proc_data->triads_sect_wghtd_all_pdf_t[triad_class][2][a], phase_val[triad_class], fabs(flux_wght));
+								if (gsl_status != 0) {
+									fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase Weighted PDF Type 0 In Time", a, s, gsl_status, phase_val[triad_class]);
+									exit(1);
+								}
+								if (a == l) {
+									#if defined(__SEC_PHASE_SYNC_STATS_IN_TIME_1D)
+									// Update the PDFs for 1d contributions
+									gsl_status = gsl_histogram_increment(proc_data->triads_sect_1d_pdf_t[triad_class][2][a], phase_val[triad_class]);
+									if (gsl_status != 0) {
+										fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 0 In Time", a, s, gsl_status, phase_val[triad_class]);
+										exit(1);
+									}
+									gsl_status = gsl_histogram_accumulate(proc_data->triads_sect_wghtd_1d_pdf_t[triad_class][2][a], phase_val[triad_class], fabs(flux_wght));
+									if (gsl_status != 0) {
+										fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase Weighted PDF Type 0 In Time", a, s, gsl_status, phase_val[triad_class]);
+										exit(1);
+									}
+									#endif
+								}
+								else {
+									#if defined(__SEC_PHASE_SYNC_STATS_IN_TIME_2D)
+									// Update the PDFs for 2d contributions
+									gsl_status = gsl_histogram_increment(proc_data->triads_sect_2d_pdf_t[triad_class][2][a][l], phase_val[triad_class]);
+									if (gsl_status != 0) {
+										fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 0 In Time", a, s, gsl_status, phase_val[triad_class]);
+										exit(1);
+									}
+									gsl_status = gsl_histogram_accumulate(proc_data->triads_sect_wghtd_2d_pdf_t[triad_class][2][a][l], phase_val[triad_class], fabs(flux_wght));
+									if (gsl_status != 0) {
+										fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase Weighted PDF Type 0 In Time", a, s, gsl_status, phase_val[triad_class]);
+										exit(1);
+									}
+									#endif
+								}
 							}
 							#endif
 						}
 						else if (flux_pre_fac == 0.0 || flux_wght == 0.0) {
 
-							// Define the generalized triad phase for the zero contribution terms
-							gen_triad_phase = fmod(triad_phase + 2.0 * M_PI + carg(flux_wght), 2.0 * M_PI) - M_PI;
-
-							//------------------------------------------ TRIAD TYPE 5
+							//------------------------------------------ TRIAD TYPE 5 - 0 flux contribution
 							proc_data->num_triads[5][a]++;		
-							proc_data->enst_flux[5][a]                  += flux_term;
-							proc_data->triad_phase_order[5][a]          += cexp(I * gen_triad_phase);
+							proc_data->enst_flux[5][a]         += flux_term;
+							proc_data->triad_phase_order[5][a] += cexp(I * gen_triad_phase);
 							if (cabs(collective_phase_term) > 0.0) {
 								proc_data->phase_order_C_theta_triads[5][a] += collective_phase_term; /// cabs(collective_phase_term);
 								if (k3_y >= 0) {
@@ -621,28 +706,58 @@ void PhaseSyncSector(int s) {
 								}
 							}
 
-							// Update the PDFs
-							#if defined(__SEC_PHASE_SYNC_STATS)
-							gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf[5][a], gen_triad_phase);
-							if (gsl_status != 0) {
-								fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 5", a, s, gsl_status, gen_triad_phase);
-								exit(1);
-							}
-							gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf_t[5][a], gen_triad_phase);
-							if (gsl_status != 0) {
-								fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 5 In Time", a, s, gsl_status, gen_triad_phase);
-								exit(1);
-							}
-							gsl_status = gsl_histogram_accumulate(proc_data->triad_sect_wghtd_pdf_t[5][a], gen_triad_phase, fabs(flux_wght)); 
-							if (gsl_status != 0) {
-								fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase Weighted PDF Type 5 In Time", a, s, gsl_status, gen_triad_phase);
-								exit(1);
+							//------ Update the PDFs of the triad phases and weighted flux densisties
+							#if defined(__SEC_PHASE_SYNC_STATS_IN_TIME)
+							for (int triad_class = 0; triad_class < NUM_TRIAD_CLASS; ++triad_class) {
+								// Update the PDFs for all: both 1d and 2d contributions
+								gsl_status = gsl_histogram_increment(proc_data->triads_sect_all_pdf_t[triad_class][5][a], phase_val[triad_class]);
+								if (gsl_status != 0) {
+									fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 0 In Time", a, s, gsl_status, phase_val[triad_class]);
+									exit(1);
+								}
+								gsl_status = gsl_histogram_accumulate(proc_data->triads_sect_wghtd_all_pdf_t[triad_class][5][a], phase_val[triad_class], fabs(flux_wght));
+								if (gsl_status != 0) {
+									fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase Weighted PDF Type 0 In Time", a, s, gsl_status, phase_val[triad_class]);
+									exit(1);
+								}
+								if (a == l) {
+									#if defined(__SEC_PHASE_SYNC_STATS_IN_TIME_1D)
+									// Update the PDFs for 1d contributions
+									gsl_status = gsl_histogram_increment(proc_data->triads_sect_1d_pdf_t[triad_class][5][a], phase_val[triad_class]);
+									if (gsl_status != 0) {
+										fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 0 In Time", a, s, gsl_status, phase_val[triad_class]);
+										exit(1);
+									}
+									gsl_status = gsl_histogram_accumulate(proc_data->triads_sect_wghtd_1d_pdf_t[triad_class][5][a], phase_val[triad_class], fabs(flux_wght));
+									if (gsl_status != 0) {
+										fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase Weighted PDF Type 0 In Time", a, s, gsl_status, phase_val[triad_class]);
+										exit(1);
+									}
+									#endif
+								}
+								else {
+									#if defined(__SEC_PHASE_SYNC_STATS_IN_TIME_2D)
+									// Update the PDFs for 2d contributions
+									gsl_status = gsl_histogram_increment(proc_data->triads_sect_2d_pdf_t[triad_class][5][a][l], phase_val[triad_class]);
+									if (gsl_status != 0) {
+										fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 0 In Time", a, s, gsl_status, phase_val[triad_class]);
+										exit(1);
+									}
+									gsl_status = gsl_histogram_accumulate(proc_data->triads_sect_wghtd_2d_pdf_t[triad_class][5][a][l], phase_val[triad_class], fabs(flux_wght));
+									if (gsl_status != 0) {
+										fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase Weighted PDF Type 0 In Time", a, s, gsl_status, phase_val[triad_class]);
+										exit(1);
+									}
+									#endif
+								}
 							}
 							#endif
 						}
 						else {
-							// Define the generalized triad phase for the ignored terms
-							gen_triad_phase = fmod(triad_phase + 2.0 * M_PI + carg(flux_wght), 2.0 * M_PI) - M_PI;
+
+							// Define the generalized triad phase for the ignored terms -> carg of flux_weight is not defined so just triad phases
+							gen_triad_phase = fmod(triad_phase + 2.0 * M_PI, 2.0 * M_PI) - M_PI;
+							phase_val[1]    = gen_triad_phase;
 
 							//------------------------------------------ TRIAD TYPE 6
 							proc_data->num_triads[6][a]++;		
@@ -689,22 +804,50 @@ void PhaseSyncSector(int s) {
 								}
 							}
 
-							// Update the PDFs
-							#if defined(__SEC_PHASE_SYNC_STATS)
-							gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf[6][a], gen_triad_phase);
-							if (gsl_status != 0) {
-								fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 6", a, s, gsl_status, gen_triad_phase);
-								exit(1);
-							}
-							gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf_t[6][a], gen_triad_phase);
-							if (gsl_status != 0) {
-								fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 6 In Time", a, s, gsl_status, gen_triad_phase);
-								exit(1);
-							}
-							gsl_status = gsl_histogram_accumulate(proc_data->triad_sect_wghtd_pdf_t[6][a], gen_triad_phase, fabs(flux_wght)); 
-							if (gsl_status != 0) {
-								fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase Weighted PDF Type 6 In Time", a, s, gsl_status, gen_triad_phase);
-								exit(1);
+							//------ Update the PDFs of the triad phases and weighted flux densisties
+							#if defined(__SEC_PHASE_SYNC_STATS_IN_TIME)
+							for (int triad_class = 0; triad_class < NUM_TRIAD_CLASS; ++triad_class) {
+								// Update the PDFs for all: both 1d and 2d contributions
+								gsl_status = gsl_histogram_increment(proc_data->triads_sect_all_pdf_t[triad_class][6][a], phase_val[triad_class]);
+								if (gsl_status != 0) {
+									fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 0 In Time", a, s, gsl_status, phase_val[triad_class]);
+									exit(1);
+								}
+								gsl_status = gsl_histogram_accumulate(proc_data->triads_sect_wghtd_all_pdf_t[triad_class][6][a], phase_val[triad_class], fabs(flux_wght));
+								if (gsl_status != 0) {
+									fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase Weighted PDF Type 0 In Time", a, s, gsl_status, phase_val[triad_class]);
+									exit(1);
+								}
+								if (a == l) {
+									#if defined(__SEC_PHASE_SYNC_STATS_IN_TIME_1D)
+									// Update the PDFs for 1d contributions
+									gsl_status = gsl_histogram_increment(proc_data->triads_sect_1d_pdf_t[triad_class][6][a], phase_val[triad_class]);
+									if (gsl_status != 0) {
+										fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 0 In Time", a, s, gsl_status, phase_val[triad_class]);
+										exit(1);
+									}
+									gsl_status = gsl_histogram_accumulate(proc_data->triads_sect_wghtd_1d_pdf_t[triad_class][6][a], phase_val[triad_class], fabs(flux_wght));
+									if (gsl_status != 0) {
+										fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase Weighted PDF Type 0 In Time", a, s, gsl_status, phase_val[triad_class]);
+										exit(1);
+									}
+									#endif
+								}
+								else {
+									#if defined(__SEC_PHASE_SYNC_STATS_IN_TIME_2D)
+									// Update the PDFs for 2d contributions
+									gsl_status = gsl_histogram_increment(proc_data->triads_sect_2d_pdf_t[triad_class][6][a][l], phase_val[triad_class]);
+									if (gsl_status != 0) {
+										fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 0 In Time", a, s, gsl_status, phase_val[triad_class]);
+										exit(1);
+									}
+									gsl_status = gsl_histogram_accumulate(proc_data->triads_sect_wghtd_2d_pdf_t[triad_class][6][a][l], phase_val[triad_class], fabs(flux_wght));
+									if (gsl_status != 0) {
+										fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase Weighted PDF Type 0 In Time", a, s, gsl_status, phase_val[triad_class]);
+										exit(1);
+									}
+									#endif
+								}
 							}
 							#endif
 						}
@@ -716,12 +859,13 @@ void PhaseSyncSector(int s) {
 						
 						// Define the generalized triad phase for the first term in the flux
 						gen_triad_phase = fmod(triad_phase + 2.0 * M_PI + carg(-flux_wght), 2.0 * M_PI) - M_PI;
+						phase_val[1]    = gen_triad_phase;
 						
-						//------------------------------------------ TRIAD TYPE 0
+						//------------------------------------------ TRIAD TYPE 0 - All triad types combined
 						// Update the combined triad phase order parameter with the appropriate contribution
 						proc_data->num_triads[0][a]++;
-						proc_data->enst_flux[0][a]                  += -flux_term;
-						proc_data->triad_phase_order[0][a]          += cexp(I * gen_triad_phase);
+						proc_data->enst_flux[0][a]         += -flux_term;
+						proc_data->triad_phase_order[0][a] += cexp(I * gen_triad_phase);
 						if (cabs(collective_phase_term) > 0.0) {
 							proc_data->phase_order_C_theta_triads[0][a] += -collective_phase_term; /// cabs(collective_phase_term);
 							if (k1_y >= 0 && k2_y >= 0) {
@@ -763,30 +907,58 @@ void PhaseSyncSector(int s) {
 							}
 						}
 
-						// ------ Update the PDFs of the combined triads
-						#if defined(__SEC_PHASE_SYNC_STATS)
-						gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf[0][a], gen_triad_phase);
-						if (gsl_status != 0) {
-							fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 0", a, s, gsl_status, gen_triad_phase);
-							exit(1);
-						}
-						gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf_t[0][a], gen_triad_phase);
-						if (gsl_status != 0) {
-							fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 0 In Time", a, s, gsl_status, gen_triad_phase);
-							exit(1);
-						}
-						gsl_status = gsl_histogram_accumulate(proc_data->triad_sect_wghtd_pdf_t[0][a], gen_triad_phase, fabs(-flux_wght));
-						if (gsl_status != 0) {
-							fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase Weighted PDF Type 0 In Time", a, s, gsl_status, gen_triad_phase);
-							exit(1);
+						//------ Update the PDFs of the triad phases and weighted flux densisties
+						#if defined(__SEC_PHASE_SYNC_STATS_IN_TIME)
+						for (int triad_class = 0; triad_class < NUM_TRIAD_CLASS; ++triad_class) {
+							// Update the PDFs for all: both 1d and 2d contributions
+							gsl_status = gsl_histogram_increment(proc_data->triads_sect_all_pdf_t[triad_class][0][a], phase_val[triad_class]);
+							if (gsl_status != 0) {
+								fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 0 In Time", a, s, gsl_status, phase_val[triad_class]);
+								exit(1);
+							}
+							gsl_status = gsl_histogram_accumulate(proc_data->triads_sect_wghtd_all_pdf_t[triad_class][0][a], phase_val[triad_class], fabs(-flux_wght));
+							if (gsl_status != 0) {
+								fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase Weighted PDF Type 0 In Time", a, s, gsl_status, phase_val[triad_class]);
+								exit(1);
+							}
+							if (a == l) {
+								#if defined(__SEC_PHASE_SYNC_STATS_IN_TIME_1D)
+								// Update the PDFs for 1d contributions
+								gsl_status = gsl_histogram_increment(proc_data->triads_sect_1d_pdf_t[triad_class][0][a], phase_val[triad_class]);
+								if (gsl_status != 0) {
+									fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 0 In Time", a, s, gsl_status, phase_val[triad_class]);
+									exit(1);
+								}
+								gsl_status = gsl_histogram_accumulate(proc_data->triads_sect_wghtd_1d_pdf_t[triad_class][0][a], phase_val[triad_class], fabs(-flux_wght));
+								if (gsl_status != 0) {
+									fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase Weighted PDF Type 0 In Time", a, s, gsl_status, phase_val[triad_class]);
+									exit(1);
+								}
+								#endif
+							}
+							else {
+								#if defined(__SEC_PHASE_SYNC_STATS_IN_TIME_2D)
+								// Update the PDFs for 2d contributions
+								gsl_status = gsl_histogram_increment(proc_data->triads_sect_2d_pdf_t[triad_class][0][a][l], phase_val[triad_class]);
+								if (gsl_status != 0) {
+									fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 0 In Time", a, s, gsl_status, phase_val[triad_class]);
+									exit(1);
+								}
+								gsl_status = gsl_histogram_accumulate(proc_data->triads_sect_wghtd_2d_pdf_t[triad_class][0][a][l], phase_val[triad_class], fabs(-flux_wght));
+								if (gsl_status != 0) {
+									fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase Weighted PDF Type 0 In Time", a, s, gsl_status, phase_val[triad_class]);
+									exit(1);
+								}
+								#endif
+							}
 						}
 						#endif
 
 						if (flux_pre_fac < 0) {
 							//------------------------------------------ TRIAD TYPE 3
 							proc_data->num_triads[3][a]++;		
-							proc_data->enst_flux[3][a]                  += -flux_term;
-							proc_data->triad_phase_order[3][a]          += cexp(I * gen_triad_phase);
+							proc_data->enst_flux[3][a]         += -flux_term;
+							proc_data->triad_phase_order[3][a] += cexp(I * gen_triad_phase);
 							if (cabs(collective_phase_term) > 0.0) {
 								proc_data->phase_order_C_theta_triads[3][a] += -collective_phase_term; /// cabs(collective_phase_term);
 								if (k1_y >= 0 && k2_y >= 0) {
@@ -830,22 +1002,50 @@ void PhaseSyncSector(int s) {
 							}
 
 
-							// Update the PDFs
-							#if defined(__SEC_PHASE_SYNC_STATS)
-							gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf[3][a], gen_triad_phase);
-							if (gsl_status != 0) {
-								fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 3", a, s, gsl_status, gen_triad_phase);
-								exit(1);
-							}
-							gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf_t[3][a], gen_triad_phase);
-							if (gsl_status != 0) {
-								fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 3 In Time", a, s, gsl_status, gen_triad_phase);
-								exit(1);
-							}
-							gsl_status = gsl_histogram_accumulate(proc_data->triad_sect_wghtd_pdf_t[3][a], gen_triad_phase, fabs(-flux_wght));
-							if (gsl_status != 0) {
-								fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase Weighted PDF Type 3 In Time", a, s, gsl_status, gen_triad_phase);
-								exit(1);
+							//------ Update the PDFs of the triad phases and weighted flux densisties
+							#if defined(__SEC_PHASE_SYNC_STATS_IN_TIME)
+							for (int triad_class = 0; triad_class < NUM_TRIAD_CLASS; ++triad_class) {
+								// Update the PDFs for all: both 1d and 2d contributions
+								gsl_status = gsl_histogram_increment(proc_data->triads_sect_all_pdf_t[triad_class][3][a], phase_val[triad_class]);
+								if (gsl_status != 0) {
+									fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 0 In Time", a, s, gsl_status, phase_val[triad_class]);
+									exit(1);
+								}
+								gsl_status = gsl_histogram_accumulate(proc_data->triads_sect_wghtd_all_pdf_t[triad_class][3][a], phase_val[triad_class], fabs(-flux_wght));
+								if (gsl_status != 0) {
+									fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase Weighted PDF Type 0 In Time", a, s, gsl_status, phase_val[triad_class]);
+									exit(1);
+								}
+								if (a == l) {
+									#if defined(__SEC_PHASE_SYNC_STATS_IN_TIME_1D)
+									// Update the PDFs for 1d contributions
+									gsl_status = gsl_histogram_increment(proc_data->triads_sect_1d_pdf_t[triad_class][3][a], phase_val[triad_class]);
+									if (gsl_status != 0) {
+										fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 0 In Time", a, s, gsl_status, phase_val[triad_class]);
+										exit(1);
+									}
+									gsl_status = gsl_histogram_accumulate(proc_data->triads_sect_wghtd_1d_pdf_t[triad_class][3][a], phase_val[triad_class], fabs(-flux_wght));
+									if (gsl_status != 0) {
+										fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase Weighted PDF Type 0 In Time", a, s, gsl_status, phase_val[triad_class]);
+										exit(1);
+									}
+									#endif
+								}
+								else {
+									#if defined(__SEC_PHASE_SYNC_STATS_IN_TIME_2D)
+									// Update the PDFs for 2d contributions
+									gsl_status = gsl_histogram_increment(proc_data->triads_sect_2d_pdf_t[triad_class][3][a][l], phase_val[triad_class]);
+									if (gsl_status != 0) {
+										fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 0 In Time", a, s, gsl_status, phase_val[triad_class]);
+										exit(1);
+									}
+									gsl_status = gsl_histogram_accumulate(proc_data->triads_sect_wghtd_2d_pdf_t[triad_class][3][a][l], phase_val[triad_class], fabs(-flux_wght));
+									if (gsl_status != 0) {
+										fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase Weighted PDF Type 0 In Time", a, s, gsl_status, phase_val[triad_class]);
+										exit(1);
+									}
+									#endif
+								}
 							}
 							#endif
 						}
@@ -853,8 +1053,8 @@ void PhaseSyncSector(int s) {
 							
 							//------------------------------------------ TRIAD TYPE 4
 							proc_data->num_triads[4][a]++;		
-							proc_data->enst_flux[4][a]                  += -flux_term;
-							proc_data->triad_phase_order[4][a]          += cexp(I * gen_triad_phase);
+							proc_data->enst_flux[4][a]         += -flux_term;
+							proc_data->triad_phase_order[4][a] += cexp(I * gen_triad_phase);
 							if (cabs(collective_phase_term) > 0.0) {
 								proc_data->phase_order_C_theta_triads[4][a] += -collective_phase_term; /// cabs(collective_phase_term);
 								if (k1_y >= 0 && k2_y >= 0) {
@@ -896,34 +1096,59 @@ void PhaseSyncSector(int s) {
 								}
 							}
 
-							// Update the PDFs
-							#if defined(__SEC_PHASE_SYNC_STATS)
-							gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf[4][a], gen_triad_phase);
-							if (gsl_status != 0) {
-								fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase Type 4 PDF", a, s, gsl_status, gen_triad_phase);
-								exit(1);
-							}
-							gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf_t[4][a], gen_triad_phase);
-							if (gsl_status != 0) {
-								fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 4 In Time", a, s, gsl_status, gen_triad_phase);
-								exit(1);
-							}
-							gsl_status = gsl_histogram_accumulate(proc_data->triad_sect_wghtd_pdf_t[4][a], gen_triad_phase, fabs(-flux_wght));
-							if (gsl_status != 0) {
-								fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase Weighted PDF Type 4 In Time", a, s, gsl_status, gen_triad_phase);
-								exit(1);
+							//------ Update the PDFs of the triad phases and weighted flux densisties
+							#if defined(__SEC_PHASE_SYNC_STATS_IN_TIME)
+							for (int triad_class = 0; triad_class < NUM_TRIAD_CLASS; ++triad_class) {
+								// Update the PDFs for all: both 1d and 2d contributions
+								gsl_status = gsl_histogram_increment(proc_data->triads_sect_all_pdf_t[triad_class][4][a], phase_val[triad_class]);
+								if (gsl_status != 0) {
+									fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 0 In Time", a, s, gsl_status, phase_val[triad_class]);
+									exit(1);
+								}
+								gsl_status = gsl_histogram_accumulate(proc_data->triads_sect_wghtd_all_pdf_t[triad_class][4][a], phase_val[triad_class], fabs(-flux_wght));
+								if (gsl_status != 0) {
+									fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase Weighted PDF Type 0 In Time", a, s, gsl_status, phase_val[triad_class]);
+									exit(1);
+								}
+								if (a == l) {
+									#if defined(__SEC_PHASE_SYNC_STATS_IN_TIME_1D)
+									// Update the PDFs for 1d contributions
+									gsl_status = gsl_histogram_increment(proc_data->triads_sect_1d_pdf_t[triad_class][4][a], phase_val[triad_class]);
+									if (gsl_status != 0) {
+										fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 0 In Time", a, s, gsl_status, phase_val[triad_class]);
+										exit(1);
+									}
+									gsl_status = gsl_histogram_accumulate(proc_data->triads_sect_wghtd_1d_pdf_t[triad_class][4][a], phase_val[triad_class], fabs(-flux_wght));
+									if (gsl_status != 0) {
+										fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase Weighted PDF Type 0 In Time", a, s, gsl_status, phase_val[triad_class]);
+										exit(1);
+									}
+									#endif
+								}
+								else {
+									#if defined(__SEC_PHASE_SYNC_STATS_IN_TIME_2D)
+									// Update the PDFs for 2d contributions
+									gsl_status = gsl_histogram_increment(proc_data->triads_sect_2d_pdf_t[triad_class][4][a][l], phase_val[triad_class]);
+									if (gsl_status != 0) {
+										fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 0 In Time", a, s, gsl_status, phase_val[triad_class]);
+										exit(1);
+									}
+									gsl_status = gsl_histogram_accumulate(proc_data->triads_sect_wghtd_2d_pdf_t[triad_class][4][a][l], phase_val[triad_class], fabs(-flux_wght));
+									if (gsl_status != 0) {
+										fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase Weighted PDF Type 0 In Time", a, s, gsl_status, phase_val[triad_class]);
+										exit(1);
+									}
+									#endif
+								}
 							}
 							#endif
 						}
 						else if (flux_pre_fac == 0.0 || flux_wght == 0.0) {
 
-							// Define the generalized triad phase for the zero contribution terms
-							gen_triad_phase = fmod(triad_phase + 2.0 * M_PI + carg(flux_wght), 2.0 * M_PI) - M_PI;
-
 							//------------------------------------------ TRIAD TYPE 5
 							proc_data->num_triads[5][a]++;		
-							proc_data->enst_flux[5][a]                  += -flux_term;
-							proc_data->triad_phase_order[5][a]          += cexp(I * gen_triad_phase);
+							proc_data->enst_flux[5][a]         += -flux_term;
+							proc_data->triad_phase_order[5][a] += cexp(I * gen_triad_phase);
 							if (cabs(collective_phase_term) > 0.0) {
 								proc_data->phase_order_C_theta_triads[5][a] += -collective_phase_term; /// cabs(collective_phase_term);
 								if (k1_y >= 0 && k2_y >= 0) {
@@ -965,33 +1190,62 @@ void PhaseSyncSector(int s) {
 								}
 							}
 
-							// Update the PDFs
-							#if defined(__SEC_PHASE_SYNC_STATS)
-							gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf[5][a], gen_triad_phase);
-							if (gsl_status != 0) {
-								fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 5", a, s, gsl_status, gen_triad_phase);
-								exit(1);
-							}
-							gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf_t[5][a], gen_triad_phase);
-							if (gsl_status != 0) {
-								fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 5 In Time", a, s, gsl_status, gen_triad_phase);
-								exit(1);
-							}
-							gsl_status = gsl_histogram_accumulate(proc_data->triad_sect_wghtd_pdf_t[5][a], gen_triad_phase, fabs(flux_wght)); 
-							if (gsl_status != 0) {
-								fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase Weighted PDF Type 5 In Time", a, s, gsl_status, gen_triad_phase);
-								exit(1);
+							//------ Update the PDFs of the triad phases and weighted flux densisties
+							#if defined(__SEC_PHASE_SYNC_STATS_IN_TIME)
+							for (int triad_class = 0; triad_class < NUM_TRIAD_CLASS; ++triad_class) {
+								// Update the PDFs for all: both 1d and 2d contributions
+								gsl_status = gsl_histogram_increment(proc_data->triads_sect_all_pdf_t[triad_class][5][a], phase_val[triad_class]);
+								if (gsl_status != 0) {
+									fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 0 In Time", a, s, gsl_status, phase_val[triad_class]);
+									exit(1);
+								}
+								gsl_status = gsl_histogram_accumulate(proc_data->triads_sect_wghtd_all_pdf_t[triad_class][5][a], phase_val[triad_class], fabs(-flux_wght));
+								if (gsl_status != 0) {
+									fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase Weighted PDF Type 0 In Time", a, s, gsl_status, phase_val[triad_class]);
+									exit(1);
+								}
+								if (a == l) {
+									#if defined(__SEC_PHASE_SYNC_STATS_IN_TIME_1D)
+									// Update the PDFs for 1d contributions
+									gsl_status = gsl_histogram_increment(proc_data->triads_sect_1d_pdf_t[triad_class][5][a], phase_val[triad_class]);
+									if (gsl_status != 0) {
+										fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 0 In Time", a, s, gsl_status, phase_val[triad_class]);
+										exit(1);
+									}
+									gsl_status = gsl_histogram_accumulate(proc_data->triads_sect_wghtd_1d_pdf_t[triad_class][5][a], phase_val[triad_class], fabs(-flux_wght));
+									if (gsl_status != 0) {
+										fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase Weighted PDF Type 0 In Time", a, s, gsl_status, phase_val[triad_class]);
+										exit(1);
+									}
+									#endif
+								}
+								else {
+									#if defined(__SEC_PHASE_SYNC_STATS_IN_TIME_2D)
+									// Update the PDFs for 2d contributions
+									gsl_status = gsl_histogram_increment(proc_data->triads_sect_2d_pdf_t[triad_class][5][a][l], phase_val[triad_class]);
+									if (gsl_status != 0) {
+										fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 0 In Time", a, s, gsl_status, phase_val[triad_class]);
+										exit(1);
+									}
+									gsl_status = gsl_histogram_accumulate(proc_data->triads_sect_wghtd_2d_pdf_t[triad_class][5][a][l], phase_val[triad_class], fabs(-flux_wght));
+									if (gsl_status != 0) {
+										fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase Weighted PDF Type 0 In Time", a, s, gsl_status, phase_val[triad_class]);
+										exit(1);
+									}											
+									#endif						
+								}
 							}
 							#endif
 						}
 						else {
-							// Define the generalized triad phase for the ignored terms
-							gen_triad_phase = fmod(triad_phase + 2.0 * M_PI + carg(flux_wght), 2.0 * M_PI) - M_PI;
+							// Define the generalized triad phase for the ignored terms -> carg of flux weight is not defined here so just triad phase
+							gen_triad_phase = fmod(triad_phase + 2.0 * M_PI, 2.0 * M_PI) - M_PI;
+							phase_val[1] = gen_triad_phase;
 
 							//------------------------------------------ TRIAD TYPE 6
 							proc_data->num_triads[6][a]++;		
-							proc_data->enst_flux[6][a]                  += -flux_term;
-							proc_data->triad_phase_order[6][a]          += cexp(I * gen_triad_phase);
+							proc_data->enst_flux[6][a]         += -flux_term;
+							proc_data->triad_phase_order[6][a] += cexp(I * gen_triad_phase);
 							if (cabs(collective_phase_term) > 0.0) {
 								proc_data->phase_order_C_theta_triads[6][a] += -collective_phase_term; /// cabs(collective_phase_term);
 								if (k1_y >= 0 && k2_y >= 0) {
@@ -1033,22 +1287,50 @@ void PhaseSyncSector(int s) {
 								}
 							}
 
-							// Update the PDFs
-							#if defined(__SEC_PHASE_SYNC_STATS)
-							gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf[6][a], gen_triad_phase);
-							if (gsl_status != 0) {
-								fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 6", a, s, gsl_status, gen_triad_phase);
-								exit(1);
-							}
-							gsl_status = gsl_histogram_increment(proc_data->triad_sect_pdf_t[6][a], gen_triad_phase);
-							if (gsl_status != 0) {
-								fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 6 In Time", a, s, gsl_status, gen_triad_phase);
-								exit(1);
-							}
-							gsl_status = gsl_histogram_accumulate(proc_data->triad_sect_wghtd_pdf_t[6][a], gen_triad_phase, fabs(flux_wght)); 
-							if (gsl_status != 0) {
-								fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase Weighted PDF Type 6 In Time", a, s, gsl_status, gen_triad_phase);
-								exit(1);
+							//------ Update the PDFs of the triad phases and weighted flux densisties
+							#if defined(__SEC_PHASE_SYNC_STATS_IN_TIME)
+							for (int triad_class = 0; triad_class < NUM_TRIAD_CLASS; ++triad_class) {
+								// Update the PDFs for all: both 1d and 2d contributions
+								gsl_status = gsl_histogram_increment(proc_data->triads_sect_all_pdf_t[triad_class][6][a], phase_val[triad_class]);
+								if (gsl_status != 0) {
+									fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 0 In Time", a, s, gsl_status, phase_val[triad_class]);
+									exit(1);
+								}
+								gsl_status = gsl_histogram_accumulate(proc_data->triads_sect_wghtd_all_pdf_t[triad_class][6][a], phase_val[triad_class], fabs(-flux_wght));
+								if (gsl_status != 0) {
+									fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase Weighted PDF Type 0 In Time", a, s, gsl_status, phase_val[triad_class]);
+									exit(1);
+								}
+								if (a == l) {
+									#if defined(__SEC_PHASE_SYNC_STATS_IN_TIME_1D)
+									// Update the PDFs for 1d contributions
+									gsl_status = gsl_histogram_increment(proc_data->triads_sect_1d_pdf_t[triad_class][6][a], phase_val[triad_class]);
+									if (gsl_status != 0) {
+										fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 0 In Time", a, s, gsl_status, phase_val[triad_class]);
+										exit(1);
+									}
+									gsl_status = gsl_histogram_accumulate(proc_data->triads_sect_wghtd_1d_pdf_t[triad_class][6][a], phase_val[triad_class], fabs(-flux_wght));
+									if (gsl_status != 0) {
+										fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase Weighted PDF Type 0 In Time", a, s, gsl_status, phase_val[triad_class]);
+										exit(1);
+									}
+									#endif
+								}
+								else {
+									#if defined(__SEC_PHASE_SYNC_STATS_IN_TIME_2D)
+									// Update the PDFs for 2d contributions
+									gsl_status = gsl_histogram_increment(proc_data->triads_sect_2d_pdf_t[triad_class][6][a][l], phase_val[triad_class]);
+									if (gsl_status != 0) {
+										fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase PDF Type 0 In Time", a, s, gsl_status, phase_val[triad_class]);
+										exit(1);
+									}
+									gsl_status = gsl_histogram_accumulate(proc_data->triads_sect_wghtd_2d_pdf_t[triad_class][6][a][l], phase_val[triad_class], fabs(-flux_wght));
+									if (gsl_status != 0) {
+										fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Sector ["CYAN"%d"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phase Weighted PDF Type 0 In Time", a, s, gsl_status, phase_val[triad_class]);
+										exit(1);
+									}
+									#endif
+								}
 							}
 							#endif
 						}
@@ -1432,7 +1714,115 @@ void AllocatePhaseSyncMemory(const long int* N) {
 	// -------------------------------------
 	//  Allocate Phases Sync Stats
 	// -------------------------------------
-	#if defined(__SEC_PHASE_SYNC_STATS)
+	#if defined(__SEC_PHASE_SYNC_STATS_IN_TIME)
+	///------------------------------------- Allocate memory for the In time Stats -> triad pdfs and weighted flux pdfs
+	for (int triad_class = 0; triad_class < NUM_TRIAD_CLASS; ++triad_class) {
+		for (int triad_type = 0; triad_type < NUM_TRIAD_TYPES + 1; ++triad_type) {
+			proc_data->triads_sect_all_pdf_t[triad_class][triad_type]       = (gsl_histogram** )fftw_malloc(sizeof(gsl_histogram*) * sys_vars->num_k3_sectors);
+			proc_data->triads_sect_wghtd_all_pdf_t[triad_class][triad_type] = (gsl_histogram** )fftw_malloc(sizeof(gsl_histogram*) * sys_vars->num_k3_sectors);
+       	    #if defined(__SEC_PHASE_SYNC_STATS_IN_TIME_1D)
+			proc_data->triads_sect_1d_pdf_t[triad_class][triad_type]        = (gsl_histogram** )fftw_malloc(sizeof(gsl_histogram*) * sys_vars->num_k3_sectors);
+			proc_data->triads_sect_wghtd_1d_pdf_t[triad_class][triad_type]  = (gsl_histogram** )fftw_malloc(sizeof(gsl_histogram*) * sys_vars->num_k3_sectors);
+			#endif
+			#if defined(__SEC_PHASE_SYNC_STATS_IN_TIME_2D)
+			proc_data->triads_sect_2d_pdf_t[triad_class][triad_type]        = (gsl_histogram*** )fftw_malloc(sizeof(gsl_histogram**) * sys_vars->num_k3_sectors);
+			proc_data->triads_sect_wghtd_2d_pdf_t[triad_class][triad_type]  = (gsl_histogram*** )fftw_malloc(sizeof(gsl_histogram**) * sys_vars->num_k3_sectors);
+			for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
+				proc_data->triads_sect_2d_pdf_t[triad_class][triad_type][a]       = (gsl_histogram** )fftw_malloc(sizeof(gsl_histogram*) * sys_vars->num_k1_sectors);
+				proc_data->triads_sect_wghtd_2d_pdf_t[triad_class][triad_type][a] = (gsl_histogram** )fftw_malloc(sizeof(gsl_histogram*) * sys_vars->num_k1_sectors);
+			}
+			#endif
+		}
+	}
+
+	///------------------------------------- Initialize In Time PDFs -> triad pdfs and weighted flux pdfs
+	for (int triad_class = 0; triad_class < NUM_TRIAD_CLASS; ++triad_class) {
+		for (int triad_type = 0; triad_type < NUM_TRIAD_TYPES + 1; ++triad_type) {
+			for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
+				///-------------------------------------- Allocate histogram structs for all contributions
+				proc_data->triads_sect_all_pdf_t[triad_class][triad_type][a] = gsl_histogram_alloc(N_BINS_SEC_ALL_T);
+				if (proc_data->triads_sect_all_pdf_t[triad_class][triad_type][a] == NULL) {
+					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Triad Phase PDFs All Contributions");
+					exit(1);
+				}	
+				proc_data->triads_sect_wghtd_all_pdf_t[triad_class][triad_type][a] = gsl_histogram_alloc(N_BINS_SEC_ALL_T);
+				if (proc_data->triads_sect_all_pdf_t[triad_class][triad_type][a] == NULL) {
+					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Weight Triad Phase PDFs All Contributions");
+					exit(1);
+				}
+
+				// Initialize bins for all contirbutions
+				gsl_status = gsl_histogram_set_ranges_uniform(proc_data->triads_sect_all_pdf_t[triad_class][triad_type][a], -M_PI - 0.05,  M_PI + 0.05);
+				if (gsl_status != 0) {
+					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set bin ranges for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Triad Phase PDFs All Contribution");
+					exit(1);
+				}
+				gsl_status = gsl_histogram_set_ranges_uniform(proc_data->triads_sect_wghtd_all_pdf_t[triad_class][triad_type][a], -M_PI - 0.05,  M_PI + 0.05);
+				if (gsl_status != 0) {
+					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set bin ranges for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Triad Phase PDFs All Contribution");
+					exit(1);
+				}
+
+	      	    #if defined(__SEC_PHASE_SYNC_STATS_IN_TIME_1D)
+				///-------------------------------------- Allocate histogram structs for 1d contributions
+				// Initialize histogram for 1d and 2d contributions
+				proc_data->triads_sect_1d_pdf_t[triad_class][triad_type][a] = gsl_histogram_alloc(N_BINS_SEC_1D_T);
+				if (proc_data->triads_sect_1d_pdf_t[triad_class][triad_type][a] == NULL) {
+					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Triad Phase PDFs 1D Contributions");
+					exit(1);
+				}	
+				proc_data->triads_sect_wghtd_1d_pdf_t[triad_class][triad_type][a] = gsl_histogram_alloc(N_BINS_SEC_1D_T);
+				if (proc_data->triads_sect_1d_pdf_t[triad_class][triad_type][a] == NULL) {
+					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Weight Triad Phase PDFs 1D Contributions");
+					exit(1);
+				}
+				// Initialize bins for all contirbutions
+				gsl_status = gsl_histogram_set_ranges_uniform(proc_data->triads_sect_1d_pdf_t[triad_class][triad_type][a], -M_PI - 0.05,  M_PI + 0.05);
+				if (gsl_status != 0) {
+					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set bin ranges for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Triad Phase PDFs 1D Contribution");
+					exit(1);
+				}
+				gsl_status = gsl_histogram_set_ranges_uniform(proc_data->triads_sect_wghtd_1d_pdf_t[triad_class][triad_type][a], -M_PI - 0.05,  M_PI + 0.05);
+				if (gsl_status != 0) {
+					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set bin ranges for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Triad Phase PDFs 1D Contribution");
+					exit(1);
+				}
+				#endif
+
+        	    #if defined(__SEC_PHASE_SYNC_STATS_IN_TIME_2D)
+				///-------------------------------------- Allocate histogram structs for all contributions
+				for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
+					// Initialize histogram for 1d and 2d contributions
+					proc_data->triads_sect_2d_pdf_t[triad_class][triad_type][a][l] = gsl_histogram_alloc(N_BINS_SEC_2D_T);
+					if (proc_data->triads_sect_2d_pdf_t[triad_class][triad_type][a][l] == NULL) {
+						fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Triad Phase PDFs 2D Contributions");
+						exit(1);
+					}	
+					proc_data->triads_sect_wghtd_2d_pdf_t[triad_class][triad_type][a][l] = gsl_histogram_alloc(N_BINS_SEC_2D_T);
+					if (proc_data->triads_sect_2d_pdf_t[triad_class][triad_type][a][l] == NULL) {
+						fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Weight Triad Phase PDFs 2D Contributions");
+						exit(1);
+					}				
+
+					///-------------------------------------- Initialize histogram bin ranges
+					// Initialize bins for all contirbutions
+					gsl_status = gsl_histogram_set_ranges_uniform(proc_data->triads_sect_2d_pdf_t[triad_class][triad_type][a][l], -M_PI - 0.05,  M_PI + 0.05);
+					if (gsl_status != 0) {
+						fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set bin ranges for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Triad Phase PDFs 1D + 2D Contribution");
+						exit(1);
+					}
+					gsl_status = gsl_histogram_set_ranges_uniform(proc_data->triads_sect_wghtd_2d_pdf_t[triad_class][triad_type][a][l], -M_PI - 0.05,  M_PI + 0.05);
+					if (gsl_status != 0) {
+						fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set bin ranges for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Triad Phase PDFs 1D + 2D Contribution");
+						exit(1);
+					}
+				}
+				#endif
+			}
+		}
+	}	
+	#endif
+	#if defined(__SEC_PHASE_SYNC_STATS) 
 	// Allocate memory for the arrays stats objects
 	proc_data->phase_sect_pdf         = (gsl_histogram** )fftw_malloc(sizeof(gsl_histogram*) * sys_vars->num_k3_sectors);
 	proc_data->phase_sect_pdf_t       = (gsl_histogram** )fftw_malloc(sizeof(gsl_histogram*) * sys_vars->num_k3_sectors);
@@ -1440,16 +1830,20 @@ void AllocatePhaseSyncMemory(const long int* N) {
 	proc_data->triad_R_2d_pdf         = (gsl_histogram*** )fftw_malloc(sizeof(gsl_histogram**) * sys_vars->num_k3_sectors);
 	proc_data->triad_Phi_2d_pdf       = (gsl_histogram*** )fftw_malloc(sizeof(gsl_histogram**) * sys_vars->num_k3_sectors);
 	proc_data->enst_flux_2d_pdf       = (gsl_histogram*** )fftw_malloc(sizeof(gsl_histogram**) * sys_vars->num_k3_sectors);
-	proc_data->triad_R_2d_stats       = (gsl_rstat_workspace*** )fftw_malloc(sizeof(gsl_rstat_workspace**) * sys_vars->num_k3_sectors);
-	proc_data->triad_Phi_2d_stats     = (gsl_rstat_workspace*** )fftw_malloc(sizeof(gsl_rstat_workspace**) * sys_vars->num_k3_sectors);
-	proc_data->enst_flux_2d_stats     = (gsl_rstat_workspace*** )fftw_malloc(sizeof(gsl_rstat_workspace**) * sys_vars->num_k3_sectors);
+	for (int m = 0; m < NUM_MOMMENTS; ++m) {
+		proc_data->triad_R_2d_stats[m]       = (gsl_rstat_workspace*** )fftw_malloc(sizeof(gsl_rstat_workspace**) * sys_vars->num_k3_sectors);
+		proc_data->triad_Phi_2d_stats[m]     = (gsl_rstat_workspace*** )fftw_malloc(sizeof(gsl_rstat_workspace**) * sys_vars->num_k3_sectors);
+		proc_data->enst_flux_2d_stats[m]     = (gsl_rstat_workspace*** )fftw_malloc(sizeof(gsl_rstat_workspace**) * sys_vars->num_k3_sectors);
+		for (int l = 0; l < sys_vars->num_k3_sectors; ++l) {
+			proc_data->triad_R_2d_stats[m][l]   = (gsl_rstat_workspace** )fftw_malloc(sizeof(gsl_rstat_workspace*) * sys_vars->num_k1_sectors);
+			proc_data->triad_Phi_2d_stats[m][l] = (gsl_rstat_workspace** )fftw_malloc(sizeof(gsl_rstat_workspace*) * sys_vars->num_k1_sectors);
+			proc_data->enst_flux_2d_stats[m][l] = (gsl_rstat_workspace** )fftw_malloc(sizeof(gsl_rstat_workspace*) * sys_vars->num_k1_sectors);
+		}
+	}
 	for (int l = 0; l < sys_vars->num_k3_sectors; ++l) {
 		proc_data->triad_R_2d_pdf[l]     = (gsl_histogram** )fftw_malloc(sizeof(gsl_histogram*) * sys_vars->num_k1_sectors);
 		proc_data->triad_Phi_2d_pdf[l]   = (gsl_histogram** )fftw_malloc(sizeof(gsl_histogram*) * sys_vars->num_k1_sectors);
 		proc_data->enst_flux_2d_pdf[l]   = (gsl_histogram** )fftw_malloc(sizeof(gsl_histogram*) * sys_vars->num_k1_sectors);
-		proc_data->triad_R_2d_stats[l]   = (gsl_rstat_workspace** )fftw_malloc(sizeof(gsl_rstat_workspace*) * sys_vars->num_k1_sectors);
-		proc_data->triad_Phi_2d_stats[l] = (gsl_rstat_workspace** )fftw_malloc(sizeof(gsl_rstat_workspace*) * sys_vars->num_k1_sectors);
-		proc_data->enst_flux_2d_stats[l] = (gsl_rstat_workspace** )fftw_malloc(sizeof(gsl_rstat_workspace*) * sys_vars->num_k1_sectors);
 	}
 	for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
 		proc_data->triad_sect_pdf[i]         = (gsl_histogram** )fftw_malloc(sizeof(gsl_histogram*) * sys_vars->num_k3_sectors);
@@ -1663,7 +2057,7 @@ void AllocatePhaseSyncMemory(const long int* N) {
 	char dset_name[64];
 	char wave_vec_file[128];
 	strncpy(file_info->wave_vec_data_name, "./Data/PostProcess/PhaseSync", 1024);
-	sprintf(wave_vec_file, "/Wavevector_Data_N[%d,%d]_SECTORS[%d,%d]_KFRAC[%1.2lf].h5", (int)sys_vars->N[0], (int)sys_vars->N[1], sys_vars->num_k3_sectors, sys_vars->num_k1_sectors, sys_vars->kmax_frac);	
+	sprintf(wave_vec_file, "/Wavevector_Data_N[%d,%d]_SECTORS[%d,%d]_KFRAC[%1.2lf,%1.2lf].h5", (int)sys_vars->N[0], (int)sys_vars->N[1], sys_vars->num_k3_sectors, sys_vars->num_k1_sectors, sys_vars->kmin_sqr, sys_vars->kmax_frac);	
 	strcat(file_info->wave_vec_data_name, wave_vec_file);
 
 	// Check if Wavector file exists
@@ -2148,6 +2542,38 @@ void FreePhaseSyncObjects(void) {
 	// --------------------------------
 	//  Free GSL objects
 	// --------------------------------
+	#if defined (__SEC_PHASE_SYNC_STATS_IN_TIME)
+	for (int triad_class = 0; triad_class < NUM_TRIAD_CLASS; ++triad_class) {
+		for (int triad_type = 0; triad_type < NUM_TRIAD_TYPES + 1; ++triad_type) {
+			for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
+				gsl_histogram_free(proc_data->triads_sect_all_pdf_t[triad_class][triad_type][a]);
+				gsl_histogram_free(proc_data->triads_sect_wghtd_all_pdf_t[triad_class][triad_type][a]);
+        	    #if defined(__SEC_PHASE_SYNC_STATS_IN_TIME_1D)
+				gsl_histogram_free(proc_data->triads_sect_1d_pdf_t[triad_class][triad_type][a]);
+				gsl_histogram_free(proc_data->triads_sect_wghtd_1d_pdf_t[triad_class][triad_type][a]);
+				#endif
+	       	    #if defined(__SEC_PHASE_SYNC_STATS_IN_TIME_2D)
+				for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
+					gsl_histogram_free(proc_data->triads_sect_2d_pdf_t[triad_class][triad_type][a][l]);
+					gsl_histogram_free(proc_data->triads_sect_wghtd_2d_pdf_t[triad_class][triad_type][a][l]);
+				}
+				fftw_free(proc_data->triads_sect_2d_pdf_t[triad_class][triad_type][a]);
+				fftw_free(proc_data->triads_sect_wghtd_2d_pdf_t[triad_class][triad_type][a]);
+				#endif
+			}
+			fftw_free(proc_data->triads_sect_all_pdf_t[triad_class][triad_type]);
+			fftw_free(proc_data->triads_sect_wghtd_all_pdf_t[triad_class][triad_type]);
+       	    #if defined(__SEC_PHASE_SYNC_STATS_IN_TIME_1D)
+			fftw_free(proc_data->triads_sect_1d_pdf_t[triad_class][triad_type]);
+			fftw_free(proc_data->triads_sect_wghtd_1d_pdf_t[triad_class][triad_type]);
+			#endif
+			#if defined(__SEC_PHASE_SYNC_STATS_IN_TIME_2D)
+			fftw_free(proc_data->triads_sect_2d_pdf_t[triad_class][triad_type]);
+			fftw_free(proc_data->triads_sect_wghtd_2d_pdf_t[triad_class][triad_type]);
+			#endif
+		}
+	}
+	#endif
 	#if defined(__SEC_PHASE_SYNC_STATS)
 	for (int i = 0; i < sys_vars->num_k3_sectors; ++i) {
 		gsl_histogram_free(proc_data->phase_sect_pdf[i]);
