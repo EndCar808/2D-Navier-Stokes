@@ -146,6 +146,27 @@ if __name__ == '__main__':
     ## Read in simulation parameters
     sys_vars = sim_data(cmdargs.in_dir)
 
+    # Read in 2s spectrum limits from post
+    with h5.File(post_file_path) as post_file:
+        min_enrg_lim = 1e10
+        min_enst_lim = 1e10
+        max_enrg_lim = 0.0
+        max_enst_lim = 0.0
+        for i in range(sys_vars.ndata):
+            group_name = "Snap_{:05d}".format(i)
+            enrg_spec = post_file[group_name]["FullFieldEnergySpectrum"][:]
+            enst_spec = post_file[group_name]["FullFieldEnstrophySpectrum"][:]
+            min_enrg  = np.amin(np.delete(enrg_spec.flatten(), np.where(enrg_spec.flatten() == -50.0)))
+            max_enrg  = np.amax(np.delete(enrg_spec.flatten(), np.where(enrg_spec.flatten() == -50.0)))
+            min_enst  = np.amin(np.delete(enst_spec.flatten(), np.where(enst_spec.flatten() == -50.0)))
+            max_enst  = np.amax(np.delete(enst_spec.flatten(), np.where(enst_spec.flatten() == -50.0)))
+            min_enrg_lim = np.minimum(min_enrg_lim, min_enrg)
+            min_enst_lim = np.minimum(min_enst_lim, min_enst)
+            max_enrg_lim = np.maximum(max_enrg_lim, max_enrg)
+            max_enst_lim = np.maximum(max_enst_lim, max_enst)
+        spec_lims = np.array([min_enrg_lim, max_enrg_lim, min_enst_lim, max_enst_lim])
+        spec_lims[spec_lims[:] == 0.0] = 1e-12
+
     if not cmdargs.stream:
         ## Read in solver data
         run_data = import_data(cmdargs.in_dir, sys_vars)
@@ -412,7 +433,7 @@ if __name__ == '__main__':
                 executor = cf.ProcessPoolExecutor(cmdargs.num_threads)
 
                 ## Submit jobs to the executor
-                futures = [executor.submit(plot_phase_snaps_stream, cmdargs.in_dir, phase_vid_snaps_output_dir, cmdargs.in_file, i, sys_vars.Nx, sys_vars.Ny) for i in range(sys_vars.ndata)]
+                futures = [executor.submit(plot_phase_snaps_stream, cmdargs.in_dir, phase_vid_snaps_output_dir, cmdargs.in_file, i, sys_vars.Nx, sys_vars.Ny, spec_lims) for i in range(sys_vars.ndata)]
 
                 ## Wait until these jobs are finished
                 cf.wait(futures)
@@ -420,7 +441,7 @@ if __name__ == '__main__':
                     print(f.result())
             else:
                 for i in range(sys_vars.ndata):
-                    plot_phase_snaps_stream(cmdargs.in_dir, phase_vid_snaps_output_dir, cmdargs.in_file, i, sys_vars.Nx, sys_vars.Ny)
+                    plot_phase_snaps_stream(cmdargs.in_dir, phase_vid_snaps_output_dir, cmdargs.in_file, i, sys_vars.Nx, sys_vars.Ny, spec_lims)
 
 
             framesPerSec = 15

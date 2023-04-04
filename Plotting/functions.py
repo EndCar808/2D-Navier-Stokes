@@ -596,6 +596,19 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
         """
 
         def __init__(self, in_file = in_f):
+            ## Data indicators
+            self.no_w     = False
+            self.no_w_hat = False
+            self.no_u     = False
+            self.no_u_hat = False
+            # Phase sync stats data indicators
+            self.triads_all_pdf_t = False
+            self.wghtd_all_pdf_t  = False
+            self.triads_1d_pdf_t  = False
+            self.wghtd_1d_pdf_t   = False
+            self.triads_2d_pdf_t  = False
+            self.wghtd_2d_pdf_t   = False
+
             ## Get non time dependent datasets
             with h5py.File(in_file, 'r') as f:
                 ## Get the wavevectors
@@ -686,6 +699,27 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                     self.grad_w_y_ranges = f["VorticityGradient_y_BinRanges"][:]
                 if 'VorticityGradient_y_BinCounts' in list(f.keys()):
                     self.grad_w_y_counts = f["VorticityGradient_y_BinCounts"][:]
+                ## Get the PDF ranges for the in time phase sync stats -> they are saved at first snap
+                if 'TriadPhase_All_PDF_InTime' in list(f["Snap_00000"].keys()):
+                    self.triads_all_pdf_t = True
+                    if 'T_All_Ranges' in list(f["Snap_00000"]['TriadPhase_All_PDF_InTime'].keys()):
+                        self.triads_all_pdf_ranges_t = f["Snap_00000"]['TriadPhase_All_PDF_InTime']['T_All_Ranges'][:]
+                        self.nbin_triads_all_pdf_t = len(self.triads_all_pdf_ranges_t) - 1
+                if 'TriadPhaseWeightedFlux_All_PDF_InTime' in list(f["Snap_00000"].keys()):
+                    self.wghtd_all_pdf_t = True
+                    if 'W_All_Ranges' in list(f["Snap_00000"]['TriadPhaseWeightedFlux_All_PDF_InTime'].keys()):
+                        self.wghtd_triads_all_pdf_ranges_t = f["Snap_00000"]['TriadPhaseWeightedFlux_All_PDF_InTime']['W_All_Ranges'][:]
+                        self.nbin_wghtd_triads_all_pdf_t = len(self.wghtd_triads_all_pdf_ranges_t) - 1
+                if 'TriadPhase_1D_PDF_InTime' in list(f["Snap_00000"].keys()):
+                    self.triads_1d_pdf_t = True
+                    if 'T_1D_Ranges' in list(f["Snap_00000"]['TriadPhase_1D_PDF_InTime'].keys()):
+                        self.triads_1d_pdf_ranges_t = f["Snap_00000"]['TriadPhase_1D_PDF_InTime']['T_1D_Ranges'][:]
+                        self.nbin_triads_1d_pdf_t = len(self.triads_1d_pdf_ranges_t) - 1
+                if 'TriadPhaseWeightedFlux_1D_PDF_InTime' in list(f["Snap_00000"].keys()):
+                    self.wghtd_1d_pdf_t = True
+                    if 'W_1D_Ranges' in list(f["Snap_00000"]['TriadPhaseWeightedFlux_1D_PDF_InTime'].keys()):
+                        self.wghtd_triads_1d_pdf_ranges_t = f["Snap_00000"]['TriadPhaseWeightedFlux_1D_PDF_InTime']['W_1D_Ranges'][:]
+                        self.nbin_wghtd_triads_1d_pdf_t = len(self.wghtd_triads_1d_pdf_ranges_t) - 1
 
             ## Get the max wavenumber
             self.kmax      = int((sim_data.Nx / 3))
@@ -707,14 +741,12 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                                 for n in range(self.num_wv[a, l]):
                                     self.wv[a, l, k, n] = tmp_arr[k, n]
 
-            ## Data indicators
-            self.no_w     = False
-            self.no_w_hat = False
-            self.no_u     = False
-            self.no_u_hat = False
+            
             
             ## Set the number of Triad Types
-            NUM_TRIAD_TYPES = 7
+            self.NUM_TRIAD_TYPES = 7
+            ## Set the number of triad classes ie normal or generalized
+            self.NUM_TRIAD_CLASS = 2
 
             # sim_data.spec_size = 91
 
@@ -753,37 +785,46 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
             self.phase_order_C_theta      = np.ones((sim_data.ndata, self.num_k3_sect)) * np.complex(0.0, 0.0)
             self.phase_order_C_theta_norm = np.ones((sim_data.ndata, self.num_k3_sect)) * np.complex(0.0, 0.0)
             ## Collective Phase order parameter for C_theta - Direct
-            self.phase_order_C_theta_triads             = np.ones((sim_data.ndata, NUM_TRIAD_TYPES, self.num_k3_sect)) * np.complex(0.0, 0.0)
-            self.phase_order_C_theta_triads_1d          = np.ones((sim_data.ndata, NUM_TRIAD_TYPES, self.num_k3_sect)) * np.complex(0.0, 0.0)
-            self.phase_order_C_theta_triads_2d          = np.ones((sim_data.ndata, NUM_TRIAD_TYPES, self.num_k3_sect, self.num_k1_sect)) * np.complex(0.0, 0.0)
-            self.phase_order_C_theta_triads_unidirec    = np.ones((sim_data.ndata, NUM_TRIAD_TYPES, self.num_k3_sect)) * np.complex(0.0, 0.0)
-            self.phase_order_C_theta_triads_unidirec_1d = np.ones((sim_data.ndata, NUM_TRIAD_TYPES, self.num_k3_sect)) * np.complex(0.0, 0.0)
-            self.phase_order_C_theta_triads_unidirec_2d = np.ones((sim_data.ndata, NUM_TRIAD_TYPES, self.num_k3_sect, self.num_k1_sect)) * np.complex(0.0, 0.0)
+            self.phase_order_C_theta_triads             = np.ones((sim_data.ndata, self.NUM_TRIAD_TYPES, self.num_k3_sect)) * np.complex(0.0, 0.0)
+            self.phase_order_C_theta_triads_1d          = np.ones((sim_data.ndata, self.NUM_TRIAD_TYPES, self.num_k3_sect)) * np.complex(0.0, 0.0)
+            self.phase_order_C_theta_triads_2d          = np.ones((sim_data.ndata, self.NUM_TRIAD_TYPES, self.num_k3_sect, self.num_k1_sect)) * np.complex(0.0, 0.0)
+            self.phase_order_C_theta_triads_unidirec    = np.ones((sim_data.ndata, self.NUM_TRIAD_TYPES, self.num_k3_sect)) * np.complex(0.0, 0.0)
+            self.phase_order_C_theta_triads_unidirec_1d = np.ones((sim_data.ndata, self.NUM_TRIAD_TYPES, self.num_k3_sect)) * np.complex(0.0, 0.0)
+            self.phase_order_C_theta_triads_unidirec_2d = np.ones((sim_data.ndata, self.NUM_TRIAD_TYPES, self.num_k3_sect, self.num_k1_sect)) * np.complex(0.0, 0.0)
             ## Enstrophy Flux Per Sector
-            self.enst_flux_per_sec    = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_k3_sect))
-            self.enst_flux_per_sec_1d = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_k3_sect))
-            self.enst_flux_per_sec_2d = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_k3_sect, self.num_k1_sect))
+            self.enst_flux_per_sec    = np.zeros((sim_data.ndata, self.NUM_TRIAD_TYPES, self.num_k3_sect))
+            self.enst_flux_per_sec_1d = np.zeros((sim_data.ndata, self.NUM_TRIAD_TYPES, self.num_k3_sect))
+            self.enst_flux_per_sec_2d = np.zeros((sim_data.ndata, self.NUM_TRIAD_TYPES, self.num_k3_sect, self.num_k1_sect))
             ## Phase Sync arrays
             self.phase_R      = np.zeros((sim_data.ndata, self.num_k3_sect))
             self.phase_Phi    = np.zeros((sim_data.ndata, self.num_k3_sect))
-            self.triad_R      = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_k3_sect))
-            self.triad_Phi    = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_k3_sect))
-            self.triad_R_1d   = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_k3_sect))
-            self.triad_Phi_1d = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_k3_sect))
-            self.triad_R_2d   = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_k3_sect, self.num_k1_sect))
-            self.triad_Phi_2d = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES, self.num_k3_sect, self.num_k1_sect))
+            self.triad_R      = np.zeros((sim_data.ndata, self.NUM_TRIAD_TYPES, self.num_k3_sect))
+            self.triad_Phi    = np.zeros((sim_data.ndata, self.NUM_TRIAD_TYPES, self.num_k3_sect))
+            self.triad_R_1d   = np.zeros((sim_data.ndata, self.NUM_TRIAD_TYPES, self.num_k3_sect))
+            self.triad_Phi_1d = np.zeros((sim_data.ndata, self.NUM_TRIAD_TYPES, self.num_k3_sect))
+            self.triad_R_2d   = np.zeros((sim_data.ndata, self.NUM_TRIAD_TYPES, self.num_k3_sect, self.num_k1_sect))
+            self.triad_Phi_2d = np.zeros((sim_data.ndata, self.NUM_TRIAD_TYPES, self.num_k3_sect, self.num_k1_sect))
+            ## Phase Sync Stats in Time
+            if self.triads_all_pdf_t:
+                self.triads_all_pdf_counts_t = np.zeros((sim_data.ndata, self.NUM_TRIAD_CLASS, self.NUM_TRIAD_TYPES, self.num_k3_sect, self.nbin_triads_all_pdf_t))
+            if self.wghtd_all_pdf_t:
+                self.wghtd_triads_all_pdf_counts_t = np.zeros((sim_data.ndata, self.NUM_TRIAD_CLASS, self.NUM_TRIAD_TYPES, self.num_k3_sect, self.nbin_wghtd_triads_all_pdf_t))
+            if self.triads_1d_pdf_t:
+                self.triads_1d_pdf_counts_t = np.zeros((sim_data.ndata, self.NUM_TRIAD_CLASS, self.NUM_TRIAD_TYPES, self.num_k3_sect, self.nbin_triads_1d_pdf_t))
+            if self.wghtd_1d_pdf_t:
+                self.wghtd_triads_1d_pdf_counts_t  = np.zeros((sim_data.ndata, self.NUM_TRIAD_CLASS, self.NUM_TRIAD_TYPES, self.num_k3_sect, self.nbin_wghtd_triads_1d_pdf_t))
             ## Phase Sync Stats
-            self.phase_sector_counts = np.zeros((sim_data.ndata, self.num_k3_sect, 200))
-            self.phase_sector_ranges = np.zeros((sim_data.ndata, self.num_k3_sect, 201))
-            self.triad_sector_counts = np.zeros((sim_data.ndata, self.num_k3_sect, 200, NUM_TRIAD_TYPES))
-            self.triad_sector_ranges = np.zeros((sim_data.ndata, self.num_k3_sect, 201, NUM_TRIAD_TYPES))
-            self.triad_sector_wghtd_counts = np.zeros((sim_data.ndata, self.num_k3_sect, 200, NUM_TRIAD_TYPES))
-            self.triad_sector_wghtd_ranges = np.zeros((sim_data.ndata, self.num_k3_sect, 201, NUM_TRIAD_TYPES))
+            # self.phase_sector_counts = np.zeros((sim_data.ndata, self.num_k3_sect, 200))
+            # self.phase_sector_ranges = np.zeros((sim_data.ndata, self.num_k3_sect, 201))
+            # self.triad_sector_counts = np.zeros((sim_data.ndata, self.num_k3_sect, 200, self.NUM_TRIAD_TYPES))
+            # self.triad_sector_ranges = np.zeros((sim_data.ndata, self.num_k3_sect, 201, self.NUM_TRIAD_TYPES))
+            # self.triad_sector_wghtd_counts = np.zeros((sim_data.ndata, self.num_k3_sect, 200, self.NUM_TRIAD_TYPES))
+            # self.triad_sector_wghtd_ranges = np.zeros((sim_data.ndata, self.num_k3_sect, 201, self.NUM_TRIAD_TYPES))
 
             ## Test phase sync data
-            self.enst_flux_test = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES))
-            self.triad_R_test   = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES))
-            self.triad_Phi_test = np.zeros((sim_data.ndata, NUM_TRIAD_TYPES))
+            self.enst_flux_test = np.zeros((sim_data.ndata, self.NUM_TRIAD_TYPES))
+            self.triad_R_test   = np.zeros((sim_data.ndata, self.NUM_TRIAD_TYPES))
+            self.triad_Phi_test = np.zeros((sim_data.ndata, self.NUM_TRIAD_TYPES))
 
     ## Create instance of data class
     data = PostProcessData()
@@ -797,9 +838,26 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
         # Read in the spectra
         for group in f.keys():
             if "Snap" in group:
-                # if 'TriadPhase_All_PDF_InTime' in list(f[group].keys()):
-                #     for sub_group in list(f[group]['TriadPhase_All_PDF_InTime'].keys()):
-
+                # # Read in the in time phase sync stats
+                # for class_type in range(data.NUM_TRIAD_CLASS):
+                #     for triad_type in range(data.NUM_TRIAD_TYPES):
+                #         for n_k3 in range(data.num_k3_sect):
+                #             if 'TriadPhase_All_PDF_InTime' in list(f[group].keys()):
+                #                 dset = 'T_All_Counts_TClass[{}]_TType[{}]_Sec[{}]'.format(class_type, triad_type, n_k3)
+                #                 if dset in list(f[group]['TriadPhase_All_PDF_InTime'].keys()):
+                #                     data.triads_all_pdf_counts_t[nn, class_type, triad_type, n_k3, :] = f[group]['TriadPhase_All_PDF_InTime'][dset][:]
+                #             if 'TriadPhaseWeightedFlux_All_PDF_InTime' in list(f[group].keys()):
+                #                 dset = 'W_All_Counts_TClass[{}]_TType[{}]_Sec[{}]'.format(class_type, triad_type, n_k3)
+                #                 if dset in list(f[group]['TriadPhaseWeightedFlux_All_PDF_InTime'].keys()):
+                #                     data.wghtd_triads_all_pdf_counts_t[nn, class_type, triad_type, n_k3, :] = f[group]['TriadPhaseWeightedFlux_All_PDF_InTime'][dset][:]
+                #             if 'TriadPhase_1D_PDF_InTime' in list(f[group].keys()):
+                #                 dset = 'T_1D_Counts_TClass[{}]_TType[{}]_Sec[{}]'.format(class_type, triad_type, n_k3)
+                #                 if dset in list(f[group]['TriadPhase_1D_PDF_InTime'].keys()):
+                #                     data.triads_1d_pdf_counts_t[nn, class_type, triad_type, n_k3, :] = f[group]['TriadPhase_1D_PDF_InTime'][dset][:]
+                #             if 'TriadPhaseWeightedFlux_1D_PDF_InTime' in list(f[group].keys()):
+                #                 dset = 'W_1D_Counts_TClass[{}]_TType[{}]_Sec[{}]'.format(class_type, triad_type, n_k3)
+                #                 if dset in list(f[group]['TriadPhaseWeightedFlux_1D_PDF_InTime'].keys()):
+                #                     data.wghtd_triads_1d_pdf_counts_t[nn, class_type, triad_type, n_k3, :] = f[group]['TriadPhaseWeightedFlux_1D_PDF_InTime'][dset][:]
                 if 'FullFieldPhases' in list(f[group].keys()):
                     data.phases[nn, :] = f[group]["FullFieldPhases"][:, :]
                 if 'FullFieldEnstrophySpectrum' in list(f[group].keys()):

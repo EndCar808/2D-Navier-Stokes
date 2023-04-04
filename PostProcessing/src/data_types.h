@@ -74,8 +74,8 @@
 #if defined(__POST_SYNC)
 #define __SEC_PHASE_SYNC
 // #define __SEC_PHASE_SYNC_STATS
-#define __SEC_PHASE_SYNC_STATS_IN_TIME
-#define __SEC_PHASE_SYNC_STATS_IN_TIME_1D
+// #define __SEC_PHASE_SYNC_STATS_IN_TIME
+// #define __SEC_PHASE_SYNC_STATS_IN_TIME_1D
 // #define __SEC_PHASE_SYNC_STATS_IN_TIME_2D
 #endif
 // Postprocessing data sets
@@ -132,9 +132,9 @@
 #define CONTRIB_1D 0 		    // Indicates 1d contribution (same sector) to the flux 
 #define CONTRIB_2D 1            // Indicates 2d contribution (across sectors) to the flux
 #define CONTRIB_ALL 2           // Indicates when 1d and 2d contributions are combined
-#define N_BINS_SEC_1D_T 25      // The number of bins in the sector pdfs in time for 1D contributions
+#define N_BINS_SEC_1D_T 100     // The number of bins in the sector pdfs in time for 1D contributions
 #define N_BINS_SEC_2D_T 100     // The number of bins in the sector pdfs in time for 2D contributions
-#define N_BINS_SEC_ALL_T 1000   // The number of bins in the sector pdfs in time for 1D and 2D contributions
+#define N_BINS_SEC_ALL_T 100    // The number of bins in the sector pdfs in time for 1D and 2D contributions
 // ---------------------------------------------------------------------
 //  Global Struct Definitions
 // ---------------------------------------------------------------------
@@ -246,6 +246,7 @@ typedef struct postprocess_data_struct {
     fftw_complex* phase_order_C_theta_triads_unidirec[NUM_TRIAD_TYPES + 1];					// Array to hold the unidirectional phase order parameter for each C_theta triads
     fftw_complex* phase_order_C_theta_triads_unidirec_1d[NUM_TRIAD_TYPES + 1];				// Array to hold the unidirectional phase order parameter for each C_theta triads for 1d contributions
     fftw_complex** phase_order_C_theta_triads_unidirec_2d[NUM_TRIAD_TYPES + 1];				// Array to hold the unidirectional phase order parameter for each C_theta triads for 2d contributions
+    double** phase_order_norm_const[2][NUM_TRIAD_TYPES + 1];								// Array to hold the normalization constants for the collective phase order parameters				
     fftw_complex* dw_hat_dt; 									             				// Array to hold the RHS of the vorticity equation
     fftw_complex* grad_w_hat;												 				// Array to hold the derivative of the vorticity in the x and y direction in Fourier space     
     fftw_complex* grad_u_hat;												 				// Array to hold the derivative of the velocity in the x and y direction in Fourier space     

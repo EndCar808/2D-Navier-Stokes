@@ -321,6 +321,9 @@ void PhaseSyncSector(int s) {
 				proc_data->enst_flux_2d[i][a][l]                           = 0.0;
 				proc_data->phase_order_C_theta_triads_2d[i][a][l]          = 0.0 + 0.0 * I;
 				proc_data->phase_order_C_theta_triads_unidirec_2d[i][a][l] = 0.0 + 0.0 * I;
+				for (int type = 0; type < 2; ++type) {
+					proc_data->phase_order_norm_const[type][i][a][l] = 0.0;
+				}
 			}
 			
 			// Loop through wavevectors
@@ -366,9 +369,6 @@ void PhaseSyncSector(int s) {
 					// Get flux term
 					flux_term = flux_wght * cos(triad_phase);
 
-					// Get the collective phase term
-					collective_phase_term = flux_wght * cexp(I * triad_phase);
-
 					///////////////////////////////////////////
 					///	 Positive Flux term
 					///////////////////////////////////////////
@@ -378,17 +378,21 @@ void PhaseSyncSector(int s) {
 						gen_triad_phase = fmod(triad_phase + 2.0 * M_PI + carg(flux_wght), 2.0 * M_PI) - M_PI;
 						phase_val[1]    = gen_triad_phase;
 						
+						// Get the collective phase term
+						collective_phase_term = fabs(flux_wght) * cexp(I * gen_triad_phase);
+
 						//------------------------------------------ TRIAD TYPE 0
 						// Update the combined triad phase order parameter with the appropriate contribution
 						proc_data->num_triads[0][a]++;
 						proc_data->enst_flux[0][a]                  += flux_term;
 						proc_data->triad_phase_order[0][a]          += cexp(I * gen_triad_phase);
-						if (cabs(collective_phase_term) > 0.0) {
-							proc_data->phase_order_C_theta_triads[0][a] += collective_phase_term; /// cabs(collective_phase_term);
-							if (k3_y >= 0) {
-								proc_data->phase_order_C_theta_triads_unidirec[0][a] += collective_phase_term; /// cabs(collective_phase_term);
-							}
-						}
+						
+						// Update collective phase order parameter for C_theta
+						proc_data->phase_order_C_theta_triads[0][a] += collective_phase_term;						
+						// Update the unidirectional collective phase order parameter for C_theta
+						if (k3_y >= 0) {
+							proc_data->phase_order_C_theta_triads_unidirec[0][a] += collective_phase_term;
+						}						
 						
 						// Update the triad phase order data for the 1d contribution to the flux
 						if (proc_data->phase_sync_wave_vecs[a][l][CONTRIB_TYPE][n] == CONTRIB_1D) {
@@ -398,13 +402,13 @@ void PhaseSyncSector(int s) {
 							proc_data->triad_phase_order_1d[0][a] += cexp(I * gen_triad_phase);
 
 							// Update collective phase order parameter for C_theta
-							if (cabs(collective_phase_term) > 0.0) {
-								proc_data->phase_order_C_theta_triads_1d[0][a] += collective_phase_term; /// cabs(collective_phase_term);
-								// Update unidirectional collective phase order parameter for C_theta
-								if (k3_y >= 0) {
-									proc_data->phase_order_C_theta_triads_unidirec_1d[0][a] += collective_phase_term; /// cabs(collective_phase_term);
-								}
-							}
+							proc_data->phase_order_C_theta_triads_1d[0][a] += collective_phase_term;
+							proc_data->phase_order_norm_const[0][0][a][a] += fabs(flux_wght);
+							// Update unidirectional collective phase order parameter for C_theta
+							if (k3_y >= 0) {
+								proc_data->phase_order_C_theta_triads_unidirec_1d[0][a] += collective_phase_term;
+								proc_data->phase_order_norm_const[1][0][a][a] += fabs(flux_wght);
+							}							
 						}
 
 						// Update the triad phase order data for the 2d contribution to the flux
@@ -415,13 +419,13 @@ void PhaseSyncSector(int s) {
 							proc_data->triad_phase_order_2d[0][a][l] += cexp(I * gen_triad_phase);
  
 							// Update collective phase order parameter for C_theta
-							if (cabs(collective_phase_term) > 0.0) {
-								proc_data->phase_order_C_theta_triads_2d[0][a][l] += collective_phase_term; /// cabs(collective_phase_term);
-								// Update unidirectional collective phase order parameter for C_theta
-								if (k3_y >= 0) {
-									proc_data->phase_order_C_theta_triads_unidirec_2d[0][a][l] += collective_phase_term; /// cabs(collective_phase_term);
-								}
-							}
+							proc_data->phase_order_C_theta_triads_2d[0][a][l] += collective_phase_term;
+							proc_data->phase_order_norm_const[0][0][a][l] += fabs(flux_wght);
+							// Update unidirectional collective phase order parameter for C_theta
+							if (k3_y >= 0) {
+								proc_data->phase_order_C_theta_triads_unidirec_2d[0][a][l] += collective_phase_term;
+								proc_data->phase_order_norm_const[1][0][a][l] += fabs(flux_wght);
+							}							
 						}
 
 						//------ Update the PDFs of the triad phases and weighted flux densisties
@@ -477,12 +481,13 @@ void PhaseSyncSector(int s) {
 							proc_data->num_triads[1][a]++;		
 							proc_data->enst_flux[1][a]         += flux_term;
 							proc_data->triad_phase_order[1][a] += cexp(I * gen_triad_phase);
-							if (cabs(collective_phase_term) > 0.0) {
-								proc_data->phase_order_C_theta_triads[1][a] += collective_phase_term; /// cabs(collective_phase_term);
-								if (k3_y >= 0) {
-									proc_data->phase_order_C_theta_triads_unidirec[1][a] += collective_phase_term; /// cabs(collective_phase_term);
-								}
-							}
+							
+							// Update collective phase order parameter for C_theta
+							proc_data->phase_order_C_theta_triads[1][a] += collective_phase_term;
+							// Update the unidirectional collective phase order parameter for C_theta
+							if (k3_y >= 0) {
+								proc_data->phase_order_C_theta_triads_unidirec[1][a] += collective_phase_term;
+							}							
 							
 							// Update the triad phase order data for the 1d contribution to the flux
 							if (proc_data->phase_sync_wave_vecs[a][l][CONTRIB_TYPE][n] == CONTRIB_1D) {
@@ -492,13 +497,13 @@ void PhaseSyncSector(int s) {
 								proc_data->triad_phase_order_1d[1][a] += cexp(I * gen_triad_phase);
 								
 								// Update collective phase order parameter for C_theta
-								if (cabs(collective_phase_term) > 0.0) {
-									proc_data->phase_order_C_theta_triads_1d[1][a] += collective_phase_term; /// cabs(collective_phase_term);
-									// Update unidirectional collective phase order parameter for C_theta
-									if (k3_y >= 0) {
-										proc_data->phase_order_C_theta_triads_unidirec_1d[1][a] += collective_phase_term; /// cabs(collective_phase_term);
-									}
-								}
+								proc_data->phase_order_C_theta_triads_1d[1][a] += collective_phase_term;
+								proc_data->phase_order_norm_const[0][1][a][a] += fabs(flux_wght);
+								// Update unidirectional collective phase order parameter for C_theta
+								if (k3_y >= 0) {
+									proc_data->phase_order_C_theta_triads_unidirec_1d[1][a] += collective_phase_term;
+									proc_data->phase_order_norm_const[1][1][a][a] += fabs(flux_wght);
+								}								
 							}
 
 							// Update the triad phase order data for the 2d contribution to the flux
@@ -509,13 +514,13 @@ void PhaseSyncSector(int s) {
 								proc_data->triad_phase_order_2d[1][a][l] += cexp(I * gen_triad_phase);
 
 								// Update collective phase order parameter for C_theta
-								if (cabs(collective_phase_term) > 0.0) {
-									proc_data->phase_order_C_theta_triads_2d[1][a][l] += collective_phase_term; /// cabs(collective_phase_term);
-									// Update unidirectional collective phase order parameter for C_theta
-									if (k3_y >= 0) {
-										proc_data->phase_order_C_theta_triads_unidirec_2d[1][a][l] += collective_phase_term; /// cabs(collective_phase_term);
-									}
-								}
+								proc_data->phase_order_C_theta_triads_2d[1][a][l] += collective_phase_term;
+								proc_data->phase_order_norm_const[0][1][a][l] += fabs(flux_wght);
+								// Update unidirectional collective phase order parameter for C_theta
+								if (k3_y >= 0) {
+									proc_data->phase_order_C_theta_triads_unidirec_2d[1][a][l] += collective_phase_term;
+									proc_data->phase_order_norm_const[1][1][a][l] += fabs(flux_wght);
+								}								
 							}
 
 							//------ Update the PDFs of the triad phases and weighted flux densisties
@@ -571,12 +576,13 @@ void PhaseSyncSector(int s) {
 							proc_data->num_triads[2][a]++;		
 							proc_data->enst_flux[2][a]         += flux_term;
 							proc_data->triad_phase_order[2][a] += cexp(I * gen_triad_phase);
-							if (cabs(collective_phase_term) > 0.0) {
-								proc_data->phase_order_C_theta_triads[2][a] += collective_phase_term; /// cabs(collective_phase_term);
-								if (k3_y >= 0) {
-									proc_data->phase_order_C_theta_triads_unidirec[2][a] += collective_phase_term; /// cabs(collective_phase_term);
-								}
-							}
+							
+							// Update collective phase order parameter for C_theta
+							proc_data->phase_order_C_theta_triads[2][a] += collective_phase_term;
+							// Update the unidirectional collective phase order parameter for C_theta
+							if (k3_y >= 0) {
+								proc_data->phase_order_C_theta_triads_unidirec[2][a] += collective_phase_term;
+							}							
 							
 							// Update the triad phase order data for the 1d contribution to the flux
 							if (proc_data->phase_sync_wave_vecs[a][l][CONTRIB_TYPE][n] == CONTRIB_1D) {
@@ -586,13 +592,13 @@ void PhaseSyncSector(int s) {
 								proc_data->triad_phase_order_1d[2][a] += cexp(I * gen_triad_phase);
 								
 								// Update collective phase order parameter for C_theta
-								if (cabs(collective_phase_term) > 0.0) {
-									proc_data->phase_order_C_theta_triads_1d[2][a] += collective_phase_term; /// cabs(collective_phase_term);
-									// Update unidirectional collective phase order parameter for C_theta
-									if (k3_y >= 0) {
-										proc_data->phase_order_C_theta_triads_unidirec_1d[2][a] += collective_phase_term; /// cabs(collective_phase_term);
-									}
-								}
+								proc_data->phase_order_C_theta_triads_1d[2][a] += collective_phase_term;
+								proc_data->phase_order_norm_const[0][2][a][a] += fabs(flux_wght);
+								// Update unidirectional collective phase order parameter for C_theta
+								if (k3_y >= 0) {
+									proc_data->phase_order_C_theta_triads_unidirec_1d[2][a] += collective_phase_term;
+									proc_data->phase_order_norm_const[1][2][a][a] += fabs(flux_wght);
+								}								
 							}
 
 							// Update the triad phase order data for the 2d contribution to the flux
@@ -603,13 +609,13 @@ void PhaseSyncSector(int s) {
 								proc_data->triad_phase_order_2d[2][a][l] += cexp(I * gen_triad_phase);
 
 								// Update collective phase order parameter for C_theta
-								if (cabs(collective_phase_term) > 0.0) {
-									proc_data->phase_order_C_theta_triads_2d[2][a][l] += collective_phase_term; /// cabs(collective_phase_term);
-									// Update unidirectional collective phase order parameter for C_theta
-									if (k3_y >= 0) {
-										proc_data->phase_order_C_theta_triads_unidirec_2d[2][a][l] += collective_phase_term; /// cabs(collective_phase_term);
-									}
-								}
+								proc_data->phase_order_C_theta_triads_2d[2][a][l] += collective_phase_term;
+								proc_data->phase_order_norm_const[0][2][a][l] += fabs(flux_wght);
+								// Update unidirectional collective phase order parameter for C_theta
+								if (k3_y >= 0) {
+									proc_data->phase_order_C_theta_triads_unidirec_2d[2][a][l] += collective_phase_term;
+									proc_data->phase_order_norm_const[1][2][a][l] += fabs(flux_wght);
+								}								
 							}
 
 							//------ Update the PDFs of the triad phases and weighted flux densisties
@@ -665,12 +671,13 @@ void PhaseSyncSector(int s) {
 							proc_data->num_triads[5][a]++;		
 							proc_data->enst_flux[5][a]         += flux_term;
 							proc_data->triad_phase_order[5][a] += cexp(I * gen_triad_phase);
-							if (cabs(collective_phase_term) > 0.0) {
-								proc_data->phase_order_C_theta_triads[5][a] += collective_phase_term; /// cabs(collective_phase_term);
-								if (k3_y >= 0) {
-									proc_data->phase_order_C_theta_triads_unidirec[5][a] += collective_phase_term; /// cabs(collective_phase_term);
-								}
-							}
+							
+							// Update collective phase order parameter for C_theta
+							proc_data->phase_order_C_theta_triads[5][a] += collective_phase_term;
+							// Update the unidirectional collective phase order parameter for C_theta
+							if (k3_y >= 0) {
+								proc_data->phase_order_C_theta_triads_unidirec[5][a] += collective_phase_term;
+							}							
 
 							// Update the triad phase order data for the 1d contribution to the flux
 							if (proc_data->phase_sync_wave_vecs[a][l][CONTRIB_TYPE][n] == CONTRIB_1D) {
@@ -680,13 +687,13 @@ void PhaseSyncSector(int s) {
 								proc_data->triad_phase_order_1d[5][a] += cexp(I * gen_triad_phase);
 
 								// Update collective phase order parameter for C_theta
-								if (cabs(collective_phase_term) > 0.0) {
-									proc_data->phase_order_C_theta_triads_1d[5][a] += collective_phase_term; /// cabs(collective_phase_term);
-									// Update unidirectional collective phase order parameter for C_theta
-									if (k3_y >= 0) {
-										proc_data->phase_order_C_theta_triads_unidirec_1d[5][a] += collective_phase_term; /// cabs(collective_phase_term);
-									}
-								}
+								proc_data->phase_order_C_theta_triads_1d[5][a] += collective_phase_term;
+								proc_data->phase_order_norm_const[0][5][a][a] += fabs(flux_wght);
+								// Update unidirectional collective phase order parameter for C_theta
+								if (k3_y >= 0) {
+									proc_data->phase_order_C_theta_triads_unidirec_1d[5][a] += collective_phase_term;
+									proc_data->phase_order_norm_const[1][5][a][a] += fabs(flux_wght);
+								}								
 							}
 
 							// Update the triad phase order data for the 2d contribution to the flux
@@ -697,13 +704,13 @@ void PhaseSyncSector(int s) {
 								proc_data->triad_phase_order_2d[5][a][l] += cexp(I * gen_triad_phase);
 
 								// Update collective phase order parameter for C_theta
-								if (cabs(collective_phase_term) > 0.0) {
-									proc_data->phase_order_C_theta_triads_2d[5][a][l] += collective_phase_term; /// cabs(collective_phase_term);
-									// Update unidirectional collective phase order parameter for C_theta
-									if (k3_y >= 0) {
-										proc_data->phase_order_C_theta_triads_unidirec_2d[5][a][l] += collective_phase_term; /// cabs(collective_phase_term);
-									}
-								}
+								proc_data->phase_order_C_theta_triads_2d[5][a][l] += collective_phase_term;
+								proc_data->phase_order_norm_const[0][5][a][l] += fabs(flux_wght);
+								// Update unidirectional collective phase order parameter for C_theta
+								if (k3_y >= 0) {
+									proc_data->phase_order_C_theta_triads_unidirec_2d[5][a][l] += collective_phase_term;
+									proc_data->phase_order_norm_const[1][5][a][l] += fabs(flux_wght);
+								}								
 							}
 
 							//------ Update the PDFs of the triad phases and weighted flux densisties
@@ -759,16 +766,20 @@ void PhaseSyncSector(int s) {
 							gen_triad_phase = fmod(triad_phase + 2.0 * M_PI, 2.0 * M_PI) - M_PI;
 							phase_val[1]    = gen_triad_phase;
 
+							// Get the collective phase term
+							collective_phase_term = fabs(flux_wght) * cexp(I * gen_triad_phase);
+
 							//------------------------------------------ TRIAD TYPE 6
 							proc_data->num_triads[6][a]++;		
 							proc_data->enst_flux[6][a]         += flux_term;
 							proc_data->triad_phase_order[6][a] += cexp(I * gen_triad_phase);
-							if (cabs(collective_phase_term) > 0.0) {
-								proc_data->phase_order_C_theta_triads[6][a] += collective_phase_term; /// cabs(collective_phase_term);
-								if (k3_y >= 0) {
-									proc_data->phase_order_C_theta_triads_unidirec[6][a] += collective_phase_term; /// cabs(collective_phase_term);
-								}
-							}
+							
+							// Update collective phase order parameter for C_theta
+							proc_data->phase_order_C_theta_triads[6][a] += collective_phase_term;
+							// Update the unidirectional collective phase order parameter for C_theta
+							if (k3_y >= 0) {
+								proc_data->phase_order_C_theta_triads_unidirec[6][a] += collective_phase_term;
+							}							
 
 							// Update the triad phase order data for the 1d contribution to the flux
 							if (proc_data->phase_sync_wave_vecs[a][l][CONTRIB_TYPE][n] == CONTRIB_1D) {
@@ -778,13 +789,13 @@ void PhaseSyncSector(int s) {
 								proc_data->triad_phase_order_1d[6][a] += cexp(I * gen_triad_phase);
 
 								// Update collective phase order parameter for C_theta
-								if (cabs(collective_phase_term) > 0.0) {
-									proc_data->phase_order_C_theta_triads_1d[6][a] += collective_phase_term; /// cabs(collective_phase_term);
-									// Update unidirectional collective phase order parameter for C_theta
-									if (k3_y >= 0) {
-										proc_data->phase_order_C_theta_triads_unidirec_1d[6][a] += collective_phase_term; /// cabs(collective_phase_term);
-									}
-								}
+								proc_data->phase_order_C_theta_triads_1d[6][a] += collective_phase_term;
+								proc_data->phase_order_norm_const[0][6][a][a] += fabs(flux_wght);
+								// Update unidirectional collective phase order parameter for C_theta
+								if (k3_y >= 0) {
+									proc_data->phase_order_C_theta_triads_unidirec_1d[6][a] += collective_phase_term;
+									proc_data->phase_order_norm_const[1][6][a][a] += fabs(flux_wght);
+								}								
 							}
 
 							// Update the triad phase order data for the 2d contribution to the flux
@@ -795,13 +806,13 @@ void PhaseSyncSector(int s) {
 								proc_data->triad_phase_order_2d[6][a][l] += cexp(I * gen_triad_phase);
 
 								// Update collective phase order parameter for C_theta
-								if (cabs(collective_phase_term) > 0.0) {
-									proc_data->phase_order_C_theta_triads_2d[6][a][l] += collective_phase_term; /// cabs(collective_phase_term);
-									// Update unidirectional collective phase order parameter for C_theta
-									if (k3_y >= 0) {
-										proc_data->phase_order_C_theta_triads_unidirec_2d[6][a][l] += collective_phase_term; /// cabs(collective_phase_term);
-									}
-								}
+								proc_data->phase_order_C_theta_triads_2d[6][a][l] += collective_phase_term;
+								proc_data->phase_order_norm_const[0][6][a][l] += fabs(flux_wght);
+								// Update unidirectional collective phase order parameter for C_theta
+								if (k3_y >= 0) {
+									proc_data->phase_order_C_theta_triads_unidirec_2d[6][a][l] += collective_phase_term;
+									proc_data->phase_order_norm_const[1][6][a][l] += fabs(flux_wght);
+								}								
 							}
 
 							//------ Update the PDFs of the triad phases and weighted flux densisties
@@ -860,18 +871,22 @@ void PhaseSyncSector(int s) {
 						// Define the generalized triad phase for the first term in the flux
 						gen_triad_phase = fmod(triad_phase + 2.0 * M_PI + carg(-flux_wght), 2.0 * M_PI) - M_PI;
 						phase_val[1]    = gen_triad_phase;
+
+						// Get the collective phase term
+						collective_phase_term = fabs(-flux_wght) * cexp(I * gen_triad_phase);
 						
 						//------------------------------------------ TRIAD TYPE 0 - All triad types combined
 						// Update the combined triad phase order parameter with the appropriate contribution
 						proc_data->num_triads[0][a]++;
 						proc_data->enst_flux[0][a]         += -flux_term;
 						proc_data->triad_phase_order[0][a] += cexp(I * gen_triad_phase);
-						if (cabs(collective_phase_term) > 0.0) {
-							proc_data->phase_order_C_theta_triads[0][a] += -collective_phase_term; /// cabs(collective_phase_term);
-							if (k1_y >= 0 && k2_y >= 0) {
-								proc_data->phase_order_C_theta_triads_unidirec[0][a] += -collective_phase_term; /// cabs(collective_phase_term);
-							}
-						}
+						
+						// Update collective phase order parameter for C_theta
+						proc_data->phase_order_C_theta_triads[0][a] += collective_phase_term;
+						// Update the unidirectional collective phase order parameter for C_theta
+						if (k1_y >= 0 && k2_y >= 0) {
+							proc_data->phase_order_C_theta_triads_unidirec[0][a] += collective_phase_term;
+						}						
 
 						// Update the triad phase order data for the 1d contribution to the flux
 						if (proc_data->phase_sync_wave_vecs[a][l][CONTRIB_TYPE][n] == CONTRIB_1D) {
@@ -881,13 +896,13 @@ void PhaseSyncSector(int s) {
 							proc_data->triad_phase_order_1d[0][a] += cexp(I * gen_triad_phase);
 							
 							// Update collective phase order parameter for C_theta
-							if (cabs(collective_phase_term) > 0.0) {
-								proc_data->phase_order_C_theta_triads_1d[0][a] += -collective_phase_term; /// cabs(collective_phase_term);
-								// Update the unidirectional collective phase order parameter for C_theta
-								if (k1_y >= 0 && k2_y >= 0) {
-									proc_data->phase_order_C_theta_triads_unidirec_1d[0][a] += -collective_phase_term; /// cabs(collective_phase_term);
-								}
-							}
+							proc_data->phase_order_C_theta_triads_1d[0][a] += collective_phase_term;
+							proc_data->phase_order_norm_const[0][0][a][a] += fabs(-flux_wght);
+							// Update the unidirectional collective phase order parameter for C_theta
+							if (k1_y >= 0 && k2_y >= 0) {
+								proc_data->phase_order_C_theta_triads_unidirec_1d[0][a] += collective_phase_term;
+								proc_data->phase_order_norm_const[1][0][a][a] += fabs(-flux_wght);
+							}							
 						}
 
 						// Update the triad phase order data for the 2d contribution to the flux
@@ -898,13 +913,13 @@ void PhaseSyncSector(int s) {
 							proc_data->triad_phase_order_2d[0][a][l] += cexp(I * gen_triad_phase);
 
 							// Update collective phase order parameter for C_theta
-							if (cabs(collective_phase_term) > 0.0) {
-								proc_data->phase_order_C_theta_triads_2d[0][a][l] += -collective_phase_term; /// cabs(collective_phase_term);
-								// Update the unidirectional collective phase order parameter for C_theta
-								if (k1_y >= 0 && k2_y >= 0) {
-									proc_data->phase_order_C_theta_triads_unidirec_2d[0][a][l] += -collective_phase_term; /// cabs(collective_phase_term);
-								}
-							}
+							proc_data->phase_order_C_theta_triads_2d[0][a][l] += collective_phase_term;
+							proc_data->phase_order_norm_const[0][0][a][l] += fabs(-flux_wght);
+							// Update the unidirectional collective phase order parameter for C_theta
+							if (k1_y >= 0 && k2_y >= 0) {
+								proc_data->phase_order_C_theta_triads_unidirec_2d[0][a][l] += collective_phase_term;
+								proc_data->phase_order_norm_const[1][0][a][l] += fabs(-flux_wght);
+							}							
 						}
 
 						//------ Update the PDFs of the triad phases and weighted flux densisties
@@ -959,12 +974,13 @@ void PhaseSyncSector(int s) {
 							proc_data->num_triads[3][a]++;		
 							proc_data->enst_flux[3][a]         += -flux_term;
 							proc_data->triad_phase_order[3][a] += cexp(I * gen_triad_phase);
-							if (cabs(collective_phase_term) > 0.0) {
-								proc_data->phase_order_C_theta_triads[3][a] += -collective_phase_term; /// cabs(collective_phase_term);
-								if (k1_y >= 0 && k2_y >= 0) {
-									proc_data->phase_order_C_theta_triads_unidirec[3][a] += -collective_phase_term; /// cabs(collective_phase_term);
-								}
-							}
+							
+							// Update collective phase order parameter for C_theta
+							proc_data->phase_order_C_theta_triads[3][a] += collective_phase_term;
+							// Update the unidirectional collective phase order parameter for C_theta
+							if (k1_y >= 0 && k2_y >= 0) {
+								proc_data->phase_order_C_theta_triads_unidirec[3][a] += collective_phase_term;
+							}							
 
 
 							// Update the triad phase order data for the 1d contribution to the flux
@@ -975,13 +991,13 @@ void PhaseSyncSector(int s) {
 								proc_data->triad_phase_order_1d[3][a] += cexp(I * gen_triad_phase);
 
 								// Update collective phase order parameter for C_theta
-								if (cabs(collective_phase_term) > 0.0) {
-									proc_data->phase_order_C_theta_triads_1d[3][a] += -collective_phase_term; /// cabs(collective_phase_term);
-									// Update the unidirectional collective phase order parameter for C_theta
-									if (k1_y >= 0 && k2_y >= 0) {
-										proc_data->phase_order_C_theta_triads_unidirec_1d[3][a] += -collective_phase_term; /// cabs(collective_phase_term);
-									}
-								}
+								proc_data->phase_order_C_theta_triads_1d[3][a] += collective_phase_term;
+								proc_data->phase_order_norm_const[0][3][a][a] += fabs(-flux_wght);
+								// Update the unidirectional collective phase order parameter for C_theta
+								if (k1_y >= 0 && k2_y >= 0) {
+									proc_data->phase_order_C_theta_triads_unidirec_1d[3][a] += collective_phase_term;
+									proc_data->phase_order_norm_const[1][3][a][a] += fabs(-flux_wght);
+								}								
 							}
 
 							// Update the triad phase order data for the 2d contribution to the flux
@@ -992,13 +1008,13 @@ void PhaseSyncSector(int s) {
 								proc_data->triad_phase_order_2d[3][a][l] += cexp(I * gen_triad_phase);
 
 								// Update collective phase order parameter for C_theta
-								if (cabs(collective_phase_term) > 0.0) {
-									proc_data->phase_order_C_theta_triads_2d[3][a][l] += -collective_phase_term; /// cabs(collective_phase_term);
-									// Update the unidirectional collective phase order parameter for C_theta
-									if (k1_y >= 0 && k2_y >= 0) {
-										proc_data->phase_order_C_theta_triads_unidirec_2d[3][a][l] += -collective_phase_term; /// cabs(collective_phase_term);
-									}								
-								}
+								proc_data->phase_order_C_theta_triads_2d[3][a][l] += collective_phase_term;
+								proc_data->phase_order_norm_const[0][3][a][l] += fabs(-flux_wght);
+								// Update the unidirectional collective phase order parameter for C_theta
+								if (k1_y >= 0 && k2_y >= 0) {
+									proc_data->phase_order_C_theta_triads_unidirec_2d[3][a][l] += collective_phase_term;
+									proc_data->phase_order_norm_const[1][3][a][l] += fabs(-flux_wght);
+								}																
 							}
 
 
@@ -1055,12 +1071,13 @@ void PhaseSyncSector(int s) {
 							proc_data->num_triads[4][a]++;		
 							proc_data->enst_flux[4][a]         += -flux_term;
 							proc_data->triad_phase_order[4][a] += cexp(I * gen_triad_phase);
-							if (cabs(collective_phase_term) > 0.0) {
-								proc_data->phase_order_C_theta_triads[4][a] += -collective_phase_term; /// cabs(collective_phase_term);
-								if (k1_y >= 0 && k2_y >= 0) {
-									proc_data->phase_order_C_theta_triads_unidirec[4][a] += -collective_phase_term; /// cabs(collective_phase_term);
-								}
-							}
+							
+							// Update collective phase order parameter for C_theta
+							proc_data->phase_order_C_theta_triads[4][a] += collective_phase_term;
+							// Update the unidirectional collective phase order parameter for C_theta
+							if (k1_y >= 0 && k2_y >= 0) {
+								proc_data->phase_order_C_theta_triads_unidirec[4][a] += collective_phase_term;
+							}							
 
 							// Update the triad phase order data for the 1d contribution to the flux
 							if (proc_data->phase_sync_wave_vecs[a][l][CONTRIB_TYPE][n] == CONTRIB_1D) {
@@ -1070,13 +1087,13 @@ void PhaseSyncSector(int s) {
 								proc_data->triad_phase_order_1d[4][a] += cexp(I * gen_triad_phase);
 
 								// Update collective phase order parameter for C_theta
-								if (cabs(collective_phase_term) > 0.0) {
-									proc_data->phase_order_C_theta_triads_1d[4][a] += -collective_phase_term; /// cabs(collective_phase_term);
-									// Update the unidirectional collective phase order parameter for C_theta
-									if (k1_y >= 0 && k2_y >= 0) {
-										proc_data->phase_order_C_theta_triads_unidirec_1d[4][a] += -collective_phase_term; /// cabs(collective_phase_term);
-									}
-								}
+								proc_data->phase_order_C_theta_triads_1d[4][a] += collective_phase_term;
+								proc_data->phase_order_norm_const[0][4][a][a] += fabs(-flux_wght);
+								// Update the unidirectional collective phase order parameter for C_theta
+								if (k1_y >= 0 && k2_y >= 0) {
+									proc_data->phase_order_C_theta_triads_unidirec_1d[4][a] += collective_phase_term;
+									proc_data->phase_order_norm_const[1][4][a][a] += fabs(-flux_wght);
+								}								
 							}
 
 							// Update the triad phase order data for the 2d contribution to the flux
@@ -1087,13 +1104,13 @@ void PhaseSyncSector(int s) {
 								proc_data->triad_phase_order_2d[4][a][l] += cexp(I * gen_triad_phase);
 
 								// Update collective phase order parameter for C_theta
-								if (cabs(collective_phase_term) > 0.0) {
-									proc_data->phase_order_C_theta_triads_2d[4][a][l] += -collective_phase_term; /// cabs(collective_phase_term);
-									// Update the unidirectional collective phase order parameter for C_theta
-									if (k1_y >= 0 && k2_y >= 0) {
-										proc_data->phase_order_C_theta_triads_unidirec_2d[4][a][l] += -collective_phase_term; /// cabs(collective_phase_term);
-									}		
-								}
+								proc_data->phase_order_C_theta_triads_2d[4][a][l] += collective_phase_term;
+								proc_data->phase_order_norm_const[0][4][a][l] += fabs(-flux_wght);
+								// Update the unidirectional collective phase order parameter for C_theta
+								if (k1_y >= 0 && k2_y >= 0) {
+									proc_data->phase_order_C_theta_triads_unidirec_2d[4][a][l] += collective_phase_term;
+									proc_data->phase_order_norm_const[1][4][a][l] += fabs(-flux_wght);
+								}										
 							}
 
 							//------ Update the PDFs of the triad phases and weighted flux densisties
@@ -1149,12 +1166,13 @@ void PhaseSyncSector(int s) {
 							proc_data->num_triads[5][a]++;		
 							proc_data->enst_flux[5][a]         += -flux_term;
 							proc_data->triad_phase_order[5][a] += cexp(I * gen_triad_phase);
-							if (cabs(collective_phase_term) > 0.0) {
-								proc_data->phase_order_C_theta_triads[5][a] += -collective_phase_term; /// cabs(collective_phase_term);
-								if (k1_y >= 0 && k2_y >= 0) {
-									proc_data->phase_order_C_theta_triads_unidirec[5][a] += -collective_phase_term; /// cabs(collective_phase_term);
-								}
-							}
+							
+							// Update collective phase order parameter for C_theta
+							proc_data->phase_order_C_theta_triads[5][a] += collective_phase_term;
+							// Update the unidirectional collective phase order parameter for C_theta
+							if (k1_y >= 0 && k2_y >= 0) {
+								proc_data->phase_order_C_theta_triads_unidirec[5][a] += collective_phase_term;
+							}							
 
 							// Update the triad phase order data for the 1d contribution to the flux
 							if (proc_data->phase_sync_wave_vecs[a][l][CONTRIB_TYPE][n] == CONTRIB_1D) {
@@ -1164,13 +1182,13 @@ void PhaseSyncSector(int s) {
 								proc_data->triad_phase_order_1d[5][a] += cexp(I * gen_triad_phase);
 
 								// Update collective phase order parameter for C_theta
-								if (cabs(collective_phase_term) > 0.0) {
-									proc_data->phase_order_C_theta_triads_1d[5][a] += -collective_phase_term; /// cabs(collective_phase_term);
-									// Update the unidirectional collective phase order parameter for C_theta
-									if (k1_y >= 0 && k2_y >= 0) {
-										proc_data->phase_order_C_theta_triads_unidirec_1d[5][a] += -collective_phase_term; /// cabs(collective_phase_term);
-									}
-								}
+								proc_data->phase_order_C_theta_triads_1d[5][a] += collective_phase_term;
+								proc_data->phase_order_norm_const[0][5][a][a] += fabs(-flux_wght);
+								// Update the unidirectional collective phase order parameter for C_theta
+								if (k1_y >= 0 && k2_y >= 0) {
+									proc_data->phase_order_C_theta_triads_unidirec_1d[5][a] += collective_phase_term;
+									proc_data->phase_order_norm_const[1][5][a][a] += fabs(-flux_wght);
+								}								
 							}
 
 							// Update the triad phase order data for the 2d contribution to the flux
@@ -1181,13 +1199,13 @@ void PhaseSyncSector(int s) {
 								proc_data->triad_phase_order_2d[5][a][l] += cexp(I * gen_triad_phase);
 
 								// Update collective phase order parameter for C_theta
-								if (cabs(collective_phase_term) > 0.0) {
-									proc_data->phase_order_C_theta_triads_2d[5][a][l] += -collective_phase_term; /// cabs(collective_phase_term);
-									// Update the unidirectional collective phase order parameter for C_theta
-									if (k1_y >= 0 && k2_y >= 0) {
-										proc_data->phase_order_C_theta_triads_unidirec_2d[5][a][l] += -collective_phase_term; /// cabs(collective_phase_term);
-									}
-								}
+								proc_data->phase_order_C_theta_triads_2d[5][a][l] += collective_phase_term;
+								proc_data->phase_order_norm_const[0][5][a][l] += fabs(-flux_wght);
+								// Update the unidirectional collective phase order parameter for C_theta
+								if (k1_y >= 0 && k2_y >= 0) {
+									proc_data->phase_order_C_theta_triads_unidirec_2d[5][a][l] += collective_phase_term;
+									proc_data->phase_order_norm_const[1][5][a][l] += fabs(-flux_wght);
+								}								
 							}
 
 							//------ Update the PDFs of the triad phases and weighted flux densisties
@@ -1242,16 +1260,20 @@ void PhaseSyncSector(int s) {
 							gen_triad_phase = fmod(triad_phase + 2.0 * M_PI, 2.0 * M_PI) - M_PI;
 							phase_val[1] = gen_triad_phase;
 
+							// Get the collective phase term
+							collective_phase_term = fabs(-flux_wght) * cexp(I * gen_triad_phase);
+
 							//------------------------------------------ TRIAD TYPE 6
 							proc_data->num_triads[6][a]++;		
 							proc_data->enst_flux[6][a]         += -flux_term;
 							proc_data->triad_phase_order[6][a] += cexp(I * gen_triad_phase);
-							if (cabs(collective_phase_term) > 0.0) {
-								proc_data->phase_order_C_theta_triads[6][a] += -collective_phase_term; /// cabs(collective_phase_term);
-								if (k1_y >= 0 && k2_y >= 0) {
-									proc_data->phase_order_C_theta_triads_unidirec[6][a] += -collective_phase_term; /// cabs(collective_phase_term);
-								}
-							}
+							
+							// Update collective phase order parameter for C_theta
+							proc_data->phase_order_C_theta_triads[6][a] += collective_phase_term;
+							// Update the unidirectional collective phase order parameter for C_theta
+							if (k1_y >= 0 && k2_y >= 0) {
+								proc_data->phase_order_C_theta_triads_unidirec[6][a] += collective_phase_term;
+							}							
 
 							// Update the triad phase order data for the 1d contribution to the flux
 							if (proc_data->phase_sync_wave_vecs[a][l][CONTRIB_TYPE][n] == CONTRIB_1D) {
@@ -1261,13 +1283,13 @@ void PhaseSyncSector(int s) {
 								proc_data->triad_phase_order_1d[6][a] += cexp(I * gen_triad_phase);
 
 								// Update collective phase order parameter for C_theta
-								if (cabs(collective_phase_term) > 0.0) {
-									proc_data->phase_order_C_theta_triads_1d[6][a] += -collective_phase_term; /// cabs(collective_phase_term);
-									// Update the unidirectional collective phase order parameter for C_theta
-									if (k1_y >= 0 && k2_y >= 0) {
-										proc_data->phase_order_C_theta_triads_unidirec_1d[6][a] += -collective_phase_term; /// cabs(collective_phase_term);
-									}
-								}
+								proc_data->phase_order_C_theta_triads_1d[6][a] += collective_phase_term;
+								proc_data->phase_order_norm_const[0][6][a][a] += fabs(-flux_wght);
+								// Update the unidirectional collective phase order parameter for C_theta
+								if (k1_y >= 0 && k2_y >= 0) {
+									proc_data->phase_order_C_theta_triads_unidirec_1d[6][a] += collective_phase_term;
+									proc_data->phase_order_norm_const[1][6][a][a] += fabs(-flux_wght);
+								}								
 							}
 
 							// Update the triad phase order data for the 2d contribution to the flux
@@ -1278,13 +1300,13 @@ void PhaseSyncSector(int s) {
 								proc_data->triad_phase_order_2d[6][a][l] += cexp(I * gen_triad_phase);
 
 								// Update collective phase order parameter for C_theta
-								if (cabs(collective_phase_term) > 0.0) {
-									proc_data->phase_order_C_theta_triads_2d[6][a][l] += -collective_phase_term; /// cabs(collective_phase_term);
-									// Update the unidirectional collective phase order parameter for C_theta
-									if (k1_y >= 0 && k2_y >= 0) {
-										proc_data->phase_order_C_theta_triads_unidirec_2d[6][a][l] += -collective_phase_term; /// cabs(collective_phase_term);
-									}
-								}
+								proc_data->phase_order_C_theta_triads_2d[6][a][l] += collective_phase_term;
+								proc_data->phase_order_norm_const[0][6][a][l] += fabs(-flux_wght);
+								// Update the unidirectional collective phase order parameter for C_theta
+								if (k1_y >= 0 && k2_y >= 0) {
+									proc_data->phase_order_C_theta_triads_unidirec_2d[6][a][l] += collective_phase_term;
+									proc_data->phase_order_norm_const[1][6][a][l] += fabs(-flux_wght);
+								}								
 							}
 
 							//------ Update the PDFs of the triad phases and weighted flux densisties
@@ -1341,8 +1363,8 @@ void PhaseSyncSector(int s) {
 	}
 
 	//------------------- Record the data for the triads
-	for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
-		for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
+	for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
+		for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
 			// Normalize the phase order parameters
 			if (proc_data->num_triads[i][a] != 0) {
 				proc_data->triad_phase_order[i][a] /= proc_data->num_triads[i][a];
@@ -1350,6 +1372,17 @@ void PhaseSyncSector(int s) {
 			if (proc_data->num_triads_1d[i][a] != 0) {
 				proc_data->triad_phase_order_1d[i][a] /= proc_data->num_triads_1d[i][a];
 			}
+			// Normalize the 1d collective phase order parameters 
+			if (proc_data->phase_order_norm_const[0][i][a][a] > 0.0) {
+				proc_data->phase_order_C_theta_triads_1d[i][a] /= proc_data->phase_order_norm_const[0][i][a][a];
+			}
+			if (proc_data->phase_order_norm_const[1][i][a][a] > 0.0) {
+				proc_data->phase_order_C_theta_triads_unidirec_1d[i][a] /= proc_data->phase_order_norm_const[1][i][a][a];
+			}
+
+			// Initialize total norm constant over k1 sectors
+			double tot_norm_const_1 = 0.0;
+			double tot_norm_const_2 = 0.0;
 			
 			// Record the phase syncs and average phases for combined and 1d contributions
 			proc_data->triad_R[i][a]      = cabs(proc_data->triad_phase_order[i][a]);
@@ -1357,8 +1390,18 @@ void PhaseSyncSector(int s) {
 			proc_data->triad_R_1d[i][a]   = cabs(proc_data->triad_phase_order_1d[i][a]);
 			proc_data->triad_Phi_1d[i][a] = carg(proc_data->triad_phase_order_1d[i][a]);
 			for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
+				// Normalize the 2d phase order parameter
 				if (proc_data->num_triads_2d[i][a][l] != 0) {
 					proc_data->triad_phase_order_2d[i][a][l] /= proc_data->num_triads_2d[i][a][l];
+				}
+				// Normalize the collective phase order parameters
+				if (proc_data->phase_order_norm_const[0][i][a][l] > 0.0) {
+					proc_data->phase_order_C_theta_triads_2d[i][a][l] /= proc_data->phase_order_norm_const[0][i][a][l];
+					tot_norm_const_1 += proc_data->phase_order_norm_const[0][i][a][l];
+				}
+				if (proc_data->phase_order_norm_const[1][i][a][l] > 0.0) {
+					proc_data->phase_order_C_theta_triads_unidirec_2d[i][a][l] /= proc_data->phase_order_norm_const[1][i][a][l];
+					tot_norm_const_2 += proc_data->phase_order_norm_const[1][i][a][l];
 				}
 				
 				// Record the phase syncs and average phases for 2D contributions
@@ -1391,6 +1434,14 @@ void PhaseSyncSector(int s) {
 				}
 				#endif
 			}
+
+			// Normalize the combined collective phase order parameters
+			if (tot_norm_const_1 > 0.0) {
+				proc_data->phase_order_C_theta_triads[i][a] /= tot_norm_const_1;
+			}
+			if (tot_norm_const_2 > 0.0) {
+				proc_data->phase_order_C_theta_triads_unidirec[i][a] /= tot_norm_const_2;
+			}			
 		}
 	}
 
@@ -1637,6 +1688,15 @@ void AllocatePhaseSyncMemory(const long int* N) {
 			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Average Triad Phase");
 			exit(1);
 		}
+
+		///---------------- Allocate the memory for the normalization constants for the phase order parameters
+		for (int type = 0; type < 2; ++type){
+			proc_data->phase_order_norm_const[type][i] = (fftw_complex** )fftw_malloc(sizeof(fftw_complex*) * sys_vars->num_k3_sectors);
+			if (proc_data->phase_order_norm_const[type][i] == NULL) {
+				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Triad Phase Sync Phase Order Normalization Constant");
+				exit(1);
+			}
+		}		
 		for (int l = 0; l < sys_vars->num_k3_sectors; ++l) {
 			// Allocate memory for the collective phase order parameter for 2d contributions to the enstrophy flux
 			proc_data->phase_order_C_theta_triads_2d[i][l] = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->num_k1_sectors);
@@ -1668,6 +1728,14 @@ void AllocatePhaseSyncMemory(const long int* N) {
 				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Average Triad Phase");
 				exit(1);
 			}
+			// Allocate the memory for the normalization constants for the phase order parameters
+			for (int type = 0; type < 2; ++type){
+				proc_data->phase_order_norm_const[type][i][l] = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->num_k1_sectors);
+				if (proc_data->phase_order_norm_const[type][i][l] == NULL) {
+					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Triad Phase Sync Phase Order Normalization Constant");
+					exit(1);
+				}
+			}
 		}
 	}
 
@@ -1675,18 +1743,18 @@ void AllocatePhaseSyncMemory(const long int* N) {
 	proc_data->dtheta_k3 = M_PI / (double )sys_vars->num_k3_sectors;
 	for (int i = 0; i < sys_vars->num_k3_sectors; ++i) {
 		proc_data->theta_k3[i] = -M_PI / 2.0 + i * proc_data->dtheta_k3 + proc_data->dtheta_k3 / 2.0 + 1e-10;
-		proc_data->phase_R[i]     = -50.0;
-		proc_data->phase_Phi[i]   = -50.0;
+		proc_data->phase_R[i]     = 0.0;
+		proc_data->phase_Phi[i]   = 0.0;
 		proc_data->phase_order[i] = 0.0 + 0.0 * I;
 		for (int j = 0; j < NUM_TRIAD_TYPES + 1; ++j) {
 			proc_data->num_triads[j][i]                             = 0;
-			proc_data->enst_flux[j][i]                              = -50.0;
-			proc_data->triad_R[j][i]                                = -50.0;
-			proc_data->triad_Phi[j][i]                              = -50.0;
+			proc_data->enst_flux[j][i]                              = 0.0;
+			proc_data->triad_R[j][i]                                = 0.0;
+			proc_data->triad_Phi[j][i]                              = 0.0;
 			proc_data->num_triads_1d[j][i]                          = 0;                        
-			proc_data->enst_flux_1d[j][i]                           = -50.0;                  
-			proc_data->triad_R_1d[j][i]                             = -50.0;                  
-			proc_data->triad_Phi_1d[j][i]                           = -50.0;                    
+			proc_data->enst_flux_1d[j][i]                           = 0.0;                  
+			proc_data->triad_R_1d[j][i]                             = 0.0;                  
+			proc_data->triad_Phi_1d[j][i]                           = 0.0;                    
 			proc_data->triad_phase_order[j][i]                      = 0.0 + 0.0 * I;
 			proc_data->triad_phase_order_1d[j][i]                   = 0.0 + 0.0 * I;
 			proc_data->phase_order_C_theta_triads[j][i]             = 0.0 + 0.0 * I;
@@ -1695,12 +1763,14 @@ void AllocatePhaseSyncMemory(const long int* N) {
 			proc_data->phase_order_C_theta_triads_unidirec_1d[j][i] = 0.0 + 0.0 * I;
 			for (int k = 0; k < sys_vars->num_k1_sectors; ++k) {
 				proc_data->num_triads_2d[j][i][k]                          = 0;
-				proc_data->enst_flux_2d[j][i][k]                           = -50.0;
-				proc_data->triad_R_2d[j][i][k]                             = -50.0;
-				proc_data->triad_Phi_2d[j][i][k]                           = -50.0;
+				proc_data->enst_flux_2d[j][i][k]                           = 0.0;
+				proc_data->triad_R_2d[j][i][k]                             = 0.0;
+				proc_data->triad_Phi_2d[j][i][k]                           = 0.0;
 				proc_data->triad_phase_order_2d[j][i][k]                   = 0.0 + 0.0 * I;
 				proc_data->phase_order_C_theta_triads_2d[j][i][k]          = 0.0 + 0.0 * I;
 				proc_data->phase_order_C_theta_triads_unidirec_2d[j][i][k] = 0.0 + 0.0 * I;
+				proc_data->phase_order_norm_const[0][j][i][k] = 0.0;
+				proc_data->phase_order_norm_const[1][j][i][k] = 0.0;
 			}
 		}
 	}
@@ -1709,7 +1779,7 @@ void AllocatePhaseSyncMemory(const long int* N) {
 	for (int i = 0; i < sys_vars->num_k1_sectors; ++i) {
 		proc_data->theta_k1[i] = -M_PI / 2.0 + i * proc_data->dtheta_k1 + proc_data->dtheta_k1 / 2.0 + 1e-10;
 	}
-	
+
 
 	// -------------------------------------
 	//  Allocate Phases Sync Stats
@@ -2129,6 +2199,15 @@ void AllocatePhaseSyncMemory(const long int* N) {
 		long int total_2d_terms_per_sec = 0;
 		double search_end, search_begin;
 
+		// Inialize pointer to txt file and open for writing the numbers of terms
+		FILE *fptr;
+		char num_terms_file[64];
+		char num_terms_file_path[1024];
+		sprintf(num_terms_file, "/NumFluxTerms_SECTORS[%d,%d]_KFRAC[%1.2lf,%1.2lf].txt", sys_vars->num_k3_sectors, sys_vars->num_k1_sectors, sys_vars->kmin_sqr, sys_vars->kmax_frac);
+		strncpy(num_terms_file_path, file_info->output_dir, 1024);
+		strcat(num_terms_file_path, num_terms_file);
+		fptr = fopen(num_terms_file_path,"w");
+
 		// Start timer
 		double loop_begin = omp_get_wtime();
 
@@ -2382,7 +2461,8 @@ void AllocatePhaseSyncMemory(const long int* N) {
 
 			// Write Update to Screen 
 			double search_end = omp_get_wtime();
-			printf("Sector: %d/%d\tNum Terms: %ld (Tot) %ld (1D) %ld (2D)\tTime: %g(s)\n", a, sys_vars->num_k3_sectors, total_terms_per_sec, total_1d_terms_per_sec, total_2d_terms_per_sec, (search_end - search_begin));
+			printf("Sector: %d/%d\tNum Terms: %ld (Tot) %ld (1D) %ld (2D)\tTime: %g(s)\n", a + 1, sys_vars->num_k3_sectors, total_terms_per_sec, total_1d_terms_per_sec, total_2d_terms_per_sec, (search_end - search_begin));
+			fprintf(fptr, "Sector: %d/%d\tNum Terms: %ld (Tot) %ld (1D) %ld (2D)\tTime: %g(s)\n", a + 1, sys_vars->num_k3_sectors, total_terms_per_sec, total_1d_terms_per_sec, total_2d_terms_per_sec, (search_end - search_begin));
 		}
 
 		///-------------------- Realloc the last dimension in wavevector array to its correct size
@@ -2466,11 +2546,16 @@ void AllocatePhaseSyncMemory(const long int* N) {
 
 		printf("\n["YELLOW"NOTE"RESET"] --- Saved wavevector data to file at ["CYAN"%s"RESET"]...\n", file_info->wave_vec_data_name);
 
-		
 		// End timer 
 		double loop_end = omp_get_wtime();
 		printf("\n["YELLOW"NOTE"RESET"] --- Total Triad Terms: %ld\n", total_terms);
 		printf("["YELLOW"NOTE"RESET"] --- Total Time for sector search: %g(s)\n", (loop_end - loop_begin));
+
+
+		// Close number of flux terms file
+		fprintf(fptr, "\n--- Total Triad Terms: %ld\n", total_terms);
+		fprintf(fptr, "--- Total Time for sector search: %g(s)\n", (loop_end - loop_begin));
+		fclose(fptr);
 	}
 }
 /**
@@ -2512,9 +2597,13 @@ void FreePhaseSyncObjects(void) {
 			fftw_free(proc_data->num_triads_2d[i][l]);
 			fftw_free(proc_data->phase_order_C_theta_triads_2d[i][l]);
 			fftw_free(proc_data->phase_order_C_theta_triads_unidirec_2d[i][l]);
+			fftw_free(proc_data->phase_order_norm_const[0][i][l]);
+			fftw_free(proc_data->phase_order_norm_const[1][i][l]);
 		}
 		fftw_free(proc_data->phase_order_C_theta_triads_2d[i]);
 		fftw_free(proc_data->phase_order_C_theta_triads_unidirec_2d[i]);
+		fftw_free(proc_data->phase_order_norm_const[0][i]);
+		fftw_free(proc_data->phase_order_norm_const[1][i]);
 		fftw_free(proc_data->enst_flux_2d[i]);
 		fftw_free(proc_data->triad_phase_order_2d[i]);
 		fftw_free(proc_data->triad_R_2d[i]);

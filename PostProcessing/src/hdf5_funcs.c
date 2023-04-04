@@ -483,12 +483,8 @@ void WriteDataToFile(double t, long int snap) {
 	hsize_t dset_dims_2d[Dims2D];   
 	static const hsize_t Dims3D = 3;
 	hsize_t dset_dims_3d[Dims3D];     
-	#if defined (__SEC_PHASE_SYNC_STATS_IN_TIME)
 	static const hsize_t Dims4D = 4;
 	hsize_t dset_dims_4d[Dims4D];
-	static const hsize_t Dims5D = 5;
-	hsize_t dset_dims_5d[Dims5D]; 
-	#endif
 
 	// -------------------------------
 	// Check for Output File
@@ -978,7 +974,7 @@ void WriteDataToFile(double t, long int snap) {
     for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
     	for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
     		for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
-    			tmp1_cmplx[i * sys_vars->num_k3_sectors + a] = proc_data->phase_order_C_theta_triads_2d[i][a][l];
+    			tmp1_cmplx[sys_vars->num_k1_sectors * (i * sys_vars->num_k3_sectors + a) + l] = proc_data->phase_order_C_theta_triads_2d[i][a][l];
     		}
     	}
     }
@@ -993,7 +989,7 @@ void WriteDataToFile(double t, long int snap) {
     for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
     	for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
     		for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
-    			tmp1_cmplx[i * sys_vars->num_k3_sectors + a] = proc_data->phase_order_C_theta_triads_unidirec_2d[i][a][l];
+    			tmp1_cmplx[sys_vars->num_k1_sectors * (i * sys_vars->num_k3_sectors + a) + l] = proc_data->phase_order_C_theta_triads_unidirec_2d[i][a][l];
     		}
     	}
     }
@@ -1005,6 +1001,31 @@ void WriteDataToFile(double t, long int snap) {
 
     fftw_free(tmp_cmplx);
     fftw_free(tmp1_cmplx);
+
+    ///------------------------ Collective Phase Order Constant Data
+    double* tmp_const_data = (double* ) fftw_malloc(sizeof(double) * 2 * (NUM_TRIAD_TYPES + 1) * sys_vars->num_k3_sectors * sys_vars->num_k1_sectors);
+    for (int types = 0; types < 2; ++types) {
+    	for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
+	    	for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
+	    		for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
+	    			tmp_const_data[sys_vars->num_k1_sectors * (sys_vars->num_k3_sectors * (types * (NUM_TRIAD_TYPES + 1) + i) + a) + l] = proc_data->phase_order_norm_const[types][i][a][l];
+	    		}
+	    	}
+	    }
+    }
+
+    dset_dims_4d[0] = 2;
+    dset_dims_4d[1] = NUM_TRIAD_TYPES + 1;
+    dset_dims_4d[2] = sys_vars->num_k3_sectors;
+    dset_dims_4d[3] = sys_vars->num_k1_sectors;
+    status = H5LTmake_dataset(group_id, "CollectivePhaseOrder_C_theta_NormConstants", Dims4D, dset_dims_4d, H5T_NATIVE_DOUBLE, tmp_const_data);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "CollectivePhaseOrder_C_theta_NormConstants", t, snap);
+        exit(1);
+    }
+
+    fftw_free(tmp_const_data);
+    
 
     ///------------------------ Enstrophy Flux
     dset_dims_1d[0] = NUM_TRIAD_TYPES + 1;

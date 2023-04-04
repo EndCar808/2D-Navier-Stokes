@@ -211,7 +211,7 @@ def plot_flow_summary_stream(input_dir, output_dir, i, Nx, Ny):
        plot_flow_summary(output_dir, i, w, np.amin(w), np.amax(w), None, None, np.amin(enrg_spec), np.amax(enrg_spec), np.amin(enst_spec), np.amax(enst_spec), None, x, y, time, Nx, Ny, kx, ky, enrg_spec, enst_spec, tot_en, tot_ens, tot_en_diss)
 
 
-def plot_phase_snaps_stream(input_dir, output_dir, post_file, i, Nx, Ny):
+def plot_phase_snaps_stream(input_dir, output_dir, post_file, i, Nx, Ny, spec_lims):
 
        ## Open Main data file to get vorticity
        with h5.File(input_dir + "Main_HDF_Data.h5", "r") as main_file:
@@ -233,12 +233,12 @@ def plot_phase_snaps_stream(input_dir, output_dir, post_file, i, Nx, Ny):
               group_name = "Snap_{:05d}".format(i)
               enrg_spec = post_file[group_name]["FullFieldEnergySpectrum"][:]
               enst_spec = post_file[group_name]["FullFieldEnstrophySpectrum"][:]
-              min_enrg  = np.amin(np.delete(enrg_spec.flatten(), np.where(enrg_spec.flatten() == -50.0)))
-              max_enrg  = np.amax(np.delete(enrg_spec.flatten(), np.where(enrg_spec.flatten() == -50.0)))
-              min_enst  = np.amin(np.delete(enst_spec.flatten(), np.where(enst_spec.flatten() == -50.0)))
-              max_enst  = np.amax(np.delete(enst_spec.flatten(), np.where(enst_spec.flatten() == -50.0)))
-              spec_lims = np.array([min_enrg, max_enrg, min_enst, max_enst])
-              spec_lims[spec_lims[:] == 0.0] = 1e-12
+              # min_enrg  = np.amin(np.delete(enrg_spec.flatten(), np.where(enrg_spec.flatten() == -50.0)))
+              # max_enrg  = np.amax(np.delete(enrg_spec.flatten(), np.where(enrg_spec.flatten() == -50.0)))
+              # min_enst  = np.amin(np.delete(enst_spec.flatten(), np.where(enst_spec.flatten() == -50.0)))
+              # max_enst  = np.amax(np.delete(enst_spec.flatten(), np.where(enst_spec.flatten() == -50.0)))
+              # spec_lims = np.array([min_enrg, max_enrg, min_enst, max_enst])
+              # spec_lims[spec_lims[:] == 0.0] = 1e-12
               phases    = post_file[group_name]["FullFieldPhases"][:]
 
        ## Call plot flow summary function
@@ -291,7 +291,7 @@ def plot_phase_snaps(out_dir, i, w, phases, enrg_spec, enst_spec, spec_lims, w_m
     ## Plot vorticity   
     ##-------------------------
     ax1 = fig.add_subplot(gs[0, 0])
-    im1 = ax1.imshow(w, extent = (y[0], y[-1], x[-1], x[0]), cmap = "RdBu") #, vmin = w_min, vmax = w_max 
+    im1 = ax1.imshow(w, extent = (y[0], y[-1], x[-1], x[0]), cmap = "RdBu", vmin=-6, vmax=6) #, vmin = w_min, vmax = w_max 
     ax1.set_xlabel(r"$y$")
     ax1.set_ylabel(r"$x$")
     ax1.set_xlim(0.0, y[-1])
@@ -331,7 +331,7 @@ def plot_phase_snaps(out_dir, i, w, phases, enrg_spec, enst_spec, spec_lims, w_m
     # Plot 2D Enstrophy Spectra   
     #--------------------------
     ax3  = fig.add_subplot(gs[1, 0])
-    im3  = ax3.imshow(enst_spec, extent = (-Ny / 3 + 1, Ny / 3, -Nx / 3 + 1, Nx / 3), cmap = my_magma, norm = mpl.colors.LogNorm(), vmin = spec_lims[3], vmax = spec_lims[2]) # extent = (-Ny / 3 + 1, Ny / 3, -Nx / 3 + 1, Nx / 3), cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1]), 
+    im3  = ax3.imshow(enst_spec, extent = (-Ny / 3 + 1, Ny / 3, -Nx / 3 + 1, Nx / 3), cmap = my_magma, norm = mpl.colors.LogNorm(vmin = spec_lims[3], vmax = spec_lims[2])) # extent = (-Ny / 3 + 1, Ny / 3, -Nx / 3 + 1, Nx / 3), cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1]), 
     ax3.set_xlabel(r"$k_y$")
     ax3.set_ylabel(r"$k_x$")
     ax3.set_title("Enstrophy Spectrum")
@@ -345,7 +345,7 @@ def plot_phase_snaps(out_dir, i, w, phases, enrg_spec, enst_spec, spec_lims, w_m
     ## Plot 2D Energy Spectra  
     ##-------------------------
     ax4  = fig.add_subplot(gs[1, 1])
-    im4  = ax4.imshow(enrg_spec, extent = (-Ny / 3 + 1, Ny / 3, -Nx / 3 + 1, Nx / 3), cmap = my_magma, norm = mpl.colors.LogNorm(), vmin = spec_lims[1], vmax = spec_lims[0]) # , cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1]), 
+    im4  = ax4.imshow(enrg_spec, extent = (-Ny / 3 + 1, Ny / 3, -Nx / 3 + 1, Nx / 3), cmap = my_magma, norm = mpl.colors.LogNorm(vmin = spec_lims[1], vmax = spec_lims[0])) # , cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1]), 
     ax4.set_xlabel(r"$k_y$")
     ax4.set_ylabel(r"$k_x$")
     ax4.set_title("Energy Spectrum")
@@ -1165,7 +1165,7 @@ def plot_sector_phase_sync_snaps_all(i, out_dir, w, enst_spec, enst_flux_sec, en
        ax5  = fig.add_subplot(gs[0:2, 2:])
        enst_spec[Ny//3, Nx//3] = -10
        # im5  = ax5.imshow(enst_spec, extent = (-Ny / 3, Ny / 3, -Nx / 3, Nx / 3), cmap = my_magma, norm = mpl.colors.LogNorm()) # cmap = mpl.colors.ListedColormap(cm.magma.colors[::-1]), norm = mpl.colors.LogNorm() 
-       im5 = ax5.imshow(np.rot90(enst_spec, k=-1), extent = (int(-Nx / 3), int(Nx / 3), int(Ny / 3), 0), cmap = my_magma, norm = mpl.colors.LogNorm()) 
+       im5 = ax5.imshow(np.rot90(enst_spec, k=-1), extent = (int(-Nx / 3), int(Nx / 3), int(Ny / 3), 0), cmap = my_magma, norm = mpl.colors.LogNorm(vmin=1e-12, vmax=1)) 
        ang = np.arange(0, np.pi + np.pi / 100, np.pi / 100)
        kspace_angticks      = [0, np.pi/8, np.pi/4.0, 3*np.pi/8, np.pi/2, 5*np.pi/8, 6*np.pi/8.0, 7*np.pi/8, np.pi]
        kspace_angtickLabels = [r"$-\frac{\pi}{2}$", r"$-\frac{3\pi}{8}$", r"$-\frac{\pi}{4}$", r"$-\frac{\pi}{8}$", r"$0$", r"$\frac{\pi}{8}$", r"$\frac{\pi}{4}$", r"$\frac{3\pi}{8}$", r"$\frac{\pi}{2}$"]
@@ -1327,7 +1327,7 @@ def plot_sector_phase_sync_snaps_all(i, out_dir, w, enst_spec, enst_flux_sec, en
        # Plot Enstrophy Flux Across Sectors  (2D)
        #--------------------------------
        ax8 = fig.add_subplot(gs[3, 2])
-       im8 = ax8.imshow(np.flipud(enst_flux_2d), extent = (theta_k3_min, theta_k3_max, alpha_min, alpha_max), cmap = "seismic", vmin = -0.01, vmax = 0.01) #vmin = flux_lims[4], vmax = flux_lims[5] #, norm = mpl.colors.SymLogNorm(linthresh = 0.1)
+       im8 = ax8.imshow(np.flipud(enst_flux_2d), extent = (theta_k3_min, theta_k3_max, alpha_min, alpha_max), cmap = "seismic", vmin = -0.001, vmax = 0.001) #vmin = flux_lims[4], vmax = flux_lims[5] #, norm = mpl.colors.SymLogNorm(linthresh = 0.1)
        ax8.set_xticks(angticks)
        ax8.set_xticklabels(angtickLabels_alpha)
        ax8.set_yticks(angticks)
