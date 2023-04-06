@@ -602,12 +602,16 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
             self.no_u     = False
             self.no_u_hat = False
             # Phase sync stats data indicators
+            self.all_triads_pdf_t = False
+            self.all_wghtd_triads_pdf_t = False
             self.triads_all_pdf_t = False
             self.wghtd_all_pdf_t  = False
             self.triads_1d_pdf_t  = False
             self.wghtd_1d_pdf_t   = False
             self.triads_2d_pdf_t  = False
             self.wghtd_2d_pdf_t   = False
+            ## Collective phase order normed const
+            self.phase_order_normed_const = False
 
             ## Get non time dependent datasets
             with h5py.File(in_file, 'r') as f:
@@ -700,6 +704,14 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                 if 'VorticityGradient_y_BinCounts' in list(f.keys()):
                     self.grad_w_y_counts = f["VorticityGradient_y_BinCounts"][:]
                 ## Get the PDF ranges for the in time phase sync stats -> they are saved at first snap
+                if 'All_TriadsPDF_InTime_Ranges' in list(f["Snap_00000"].keys()):
+                    self.all_triads_pdf_t = True
+                    self.all_triads_pdf_ranges_t = f["Snap_00000"]['All_TriadsPDF_InTime_Ranges'][:, :, :]
+                    self.nbin_all_triads_pdf_t = self.all_triads_pdf_ranges_t.shape[-1] - 1
+                if 'All_WeightedTriadsPDF_InTime_Ranges' in list(f["Snap_00000"].keys()):
+                    self.all_wghtd_triads_pdf_t = True
+                    self.all_wghtd_triads_pdf_ranges_t = f["Snap_00000"]['All_WeightedTriadsPDF_InTime_Ranges'][:, :, :]
+                    self.nbin_all_wghtd_triads_pdf_t = self.all_wghtd_triads_pdf_ranges_t.shape[-1] - 1
                 if 'TriadPhase_All_PDF_InTime' in list(f["Snap_00000"].keys()):
                     self.triads_all_pdf_t = True
                     if 'T_All_Ranges' in list(f["Snap_00000"]['TriadPhase_All_PDF_InTime'].keys()):
@@ -791,6 +803,7 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
             self.phase_order_C_theta_triads_unidirec    = np.ones((sim_data.ndata, self.NUM_TRIAD_TYPES, self.num_k3_sect)) * np.complex(0.0, 0.0)
             self.phase_order_C_theta_triads_unidirec_1d = np.ones((sim_data.ndata, self.NUM_TRIAD_TYPES, self.num_k3_sect)) * np.complex(0.0, 0.0)
             self.phase_order_C_theta_triads_unidirec_2d = np.ones((sim_data.ndata, self.NUM_TRIAD_TYPES, self.num_k3_sect, self.num_k1_sect)) * np.complex(0.0, 0.0)
+            self.phase_order_norm_const                 = np.ones((sim_data.ndata, 2, self.NUM_TRIAD_TYPES, self.num_k3_sect, self.num_k1_sect))
             ## Enstrophy Flux Per Sector
             self.enst_flux_per_sec    = np.zeros((sim_data.ndata, self.NUM_TRIAD_TYPES, self.num_k3_sect))
             self.enst_flux_per_sec_1d = np.zeros((sim_data.ndata, self.NUM_TRIAD_TYPES, self.num_k3_sect))
@@ -805,6 +818,10 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
             self.triad_R_2d   = np.zeros((sim_data.ndata, self.NUM_TRIAD_TYPES, self.num_k3_sect, self.num_k1_sect))
             self.triad_Phi_2d = np.zeros((sim_data.ndata, self.NUM_TRIAD_TYPES, self.num_k3_sect, self.num_k1_sect))
             ## Phase Sync Stats in Time
+            if self.all_triads_pdf_t:
+                self.all_triads_pdf_counts_t = np.zeros((sim_data.ndata, self.NUM_TRIAD_CLASS, self.NUM_TRIAD_TYPES, self.nbin_all_triads_pdf_t))
+            if self.all_wghtd_triads_pdf_t:
+                self.all_wghtd_triads_pdf_counts_t = np.zeros((sim_data.ndata, self.NUM_TRIAD_CLASS, self.NUM_TRIAD_TYPES, self.nbin_all_wghtd_triads_pdf_t))
             if self.triads_all_pdf_t:
                 self.triads_all_pdf_counts_t = np.zeros((sim_data.ndata, self.NUM_TRIAD_CLASS, self.NUM_TRIAD_TYPES, self.num_k3_sect, self.nbin_triads_all_pdf_t))
             if self.wghtd_all_pdf_t:
@@ -838,6 +855,10 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
         # Read in the spectra
         for group in f.keys():
             if "Snap" in group:
+                if 'All_TriadsPDF_InTime_Counts' in list(f[group].keys()):
+                    data.all_triads_pdf_counts_t[nn, :, :, :] = f[group]["All_TriadsPDF_InTime_Counts"][:, :, :]
+                if 'All_WeightedTriadsPDF_InTime_Counts' in list(f[group].keys()):
+                    data.all_wghtd_triads_pdf_counts_t[nn, :, :, :] = f[group]["All_WeightedTriadsPDF_InTime_Counts"][:, :, :]
                 # # Read in the in time phase sync stats
                 # for class_type in range(data.NUM_TRIAD_CLASS):
                 #     for triad_type in range(data.NUM_TRIAD_TYPES):
@@ -896,10 +917,15 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                     data.enst_flux_C_theta[nn, :] = f[group]["EnstrophyFlux_C_theta"][:]
                 if 'EnstrophyDiss_C_theta' in list(f[group].keys()):
                     data.enst_diss_C_theta[nn, :] = f[group]["EnstrophyDiss_C_theta"][:]
+                ## Collective phase order from the NL term
                 if 'CollectivePhaseOrder_C_theta' in list(f[group].keys()):
                     data.phase_order_C_theta[nn, :] = f[group]["CollectivePhaseOrder_C_theta"][:]
                 if 'CollectivePhaseOrder_C_theta_Normed' in list(f[group].keys()):
                     data.phase_order_C_theta_norm[nn, :] = f[group]["CollectivePhaseOrder_C_theta_Normed"][:]
+                # Collective Phase order data from the direct computation
+                if 'CollectivePhaseOrder_C_theta_NormConstants' in list(f[group].keys()):
+                    data.phase_order_normed_const = True
+                    data.phase_order_norm_const[nn, :, :, :, :] = f[group]["CollectivePhaseOrder_C_theta_NormConstants"][:, :, :, :]
                 if 'CollectivePhaseOrder_C_theta_Triads' in list(f[group].keys()):
                     data.phase_order_C_theta_triads[nn, :, :] = f[group]["CollectivePhaseOrder_C_theta_Triads"][:, :]
                 if 'CollectivePhaseOrder_C_theta_Triads_1D' in list(f[group].keys()):
@@ -912,6 +938,7 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                     data.phase_order_C_theta_triads_unidirec_1d[nn, :, :] = f[group]["CollectivePhaseOrder_C_theta_Triads_1D_Unidirectional"][:, :]
                 if 'CollectivePhaseOrder_C_theta_Triads_2D_Unidirectional' in list(f[group].keys()):
                     data.phase_order_C_theta_triads_unidirec_2d[nn, :, :, :] = f[group]["CollectivePhaseOrder_C_theta_Triads_2D_Unidirectional"][:, :, :]
+
                 if 'w_hat' in list(f[group].keys()):
                     data.w_hat[nn, :, :] = f[group]["w_hat"][:, :]
                 if 'NonlinearTerm' in list(f[group].keys()):

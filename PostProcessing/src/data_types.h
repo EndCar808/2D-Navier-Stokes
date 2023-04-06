@@ -74,7 +74,8 @@
 #if defined(__POST_SYNC)
 #define __SEC_PHASE_SYNC
 // #define __SEC_PHASE_SYNC_STATS
-// #define __SEC_PHASE_SYNC_STATS_IN_TIME
+#define __SEC_PHASE_SYNC_STATS_IN_TIME
+// #define __SEC_PHASE_SYNC_STATS_IN_TIME_ALL
 // #define __SEC_PHASE_SYNC_STATS_IN_TIME_1D
 // #define __SEC_PHASE_SYNC_STATS_IN_TIME_2D
 #endif
@@ -135,6 +136,7 @@
 #define N_BINS_SEC_1D_T 100     // The number of bins in the sector pdfs in time for 1D contributions
 #define N_BINS_SEC_2D_T 100     // The number of bins in the sector pdfs in time for 2D contributions
 #define N_BINS_SEC_ALL_T 100    // The number of bins in the sector pdfs in time for 1D and 2D contributions
+#define N_BINS_TRIADS_ALL_T 100 // The number of bins to use in the all triads pdf in time
 // ---------------------------------------------------------------------
 //  Global Struct Definitions
 // ---------------------------------------------------------------------
@@ -287,12 +289,14 @@ typedef struct postprocess_data_struct {
     double** triad_R_2d[NUM_TRIAD_TYPES + 1];					 			 				// Array to hold the phase sync per sector for each of the triad phase types including all together
     double** triad_Phi_2d[NUM_TRIAD_TYPES + 1];		  				 	     				// Array to hold the average phase per sector for each of the triad phase types including all together
 	// In time stats objects
-	gsl_histogram** triads_sect_all_pdf_t[NUM_TRIAD_CLASS][NUM_TRIAD_TYPES + 1];			// Array to hold the pdfs for both triad class: the normal triads and generalized triads, each triad type, for each contribution type in time
-	gsl_histogram** triads_sect_1d_pdf_t[NUM_TRIAD_CLASS][NUM_TRIAD_TYPES + 1];			    // Array to hold the pdfs for both triad class    : the normal triads and generalized triads, each triad type, for each contribution type in time
-	gsl_histogram*** triads_sect_2d_pdf_t[NUM_TRIAD_CLASS][NUM_TRIAD_TYPES + 1];			// Array to hold the pdfs for both triad class: the normal triads and generalized triads, each triad type, for each contribution type in time
-	gsl_histogram** triads_sect_wghtd_all_pdf_t[NUM_TRIAD_CLASS][NUM_TRIAD_TYPES + 1]; 	    // Struct for the weighted histogram of each triad class, each triad phase type for each contribution type in each sector in time
-	gsl_histogram** triads_sect_wghtd_1d_pdf_t[NUM_TRIAD_CLASS][NUM_TRIAD_TYPES + 1]; 	    // Struct for the weighted histogram of each triad class, each triad phase type for each contribution type in each sector in time
-	gsl_histogram*** triads_sect_wghtd_2d_pdf_t[NUM_TRIAD_CLASS][NUM_TRIAD_TYPES + 1]; 	    // Struct for the weighted histogram of each triad class, each triad phase type for each contribution type in each sector in time
+	gsl_histogram* triads_all_pdf_t[NUM_TRIAD_CLASS][NUM_TRIAD_TYPES + 1];					// Array Structs to hold the pdfs for all triads both triad class: the normal triads and generalized triads, each triad type, for each contribution type in time
+	gsl_histogram* triads_wghtd_all_pdf_t[NUM_TRIAD_CLASS][NUM_TRIAD_TYPES + 1];			// Array Structs to hold the pdfs for all triads both triad class: the normal triads and generalized triads, each triad type, for each contribution type in time
+	gsl_histogram** triads_sect_all_pdf_t[NUM_TRIAD_CLASS][NUM_TRIAD_TYPES + 1];			// Array Structs to hold the over sectors pdfs for both triad class: the normal triads and generalized triads, each triad type, for each contribution type in time
+	gsl_histogram** triads_sect_1d_pdf_t[NUM_TRIAD_CLASS][NUM_TRIAD_TYPES + 1];			    // Array Structs to hold the over sectors pdfs for both triad class    : the normal triads and generalized triads, each triad type, for each contribution type in time
+	gsl_histogram*** triads_sect_2d_pdf_t[NUM_TRIAD_CLASS][NUM_TRIAD_TYPES + 1];			// Array Structs to hold the over sectors pdfs for both triad class: the normal triads and generalized triads, each triad type, for each contribution type in time
+	gsl_histogram** triads_sect_wghtd_all_pdf_t[NUM_TRIAD_CLASS][NUM_TRIAD_TYPES + 1]; 	    // Array Struct for the weighted histogram over sectors  of each triad class, each triad phase type for each contribution type in each sector in time
+	gsl_histogram** triads_sect_wghtd_1d_pdf_t[NUM_TRIAD_CLASS][NUM_TRIAD_TYPES + 1]; 	    // Array Struct for the weighted histogram over sectors  of each triad class, each triad phase type for each contribution type in each sector in time
+	gsl_histogram*** triads_sect_wghtd_2d_pdf_t[NUM_TRIAD_CLASS][NUM_TRIAD_TYPES + 1]; 	    // Array Struct for the weighted histogram over sectors  of each triad class, each triad phase type for each contribution type in each sector in time
 	// Over time stats objects
 	gsl_histogram*** triad_R_2d_pdf;						 								// Array to hold the histogram objects for the 2D contributions for the Phase sync
 	gsl_histogram*** triad_Phi_2d_pdf;														// Array to hold the histogram objects for the 2D contributions for the triads

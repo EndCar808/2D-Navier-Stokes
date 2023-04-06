@@ -1091,6 +1091,72 @@ void WriteDataToFile(double t, long int snap) {
 
     ///------------------------- Phase Order Sync Stats Data
     #if defined(__SEC_PHASE_SYNC_STATS_IN_TIME)
+    int num_bin_triads = proc_data->triads_all_pdf_t[0][0]->n;
+    double* triad_bin_ranges = (double*) fftw_malloc(sizeof(double) * NUM_TRIAD_CLASS * (NUM_TRIAD_TYPES + 1) * (num_bin_triads + 1));
+    double* triad_bin_counts = (double*) fftw_malloc(sizeof(double) * NUM_TRIAD_CLASS * (NUM_TRIAD_TYPES + 1) * num_bin_triads);
+    for (int class = 0; class < NUM_TRIAD_CLASS; ++class) {
+    	for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
+    		for (int j = 0; j < (num_bin_triads + 1); ++j) {
+    			triad_bin_ranges[(num_bin_triads + 1) * (class * (NUM_TRIAD_TYPES + 1) + i) + j] = proc_data->triads_all_pdf_t[class][i]->range[j];
+    			if (j < num_bin_triads) {
+    				triad_bin_counts[(num_bin_triads) * (class * (NUM_TRIAD_TYPES + 1) + i) + j] = proc_data->triads_all_pdf_t[class][i]->bin[j];
+    			}
+    		}
+    	}
+    }
+    if (snap == 0) { // Only need to save the ranges once
+	    dset_dims_3d[0] = NUM_TRIAD_CLASS;
+	    dset_dims_3d[1] = NUM_TRIAD_TYPES + 1;
+	    dset_dims_3d[2] = num_bin_triads + 1;
+		status = H5LTmake_dataset(group_id, "All_TriadsPDF_InTime_Ranges", Dims3D, dset_dims_3d, H5T_NATIVE_DOUBLE, triad_bin_ranges);
+		if (status < 0) {
+	        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file  at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "All Triads PDF InTime Ranges", t, snap);
+	        exit(1);
+	    }
+	}
+    dset_dims_3d[0] = NUM_TRIAD_CLASS;
+    dset_dims_3d[1] = NUM_TRIAD_TYPES + 1;
+    dset_dims_3d[2] = num_bin_triads;
+	status = H5LTmake_dataset(group_id, "All_TriadsPDF_InTime_Counts", Dims3D, dset_dims_3d, H5T_NATIVE_DOUBLE, triad_bin_counts);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file  at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "All TriadsPDF InTime Counts", t, snap);
+        exit(1);
+    }
+
+    for (int class = 0; class < NUM_TRIAD_CLASS; ++class) {
+    	for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
+    		for (int j = 0; j < (num_bin_triads + 1); ++j) {
+    			triad_bin_ranges[(num_bin_triads + 1) * (class * (NUM_TRIAD_TYPES + 1) + i) + j] = proc_data->triads_wghtd_all_pdf_t[class][i]->range[j];
+    			if (j < num_bin_triads) {
+    				triad_bin_counts[(num_bin_triads) * (class * (NUM_TRIAD_TYPES + 1) + i) + j] = proc_data->triads_wghtd_all_pdf_t[class][i]->bin[j];
+    			}
+    		}
+    	}
+    }
+    if (snap == 0) { // Only need to save the ranges once
+	    dset_dims_3d[0] = NUM_TRIAD_CLASS;
+	    dset_dims_3d[1] = NUM_TRIAD_TYPES + 1;
+	    dset_dims_3d[2] = num_bin_triads + 1;
+		status = H5LTmake_dataset(group_id, "All_WeightedTriadsPDF_InTime_Ranges", Dims3D, dset_dims_3d, H5T_NATIVE_DOUBLE, triad_bin_ranges);
+		if (status < 0) {
+	        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file  at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "All Weighted Triads PDF InTime Ranges", t, snap);
+	        exit(1);
+	    }
+	}
+    dset_dims_3d[0] = NUM_TRIAD_CLASS;
+    dset_dims_3d[1] = NUM_TRIAD_TYPES + 1;
+    dset_dims_3d[2] = num_bin_triads;
+	status = H5LTmake_dataset(group_id, "All_WeightedTriadsPDF_InTime_Counts", Dims3D, dset_dims_3d, H5T_NATIVE_DOUBLE, triad_bin_counts);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file  at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "All Weighted TriadsPDF InTime Counts", t, snap);
+        exit(1);
+    }
+
+    fftw_free(triad_bin_counts);
+    fftw_free(triad_bin_ranges);
+    #endif
+    ///------------------------- Phase Order Sync Stats Data - Split into sector division
+    #if defined(__SEC_PHASE_SYNC_STATS_IN_TIME_ALL) || defined(__SEC_PHASE_SYNC_STATS_IN_TIME_1D) || defined(__SEC_PHASE_SYNC_STATS_IN_TIME_2D)
 	// Allocate memory for sub group strings
 	char subgroup_string[128];
 	char counts_string[128];

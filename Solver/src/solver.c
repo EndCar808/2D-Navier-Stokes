@@ -2117,6 +2117,7 @@ void InitializeIntegrationVariables(double* t0, double* t, double* dt, double* T
 		sys_vars->num_print_steps = (sys_vars->num_t_steps >= sys_vars->SAVE_EVERY ) ? (sys_vars->num_t_steps - sys_vars->trans_iters) / sys_vars->SAVE_EVERY : sys_vars->num_t_steps - sys_vars->trans_iters;	 
 		if (!(sys_vars->rank)){
 			printf("Total Iters: %ld\t Saving Iters: %ld\t Transient Steps: %ld\n", sys_vars->num_t_steps, sys_vars->num_print_steps, sys_vars->trans_iters);
+			printf("Start Time: %1.2lf\tEnd Time: %1.2lf\tTransient Time: %1.2lf\n\n", (*t0), (*T), (*t0) + (* trans_steps) * (* dt));
 		}
 	}
 	else {

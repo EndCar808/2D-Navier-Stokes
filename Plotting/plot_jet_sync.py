@@ -283,7 +283,7 @@ if __name__ == '__main__':
     ax3 = fig.add_subplot(gs[0, 2])
     ax3.plot(np.sum(post_data.enst_flux_per_sec[:, triad_type, :], axis = -1) * const_fac * norm_fac, '-', marker='o', markersize=10, markevery=5, label=r"$\sum_\theta\Pi_{\mathcal{S}_\theta^{U}}$ Direct")
     ax3.plot(np.sum(np.real(post_data.phase_order_C_theta[:, :]), axis = -1), '*-', markevery=5, label=r"$\sum_\theta \Re\{Re^{\Phi}\}$ NL")
-    ax3.plot(np.sum(np.real(post_data.phase_order_C_theta_triads[:, triad_type, :]), axis = -1) * const_fac * norm_fac, '--', label=r"$\sum_\theta \Re\{Re^{\Phi}\}$ Direct")
+    ax3.plot(np.sum(np.real(post_data.phase_order_C_theta_triads[:, triad_type, :]) * norm_fac / 2, axis = -1), '--', label=r"$\sum_\theta \Re\{\mathcal{R}_\theta\}$ Direct")
     ax3.set_title(r"Compare Complexification: Sum over Sectors: Totals (Type 0)")
     ax3.grid()
     ax3.legend()
@@ -312,7 +312,7 @@ if __name__ == '__main__':
         ax3 = fig.add_subplot(gs[0, 2])
         ax3.plot(post_data.enst_flux_per_sec[:, triad_type, k3] * const_fac * norm_fac, '-', marker='o', markersize=10, markevery=5, label=r"$\Pi_{\mathcal{S}_\theta^{U}}$")
         ax3.plot(np.real(post_data.phase_order_C_theta[:, k3]), '*-', markevery=5, label=r"$\Re\{Re^{\Phi}\}$ NL")
-        ax3.plot(np.real(post_data.phase_order_C_theta_triads[:, triad_type, k3]) * const_fac * norm_fac,'--', label=r"$\Re\{Re^{\Phi}\}$ Direct")
+        ax3.plot(np.real(post_data.phase_order_C_theta_triads[:, triad_type, k3]) * norm_fac / 2,'--', label=r"$\Re\{\mathcal{R}_\theta\}$ Direct")
         ax3.set_title(r"Compare Complexification: Sector {}".format(k3 + 1))
         ax3.grid()
         ax3.legend()
@@ -321,7 +321,7 @@ if __name__ == '__main__':
         plt.close()
 
     # # -----------------------------------------
-    # # # --------  Plot Data
+    # # # --------  Plot Time Averaged Data
     # # -----------------------------------------
     theta_k3 = post_data.theta_k3
     dtheta_k3 = theta_k3[1] - theta_k3[0]
@@ -346,11 +346,12 @@ if __name__ == '__main__':
     # print("Plotting Data")
     # try_type = 0
 
-    # # ## Time averaged 2D Data
-    for try_type in range(post_data.triad_R_2d.shape[1]):
+    for try_type in range(post_data.triad_R_2d.shape[1] -1):  ## Ignore the last type as that is always 0
         print("Plotting Triad Type {}".format(try_type))
 
-        ## Normal phase order parameter
+        #####################################################################
+        ## NORMAL PHASE ORDER PARAMETER ---- Time Averaged ---- 2D Data
+        #####################################################################
         fig = plt.figure(figsize = (21, 9))
         gs  = GridSpec(1, 3)
         ax6 = fig.add_subplot(gs[0, 0])
@@ -398,61 +399,12 @@ if __name__ == '__main__':
         cb8   = plt.colorbar(im8, cax = cbax8)
         cb8.set_label(r"$\Pi_{\mathcal{S}_\theta}^{2D}$")
         plt.suptitle(r"Time Averaged 2D Data - Triad Type: {}".format(try_type))
-        plt.savefig(cmdargs.out_dir_avg_snaps + "/Type[{}]_Sync_2D.png".format(try_type), bbox_inches="tight")
+        plt.savefig(cmdargs.out_dir_avg_snaps + "/Type[{}]_NORMAL_Sync_2D.png".format(try_type), bbox_inches="tight")
         plt.close()
 
-        ## Collective phase order parameter
-        fig = plt.figure(figsize = (21, 9))
-        gs  = GridSpec(1, 3)
-        ax6 = fig.add_subplot(gs[0, 0])
-        im6 = ax6.imshow(np.flipud(np.mean(np.absolute(post_data.phase_order_C_theta_triads_2d[:, try_type, :, :]), axis=0)), extent = (theta_k3_min, theta_k3_max, alpha_min, alpha_max), cmap = my_magma, vmin = 0.0, vmax = 1.0)
-        ax6.set_xticks(angticks)
-        ax6.set_xticklabels(angtickLabels_alpha)
-        ax6.set_yticks(angticks)
-        ax6.set_yticklabels(angtickLabels)
-        ax6.set_ylabel(r"$\theta$")
-        ax6.set_xlabel(r"$\alpha$")
-        ax6.set_title(r"Sync Across Sectors (2D)")
-        div6  = make_axes_locatable(ax6)
-        cbax6 = div6.append_axes("right", size = "10%", pad = 0.05)
-        cb6   = plt.colorbar(im6, cax = cbax6)
-        cb6.set_label(r"$|\mathcal{R}^{2D}|$")
-        ax7 = fig.add_subplot(gs[0, 1])
-        im7 = ax7.imshow(np.flipud(np.mean(np.mod(np.angle(post_data.phase_order_C_theta_triads_2d[:, try_type, :, :]) + 2.0 * np.pi, 2.0 * np.pi), axis=0)), extent = (theta_k3_min, theta_k3_max, alpha_min, alpha_max), cmap = my_jet, vmin = 0.0, vmax = 2.0 * np.pi)
-        ax7.set_xticks(angticks)
-        ax7.set_xticklabels(angtickLabels_alpha)
-        ax7.set_yticks(angticks)
-        ax7.set_yticklabels(angtickLabels)
-        ax7.set_ylabel(r"$\theta$")
-        ax7.set_xlabel(r"$\alpha$")
-        ax7.set_title(r"Average Angle Across Sectors (2D)")
-        div7  = make_axes_locatable(ax7)
-        cbax7 = div7.append_axes("right", size = "10%", pad = 0.05)
-        cb7   = plt.colorbar(im7, cax = cbax7)
-        # cb7.set_ticks([-np.pi, -np.pi/2.0, 0., np.pi/2, np.pi])
-        # cb7.set_ticklabels([r"$-\pi$", r"$\frac{-\pi}{2}$", r"$0$", r"$\frac{\pi}{2}$", r"$\pi$"])
-        cb7.set_ticks([0.0, np.pi/2.0, np.pi, 3.0*np.pi/2.0, 2.0*np.pi])
-        cb7.set_ticklabels([r"$0$", r"$\frac{\pi}{2}$", r"$\pi$", r"$\frac{3\pi}{2}$", r"$2\pi$"])
-        cb7.set_label(r"$\arg\{\mathcal{R}^{2D} \}$")
-        ax8 = fig.add_subplot(gs[0, 2])
-        data = np.flipud(np.mean(np.real(post_data.phase_order_C_theta_triads_2d[:, try_type, :, :]), axis=0))
-        im8 = ax8.imshow(data, extent = (theta_k3_min, theta_k3_max, alpha_min, alpha_max), cmap = "seismic", vmin = np.min(data), vmax = np.absolute(np.min(data))) #vmin = flux_lims[4], vmax = flux_lims[5] #, norm = mpl.colors.SymLogNorm(linthresh = 0.1)
-        ax8.set_xticks(angticks)
-        ax8.set_xticklabels(angtickLabels_alpha)
-        ax8.set_yticks(angticks)
-        ax8.set_yticklabels(angtickLabels)
-        ax8.set_ylabel(r"$\theta$")
-        ax8.set_xlabel(r"$\alpha$")
-        ax8.set_title(r"Enstrophy Flux Across Sectors (2D)")
-        div8  = make_axes_locatable(ax8)
-        cbax8 = div8.append_axes("right", size = "10%", pad = 0.05)
-        cb8   = plt.colorbar(im8, cax = cbax8)
-        cb8.set_label(r"$\Re\{\mathcal{R}^{2D} \}$")
-        plt.suptitle(r"Time Averaged Collective Phase Order 2D Data - Triad Type: {}".format(try_type))
-        plt.savefig(cmdargs.out_dir_avg_snaps + "/Type[{}]_PhaseOrder_Sync_2D.png".format(try_type), bbox_inches="tight")
-        plt.close()
-
-        ## Normal phase oder data
+        #####################################################################
+        ## NORMAL PHASE ORDER PARAMETER ---- Time Averaged ---- 2D + 1D Data
+        #####################################################################
         fig = plt.figure(figsize = (21, 9))
         gs  = GridSpec(1, 3)
         ax6 = fig.add_subplot(gs[0, 0])
@@ -500,61 +452,12 @@ if __name__ == '__main__':
         cb8   = plt.colorbar(im8, cax = cbax8)
         cb8.set_label(r"$\Pi_{\mathcal{S}_\theta}^{2D}$")
         plt.suptitle(r"Time Averaged 2D and 1 Data - Triad Type: {}".format(try_type))
-        plt.savefig(cmdargs.out_dir_avg_snaps + "/Type[{}]_Sync_2Dand1D.png".format(try_type), bbox_inches="tight")
+        plt.savefig(cmdargs.out_dir_avg_snaps + "/Type[{}]_NORMAL_Sync_2Dand1D.png".format(try_type), bbox_inches="tight")
         plt.close()
 
-        ## Collective phase oder data
-        fig = plt.figure(figsize = (21, 9))
-        gs  = GridSpec(1, 3)
-        ax6 = fig.add_subplot(gs[0, 0])
-        im6 = ax6.imshow(np.flipud(np.mean(np.absolute(post_data.phase_order_C_theta_triads_2d[:, try_type, :, :]), axis=0) + np.diag(np.mean(np.absolute(post_data.phase_order_C_theta_triads_1d[:, try_type, :]), axis=0))), extent = (theta_k3_min, theta_k3_max, alpha_min, alpha_max), cmap = my_magma, vmin = 0.0, vmax = 1.0)
-        ax6.set_xticks(angticks)
-        ax6.set_xticklabels(angtickLabels_alpha)
-        ax6.set_yticks(angticks)
-        ax6.set_yticklabels(angtickLabels)
-        ax6.set_ylabel(r"$\theta$")
-        ax6.set_xlabel(r"$\alpha$")
-        ax6.set_title(r"Sync Across Sectors (2D and 1D)")
-        div6  = make_axes_locatable(ax6)
-        cbax6 = div6.append_axes("right", size = "10%", pad = 0.05)
-        cb6   = plt.colorbar(im6, cax = cbax6)
-        cb6.set_label(r"$|\mathcal{R}^{2D} |$")
-        ax7 = fig.add_subplot(gs[0, 1])
-        im7 = ax7.imshow(np.flipud(np.mean(np.mod(np.angle(post_data.phase_order_C_theta_triads_2d[:, try_type, :, :]) + 2.0 * np.pi, 2.0 * np.pi), axis=0) + np.diag(np.mean(np.mod(np.angle(post_data.phase_order_C_theta_triads_1d[:, try_type, :]) + 2.0*np.pi, 2.0*np.pi), axis=0))), extent = (theta_k3_min, theta_k3_max, alpha_min, alpha_max), cmap = my_jet, vmin = 0.0, vmax = 2.0 * np.pi)
-        ax7.set_xticks(angticks)
-        ax7.set_xticklabels(angtickLabels_alpha)
-        ax7.set_yticks(angticks)
-        ax7.set_yticklabels(angtickLabels)
-        ax7.set_ylabel(r"$\theta$")
-        ax7.set_xlabel(r"$\alpha$")
-        ax7.set_title(r"Average Angle Across Sectors (2D and 1D)")
-        div7  = make_axes_locatable(ax7)
-        cbax7 = div7.append_axes("right", size = "10%", pad = 0.05)
-        cb7   = plt.colorbar(im7, cax = cbax7)
-        # cb7.set_ticks([-np.pi, -np.pi/2.0, 0., np.pi/2, np.pi])
-        # cb7.set_ticklabels([r"$-\pi$", r"$\frac{-\pi}{2}$", r"$0$", r"$\frac{\pi}{2}$", r"$\pi$"])
-        cb7.set_ticks([0.0, np.pi/2.0, np.pi, 3.0*np.pi/2.0, 2.0*np.pi])
-        cb7.set_ticklabels([r"$0$", r"$\frac{\pi}{2}$", r"$\pi$", r"$\frac{3\pi}{2}$", r"$2\pi$"])
-        cb7.set_label(r"$\arg\{\mathcal{R}^{2D} \}$")
-        ax8 = fig.add_subplot(gs[0, 2])
-        data = np.flipud(np.mean(np.real(post_data.phase_order_C_theta_triads_2d[:, try_type, :, :]), axis=0) + np.diag(np.mean(np.real(post_data.phase_order_C_theta_triads_1d[:, try_type, :]), axis=0)))
-        im8 = ax8.imshow(data, extent = (theta_k3_min, theta_k3_max, alpha_min, alpha_max), cmap = "seismic", vmin = np.min(data), vmax = np.absolute(np.min(data))) #vmin = flux_lims[4], vmax = flux_lims[5] #, norm = mpl.colors.SymLogNorm(linthresh = 0.1)
-        ax8.set_xticks(angticks)
-        ax8.set_xticklabels(angtickLabels_alpha)
-        ax8.set_yticks(angticks)
-        ax8.set_yticklabels(angtickLabels)
-        ax8.set_ylabel(r"$\theta$")
-        ax8.set_xlabel(r"$\alpha$")
-        ax8.set_title(r"Enstrophy Flux Across Sectors (2D and 1D)")
-        div8  = make_axes_locatable(ax8)
-        cbax8 = div8.append_axes("right", size = "10%", pad = 0.05)
-        cb8   = plt.colorbar(im8, cax = cbax8)
-        cb8.set_label(r"$\Re\{\mathcal{R}^{2D}\}$")
-        plt.suptitle(r"Time Averaged -- Collective Phase Order -- 2D and 1 Data - Triad Type: {}".format(try_type))
-        plt.savefig(cmdargs.out_dir_avg_snaps + "/Type[{}]_PhaseOrder_Sync_2Dand1D.png".format(try_type), bbox_inches="tight")
-        plt.close()
-
-        # ## Time averaged 1d data ---- Normal phase orde parameter
+        #####################################################################
+        ## NORMAL PHASE ORDER PARAMETER ---- Time Averaged ---- 1D Data
+        #####################################################################
         fig = plt.figure(figsize = (21, 9))
         gs  = GridSpec(1, 2)
         ax3 = fig.add_subplot(gs[0, 0])
@@ -588,47 +491,12 @@ if __name__ == '__main__':
         ax4.grid(which = 'both', axis = 'both', linestyle = ':', linewidth = '0.6', alpha = 0.8)
         ax4.set_title(r"Enstrophy Flux Per Sector (1D)")
         plt.suptitle(r"Time Averaged 1D Data - Triad Type: {}".format(try_type))
-        plt.savefig(cmdargs.out_dir_avg_snaps + "/Type[{}]_Sync_1D.png".format(try_type), bbox_inches="tight")
+        plt.savefig(cmdargs.out_dir_avg_snaps + "/Type[{}]_NORMAL_Sync_1D.png".format(try_type), bbox_inches="tight")
         plt.close()
 
-        # ## Time averaged 1d data ---- Collective phase order parameter
-        fig = plt.figure(figsize = (21, 9))
-        gs  = GridSpec(1, 2)
-        ax3 = fig.add_subplot(gs[0, 0])
-        div3   = make_axes_locatable(ax3)
-        axtop3 = div3.append_axes("top", size = "100%", pad = 0.2)
-        axtop3.plot(theta_k3, np.mean(np.mod(np.angle(post_data.phase_order_C_theta_triads_1d[:, try_type, :]) + 2.0 * np.pi, 2.0 * np.pi), axis=0), '.-', color = "orange")
-        axtop3.set_xlim(theta_k3_min, theta_k3_max)
-        axtop3.set_xticks(angticks)
-        axtop3.set_xticklabels([])
-        axtop3.set_ylim(0.0, 2.0 * np.pi)
-        axtop3.set_yticks([0.0, np.pi/2.0, np.pi, 3.0*np.pi/2.0, 2.0*np.pi])
-        axtop3.set_yticklabels([r"$0$", r"$\frac{\pi}{2}$", r"$\pi$", r"$\frac{3\pi}{2}$", r"$2\pi$"])
-        axtop3.grid(which = 'both', axis = 'both', linestyle = ':', linewidth = '0.6', alpha = 0.8)
-        axtop3.set_title(r"Order Parameters (1D)")
-        axtop3.set_ylabel(r"$\arg \{\mathcal{R}^{1D} \}$")
-        ax3.plot(theta_k3, np.mean(np.absolute(post_data.phase_order_C_theta_triads_1d[:, try_type, :]), axis=0))
-        ax3.set_xlim(theta_k3_min, theta_k3_max)
-        ax3.set_xticks(angticks)
-        ax3.set_xticklabels(angtickLabels)
-        ax3.set_ylim(0 - 0.05, 1 + 0.05)
-        ax3.set_xlabel(r"$|\mathcal{R}^{1D}|$")
-        ax3.grid(which = 'both', axis = 'both', linestyle = ':', linewidth = '0.6', alpha = 0.8)
-        ax3.set_ylabel(r"$\mathcal{R}^{1D}$")
-        ax4 = fig.add_subplot(gs[0, 1])
-        ax4.plot(theta_k3, np.mean(np.real(post_data.phase_order_C_theta_triads_1d[:, try_type, :]), axis=0), '.-')
-        ax4.set_xlim(theta_k3_min, theta_k3_max)
-        ax4.set_xticks(angticks)
-        ax4.set_xticklabels(angtickLabels)
-        ax4.set_xlabel(r"$\theta$")
-        ax4.set_ylabel(r"$\Re\{\mathcal{R}^{1D} \}$")
-        ax4.grid(which = 'both', axis = 'both', linestyle = ':', linewidth = '0.6', alpha = 0.8)
-        ax4.set_title(r"Enstrophy Flux Per Sector (1D)")
-        plt.suptitle(r"Time Averaged 1D Data - Triad Type: {}".format(try_type))
-        plt.savefig(cmdargs.out_dir_avg_snaps + "/Type[{}]_PhaseOrder_Sync_1D.png".format(try_type), bbox_inches="tight")
-        plt.close()
-
-        ## Spacetime plots
+        #####################################################################
+        ## NORMAL PHASE ORDER PARAMETER ---- SpaceTime Plots ---- 1D Data
+        #####################################################################
         fig = plt.figure(figsize = (21, 9))
         gs  = GridSpec(1, 3)
         ax6 = fig.add_subplot(gs[0, 0])
@@ -661,23 +529,241 @@ if __name__ == '__main__':
         im8 = ax8.imshow(post_data.enst_flux_per_sec_1d[:, try_type, :], aspect='auto', extent = (theta_k3_min, theta_k3_max, 1, sys_vars.ndata), cmap = "seismic", vmin=np.amin(data), vmax=np.absolute(np.amin(data))) #vmin = flux_lims[4], vmax = flux_lims[5] #, norm = mpl.colors.SymLogNorm(linthresh = 0.1)
         ax8.set_xticks(angticks)
         ax8.set_xticklabels(angtickLabels)
-        ax6.set_ylabel(r"$t$")
-        ax6.set_xlabel(r"$\theta$")
-        ax6.set_title(r"Sync Per Sector (1D)")
+        ax8.set_ylabel(r"$t$")
+        ax8.set_xlabel(r"$\theta$")
+        ax8.set_title(r"Sync Per Sector (1D)")
         ax8.set_title(r"Enstrophy Flux Per Sector (1D)")
         div8  = make_axes_locatable(ax8)
         cbax8 = div8.append_axes("right", size = "10%", pad = 0.05)
         cb8   = plt.colorbar(im8, cax = cbax8)
         cb8.set_label(r"$\Pi_{\mathcal{S}_\theta}^{1D}$")
         plt.suptitle(r"Spacetime 1D Data - Triad Type: {}".format(try_type))
-        plt.savefig(cmdargs.out_dir_avg_snaps + "/Type[{}]_SpaceTime_1D.png".format(try_type), bbox_inches="tight")
+        plt.savefig(cmdargs.out_dir_avg_snaps + "/Type[{}]_NORMAL_SpaceTime_1D.png".format(try_type), bbox_inches="tight")
         plt.close()
 
-        ## Spacetime plots --- Collective Phase Order
+        #####################################################################
+        ## NORMAL PHASE ORDER PARAMETER ---- SpaceTime Plots ---- All Data
+        #####################################################################
         fig = plt.figure(figsize = (21, 9))
         gs  = GridSpec(1, 3)
         ax6 = fig.add_subplot(gs[0, 0])
-        im6 = ax6.imshow(np.absolute(post_data.phase_order_C_theta_triads_1d[:, try_type, :]), aspect='auto', extent = (theta_k3_min, theta_k3_max, 1, sys_vars.ndata), cmap = my_magma, vmin = 0.0, vmax = 1.0)
+        im6 = ax6.imshow(post_data.triad_R[:, try_type, :], aspect='auto', extent = (theta_k3_min, theta_k3_max, 1, sys_vars.ndata), cmap = my_magma, vmin = 0.0, vmax = 1.0)
+        ax6.set_xticks(angticks)
+        ax6.set_xticklabels(angtickLabels)
+        ax6.set_ylabel(r"$t$")
+        ax6.set_xlabel(r"$\theta$")
+        ax6.set_title(r"Sync Per Sector")
+        div6  = make_axes_locatable(ax6)
+        cbax6 = div6.append_axes("right", size = "10%", pad = 0.05)
+        cb6   = plt.colorbar(im6, cax = cbax6)
+        cb6.set_label(r"$\mathcal{R}^{1D}$")
+        ax7 = fig.add_subplot(gs[0, 1])
+        im7 = ax7.imshow(post_data.triad_Phi[:, try_type, :], aspect='auto', extent = (theta_k3_min, theta_k3_max, 1, sys_vars.ndata), cmap = my_hsv, vmin = -np.pi, vmax = np.pi)
+        ax7.set_xticks(angticks)
+        ax7.set_xticklabels(angtickLabels)
+        ax7.set_xlabel(r"$\theta$")
+        ax7.set_title(r"Average Angle Per Sector")
+        div7  = make_axes_locatable(ax7)
+        cbax7 = div7.append_axes("right", size = "10%", pad = 0.05)
+        cb7   = plt.colorbar(im7, cax = cbax7)
+        cb7.set_ticks([-np.pi, -np.pi/2.0, 0., np.pi/2, np.pi])
+        cb7.set_ticklabels([r"$-\pi$", r"$\frac{-\pi}{2}$", r"$0$", r"$\frac{\pi}{2}$", r"$\pi$"])
+        cb7.set_label(r"$\Phi^{1D}$")
+        ax8 = fig.add_subplot(gs[0, 2])
+        data = post_data.enst_flux_per_sec[:, try_type, :]
+        im8 = ax8.imshow(data, aspect='auto', extent = (theta_k3_min, theta_k3_max, 1, sys_vars.ndata), cmap = "seismic", vmin=np.amin(data), vmax=np.absolute(np.amin(data))) #vmin = flux_lims[4], vmax = flux_lims[5] #, norm = mpl.colors.SymLogNorm(linthresh = 0.1)
+        ax8.set_xticks(angticks)
+        ax8.set_xticklabels(angtickLabels)
+        ax8.set_xlabel(r"$\theta$")
+        ax8.set_title(r"Enstrophy Flux Per Sector")
+        div8  = make_axes_locatable(ax8)
+        cbax8 = div8.append_axes("right", size = "10%", pad = 0.05)
+        cb8   = plt.colorbar(im8, cax = cbax8)
+        cb8.set_label(r"$\Pi_{\mathcal{S}_\theta}^{1D}$")
+        plt.savefig(cmdargs.out_dir_avg_snaps + "/Type[{}]_NORMAL_SpaceTime_PerSector.png".format(try_type), bbox_inches="tight")
+        plt.close()
+        #
+        #
+        #
+        # ----------------------------------------------------------- COLLECTIVE PHASE ORDER PARAMETER
+        #
+        #
+        # 
+        if post_data.phase_order_normed_const:
+            phase_order_R_2D    = np.absolute(post_data.phase_order_C_theta_triads_2d[:, try_type, :, :]) / post_data.phase_order_norm_const[:, 0, try_type, :, :]
+            phase_order_Phi_2D  = np.angle(post_data.phase_order_C_theta_triads_2d[:, try_type, :, :]) / post_data.phase_order_norm_const[:, 0, try_type, :, :]
+            phase_order_enst_2D = np.real(post_data.phase_order_C_theta_triads_2d[:, try_type, :])  / post_data.phase_order_norm_const[:, 0, try_type, :, :]
+            phase_order_R_1D    = np.absolute(post_data.phase_order_C_theta_triads_1d[:, try_type, :]) / np.diagonal(post_data.phase_order_norm_const[:, 0, try_type, :, :], axis1=-2, axis2=-1)
+            phase_order_Phi_1D  = np.angle(post_data.phase_order_C_theta_triads_1d[:, try_type, :]) / np.diagonal(post_data.phase_order_norm_const[:, 0, try_type, :, :], axis1=-2, axis2=-1)
+            phase_order_enst_1D = np.real(post_data.phase_order_C_theta_triads_1d[:, try_type, :]) / np.diagonal(post_data.phase_order_norm_const[:, 0, try_type, :, :], axis1=-2, axis2=-1)
+            phase_order_R       = np.absolute(post_data.phase_order_C_theta_triads[:, try_type, :]) / np.sum(post_data.phase_order_norm_const[:, 0, try_type, :, :], axis=-1)
+            phase_order_Phi     = np.angle(post_data.phase_order_C_theta_triads[:, try_type, :]) / np.sum(post_data.phase_order_norm_const[:, 0, try_type, :, :], axis=-1)
+            phase_order_enst    = np.real(post_data.phase_order_C_theta_triads[:, try_type, :]) / np.sum(post_data.phase_order_norm_const[:, 0, try_type, :, :], axis=-1)
+        else:
+            phase_order_R_2D    = np.absolute(post_data.phase_order_C_theta_triads_2d[:, try_type, :, :])
+            phase_order_Phi_2D  = np.angle(post_data.phase_order_C_theta_triads_2d[:, try_type, :, :])
+            phase_order_enst_2D = np.real(post_data.phase_order_C_theta_triads_2d[:, try_type, :]) 
+            phase_order_R_1D    = np.absolute(post_data.phase_order_C_theta_triads_1d[:, try_type, :])
+            phase_order_Phi_1D  = np.angle(post_data.phase_order_C_theta_triads_1d[:, try_type, :])
+            phase_order_enst_1D = np.real(post_data.phase_order_C_theta_triads_1d[:, try_type, :])
+            phase_order_R       = np.absolute(post_data.phase_order_C_theta_triads[:, try_type, :])
+            phase_order_Phi     = np.angle(post_data.phase_order_C_theta_triads[:, try_type, :])
+            phase_order_enst    = np.real(post_data.phase_order_C_theta_triads[:, try_type, :])
+
+
+        #####################################################################
+        ## COLLECTIVE PHASE ORDER PARAMETER ---- Time Averaged ---- 2D Data
+        #####################################################################
+        ## Collective phase order parameter
+        fig = plt.figure(figsize = (21, 9))
+        gs  = GridSpec(1, 3)
+        ax6 = fig.add_subplot(gs[0, 0])
+        im6 = ax6.imshow(np.flipud(np.mean(np.mod(phase_order_R_2D + 2.0 * np.pi, 2.0 * np.pi), axis=0)), extent = (theta_k3_min, theta_k3_max, alpha_min, alpha_max), cmap = my_magma, vmin = 0.0, vmax = 1.0)
+        ax6.set_xticks(angticks)
+        ax6.set_xticklabels(angtickLabels_alpha)
+        ax6.set_yticks(angticks)
+        ax6.set_yticklabels(angtickLabels)
+        ax6.set_ylabel(r"$\theta$")
+        ax6.set_xlabel(r"$\alpha$")
+        ax6.set_title(r"Sync Across Sectors (2D)")
+        div6  = make_axes_locatable(ax6)
+        cbax6 = div6.append_axes("right", size = "10%", pad = 0.05)
+        cb6   = plt.colorbar(im6, cax = cbax6)
+        cb6.set_label(r"$|\mathcal{R}^{2D}|$")
+        ax7 = fig.add_subplot(gs[0, 1])
+        im7 = ax7.imshow(np.flipud(np.mean(phase_order_Phi_2D, axis=0)), extent = (theta_k3_min, theta_k3_max, alpha_min, alpha_max), cmap = my_jet, vmin = 0.0, vmax = 2.0 * np.pi)
+        ax7.set_xticks(angticks)
+        ax7.set_xticklabels(angtickLabels_alpha)
+        ax7.set_yticks(angticks)
+        ax7.set_yticklabels(angtickLabels)
+        ax7.set_ylabel(r"$\theta$")
+        ax7.set_xlabel(r"$\alpha$")
+        ax7.set_title(r"Average Angle Across Sectors (2D)")
+        div7  = make_axes_locatable(ax7)
+        cbax7 = div7.append_axes("right", size = "10%", pad = 0.05)
+        cb7   = plt.colorbar(im7, cax = cbax7)
+        # cb7.set_ticks([-np.pi, -np.pi/2.0, 0., np.pi/2, np.pi])
+        # cb7.set_ticklabels([r"$-\pi$", r"$\frac{-\pi}{2}$", r"$0$", r"$\frac{\pi}{2}$", r"$\pi$"])
+        cb7.set_ticks([0.0, np.pi/2.0, np.pi, 3.0*np.pi/2.0, 2.0*np.pi])
+        cb7.set_ticklabels([r"$0$", r"$\frac{\pi}{2}$", r"$\pi$", r"$\frac{3\pi}{2}$", r"$2\pi$"])
+        cb7.set_label(r"$\arg\{\mathcal{R}^{2D} \}$")
+        ax8 = fig.add_subplot(gs[0, 2])
+        data = np.flipud(np.mean(phase_order_enst_2D, axis=0))
+        im8 = ax8.imshow(data, extent = (theta_k3_min, theta_k3_max, alpha_min, alpha_max), cmap = "seismic", vmin = np.min(data), vmax = np.absolute(np.min(data))) #vmin = flux_lims[4], vmax = flux_lims[5] #, norm = mpl.colors.SymLogNorm(linthresh = 0.1)
+        ax8.set_xticks(angticks)
+        ax8.set_xticklabels(angtickLabels_alpha)
+        ax8.set_yticks(angticks)
+        ax8.set_yticklabels(angtickLabels)
+        ax8.set_ylabel(r"$\theta$")
+        ax8.set_xlabel(r"$\alpha$")
+        ax8.set_title(r"Enstrophy Flux Across Sectors (2D)")
+        div8  = make_axes_locatable(ax8)
+        cbax8 = div8.append_axes("right", size = "10%", pad = 0.05)
+        cb8   = plt.colorbar(im8, cax = cbax8)
+        cb8.set_label(r"$\Re\{\mathcal{R}^{2D} \}$")
+        plt.suptitle(r"Time Averaged Collective Phase Order 2D Data - Triad Type: {}".format(try_type))
+        plt.savefig(cmdargs.out_dir_avg_snaps + "/Type[{}]_COLLECTIVE_Sync_2D.png".format(try_type), bbox_inches="tight")
+        plt.close()
+        
+        #####################################################################
+        ## COLLECTIVE PHASE ORDER PARAMETER ---- Time Averaged ---- 1D + 2D Data
+        #####################################################################
+        fig = plt.figure(figsize = (21, 9))
+        gs  = GridSpec(1, 3)
+        ax6 = fig.add_subplot(gs[0, 0])
+        im6 = ax6.imshow(np.flipud(np.mean(phase_order_R_2D, axis=0) + np.diag(np.mean(phase_order_R_1D, axis=0))), extent = (theta_k3_min, theta_k3_max, alpha_min, alpha_max), cmap = my_magma, vmin = 0.0, vmax = 1.0)
+        ax6.set_xticks(angticks)
+        ax6.set_xticklabels(angtickLabels_alpha)
+        ax6.set_yticks(angticks)
+        ax6.set_yticklabels(angtickLabels)
+        ax6.set_ylabel(r"$\theta$")
+        ax6.set_xlabel(r"$\alpha$")
+        ax6.set_title(r"Sync Across Sectors (2D and 1D)")
+        div6  = make_axes_locatable(ax6)
+        cbax6 = div6.append_axes("right", size = "10%", pad = 0.05)
+        cb6   = plt.colorbar(im6, cax = cbax6)
+        cb6.set_label(r"$|\mathcal{R}^{2D} |$")
+        ax7 = fig.add_subplot(gs[0, 1])
+        im7 = ax7.imshow(np.flipud(np.mean(np.mod(phase_order_Phi_2D + 2.0 * np.pi, 2.0 * np.pi), axis=0) + np.diag(np.mean(np.mod(phase_order_Phi_1D + 2.0 * np.pi, 2.0 * np.pi), axis=0))), extent = (theta_k3_min, theta_k3_max, alpha_min, alpha_max), cmap = my_jet, vmin = 0.0, vmax = 2.0 * np.pi)
+        ax7.set_xticks(angticks)
+        ax7.set_xticklabels(angtickLabels_alpha)
+        ax7.set_yticks(angticks)
+        ax7.set_yticklabels(angtickLabels)
+        ax7.set_ylabel(r"$\theta$")
+        ax7.set_xlabel(r"$\alpha$")
+        ax7.set_title(r"Average Angle Across Sectors (2D and 1D)")
+        div7  = make_axes_locatable(ax7)
+        cbax7 = div7.append_axes("right", size = "10%", pad = 0.05)
+        cb7   = plt.colorbar(im7, cax = cbax7)
+        # cb7.set_ticks([-np.pi, -np.pi/2.0, 0., np.pi/2, np.pi])
+        # cb7.set_ticklabels([r"$-\pi$", r"$\frac{-\pi}{2}$", r"$0$", r"$\frac{\pi}{2}$", r"$\pi$"])
+        cb7.set_ticks([0.0, np.pi/2.0, np.pi, 3.0*np.pi/2.0, 2.0*np.pi])
+        cb7.set_ticklabels([r"$0$", r"$\frac{\pi}{2}$", r"$\pi$", r"$\frac{3\pi}{2}$", r"$2\pi$"])
+        cb7.set_label(r"$\arg\{\mathcal{R}^{2D} \}$")
+        ax8 = fig.add_subplot(gs[0, 2])
+        data = np.flipud(np.mean(phase_order_enst_2D, axis=0) + np.diag(np.mean(phase_order_enst_1D, axis=0)))
+        im8 = ax8.imshow(data, extent = (theta_k3_min, theta_k3_max, alpha_min, alpha_max), cmap = "seismic", vmin = np.min(data), vmax = np.absolute(np.min(data))) #vmin = flux_lims[4], vmax = flux_lims[5] #, norm = mpl.colors.SymLogNorm(linthresh = 0.1)
+        ax8.set_xticks(angticks)
+        ax8.set_xticklabels(angtickLabels_alpha)
+        ax8.set_yticks(angticks)
+        ax8.set_yticklabels(angtickLabels)
+        ax8.set_ylabel(r"$\theta$")
+        ax8.set_xlabel(r"$\alpha$")
+        ax8.set_title(r"Enstrophy Flux Across Sectors (2D and 1D)")
+        div8  = make_axes_locatable(ax8)
+        cbax8 = div8.append_axes("right", size = "10%", pad = 0.05)
+        cb8   = plt.colorbar(im8, cax = cbax8)
+        cb8.set_label(r"$\Re\{\mathcal{R}^{2D}\}$")
+        plt.suptitle(r"Time Averaged -- Collective Phase Order -- 2D and 1 Data - Triad Type: {}".format(try_type))
+        plt.savefig(cmdargs.out_dir_avg_snaps + "/Type[{}]_COLLECTIVE_Sync_2Dand1D.png".format(try_type), bbox_inches="tight")
+        plt.close()
+
+        #####################################################################
+        ## COLLECTIVE PHASE ORDER PARAMETER ---- Time Averaged ---- 1D Data
+        #####################################################################
+        fig = plt.figure(figsize = (21, 9))
+        gs  = GridSpec(1, 2)
+        ax3 = fig.add_subplot(gs[0, 0])
+        div3   = make_axes_locatable(ax3)
+        axtop3 = div3.append_axes("top", size = "100%", pad = 0.2)
+        axtop3.plot(theta_k3, np.mean(np.mod(phase_order_Phi_1D + 2.0 * np.pi, 2.0 * np.pi), axis=0), '.-', color = "orange")
+        axtop3.set_xlim(theta_k3_min, theta_k3_max)
+        axtop3.set_xticks(angticks)
+        axtop3.set_xticklabels([])
+        axtop3.set_ylim(0.0, 2.0 * np.pi)
+        axtop3.set_yticks([0.0, np.pi/2.0, np.pi, 3.0*np.pi/2.0, 2.0*np.pi])
+        axtop3.set_yticklabels([r"$0$", r"$\frac{\pi}{2}$", r"$\pi$", r"$\frac{3\pi}{2}$", r"$2\pi$"])
+        axtop3.grid(which = 'both', axis = 'both', linestyle = ':', linewidth = '0.6', alpha = 0.8)
+        axtop3.set_title(r"Order Parameters (1D)")
+        axtop3.set_ylabel(r"$\arg \{\mathcal{R}^{1D} \}$")
+        ax3.plot(theta_k3, np.mean(phase_order_R_1D, axis=0))
+        ax3.set_xlim(theta_k3_min, theta_k3_max)
+        ax3.set_xticks(angticks)
+        ax3.set_xticklabels(angtickLabels)
+        ax3.set_ylim(0 - 0.05, 1 + 0.05)
+        ax3.set_xlabel(r"$|\mathcal{R}^{1D}|$")
+        ax3.grid(which = 'both', axis = 'both', linestyle = ':', linewidth = '0.6', alpha = 0.8)
+        ax3.set_ylabel(r"$\mathcal{R}^{1D}$")
+        ax4 = fig.add_subplot(gs[0, 1])
+        ax4.plot(theta_k3, np.mean(phase_order_enst_1D, axis=0), '.-')
+        ax4.set_xlim(theta_k3_min, theta_k3_max)
+        ax4.set_xticks(angticks)
+        ax4.set_xticklabels(angtickLabels)
+        ax4.set_xlabel(r"$\theta$")
+        ax4.set_ylabel(r"$\Re\{\mathcal{R}^{1D} \}$")
+        ax4.grid(which = 'both', axis = 'both', linestyle = ':', linewidth = '0.6', alpha = 0.8)
+        ax4.set_title(r"Enstrophy Flux Per Sector (1D)")
+        plt.suptitle(r"Time Averaged 1D Data - Triad Type: {}".format(try_type))
+        plt.savefig(cmdargs.out_dir_avg_snaps + "/Type[{}]_COLLECTIVE_Sync_1D.png".format(try_type), bbox_inches="tight")
+        plt.close()
+
+        #####################################################################
+        ## COLLECTIVE PHASE ORDER PARAMETER ---- Spacetime Plots ---- 1D Data
+        #####################################################################
+        fig = plt.figure(figsize = (21, 9))
+        gs  = GridSpec(1, 3)
+        ax6 = fig.add_subplot(gs[0, 0])
+        im6 = ax6.imshow(phase_order_R_1D, aspect='auto', extent = (theta_k3_min, theta_k3_max, 1, sys_vars.ndata), cmap = my_magma, vmin = 0.0, vmax = 1.0)
         ax6.set_xticks(angticks)
         ax6.set_xticklabels(angtickLabels)
         ax6.set_ylabel(r"$t$")
@@ -688,7 +774,7 @@ if __name__ == '__main__':
         cb6   = plt.colorbar(im6, cax = cbax6)
         cb6.set_label(r"$|\mathcal{R}^{1D}|$")
         ax7 = fig.add_subplot(gs[0, 1])
-        im7 = ax7.imshow(np.angle(post_data.phase_order_C_theta_triads_1d[:, try_type, :]), aspect='auto', extent = (theta_k3_min, theta_k3_max, 1, sys_vars.ndata), cmap = my_hsv, vmin = -np.pi, vmax = np.pi)
+        im7 = ax7.imshow(phase_order_Phi_1D, aspect='auto', extent = (theta_k3_min, theta_k3_max, 1, sys_vars.ndata), cmap = my_hsv, vmin = -np.pi, vmax = np.pi)
         ax7.set_xticks(angticks)
         ax7.set_xticklabels(angtickLabels)
         ax6.set_ylabel(r"$t$")
@@ -702,7 +788,7 @@ if __name__ == '__main__':
         cb7.set_ticklabels([r"$-\pi$", r"$\frac{-\pi}{2}$", r"$0$", r"$\frac{\pi}{2}$", r"$\pi$"])
         cb7.set_label(r"$\arg\{\mathcal{R}^{1D} \}$")
         ax8 = fig.add_subplot(gs[0, 2])
-        data = np.real(post_data.phase_order_C_theta_triads_1d[:, try_type, :])
+        data = phase_order_enst_1D
         im8 = ax8.imshow(data, aspect='auto', extent = (theta_k3_min, theta_k3_max, 1, sys_vars.ndata), cmap = "seismic", vmin=np.amin(data), vmax=np.absolute(np.amin(data))) #vmin = flux_lims[4], vmax = flux_lims[5] #, norm = mpl.colors.SymLogNorm(linthresh = 0.1)
         ax8.set_xticks(angticks)
         ax8.set_xticklabels(angtickLabels)
@@ -715,116 +801,200 @@ if __name__ == '__main__':
         cb8   = plt.colorbar(im8, cax = cbax8)
         cb8.set_label(r"$\Re\{\mathcal{R}^{1D} \}$")
         plt.suptitle(r"Spacetime Collective Phase 1D Data - Triad Type: {}".format(try_type))
-        plt.savefig(cmdargs.out_dir_avg_snaps + "/Type[{}]_PhaseSync_SpaceTime_1D.png".format(try_type), bbox_inches="tight")
+        plt.savefig(cmdargs.out_dir_avg_snaps + "/Type[{}]_COLLECTIVE_SpaceTime_1D.png".format(try_type), bbox_inches="tight")
         plt.close()
 
-        fig = plt.figure(figsize = (9, 16))
-        gs  = GridSpec(1, 1)
-        ax8 = fig.add_subplot(gs[0, 0])
-        data = post_data.enst_flux_per_sec[:, try_type, :]
+        #####################################################################
+        ## COLLECTIVE PHASE ORDER PARAMETER ---- SpaceTime Plots ---- All Data
+        #####################################################################
+        fig = plt.figure(figsize = (21, 9))
+        gs  = GridSpec(1, 3)
+        ax6 = fig.add_subplot(gs[0, 0])
+        im6 = ax6.imshow(phase_order_R, aspect='auto', extent = (theta_k3_min, theta_k3_max, 1, sys_vars.ndata), cmap = my_magma, vmin = 0.0, vmax = 1.0)
+        ax6.set_xticks(angticks)
+        ax6.set_xticklabels(angtickLabels)
+        ax6.set_ylabel(r"$t$")
+        ax6.set_xlabel(r"$\theta$")
+        ax6.set_title(r"Sync Per Sector")
+        div6  = make_axes_locatable(ax6)
+        cbax6 = div6.append_axes("right", size = "10%", pad = 0.05)
+        cb6   = plt.colorbar(im6, cax = cbax6)
+        cb6.set_label(r"$| \mathcal{R}_\theta |$")
+        ax7 = fig.add_subplot(gs[0, 1])
+        im7 = ax7.imshow(phase_order_Phi, aspect='auto', extent = (theta_k3_min, theta_k3_max, 1, sys_vars.ndata), cmap = my_hsv, vmin = -np.pi, vmax = np.pi)
+        ax7.set_xticks(angticks)
+        ax7.set_xticklabels(angtickLabels)
+        ax7.set_xlabel(r"$\theta$")
+        ax7.set_title(r"Average Angle Per Sector")
+        div7  = make_axes_locatable(ax7)
+        cbax7 = div7.append_axes("right", size = "10%", pad = 0.05)
+        cb7   = plt.colorbar(im7, cax = cbax7)
+        cb7.set_ticks([-np.pi, -np.pi/2.0, 0., np.pi/2, np.pi])
+        cb7.set_ticklabels([r"$-\pi$", r"$\frac{-\pi}{2}$", r"$0$", r"$\frac{\pi}{2}$", r"$\pi$"])
+        cb7.set_label(r"$\arg \{ \mathcal{R}_\theta \}$")
+        ax8 = fig.add_subplot(gs[0, 2])
+        data = phase_order_enst
         im8 = ax8.imshow(data, aspect='auto', extent = (theta_k3_min, theta_k3_max, 1, sys_vars.ndata), cmap = "seismic", vmin=np.amin(data), vmax=np.absolute(np.amin(data))) #vmin = flux_lims[4], vmax = flux_lims[5] #, norm = mpl.colors.SymLogNorm(linthresh = 0.1)
         ax8.set_xticks(angticks)
         ax8.set_xticklabels(angtickLabels)
-        ax6.set_ylabel(r"$t$")
-        ax6.set_xlabel(r"$\theta$")
+        ax8.set_xlabel(r"$\theta$")
         ax8.set_title(r"Enstrophy Flux Per Sector")
         div8  = make_axes_locatable(ax8)
         cbax8 = div8.append_axes("right", size = "10%", pad = 0.05)
         cb8   = plt.colorbar(im8, cax = cbax8)
-        cb8.set_label(r"$\Pi_{\mathcal{S}_\theta}^{1D}$")
-        plt.savefig(cmdargs.out_dir_avg_snaps + "/Type[{}]_SpaceTime_PerSector.png".format(try_type), bbox_inches="tight")
+        cb8.set_label(r"$\Re \{ \mathcal{R}_\theta \}$")
+        plt.savefig(cmdargs.out_dir_avg_snaps + "/Type[{}]_COLLECTIVE_SpaceTime_PerSector.png".format(try_type), bbox_inches="tight")
         plt.close()
+        
+
+        # # -----------------------------------------
+        # # # --------  Plot In Time Stats Data
+        # # -----------------------------------------
+        # Plot in time stats
+        n_k3       = 0
+        for class_type in range(2):
+            print("In Time Stats: Class {} Type {} Sector {}".format(class_type, try_type, n_k3))
+
+            #####################################################################
+            ## IN TIME STATS -- ALL POSSIBLE TRIADS
+            #####################################################################
+            if post_data.all_triads_pdf_t and post_data.all_wghtd_triads_pdf_t:
+                fig = plt.figure(figsize = (21, 9))
+                gs  = GridSpec(1, 2)
+                ax8 = fig.add_subplot(gs[0, 0])
+                bin_centres = (post_data.all_triads_pdf_ranges_t[class_type, try_type, 1:] + post_data.all_triads_pdf_ranges_t[class_type, try_type, :-1]) * 0.5
+                bin_width = post_data.all_triads_pdf_ranges_t[class_type, try_type, 1] - post_data.all_triads_pdf_ranges_t[class_type, try_type, 0]
+                pdf = post_data.all_triads_pdf_counts_t[:, class_type, try_type, :] / (np.sum(post_data.all_triads_pdf_counts_t[:, class_type, try_type, :], axis=-1) * bin_width)[:, np.newaxis]
+                im8 = ax8.imshow(np.flipud(pdf), aspect='auto', extent = (-np.pi, np.pi, 1, sys_vars.ndata), cmap = my_magma)
+                ax8.set_xticks([-np.pi, -np.pi/2.0, 0., np.pi/2, np.pi])
+                ax8.set_xticklabels([r"$-\pi$", r"$\frac{-\pi}{2}$", r"$0$", r"$\frac{\pi}{2}$", r"$\pi$"])
+                ax8.set_ylabel(r"$t$")
+                if class_type == 0:
+                    ax8.set_xlabel(r"$\varphi_{\mathbf{k}_1, \mathbf{k}_2}^{\mathbf{k}_3}$")
+                else:
+                    ax8.set_xlabel(r"$\Phi_{\mathbf{k}_1, \mathbf{k}_2}^{\mathbf{k}_3}$")
+                ax8.set_title(r"All Triads PDF in Time")
+                div8  = make_axes_locatable(ax8)
+                cbax8 = div8.append_axes("right", size = "10%", pad = 0.05)
+                cb8   = plt.colorbar(im8, cax = cbax8)
+                cb8.set_label(r"PDF")
+                ax8 = fig.add_subplot(gs[0, 1])
+                bin_centres = (post_data.all_wghtd_triads_pdf_ranges_t[class_type, try_type, 1:] + post_data.all_wghtd_triads_pdf_ranges_t[class_type, try_type, :-1]) * 0.5
+                bin_width = post_data.all_wghtd_triads_pdf_ranges_t[class_type, try_type, 1] - post_data.all_wghtd_triads_pdf_ranges_t[class_type, try_type, 0]
+                pdf = post_data.all_wghtd_triads_pdf_counts_t[:, class_type, try_type, :] / (np.sum(post_data.all_wghtd_triads_pdf_counts_t[:, class_type, try_type, :], axis=-1) * bin_width)[:, np.newaxis]
+                im8 = ax8.imshow(np.flipud(pdf), aspect='auto', extent = (-np.pi, np.pi, 1, sys_vars.ndata), cmap = my_magma)
+                ax8.set_xticks([-np.pi, -np.pi/2.0, 0., np.pi/2, np.pi])
+                ax8.set_xticklabels([r"$-\pi$", r"$\frac{-\pi}{2}$", r"$0$", r"$\frac{\pi}{2}$", r"$\pi$"])
+                ax8.set_ylabel(r"$t$")
+                if class_type == 0:
+                    ax8.set_xlabel(r"$\varphi_{\mathbf{k}_1, \mathbf{k}_2}^{\mathbf{k}_3}$")
+                else:
+                    ax8.set_xlabel(r"$\Phi_{\mathbf{k}_1, \mathbf{k}_2}^{\mathbf{k}_3}$")
+                ax8.set_title(r"Weight Flux Density All Triads PDF in Time")
+                div8  = make_axes_locatable(ax8)
+                cbax8 = div8.append_axes("right", size = "10%", pad = 0.05)
+                cb8   = plt.colorbar(im8, cax = cbax8)
+                cb8.set_label(r"wPDF")
+                if class_type == 0:
+                    plt.suptitle("All Possible Triads - PDF In Time: Normal Triads; Triad Type {}; Sector {}".format(try_type, n_k3))
+                else:
+                    plt.suptitle("All Possible Triads - PDF In Time: Generalized Triads; Triad Type {}; Sector {}".format(try_type, n_k3))
+                plt.savefig(cmdargs.out_dir_avg_snaps + "/Type[{}]_ALL_TriadPDF_InTime_Class[{}]_Sec[{}].png".format(try_type, class_type, n_k3), bbox_inches="tight")
+                plt.close()
 
 
-        ## Plot in time stats
-        # n_k3       = 0
-        # for class_type in range(2):
-        #     print("In Time Stats: Class {} Type {} Sector {}".format(class_type, try_type, n_k3))
-        #     fig = plt.figure(figsize = (21, 9))
-        #     gs  = GridSpec(1, 2)
-        #     ax8 = fig.add_subplot(gs[0, 0])
-        #     bin_centres = (post_data.triads_all_pdf_ranges_t[1:] + post_data.triads_all_pdf_ranges_t[:-1]) * 0.5
-        #     bin_width = post_data.triads_all_pdf_ranges_t[1] - post_data.triads_all_pdf_ranges_t[0]
-        #     pdf = post_data.triads_all_pdf_counts_t[:, class_type, try_type, n_k3, :] / (np.sum(post_data.triads_all_pdf_counts_t[:, class_type, try_type, n_k3, :], axis=-1) * bin_width)[:, np.newaxis]
-        #     im8 = ax8.imshow(np.flipud(pdf), aspect='auto', extent = (-np.pi, np.pi, 1, sys_vars.ndata), cmap = my_magma)
-        #     ax8.set_xticks([-np.pi, -np.pi/2.0, 0., np.pi/2, np.pi])
-        #     ax8.set_xticklabels([r"$-\pi$", r"$\frac{-\pi}{2}$", r"$0$", r"$\frac{\pi}{2}$", r"$\pi$"])
-        #     ax8.set_ylabel(r"$t$")
-        #     if class_type == 0:
-        #         ax8.set_xlabel(r"$\varphi_{\mathbf{k}_1, \mathbf{k}_2}^{\mathbf{k}_3}$")
-        #     else:
-        #         ax8.set_xlabel(r"$\Phi_{\mathbf{k}_1, \mathbf{k}_2}^{\mathbf{k}_3}$")
-        #     ax8.set_title(r"Triad PDF in Time")
-        #     div8  = make_axes_locatable(ax8)
-        #     cbax8 = div8.append_axes("right", size = "10%", pad = 0.05)
-        #     cb8   = plt.colorbar(im8, cax = cbax8)
-        #     cb8.set_label(r"PDF")
-        #     ax8 = fig.add_subplot(gs[0, 1])
-        #     bin_centres = (post_data.wghtd_triads_all_pdf_ranges_t[1:] + post_data.wghtd_triads_all_pdf_ranges_t[:-1]) * 0.5
-        #     bin_width = post_data.wghtd_triads_all_pdf_ranges_t[1] - post_data.wghtd_triads_all_pdf_ranges_t[0]
-        #     pdf = post_data.wghtd_triads_all_pdf_counts_t[:, class_type, try_type, n_k3, :] / (np.sum(post_data.wghtd_triads_all_pdf_counts_t[:, class_type, try_type, n_k3, :], axis=-1) * bin_width)[:, np.newaxis]
-        #     im8 = ax8.imshow(np.flipud(pdf), aspect='auto', extent = (-np.pi, np.pi, 1, sys_vars.ndata), cmap = my_magma)
-        #     ax8.set_xticks([-np.pi, -np.pi/2.0, 0., np.pi/2, np.pi])
-        #     ax8.set_xticklabels([r"$-\pi$", r"$\frac{-\pi}{2}$", r"$0$", r"$\frac{\pi}{2}$", r"$\pi$"])
-        #     ax8.set_ylabel(r"$t$")
-        #     if class_type == 0:
-        #         ax8.set_xlabel(r"$\varphi_{\mathbf{k}_1, \mathbf{k}_2}^{\mathbf{k}_3}$")
-        #     else:
-        #         ax8.set_xlabel(r"$\Phi_{\mathbf{k}_1, \mathbf{k}_2}^{\mathbf{k}_3}$")
-        #     ax8.set_title(r"Weight Flux Density Triad PDF in Time")
-        #     div8  = make_axes_locatable(ax8)
-        #     cbax8 = div8.append_axes("right", size = "10%", pad = 0.05)
-        #     cb8   = plt.colorbar(im8, cax = cbax8)
-        #     cb8.set_label(r"wPDF")
-        #     if class_type == 0:
-        #         plt.suptitle("All Contributions - PDF In Time: Normal Triads; Triad Type {}; Sector {}".format(try_type, n_k3))
-        #     else:
-        #         plt.suptitle("All Contributions - PDF In Time: Generalized Triads; Triad Type {}; Sector {}".format(try_type, n_k3))
-        #     plt.savefig(cmdargs.out_dir_avg_snaps + "/Type[{}]_TriadPDF_All_InTime_Class[{}]_Sec[{}].png".format(try_type, class_type, n_k3), bbox_inches="tight")
-        #     plt.close()
 
-        #     fig = plt.figure(figsize = (21, 9))
-        #     gs  = GridSpec(1, 2)
-        #     ax8 = fig.add_subplot(gs[0, 0])
-        #     bin_centres = (post_data.triads_1d_pdf_ranges_t[1:] + post_data.triads_1d_pdf_ranges_t[:-1]) * 0.5
-        #     bin_width = post_data.triads_1d_pdf_ranges_t[1] - post_data.triads_1d_pdf_ranges_t[0]
-        #     pdf = post_data.triads_1d_pdf_counts_t[:, class_type, try_type, n_k3, :] / (np.sum(post_data.triads_1d_pdf_counts_t[:, class_type, try_type, n_k3, :], axis=-1) * bin_width)[:, np.newaxis]
-        #     im8 = ax8.imshow(np.flipud(pdf), aspect='auto', extent = (-np.pi, np.pi, 1, sys_vars.ndata), cmap = my_magma)
-        #     ax8.set_xticks([-np.pi, -np.pi/2.0, 0., np.pi/2, np.pi])
-        #     ax8.set_xticklabels([r"$-\pi$", r"$\frac{-\pi}{2}$", r"$0$", r"$\frac{\pi}{2}$", r"$\pi$"])
-        #     ax8.set_ylabel(r"$t$")
-        #     if class_type == 0:
-        #         ax8.set_xlabel(r"$\varphi_{\mathbf{k}_1, \mathbf{k}_2}^{\mathbf{k}_3}$")
-        #     else:
-        #         ax8.set_xlabel(r"$\Phi_{\mathbf{k}_1, \mathbf{k}_2}^{\mathbf{k}_3}$")
-        #     ax8.set_title(r"Triad PDF in Time")
-        #     div8  = make_axes_locatable(ax8)
-        #     cbax8 = div8.append_axes("right", size = "10%", pad = 0.05)
-        #     cb8   = plt.colorbar(im8, cax = cbax8)
-        #     cb8.set_label(r"PDF")
-        #     ax8 = fig.add_subplot(gs[0, 1])
-        #     bin_centres = (post_data.wghtd_triads_1d_pdf_ranges_t[1:] + post_data.wghtd_triads_1d_pdf_ranges_t[:-1]) * 0.5
-        #     bin_width = post_data.wghtd_triads_1d_pdf_ranges_t[1] - post_data.wghtd_triads_1d_pdf_ranges_t[0]
-        #     pdf = post_data.wghtd_triads_1d_pdf_counts_t[:, class_type, try_type, n_k3, :] / (np.sum(post_data.wghtd_triads_1d_pdf_counts_t[:, class_type, try_type, n_k3, :], axis=-1) * bin_width)[:, np.newaxis]
-        #     im8 = ax8.imshow(np.flipud(pdf), aspect='auto', extent = (-np.pi, np.pi, 1, sys_vars.ndata), cmap = my_magma)
-        #     ax8.set_xticks([-np.pi, -np.pi/2.0, 0., np.pi/2, np.pi])
-        #     ax8.set_xticklabels([r"$-\pi$", r"$\frac{-\pi}{2}$", r"$0$", r"$\frac{\pi}{2}$", r"$\pi$"])
-        #     ax8.set_ylabel(r"$t$")
-        #     if class_type == 0:
-        #         ax8.set_xlabel(r"$\varphi_{\mathbf{k}_1, \mathbf{k}_2}^{\mathbf{k}_3}$")
-        #     else:
-        #         ax8.set_xlabel(r"$\Phi_{\mathbf{k}_1, \mathbf{k}_2}^{\mathbf{k}_3}$")
-        #     ax8.set_title(r"Weight Flux Density Triad PDF in Time")
-        #     div8  = make_axes_locatable(ax8)
-        #     cbax8 = div8.append_axes("right", size = "10%", pad = 0.05)
-        #     cb8   = plt.colorbar(im8, cax = cbax8)
-        #     cb8.set_label(r"wPDF")
-        #     if class_type == 0:
-        #         plt.suptitle("1D Contributions - PDF In Time: Normal Triads; Triad Type {}; Sector {}".format(try_type, n_k3))
-        #     else:
-        #         plt.suptitle("1D Contributions - PDF In Time: Generalized Triads; Triad Type {}; Sector {}".format(try_type, n_k3))
-        #     plt.savefig(cmdargs.out_dir_avg_snaps + "/Type[{}]_TriadPDF_1D_InTime_Class[{}]_Sec[{}].png".format(try_type, class_type, n_k3), bbox_inches="tight")
-        #     plt.close()
+
+            #####################################################################
+            ## IN TIME STATS -- OVER SECTORS
+            #####################################################################
+            if post_data.triads_all_pdf_t or post_data.wghtd_all_pdf_t:
+                fig = plt.figure(figsize = (21, 9))
+                gs  = GridSpec(1, 2)
+                ax8 = fig.add_subplot(gs[0, 0])
+                bin_centres = (post_data.triads_all_pdf_ranges_t[1:] + post_data.triads_all_pdf_ranges_t[:-1]) * 0.5
+                bin_width = post_data.triads_all_pdf_ranges_t[1] - post_data.triads_all_pdf_ranges_t[0]
+                pdf = post_data.triads_all_pdf_counts_t[:, class_type, try_type, n_k3, :] / (np.sum(post_data.triads_all_pdf_counts_t[:, class_type, try_type, n_k3, :], axis=-1) * bin_width)[:, np.newaxis]
+                im8 = ax8.imshow(np.flipud(pdf), aspect='auto', extent = (-np.pi, np.pi, 1, sys_vars.ndata), cmap = my_magma)
+                ax8.set_xticks([-np.pi, -np.pi/2.0, 0., np.pi/2, np.pi])
+                ax8.set_xticklabels([r"$-\pi$", r"$\frac{-\pi}{2}$", r"$0$", r"$\frac{\pi}{2}$", r"$\pi$"])
+                ax8.set_ylabel(r"$t$")
+                if class_type == 0:
+                    ax8.set_xlabel(r"$\varphi_{\mathbf{k}_1, \mathbf{k}_2}^{\mathbf{k}_3}$")
+                else:
+                    ax8.set_xlabel(r"$\Phi_{\mathbf{k}_1, \mathbf{k}_2}^{\mathbf{k}_3}$")
+                ax8.set_title(r"Triad PDF in Time")
+                div8  = make_axes_locatable(ax8)
+                cbax8 = div8.append_axes("right", size = "10%", pad = 0.05)
+                cb8   = plt.colorbar(im8, cax = cbax8)
+                cb8.set_label(r"PDF")
+                ax8 = fig.add_subplot(gs[0, 1])
+                bin_centres = (post_data.wghtd_triads_all_pdf_ranges_t[1:] + post_data.wghtd_triads_all_pdf_ranges_t[:-1]) * 0.5
+                bin_width = post_data.wghtd_triads_all_pdf_ranges_t[1] - post_data.wghtd_triads_all_pdf_ranges_t[0]
+                pdf = post_data.wghtd_triads_all_pdf_counts_t[:, class_type, try_type, n_k3, :] / (np.sum(post_data.wghtd_triads_all_pdf_counts_t[:, class_type, try_type, n_k3, :], axis=-1) * bin_width)[:, np.newaxis]
+                im8 = ax8.imshow(np.flipud(pdf), aspect='auto', extent = (-np.pi, np.pi, 1, sys_vars.ndata), cmap = my_magma)
+                ax8.set_xticks([-np.pi, -np.pi/2.0, 0., np.pi/2, np.pi])
+                ax8.set_xticklabels([r"$-\pi$", r"$\frac{-\pi}{2}$", r"$0$", r"$\frac{\pi}{2}$", r"$\pi$"])
+                ax8.set_ylabel(r"$t$")
+                if class_type == 0:
+                    ax8.set_xlabel(r"$\varphi_{\mathbf{k}_1, \mathbf{k}_2}^{\mathbf{k}_3}$")
+                else:
+                    ax8.set_xlabel(r"$\Phi_{\mathbf{k}_1, \mathbf{k}_2}^{\mathbf{k}_3}$")
+                ax8.set_title(r"Weight Flux Density Triad PDF in Time")
+                div8  = make_axes_locatable(ax8)
+                cbax8 = div8.append_axes("right", size = "10%", pad = 0.05)
+                cb8   = plt.colorbar(im8, cax = cbax8)
+                cb8.set_label(r"wPDF")
+                if class_type == 0:
+                    plt.suptitle("All Contributions - PDF In Time: Normal Triads; Triad Type {}; Sector {}".format(try_type, n_k3))
+                else:
+                    plt.suptitle("All Contributions - PDF In Time: Generalized Triads; Triad Type {}; Sector {}".format(try_type, n_k3))
+                plt.savefig(cmdargs.out_dir_avg_snaps + "/Type[{}]_TriadPDF_All_InTime_Class[{}]_Sec[{}].png".format(try_type, class_type, n_k3), bbox_inches="tight")
+                plt.close()
+
+            if post_data.triads_1d_pdf_t or post_data.wghtd_1d_pdf_t:
+                fig = plt.figure(figsize = (21, 9))
+                gs  = GridSpec(1, 2)
+                ax8 = fig.add_subplot(gs[0, 0])
+                bin_centres = (post_data.triads_1d_pdf_ranges_t[1:] + post_data.triads_1d_pdf_ranges_t[:-1]) * 0.5
+                bin_width = post_data.triads_1d_pdf_ranges_t[1] - post_data.triads_1d_pdf_ranges_t[0]
+                pdf = post_data.triads_1d_pdf_counts_t[:, class_type, try_type, n_k3, :] / (np.sum(post_data.triads_1d_pdf_counts_t[:, class_type, try_type, n_k3, :], axis=-1) * bin_width)[:, np.newaxis]
+                im8 = ax8.imshow(np.flipud(pdf), aspect='auto', extent = (-np.pi, np.pi, 1, sys_vars.ndata), cmap = my_magma)
+                ax8.set_xticks([-np.pi, -np.pi/2.0, 0., np.pi/2, np.pi])
+                ax8.set_xticklabels([r"$-\pi$", r"$\frac{-\pi}{2}$", r"$0$", r"$\frac{\pi}{2}$", r"$\pi$"])
+                ax8.set_ylabel(r"$t$")
+                if class_type == 0:
+                    ax8.set_xlabel(r"$\varphi_{\mathbf{k}_1, \mathbf{k}_2}^{\mathbf{k}_3}$")
+                else:
+                    ax8.set_xlabel(r"$\Phi_{\mathbf{k}_1, \mathbf{k}_2}^{\mathbf{k}_3}$")
+                ax8.set_title(r"Triad PDF in Time")
+                div8  = make_axes_locatable(ax8)
+                cbax8 = div8.append_axes("right", size = "10%", pad = 0.05)
+                cb8   = plt.colorbar(im8, cax = cbax8)
+                cb8.set_label(r"PDF")
+                ax8 = fig.add_subplot(gs[0, 1])
+                bin_centres = (post_data.wghtd_triads_1d_pdf_ranges_t[1:] + post_data.wghtd_triads_1d_pdf_ranges_t[:-1]) * 0.5
+                bin_width = post_data.wghtd_triads_1d_pdf_ranges_t[1] - post_data.wghtd_triads_1d_pdf_ranges_t[0]
+                pdf = post_data.wghtd_triads_1d_pdf_counts_t[:, class_type, try_type, n_k3, :] / (np.sum(post_data.wghtd_triads_1d_pdf_counts_t[:, class_type, try_type, n_k3, :], axis=-1) * bin_width)[:, np.newaxis]
+                im8 = ax8.imshow(np.flipud(pdf), aspect='auto', extent = (-np.pi, np.pi, 1, sys_vars.ndata), cmap = my_magma)
+                ax8.set_xticks([-np.pi, -np.pi/2.0, 0., np.pi/2, np.pi])
+                ax8.set_xticklabels([r"$-\pi$", r"$\frac{-\pi}{2}$", r"$0$", r"$\frac{\pi}{2}$", r"$\pi$"])
+                ax8.set_ylabel(r"$t$")
+                if class_type == 0:
+                    ax8.set_xlabel(r"$\varphi_{\mathbf{k}_1, \mathbf{k}_2}^{\mathbf{k}_3}$")
+                else:
+                    ax8.set_xlabel(r"$\Phi_{\mathbf{k}_1, \mathbf{k}_2}^{\mathbf{k}_3}$")
+                ax8.set_title(r"Weight Flux Density Triad PDF in Time")
+                div8  = make_axes_locatable(ax8)
+                cbax8 = div8.append_axes("right", size = "10%", pad = 0.05)
+                cb8   = plt.colorbar(im8, cax = cbax8)
+                cb8.set_label(r"wPDF")
+                if class_type == 0:
+                    plt.suptitle("1D Contributions - PDF In Time: Normal Triads; Triad Type {}; Sector {}".format(try_type, n_k3))
+                else:
+                    plt.suptitle("1D Contributions - PDF In Time: Generalized Triads; Triad Type {}; Sector {}".format(try_type, n_k3))
+                plt.savefig(cmdargs.out_dir_avg_snaps + "/Type[{}]_TriadPDF_1D_InTime_Class[{}]_Sec[{}].png".format(try_type, class_type, n_k3), bbox_inches="tight")
+                plt.close()
 
     # -----------------------------------------
     # # --------  Plot Data For Videos
@@ -879,12 +1049,20 @@ if __name__ == '__main__':
                     print("TRIAD TYPE: {}".format(int(cmdargs.triad_type)), end = " ")
                     print(cmdargs.phase_order)
                     if cmdargs.phase_order:
-                        R      = np.absolute(post_data.phase_order_C_theta_triads[:, :, :])
-                        R_1d   = np.absolute(post_data.phase_order_C_theta_triads_1d[:, :, :])
-                        R_2d   = np.absolute(post_data.phase_order_C_theta_triads_2d[:, :, :, :])
-                        Phi    = np.angle(post_data.phase_order_C_theta_triads[:, :, :])
-                        Phi_1d = np.angle(post_data.phase_order_C_theta_triads_1d[:, :, :])
-                        Phi_2d = np.angle(post_data.phase_order_C_theta_triads_2d[:, :, :, :])
+                        if post_data.phase_order_normed_const:
+                            R      = np.absolute(post_data.phase_order_C_theta_triads[:, :, :] / np.sum(post_data.phase_order_norm_const[:, 0, :, :, :], axis=-1))
+                            R_1d   = np.absolute(post_data.phase_order_C_theta_triads_1d[:, :, :] / np.diagonal(post_data.phase_order_norm_const[:, 0, :, :], axis1=-2, axis2=-1))
+                            R_2d   = np.absolute(post_data.phase_order_C_theta_triads_2d[:, :, :, :] / post_data.phase_order_norm_const[:, 0, :, :, :])
+                            Phi    = np.angle(post_data.phase_order_C_theta_triads[:, :, :] / np.sum(post_data.phase_order_norm_const[:, 0, :, :, :], axis=-1))
+                            Phi_1d = np.angle(post_data.phase_order_C_theta_triads_1d[:, :, :] / np.diagonal(post_data.phase_order_norm_const[:, 0, :, :], axis1=-2, axis2=-1))
+                            Phi_2d = np.angle(post_data.phase_order_C_theta_triads_2d[:, :, :, :] / post_data.phase_order_norm_const[:, 0, :, :, :])
+                        else:
+                            R      = np.absolute(post_data.phase_order_C_theta_triads[:, :, :])
+                            R_1d   = np.absolute(post_data.phase_order_C_theta_triads_1d[:, :, :])
+                            R_2d   = np.absolute(post_data.phase_order_C_theta_triads_2d[:, :, :, :])
+                            Phi    = np.angle(post_data.phase_order_C_theta_triads[:, :, :])
+                            Phi_1d = np.angle(post_data.phase_order_C_theta_triads_1d[:, :, :])
+                            Phi_2d = np.angle(post_data.phase_order_C_theta_triads_2d[:, :, :, :])
                     else:
                         R      = post_data.triad_R[:, :, :]
                         R_1d   = post_data.triad_R_1d[:, :, :]
@@ -945,12 +1123,20 @@ if __name__ == '__main__':
 
                     for t in range(num_triad_types):
                         if cmdargs.phase_order:
-                            R      = np.absolute(post_data.phase_order_C_theta_triads[:, :, :])
-                            R_1d   = np.absolute(post_data.phase_order_C_theta_triads_1d[:, :, :])
-                            R_2d   = np.absolute(post_data.phase_order_C_theta_triads_2d[:, :, :, :])
-                            Phi    = np.angle(post_data.phase_order_C_theta_triads[:, :, :])
-                            Phi_1d = np.angle(post_data.phase_order_C_theta_triads_1d[:, :, :])
-                            Phi_2d = np.angle(post_data.phase_order_C_theta_triads_2d[:, :, :, :])
+                            if post_data.phase_order_normed_const:
+                                R      = np.absolute(post_data.phase_order_C_theta_triads[:, :, :] / np.sum(post_data.phase_order_norm_const[:, 0, :, :, :], axis=-1))
+                                R_1d   = np.absolute(post_data.phase_order_C_theta_triads_1d[:, :, :] / np.diagonal(post_data.phase_order_norm_const[:, 0, :, :], axis1=-2, axis2=-1))
+                                R_2d   = np.absolute(post_data.phase_order_C_theta_triads_2d[:, :, :, :] / post_data.phase_order_norm_const[:, 0, :, :, :])
+                                Phi    = np.angle(post_data.phase_order_C_theta_triads[:, :, :] / np.sum(post_data.phase_order_norm_const[:, 0, :, :, :], axis=-1))
+                                Phi_1d = np.angle(post_data.phase_order_C_theta_triads_1d[:, :, :] / np.diagonal(post_data.phase_order_norm_const[:, 0, :, :], axis1=-2, axis2=-1))
+                                Phi_2d = np.angle(post_data.phase_order_C_theta_triads_2d[:, :, :, :] / post_data.phase_order_norm_const[:, 0, :, :, :])
+                            else:
+                                R      = np.absolute(post_data.phase_order_C_theta_triads[:, :, :])
+                                R_1d   = np.absolute(post_data.phase_order_C_theta_triads_1d[:, :, :])
+                                R_2d   = np.absolute(post_data.phase_order_C_theta_triads_2d[:, :, :, :])
+                                Phi    = np.angle(post_data.phase_order_C_theta_triads[:, :, :])
+                                Phi_1d = np.angle(post_data.phase_order_C_theta_triads_1d[:, :, :])
+                                Phi_2d = np.angle(post_data.phase_order_C_theta_triads_2d[:, :, :, :])
                         else:
                             R      = post_data.triad_R[:, :, :]
                             R_1d   = post_data.triad_R_1d[:, :, :]
@@ -1033,18 +1219,20 @@ if __name__ == '__main__':
                     ## Loop through simulation and plot data
                     for i in range(sys_vars.ndata):
                         if cmdargs.phase_order:
-                            R      = np.absolute(post_data.phase_order_C_theta_triads[i, :, :])
-                            # print(R[0, :])
-                            R_1d   = np.absolute(post_data.phase_order_C_theta_triads_1d[i, :, :])
-                            # print(R_1d[0, :])
-                            R_2d   = np.absolute(post_data.phase_order_C_theta_triads_2d[i, :, :, :])
-                            # print(R_2d[0, :, :])
-                            Phi    = np.angle(post_data.phase_order_C_theta_triads[i, :, :])
-                            # print(Phi[0, :])
-                            Phi_1d = np.angle(post_data.phase_order_C_theta_triads_1d[i, :, :])
-                            # print(Phi_1d[0, :])
-                            Phi_2d = np.angle(post_data.phase_order_C_theta_triads_2d[i, :, :, :])
-                            # print(Phi_2d[0, :, :])
+                            if post_data.phase_order_normed_const:
+                                R      = np.absolute(post_data.phase_order_C_theta_triads[i, :, :] / np.sum(post_data.phase_order_norm_const[i, 0, :, :, :], axis=-1))
+                                R_1d   = np.absolute(post_data.phase_order_C_theta_triads_1d[i, :, :] / np.diagonal(post_data.phase_order_norm_const[i, 0, :, :], axis1=-2, axis2=-1))
+                                R_2d   = np.absolute(post_data.phase_order_C_theta_triads_2d[i, :, :, :] / post_data.phase_order_norm_const[i, 0, :, :, :])
+                                Phi    = np.angle(post_data.phase_order_C_theta_triads[i, :, :] / np.sum(post_data.phase_order_norm_const[i, 0, :, :, :], axis=-1))
+                                Phi_1d = np.angle(post_data.phase_order_C_theta_triads_1d[i, :, :] / np.diagonal(post_data.phase_order_norm_const[i, 0, :, :], axis1=-2, axis2=-1))
+                                Phi_2d = np.angle(post_data.phase_order_C_theta_triads_2d[i, :, :, :] / post_data.phase_order_norm_const[i, 0, :, :, :])
+                            else:
+                                R      = np.absolute(post_data.phase_order_C_theta_triads[i, :, :])
+                                R_1d   = np.absolute(post_data.phase_order_C_theta_triads_1d[i, :, :])
+                                R_2d   = np.absolute(post_data.phase_order_C_theta_triads_2d[i, :, :, :])
+                                Phi    = np.angle(post_data.phase_order_C_theta_triads[i, i, :])
+                                Phi_1d = np.angle(post_data.phase_order_C_theta_triads_1d[i, :, :])
+                                Phi_2d = np.angle(post_data.phase_order_C_theta_triads_2d[i, :, :, :])
                         else:
                             R      = post_data.triad_R[i, :, :]
                             R_1d   = post_data.triad_R_1d[i, :, :]

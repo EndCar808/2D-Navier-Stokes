@@ -204,6 +204,8 @@ if __name__ == '__main__':
                 cfl_cond = int(parser[section]['cfl_cond'] == 'True')
             if 'trans_iters' in parser[section]:
                 trans_iters = int(parser[section]['trans_iters'] == 'True')
+            if 'trans_iters_frac' in parser[section]:
+                trans_iters_frac = float(parser[section]['trans_iters_frac'])
             if 'adaptive_step_type' in parser[section]:
                 step_type = int(parser[section]['adaptive_step_type'] == 'True')
         if section in ['DIRECTORIES']:
@@ -297,12 +299,12 @@ if __name__ == '__main__':
             solver_error  = []
 
         ## Generate command list 
-        cmd_list = [["mpirun -n {} {} -o {} -n {} -n {} -s {:3.5f} -e {:3.5f} -T {} -c {} -c {:1.6f} -h {:1.6f} -h {} -v {:g} -v {} -v {:1.1f} -d {:g} -d {} -d {:1.1f} -i {} -t {} -f {} -f {} -f {:1.3f} -p {}".format(
+        cmd_list = [["mpirun -n {} {} -o {} -n {} -n {} -s {:3.5f} -e {:3.5f} -T {} -T {} -c {} -c {:1.6f} -h {:1.6f} -h {} -v {:g} -v {} -v {:1.1f} -d {:g} -d {} -d {:1.1f} -i {} -t {} -f {} -f {} -f {:1.3f} -p {}".format(
                                                                                                                                                                                     solver_procs, 
                                                                                                                                                                                     executable, 
                                                                                                                                                                                     output_dir, 
                                                                                                                                                                                     nx, ny, 
-                                                                                                                                                                                    t0, t, trans_iters, 
+                                                                                                                                                                                    t0, t, trans_iters, trans_iters_frac, 
                                                                                                                                                                                     cfl_cond, c, 
                                                                                                                                                                                     h, step_type, 
                                                                                                                                                                                     v, int(hype), hypervisc_pow, 
