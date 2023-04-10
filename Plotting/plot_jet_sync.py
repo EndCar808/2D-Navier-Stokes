@@ -169,7 +169,51 @@ def jet_phase_order(phases, theta, kx, ky):
 
     return phase_order
 
+@njit
+def get_normed_collective_phase(collect_phase, norm_const):
 
+    ## Get dims
+    s = collect_phase.shape
+    r    = np.zeros(s, dtype='float64')
+    phi  = np.zeros(s, dtype='float64')
+    enst = np.zeros(s, dtype='float64')
+    
+    for i in range(s[0]):
+        if norm_const[i] != 0.0:
+            r[i]    = np.absolute(collect_phase[i] / norm_const[i])
+            phi[i]  = np.angle(collect_phase[i] / norm_const[i])
+            enst[i] = np.real(collect_phase[i])
+
+    return r, phi, enst
+
+@njit
+def get_normed_collective_phase_2d(collect_phase, norm_const):
+
+    ## Get dims
+    s = collect_phase.shape
+    r    = np.zeros(s, dtype='float64')
+    phi  = np.zeros(s, dtype='float64')
+    enst = np.zeros(s, dtype='float64')
+
+    for i in range(s[0]):
+        for j in range(s[1]):
+            if norm_const[i, j] != 0.0:
+                r[i, j]    = np.absolute(collect_phase[i, j] / norm_const[i, j])
+                phi[i, j]  = np.angle(collect_phase[i, j] / norm_const[i, j])
+                enst[i, j] = np.real(collect_phase[i, j])
+
+    return r, phi, enst
+
+@njit
+def compute_pdf_t(counts, bin_width):
+
+    num_t, nbins = counts.shape
+
+    pdf = np.zeros(counts.shape)
+    for t in range(num_t):
+        pdf[t, :] = counts[t, :] / (np.sum(counts[t, :], axis=-1) * bin_width)
+
+    return pdf
 ######################
 ##       MAIN       ##
 ######################
@@ -212,7 +256,8 @@ if __name__ == '__main__':
         flux_1d_min = np.amin(post_data.enst_flux_per_sec_1d[:, 0, :])
         flux_1d_max = np.amax(post_data.enst_flux_per_sec_1d[:, 0, :])
         flux_2d_min = np.amin(post_data.enst_flux_per_sec_2d[:, 0, :, :])
-        flux_2d_max = np.amax(post_data.enst_flux_per_sec_2d[:, 0, :, :])
+        # flux_2d_max = np.amax(post_data.enst_flux_per_sec_2d[:, 0, :, :])
+        flux_2d_max = -flux_2d_min 
 
     print("Finished Reading in Data")
     # -----------------------------------------
@@ -500,7 +545,7 @@ if __name__ == '__main__':
         fig = plt.figure(figsize = (21, 9))
         gs  = GridSpec(1, 3)
         ax6 = fig.add_subplot(gs[0, 0])
-        im6 = ax6.imshow(post_data.triad_R_1d[:, try_type, :], aspect='auto', extent = (theta_k3_min, theta_k3_max, 1, sys_vars.ndata), cmap = my_magma, vmin = 0.0, vmax = 1.0)
+        im6 = ax6.imshow(np.flipud(post_data.triad_R_1d[:, try_type, :]), aspect='auto', extent = (theta_k3_min, theta_k3_max, 1, sys_vars.ndata), cmap = my_magma, vmin = 0.0, vmax = 1.0)
         ax6.set_xticks(angticks)
         ax6.set_xticklabels(angtickLabels)
         ax6.set_ylabel(r"$t$")
@@ -511,7 +556,7 @@ if __name__ == '__main__':
         cb6   = plt.colorbar(im6, cax = cbax6)
         cb6.set_label(r"$\mathcal{R}^{1D}$")
         ax7 = fig.add_subplot(gs[0, 1])
-        im7 = ax7.imshow(post_data.triad_Phi_1d[:, try_type, :], aspect='auto', extent = (theta_k3_min, theta_k3_max, 1, sys_vars.ndata), cmap = my_hsv, vmin = -np.pi, vmax = np.pi)
+        im7 = ax7.imshow(np.flipud(post_data.triad_Phi_1d[:, try_type, :]), aspect='auto', extent = (theta_k3_min, theta_k3_max, 1, sys_vars.ndata), cmap = my_hsv, vmin = -np.pi, vmax = np.pi)
         ax7.set_xticks(angticks)
         ax7.set_xticklabels(angtickLabels)
         ax6.set_ylabel(r"$t$")
@@ -526,7 +571,7 @@ if __name__ == '__main__':
         cb7.set_label(r"$\Phi^{1D}$")
         ax8 = fig.add_subplot(gs[0, 2])
         data = post_data.enst_flux_per_sec_1d[:, try_type, :]
-        im8 = ax8.imshow(post_data.enst_flux_per_sec_1d[:, try_type, :], aspect='auto', extent = (theta_k3_min, theta_k3_max, 1, sys_vars.ndata), cmap = "seismic", vmin=np.amin(data), vmax=np.absolute(np.amin(data))) #vmin = flux_lims[4], vmax = flux_lims[5] #, norm = mpl.colors.SymLogNorm(linthresh = 0.1)
+        im8 = ax8.imshow(np.flipud(post_data.enst_flux_per_sec_1d[:, try_type, :]), aspect='auto', extent = (theta_k3_min, theta_k3_max, 1, sys_vars.ndata), cmap = "seismic", vmin=np.amin(data), vmax=np.absolute(np.amin(data))) #vmin = flux_lims[4], vmax = flux_lims[5] #, norm = mpl.colors.SymLogNorm(linthresh = 0.1)
         ax8.set_xticks(angticks)
         ax8.set_xticklabels(angtickLabels)
         ax8.set_ylabel(r"$t$")
@@ -547,7 +592,7 @@ if __name__ == '__main__':
         fig = plt.figure(figsize = (21, 9))
         gs  = GridSpec(1, 3)
         ax6 = fig.add_subplot(gs[0, 0])
-        im6 = ax6.imshow(post_data.triad_R[:, try_type, :], aspect='auto', extent = (theta_k3_min, theta_k3_max, 1, sys_vars.ndata), cmap = my_magma, vmin = 0.0, vmax = 1.0)
+        im6 = ax6.imshow(np.flipud(post_data.triad_R[:, try_type, :]), aspect='auto', extent = (theta_k3_min, theta_k3_max, 1, sys_vars.ndata), cmap = my_magma, vmin = 0.0, vmax = 1.0)
         ax6.set_xticks(angticks)
         ax6.set_xticklabels(angtickLabels)
         ax6.set_ylabel(r"$t$")
@@ -558,7 +603,7 @@ if __name__ == '__main__':
         cb6   = plt.colorbar(im6, cax = cbax6)
         cb6.set_label(r"$\mathcal{R}^{1D}$")
         ax7 = fig.add_subplot(gs[0, 1])
-        im7 = ax7.imshow(post_data.triad_Phi[:, try_type, :], aspect='auto', extent = (theta_k3_min, theta_k3_max, 1, sys_vars.ndata), cmap = my_hsv, vmin = -np.pi, vmax = np.pi)
+        im7 = ax7.imshow(np.flipud(post_data.triad_Phi[:, try_type, :]), aspect='auto', extent = (theta_k3_min, theta_k3_max, 1, sys_vars.ndata), cmap = my_hsv, vmin = -np.pi, vmax = np.pi)
         ax7.set_xticks(angticks)
         ax7.set_xticklabels(angtickLabels)
         ax7.set_xlabel(r"$\theta$")
@@ -570,7 +615,7 @@ if __name__ == '__main__':
         cb7.set_ticklabels([r"$-\pi$", r"$\frac{-\pi}{2}$", r"$0$", r"$\frac{\pi}{2}$", r"$\pi$"])
         cb7.set_label(r"$\Phi^{1D}$")
         ax8 = fig.add_subplot(gs[0, 2])
-        data = post_data.enst_flux_per_sec[:, try_type, :]
+        data = np.flipud(post_data.enst_flux_per_sec[:, try_type, :])
         im8 = ax8.imshow(data, aspect='auto', extent = (theta_k3_min, theta_k3_max, 1, sys_vars.ndata), cmap = "seismic", vmin=np.amin(data), vmax=np.absolute(np.amin(data))) #vmin = flux_lims[4], vmax = flux_lims[5] #, norm = mpl.colors.SymLogNorm(linthresh = 0.1)
         ax8.set_xticks(angticks)
         ax8.set_xticklabels(angtickLabels)
@@ -590,15 +635,13 @@ if __name__ == '__main__':
         #
         # 
         if post_data.phase_order_normed_const:
-            phase_order_R_2D    = np.absolute(post_data.phase_order_C_theta_triads_2d[:, try_type, :, :]) / post_data.phase_order_norm_const[:, 0, try_type, :, :]
-            phase_order_Phi_2D  = np.angle(post_data.phase_order_C_theta_triads_2d[:, try_type, :, :]) / post_data.phase_order_norm_const[:, 0, try_type, :, :]
-            phase_order_enst_2D = np.real(post_data.phase_order_C_theta_triads_2d[:, try_type, :])  / post_data.phase_order_norm_const[:, 0, try_type, :, :]
-            phase_order_R_1D    = np.absolute(post_data.phase_order_C_theta_triads_1d[:, try_type, :]) / np.diagonal(post_data.phase_order_norm_const[:, 0, try_type, :, :], axis1=-2, axis2=-1)
-            phase_order_Phi_1D  = np.angle(post_data.phase_order_C_theta_triads_1d[:, try_type, :]) / np.diagonal(post_data.phase_order_norm_const[:, 0, try_type, :, :], axis1=-2, axis2=-1)
-            phase_order_enst_1D = np.real(post_data.phase_order_C_theta_triads_1d[:, try_type, :]) / np.diagonal(post_data.phase_order_norm_const[:, 0, try_type, :, :], axis1=-2, axis2=-1)
-            phase_order_R       = np.absolute(post_data.phase_order_C_theta_triads[:, try_type, :]) / np.sum(post_data.phase_order_norm_const[:, 0, try_type, :, :], axis=-1)
-            phase_order_Phi     = np.angle(post_data.phase_order_C_theta_triads[:, try_type, :]) / np.sum(post_data.phase_order_norm_const[:, 0, try_type, :, :], axis=-1)
-            phase_order_enst    = np.real(post_data.phase_order_C_theta_triads[:, try_type, :]) / np.sum(post_data.phase_order_norm_const[:, 0, try_type, :, :], axis=-1)
+            phase_order_R, phase_order_Phi, phase_order_enst          = np.zeros((sys_vars.ndata, post_data.num_k3_sect)), np.zeros((sys_vars.ndata, post_data.num_k3_sect)), np.zeros((sys_vars.ndata, post_data.num_k3_sect))
+            phase_order_R_1D, phase_order_Phi_1D, phase_order_enst_1D = np.zeros((sys_vars.ndata, post_data.num_k3_sect)), np.zeros((sys_vars.ndata, post_data.num_k3_sect)), np.zeros((sys_vars.ndata, post_data.num_k3_sect))
+            phase_order_R_2D, phase_order_Phi_2D, phase_order_enst_2D = np.zeros((sys_vars.ndata, post_data.num_k3_sect, post_data.num_k1_sect)), np.zeros((sys_vars.ndata, post_data.num_k3_sect, post_data.num_k1_sect)), np.zeros((sys_vars.ndata, post_data.num_k3_sect, post_data.num_k1_sect))
+            for i in range(sys_vars.ndata):
+                phase_order_R[i, :], phase_order_Phi[i, :], phase_order_enst[i, :]                  = get_normed_collective_phase(post_data.phase_order_C_theta_triads[i, try_type, :], np.sum(post_data.phase_order_norm_const[i, 0, try_type, :, :], axis=-1))
+                phase_order_R_1D[i,:], phase_order_Phi_1D[i, :], phase_order_enst_1D[i, :]          = get_normed_collective_phase(post_data.phase_order_C_theta_triads_1d[i, try_type, :], np.diag(post_data.phase_order_norm_const[i, 0, try_type, :, :]))
+                phase_order_R_2D[i,:, :], phase_order_Phi_2D[i, :, :], phase_order_enst_2D[i, :, :] = get_normed_collective_phase_2d(post_data.phase_order_C_theta_triads_2d[i, try_type, :, :], post_data.phase_order_norm_const[i, 0, try_type, :, :])
         else:
             phase_order_R_2D    = np.absolute(post_data.phase_order_C_theta_triads_2d[:, try_type, :, :])
             phase_order_Phi_2D  = np.angle(post_data.phase_order_C_theta_triads_2d[:, try_type, :, :])
@@ -631,7 +674,7 @@ if __name__ == '__main__':
         cb6   = plt.colorbar(im6, cax = cbax6)
         cb6.set_label(r"$|\mathcal{R}^{2D}|$")
         ax7 = fig.add_subplot(gs[0, 1])
-        im7 = ax7.imshow(np.flipud(np.mean(phase_order_Phi_2D, axis=0)), extent = (theta_k3_min, theta_k3_max, alpha_min, alpha_max), cmap = my_jet, vmin = 0.0, vmax = 2.0 * np.pi)
+        im7 = ax7.imshow(np.flipud(np.mean(np.mod(phase_order_Phi_2D + 2.0 * np.pi, 2.0 * np.pi), axis=0)), extent = (theta_k3_min, theta_k3_max, alpha_min, alpha_max), cmap = my_jet, vmin = 0.0, vmax = 2.0 * np.pi)
         ax7.set_xticks(angticks)
         ax7.set_xticklabels(angtickLabels_alpha)
         ax7.set_yticks(angticks)
@@ -763,7 +806,7 @@ if __name__ == '__main__':
         fig = plt.figure(figsize = (21, 9))
         gs  = GridSpec(1, 3)
         ax6 = fig.add_subplot(gs[0, 0])
-        im6 = ax6.imshow(phase_order_R_1D, aspect='auto', extent = (theta_k3_min, theta_k3_max, 1, sys_vars.ndata), cmap = my_magma, vmin = 0.0, vmax = 1.0)
+        im6 = ax6.imshow(np.flipud(phase_order_R_1D), aspect='auto', extent = (theta_k3_min, theta_k3_max, 1, sys_vars.ndata), cmap = my_magma, vmin = 0.0, vmax = 1.0)
         ax6.set_xticks(angticks)
         ax6.set_xticklabels(angtickLabels)
         ax6.set_ylabel(r"$t$")
@@ -774,7 +817,7 @@ if __name__ == '__main__':
         cb6   = plt.colorbar(im6, cax = cbax6)
         cb6.set_label(r"$|\mathcal{R}^{1D}|$")
         ax7 = fig.add_subplot(gs[0, 1])
-        im7 = ax7.imshow(phase_order_Phi_1D, aspect='auto', extent = (theta_k3_min, theta_k3_max, 1, sys_vars.ndata), cmap = my_hsv, vmin = -np.pi, vmax = np.pi)
+        im7 = ax7.imshow(np.flipud(phase_order_Phi_1D), aspect='auto', extent = (theta_k3_min, theta_k3_max, 1, sys_vars.ndata), cmap = my_hsv, vmin = -np.pi, vmax = np.pi)
         ax7.set_xticks(angticks)
         ax7.set_xticklabels(angtickLabels)
         ax6.set_ylabel(r"$t$")
@@ -788,7 +831,7 @@ if __name__ == '__main__':
         cb7.set_ticklabels([r"$-\pi$", r"$\frac{-\pi}{2}$", r"$0$", r"$\frac{\pi}{2}$", r"$\pi$"])
         cb7.set_label(r"$\arg\{\mathcal{R}^{1D} \}$")
         ax8 = fig.add_subplot(gs[0, 2])
-        data = phase_order_enst_1D
+        data = np.flipud(phase_order_enst_1D)
         im8 = ax8.imshow(data, aspect='auto', extent = (theta_k3_min, theta_k3_max, 1, sys_vars.ndata), cmap = "seismic", vmin=np.amin(data), vmax=np.absolute(np.amin(data))) #vmin = flux_lims[4], vmax = flux_lims[5] #, norm = mpl.colors.SymLogNorm(linthresh = 0.1)
         ax8.set_xticks(angticks)
         ax8.set_xticklabels(angtickLabels)
@@ -810,7 +853,7 @@ if __name__ == '__main__':
         fig = plt.figure(figsize = (21, 9))
         gs  = GridSpec(1, 3)
         ax6 = fig.add_subplot(gs[0, 0])
-        im6 = ax6.imshow(phase_order_R, aspect='auto', extent = (theta_k3_min, theta_k3_max, 1, sys_vars.ndata), cmap = my_magma, vmin = 0.0, vmax = 1.0)
+        im6 = ax6.imshow(np.flipud(phase_order_R), aspect='auto', extent = (theta_k3_min, theta_k3_max, 1, sys_vars.ndata), cmap = my_magma, vmin = 0.0, vmax = 1.0)
         ax6.set_xticks(angticks)
         ax6.set_xticklabels(angtickLabels)
         ax6.set_ylabel(r"$t$")
@@ -821,7 +864,7 @@ if __name__ == '__main__':
         cb6   = plt.colorbar(im6, cax = cbax6)
         cb6.set_label(r"$| \mathcal{R}_\theta |$")
         ax7 = fig.add_subplot(gs[0, 1])
-        im7 = ax7.imshow(phase_order_Phi, aspect='auto', extent = (theta_k3_min, theta_k3_max, 1, sys_vars.ndata), cmap = my_hsv, vmin = -np.pi, vmax = np.pi)
+        im7 = ax7.imshow(np.flipud(phase_order_Phi), aspect='auto', extent = (theta_k3_min, theta_k3_max, 1, sys_vars.ndata), cmap = my_hsv, vmin = -np.pi, vmax = np.pi)
         ax7.set_xticks(angticks)
         ax7.set_xticklabels(angtickLabels)
         ax7.set_xlabel(r"$\theta$")
@@ -833,7 +876,7 @@ if __name__ == '__main__':
         cb7.set_ticklabels([r"$-\pi$", r"$\frac{-\pi}{2}$", r"$0$", r"$\frac{\pi}{2}$", r"$\pi$"])
         cb7.set_label(r"$\arg \{ \mathcal{R}_\theta \}$")
         ax8 = fig.add_subplot(gs[0, 2])
-        data = phase_order_enst
+        data = np.flipud(phase_order_enst)
         im8 = ax8.imshow(data, aspect='auto', extent = (theta_k3_min, theta_k3_max, 1, sys_vars.ndata), cmap = "seismic", vmin=np.amin(data), vmax=np.absolute(np.amin(data))) #vmin = flux_lims[4], vmax = flux_lims[5] #, norm = mpl.colors.SymLogNorm(linthresh = 0.1)
         ax8.set_xticks(angticks)
         ax8.set_xticklabels(angtickLabels)
@@ -864,8 +907,8 @@ if __name__ == '__main__':
                 ax8 = fig.add_subplot(gs[0, 0])
                 bin_centres = (post_data.all_triads_pdf_ranges_t[class_type, try_type, 1:] + post_data.all_triads_pdf_ranges_t[class_type, try_type, :-1]) * 0.5
                 bin_width = post_data.all_triads_pdf_ranges_t[class_type, try_type, 1] - post_data.all_triads_pdf_ranges_t[class_type, try_type, 0]
-                pdf = post_data.all_triads_pdf_counts_t[:, class_type, try_type, :] / (np.sum(post_data.all_triads_pdf_counts_t[:, class_type, try_type, :], axis=-1) * bin_width)[:, np.newaxis]
-                im8 = ax8.imshow(np.flipud(pdf), aspect='auto', extent = (-np.pi, np.pi, 1, sys_vars.ndata), cmap = my_magma)
+                pdf = compute_pdf_t(post_data.all_triads_pdf_counts_t[:, class_type, try_type, :], bin_width)
+                im8 = ax8.imshow(np.flipud(pdf), aspect='auto', extent = (-np.pi + dtheta_k3/2, np.pi - dtheta_k3/2, 1, sys_vars.ndata), cmap = my_magma) # , norm=mpl.colors.LogNorm()
                 ax8.set_xticks([-np.pi, -np.pi/2.0, 0., np.pi/2, np.pi])
                 ax8.set_xticklabels([r"$-\pi$", r"$\frac{-\pi}{2}$", r"$0$", r"$\frac{\pi}{2}$", r"$\pi$"])
                 ax8.set_ylabel(r"$t$")
@@ -881,8 +924,8 @@ if __name__ == '__main__':
                 ax8 = fig.add_subplot(gs[0, 1])
                 bin_centres = (post_data.all_wghtd_triads_pdf_ranges_t[class_type, try_type, 1:] + post_data.all_wghtd_triads_pdf_ranges_t[class_type, try_type, :-1]) * 0.5
                 bin_width = post_data.all_wghtd_triads_pdf_ranges_t[class_type, try_type, 1] - post_data.all_wghtd_triads_pdf_ranges_t[class_type, try_type, 0]
-                pdf = post_data.all_wghtd_triads_pdf_counts_t[:, class_type, try_type, :] / (np.sum(post_data.all_wghtd_triads_pdf_counts_t[:, class_type, try_type, :], axis=-1) * bin_width)[:, np.newaxis]
-                im8 = ax8.imshow(np.flipud(pdf), aspect='auto', extent = (-np.pi, np.pi, 1, sys_vars.ndata), cmap = my_magma)
+                pdf = compute_pdf_t(post_data.all_wghtd_triads_pdf_counts_t[:, class_type, try_type, :], bin_width)
+                im8 = ax8.imshow(np.flipud(pdf), aspect='auto', extent = (-np.pi + dtheta_k3/2, np.pi - dtheta_k3/2, 1, sys_vars.ndata), cmap = my_magma) # , norm=mpl.colors.LogNorm()
                 ax8.set_xticks([-np.pi, -np.pi/2.0, 0., np.pi/2, np.pi])
                 ax8.set_xticklabels([r"$-\pi$", r"$\frac{-\pi}{2}$", r"$0$", r"$\frac{\pi}{2}$", r"$\pi$"])
                 ax8.set_ylabel(r"$t$")
@@ -914,8 +957,8 @@ if __name__ == '__main__':
                 ax8 = fig.add_subplot(gs[0, 0])
                 bin_centres = (post_data.triads_all_pdf_ranges_t[1:] + post_data.triads_all_pdf_ranges_t[:-1]) * 0.5
                 bin_width = post_data.triads_all_pdf_ranges_t[1] - post_data.triads_all_pdf_ranges_t[0]
-                pdf = post_data.triads_all_pdf_counts_t[:, class_type, try_type, n_k3, :] / (np.sum(post_data.triads_all_pdf_counts_t[:, class_type, try_type, n_k3, :], axis=-1) * bin_width)[:, np.newaxis]
-                im8 = ax8.imshow(np.flipud(pdf), aspect='auto', extent = (-np.pi, np.pi, 1, sys_vars.ndata), cmap = my_magma)
+                pdf = compute_pdf_t(post_data.triads_all_pdf_counts_t[:, class_type, try_type, n_k3, :], bin_width)
+                im8 = ax8.imshow(np.flipud(pdf), aspect='auto', extent = (-np.pi + dtheta_k3/2, np.pi - dtheta_k3/2, 1, sys_vars.ndata), cmap = my_magma) # , norm=mpl.colors.LogNorm()
                 ax8.set_xticks([-np.pi, -np.pi/2.0, 0., np.pi/2, np.pi])
                 ax8.set_xticklabels([r"$-\pi$", r"$\frac{-\pi}{2}$", r"$0$", r"$\frac{\pi}{2}$", r"$\pi$"])
                 ax8.set_ylabel(r"$t$")
@@ -931,8 +974,8 @@ if __name__ == '__main__':
                 ax8 = fig.add_subplot(gs[0, 1])
                 bin_centres = (post_data.wghtd_triads_all_pdf_ranges_t[1:] + post_data.wghtd_triads_all_pdf_ranges_t[:-1]) * 0.5
                 bin_width = post_data.wghtd_triads_all_pdf_ranges_t[1] - post_data.wghtd_triads_all_pdf_ranges_t[0]
-                pdf = post_data.wghtd_triads_all_pdf_counts_t[:, class_type, try_type, n_k3, :] / (np.sum(post_data.wghtd_triads_all_pdf_counts_t[:, class_type, try_type, n_k3, :], axis=-1) * bin_width)[:, np.newaxis]
-                im8 = ax8.imshow(np.flipud(pdf), aspect='auto', extent = (-np.pi, np.pi, 1, sys_vars.ndata), cmap = my_magma)
+                pdf = compute_pdf_t(post_data.wghtd_triads_all_pdf_counts_t[:, class_type, try_type, n_k3, :], bin_width)
+                im8 = ax8.imshow(np.flipud(pdf), aspect='auto', extent = (-np.pi + dtheta_k3/2, np.pi - dtheta_k3/2, 1, sys_vars.ndata), cmap = my_magma) # , norm=mpl.colors.LogNorm()
                 ax8.set_xticks([-np.pi, -np.pi/2.0, 0., np.pi/2, np.pi])
                 ax8.set_xticklabels([r"$-\pi$", r"$\frac{-\pi}{2}$", r"$0$", r"$\frac{\pi}{2}$", r"$\pi$"])
                 ax8.set_ylabel(r"$t$")
@@ -958,8 +1001,8 @@ if __name__ == '__main__':
                 ax8 = fig.add_subplot(gs[0, 0])
                 bin_centres = (post_data.triads_1d_pdf_ranges_t[1:] + post_data.triads_1d_pdf_ranges_t[:-1]) * 0.5
                 bin_width = post_data.triads_1d_pdf_ranges_t[1] - post_data.triads_1d_pdf_ranges_t[0]
-                pdf = post_data.triads_1d_pdf_counts_t[:, class_type, try_type, n_k3, :] / (np.sum(post_data.triads_1d_pdf_counts_t[:, class_type, try_type, n_k3, :], axis=-1) * bin_width)[:, np.newaxis]
-                im8 = ax8.imshow(np.flipud(pdf), aspect='auto', extent = (-np.pi, np.pi, 1, sys_vars.ndata), cmap = my_magma)
+                pdf = compute_pdf_t(post_data.triads_1d_pdf_counts_t[:, class_type, try_type, n_k3, :], bin_width)
+                im8 = ax8.imshow(np.flipud(pdf), aspect='auto', extent = (-np.pi + dtheta_k3/2, np.pi - dtheta_k3/2, 1, sys_vars.ndata), cmap = my_magma) # , norm=mpl.colors.LogNorm()
                 ax8.set_xticks([-np.pi, -np.pi/2.0, 0., np.pi/2, np.pi])
                 ax8.set_xticklabels([r"$-\pi$", r"$\frac{-\pi}{2}$", r"$0$", r"$\frac{\pi}{2}$", r"$\pi$"])
                 ax8.set_ylabel(r"$t$")
@@ -975,8 +1018,8 @@ if __name__ == '__main__':
                 ax8 = fig.add_subplot(gs[0, 1])
                 bin_centres = (post_data.wghtd_triads_1d_pdf_ranges_t[1:] + post_data.wghtd_triads_1d_pdf_ranges_t[:-1]) * 0.5
                 bin_width = post_data.wghtd_triads_1d_pdf_ranges_t[1] - post_data.wghtd_triads_1d_pdf_ranges_t[0]
-                pdf = post_data.wghtd_triads_1d_pdf_counts_t[:, class_type, try_type, n_k3, :] / (np.sum(post_data.wghtd_triads_1d_pdf_counts_t[:, class_type, try_type, n_k3, :], axis=-1) * bin_width)[:, np.newaxis]
-                im8 = ax8.imshow(np.flipud(pdf), aspect='auto', extent = (-np.pi, np.pi, 1, sys_vars.ndata), cmap = my_magma)
+                pdf = compute_pdf_t(post_data.wghtd_triads_1d_pdf_counts_t[:, class_type, try_type, n_k3, :], bin_width)
+                im8 = ax8.imshow(np.flipud(pdf), aspect='auto', extent = (-np.pi + dtheta_k3/2, np.pi - dtheta_k3/2, 1, sys_vars.ndata), cmap = my_magma) # , norm=mpl.colors.LogNorm()
                 ax8.set_xticks([-np.pi, -np.pi/2.0, 0., np.pi/2, np.pi])
                 ax8.set_xticklabels([r"$-\pi$", r"$\frac{-\pi}{2}$", r"$0$", r"$\frac{\pi}{2}$", r"$\pi$"])
                 ax8.set_ylabel(r"$t$")
@@ -1050,12 +1093,14 @@ if __name__ == '__main__':
                     print(cmdargs.phase_order)
                     if cmdargs.phase_order:
                         if post_data.phase_order_normed_const:
-                            R      = np.absolute(post_data.phase_order_C_theta_triads[:, :, :] / np.sum(post_data.phase_order_norm_const[:, 0, :, :, :], axis=-1))
-                            R_1d   = np.absolute(post_data.phase_order_C_theta_triads_1d[:, :, :] / np.diagonal(post_data.phase_order_norm_const[:, 0, :, :], axis1=-2, axis2=-1))
-                            R_2d   = np.absolute(post_data.phase_order_C_theta_triads_2d[:, :, :, :] / post_data.phase_order_norm_const[:, 0, :, :, :])
-                            Phi    = np.angle(post_data.phase_order_C_theta_triads[:, :, :] / np.sum(post_data.phase_order_norm_const[:, 0, :, :, :], axis=-1))
-                            Phi_1d = np.angle(post_data.phase_order_C_theta_triads_1d[:, :, :] / np.diagonal(post_data.phase_order_norm_const[:, 0, :, :], axis1=-2, axis2=-1))
-                            Phi_2d = np.angle(post_data.phase_order_C_theta_triads_2d[:, :, :, :] / post_data.phase_order_norm_const[:, 0, :, :, :])
+                            R, Phi, enst          = np.zeros((sys_vars.ndata, post_data.NUM_TRIAD_TYPES, post_data.num_k3_sect)), np.zeros((sys_vars.ndata, post_data.NUM_TRIAD_TYPES, post_data.num_k3_sect)), np.zeros((sys_vars.ndata, post_data.NUM_TRIAD_TYPES, post_data.num_k3_sect))
+                            R_1d, Phi_1d, enst_1d = np.zeros((sys_vars.ndata, post_data.NUM_TRIAD_TYPES, post_data.num_k3_sect)), np.zeros((sys_vars.ndata, post_data.NUM_TRIAD_TYPES, post_data.num_k3_sect)), np.zeros((sys_vars.ndata, post_data.NUM_TRIAD_TYPES, post_data.num_k3_sect))
+                            R_2d, Phi_2d, enst_2d = np.zeros((sys_vars.ndata, post_data.NUM_TRIAD_TYPES, post_data.num_k3_sect, post_data.num_k1_sect)), np.zeros((sys_vars.ndata, post_data.NUM_TRIAD_TYPES, post_data.num_k3_sect, post_data.num_k1_sect)), np.zeros((sys_vars.ndata, post_data.NUM_TRIAD_TYPES, post_data.num_k3_sect, post_data.num_k1_sect))
+                            for try_type in range(post_data.NUM_TRIAD_TYPES):
+                                for i in range(sys_vars.ndata):
+                                    R[i, try_type, :], Phi[i, try_type, :], enst[i, try_type, :]                   = get_normed_collective_phase(post_data.phase_order_C_theta_triads[i, try_type, :], np.sum(post_data.phase_order_norm_const[i, 0, try_type, :, :], axis=-1))
+                                    R_1d[i, try_type, :], Phi_1d[i, try_type, :], enst_1d[i, try_type, :]          = get_normed_collective_phase(post_data.phase_order_C_theta_triads_1d[i, try_type, :], np.diag(post_data.phase_order_norm_const[i, 0, try_type, :, :]))
+                                    R_2d[i, try_type, :, :], Phi_2d[i, try_type, :, :], enst_2d[i, try_type, :, :] = get_normed_collective_phase_2d(post_data.phase_order_C_theta_triads_2d[i, try_type, :, :], post_data.phase_order_norm_const[i, 0, try_type, :, :])
                         else:
                             R      = np.absolute(post_data.phase_order_C_theta_triads[:, :, :])
                             R_1d   = np.absolute(post_data.phase_order_C_theta_triads_1d[:, :, :])
@@ -1063,6 +1108,9 @@ if __name__ == '__main__':
                             Phi    = np.angle(post_data.phase_order_C_theta_triads[:, :, :])
                             Phi_1d = np.angle(post_data.phase_order_C_theta_triads_1d[:, :, :])
                             Phi_2d = np.angle(post_data.phase_order_C_theta_triads_2d[:, :, :, :])
+                            enst    = np.real(post_data.phase_order_C_theta_triads[:, :, :])
+                            enst_1d = np.real(post_data.phase_order_C_theta_triads_1d[:, :, :])
+                            enst_2d = np.real(post_data.phase_order_C_theta_triads_2d[:, :, :, :])
                     else:
                         R      = post_data.triad_R[:, :, :]
                         R_1d   = post_data.triad_R_1d[:, :, :]
@@ -1070,14 +1118,26 @@ if __name__ == '__main__':
                         Phi    = post_data.triad_Phi[:, :, :] 
                         Phi_1d = post_data.triad_Phi_1d[:, :, :]
                         Phi_2d = post_data.triad_Phi_2d[:, :, :, :]
+                        enst    =post_data.enst_flux_per_sec[:, :, :]
+                        enst_1d =post_data.enst_flux_per_sec_1d[:, :, :]
+                        enst_2d =post_data.enst_flux_per_sec_2d[:, :, :, :]
+
+                    flux_min    = np.amin(enst[:, int(cmdargs.triad_type), :])
+                    flux_max    = np.amax(enst[:, int(cmdargs.triad_type), :])
+                    flux_1d_min = np.amin(enst_1d[:, int(cmdargs.triad_type), :])
+                    flux_1d_max = np.amax(enst_1d[:, int(cmdargs.triad_type), :])
+                    flux_2d_min = np.amin(enst_2d[:, int(cmdargs.triad_type), :, :])
+                    # flux_2d_max = np.amax(enst_2d[:, int(cmdargs.triad_type), :, :])
+                    flux_2d_max = -flux_2d_min 
+
                     ## Create tasks for the process pool
                     if cmdargs.full:
                         if cmdargs.triad_plot_type == "sec":
                             groups_args = [(mprocs.Process(target = plot_sector_phase_sync_snaps_full_sec, args = (i, cmdargs.out_dir_triads, 
                                                     run_data.w[i, :, :], 
                                                     post_data.enst_spectrum[i, :, :], 
-                                                    post_data.enst_flux_per_sec_1d[i, int(cmdargs.triad_type), :], 
-                                                    post_data.enst_flux_per_sec_2d[i, int(cmdargs.triad_type), :, :], 
+                                                    enst_1d[i, int(cmdargs.triad_type), :], 
+                                                    enst_2d[i, int(cmdargs.triad_type), :, :], 
                                                     post_data.phases[i, :, int(sys_vars.Nx/3):], 
                                                     post_data.theta_k3, 
                                                     R_1d[i, int(cmdargs.triad_type), :], R_2d[i, int(cmdargs.triad_type), :, :], 
@@ -1090,9 +1150,9 @@ if __name__ == '__main__':
                             groups_args = [(mprocs.Process(target = plot_sector_phase_sync_snaps_all, args = (i, cmdargs.out_dir_triads, 
                                                                     run_data.w[i, :, :], 
                                                                     post_data.enst_spectrum[i, :, int(sys_vars.Nx/3):], 
-                                                                    post_data.enst_flux_per_sec[i, int(cmdargs.triad_type), :], 
-                                                                    post_data.enst_flux_per_sec_1d[i, int(cmdargs.triad_type), :], 
-                                                                    post_data.enst_flux_per_sec_2d[i, int(cmdargs.triad_type), :, :], 
+                                                                    enst[i, int(cmdargs.triad_type), :], 
+                                                                    enst_1d[i, int(cmdargs.triad_type), :], 
+                                                                    enst_2d[i, int(cmdargs.triad_type), :, :], 
                                                                     post_data.phases[i, :, int(sys_vars.Nx/3):], 
                                                                     post_data.theta_k3, 
                                                                     R[i, int(cmdargs.triad_type), :], R_1d[i, int(cmdargs.triad_type), :], R_2d[i, int(cmdargs.triad_type), :, :], 
@@ -1120,30 +1180,46 @@ if __name__ == '__main__':
                             process.join()
                 else:
                     num_triad_types = post_data.triad_R_2d.shape[1]
+                    if cmdargs.phase_order:
+                        if post_data.phase_order_normed_const:
+                            R, Phi, enst          = np.zeros((sys_vars.ndata, post_data.NUM_TRIAD_TYPES, post_data.num_k3_sect)), np.zeros((sys_vars.ndata, post_data.NUM_TRIAD_TYPES, post_data.num_k3_sect)), np.zeros((sys_vars.ndata, post_data.NUM_TRIAD_TYPES, post_data.num_k3_sect))
+                            R_1d, Phi_1d, enst_1d = np.zeros((sys_vars.ndata, post_data.NUM_TRIAD_TYPES, post_data.num_k3_sect)), np.zeros((sys_vars.ndata, post_data.NUM_TRIAD_TYPES, post_data.num_k3_sect)), np.zeros((sys_vars.ndata, post_data.NUM_TRIAD_TYPES, post_data.num_k3_sect))
+                            R_2d, Phi_2d, enst_2d = np.zeros((sys_vars.ndata, post_data.NUM_TRIAD_TYPES, post_data.num_k3_sect, post_data.num_k1_sect)), np.zeros((sys_vars.ndata, post_data.NUM_TRIAD_TYPES, post_data.num_k3_sect, post_data.num_k1_sect)), np.zeros((sys_vars.ndata, post_data.NUM_TRIAD_TYPES, post_data.num_k3_sect, post_data.num_k1_sect))
+                            for try_type in range(post_data.NUM_TRIAD_TYPES):
+                                for i in range(sys_vars.ndata):
+                                    R[i, try_type, :], Phi[i, try_type, :], enst[i, try_type, :]                   = get_normed_collective_phase(post_data.phase_order_C_theta_triads[i, try_type, :], np.sum(post_data.phase_order_norm_const[i, 0, try_type, :, :], axis=-1))
+                                    R_1d[i, try_type, :], Phi_1d[i, try_type, :], enst_1d[i, try_type, :]          = get_normed_collective_phase(post_data.phase_order_C_theta_triads_1d[i, try_type, :], np.diag(post_data.phase_order_norm_const[i, 0, try_type, :, :]))
+                                    R_2d[i, try_type, :, :], Phi_2d[i, try_type, :, :], enst_2d[i, try_type, :, :] = get_normed_collective_phase_2d(post_data.phase_order_C_theta_triads_2d[i, try_type, :, :], post_data.phase_order_norm_const[i, 0, try_type, :, :])
+                        else:
+                            R      = np.absolute(post_data.phase_order_C_theta_triads[:, :, :])
+                            R_1d   = np.absolute(post_data.phase_order_C_theta_triads_1d[:, :, :])
+                            R_2d   = np.absolute(post_data.phase_order_C_theta_triads_2d[:, :, :, :])
+                            Phi    = np.angle(post_data.phase_order_C_theta_triads[:, :, :])
+                            Phi_1d = np.angle(post_data.phase_order_C_theta_triads_1d[:, :, :])
+                            Phi_2d = np.angle(post_data.phase_order_C_theta_triads_2d[:, :, :, :])
+                            enst    = np.real(post_data.phase_order_C_theta_triads[:, :, :])
+                            enst_1d = np.real(post_data.phase_order_C_theta_triads_1d[:, :, :])
+                            enst_2d = np.real(post_data.phase_order_C_theta_triads_2d[:, :, :, :])
+                    else:
+                        R      = post_data.triad_R[:, :, :]
+                        R_1d   = post_data.triad_R_1d[:, :, :]
+                        R_2d   = post_data.triad_R_2d[:, :, :, :]
+                        Phi    = post_data.triad_Phi[:, :, :] 
+                        Phi_1d = post_data.triad_Phi_1d[:, :, :]
+                        Phi_2d = post_data.triad_Phi_2d[:, :, :, :]
+                        enst    =post_data.enst_flux_per_sec[:, :, :]
+                        enst_1d =post_data.enst_flux_per_sec_1d[:, :, :]
+                        enst_2d =post_data.enst_flux_per_sec_2d[:, :, :, :]
 
                     for t in range(num_triad_types):
-                        if cmdargs.phase_order:
-                            if post_data.phase_order_normed_const:
-                                R      = np.absolute(post_data.phase_order_C_theta_triads[:, :, :] / np.sum(post_data.phase_order_norm_const[:, 0, :, :, :], axis=-1))
-                                R_1d   = np.absolute(post_data.phase_order_C_theta_triads_1d[:, :, :] / np.diagonal(post_data.phase_order_norm_const[:, 0, :, :], axis1=-2, axis2=-1))
-                                R_2d   = np.absolute(post_data.phase_order_C_theta_triads_2d[:, :, :, :] / post_data.phase_order_norm_const[:, 0, :, :, :])
-                                Phi    = np.angle(post_data.phase_order_C_theta_triads[:, :, :] / np.sum(post_data.phase_order_norm_const[:, 0, :, :, :], axis=-1))
-                                Phi_1d = np.angle(post_data.phase_order_C_theta_triads_1d[:, :, :] / np.diagonal(post_data.phase_order_norm_const[:, 0, :, :], axis1=-2, axis2=-1))
-                                Phi_2d = np.angle(post_data.phase_order_C_theta_triads_2d[:, :, :, :] / post_data.phase_order_norm_const[:, 0, :, :, :])
-                            else:
-                                R      = np.absolute(post_data.phase_order_C_theta_triads[:, :, :])
-                                R_1d   = np.absolute(post_data.phase_order_C_theta_triads_1d[:, :, :])
-                                R_2d   = np.absolute(post_data.phase_order_C_theta_triads_2d[:, :, :, :])
-                                Phi    = np.angle(post_data.phase_order_C_theta_triads[:, :, :])
-                                Phi_1d = np.angle(post_data.phase_order_C_theta_triads_1d[:, :, :])
-                                Phi_2d = np.angle(post_data.phase_order_C_theta_triads_2d[:, :, :, :])
-                        else:
-                            R      = post_data.triad_R[:, :, :]
-                            R_1d   = post_data.triad_R_1d[:, :, :]
-                            R_2d   = post_data.triad_R_2d[:, :, :, :]
-                            Phi    = post_data.triad_Phi[:, :, :] 
-                            Phi_1d = post_data.triad_Phi_1d[:, :, :]
-                            Phi_2d = post_data.triad_Phi_2d[:, :, :, :]
+                        
+                        flux_min    = np.amin(enst[:, t, :])
+                        flux_max    = np.amax(enst[:, t, :])
+                        flux_1d_min = np.amin(enst_1d[:, t, :])
+                        flux_1d_max = np.amax(enst_1d[:, t, :])
+                        flux_2d_min = np.amin(enst_2d[:, t, :, :])
+                        # flux_2d_max = np.amax(enst_2d[:, t, :, :])
+                        flux_2d_max = -flux_2d_min 
 
                         print("TRIAD TYPE: {}".format(t), end = " ")
                         ## Create tasks for the process pool
@@ -1152,8 +1228,8 @@ if __name__ == '__main__':
                                 groups_args = [(mprocs.Process(target = plot_sector_phase_sync_snaps_full_sec, args = (i, cmdargs.out_dir_triads, 
                                                         run_data.w[i, :, :], 
                                                         post_data.enst_spectrum[i, :, :], 
-                                                        post_data.enst_flux_1d[i, t, :], 
-                                                        post_data.enst_flux_per_sec_2d[i, t, :, :], 
+                                                        enst_1d[i, t, :], 
+                                                        enst_2d[i, t, :, :], 
                                                         post_data.phases[i, :, int(sys_vars.Nx/3):], 
                                                         post_data.theta_k3, 
                                                         R_1d[i, t, :], R_2d[i, t, :, :], 
@@ -1166,9 +1242,9 @@ if __name__ == '__main__':
                                 groups_args = [(mprocs.Process(target = plot_sector_phase_sync_snaps_all, args = (i, cmdargs.out_dir_triads, 
                                                                         run_data.w[i, :, :], 
                                                                         post_data.enst_spectrum[i, :, int(sys_vars.Nx/3):], 
-                                                                        post_data.enst_flux_per_sec[i, t, :], 
-                                                                        post_data.enst_flux_per_sec_1d[i, t, :], 
-                                                                        post_data.enst_flux_per_sec_2d[i, t, :, :], 
+                                                                        enst[i, t, :], 
+                                                                        enst_1d[i, t, :], 
+                                                                        enst_2d[i, t, :, :], 
                                                                         post_data.phases[i, :, int(sys_vars.Nx/3):], 
                                                                         post_data.theta_k3, 
                                                                         R[i, t, :], R_1d[i, t, :], R_2d[i, t, :, :], 
@@ -1220,19 +1296,23 @@ if __name__ == '__main__':
                     for i in range(sys_vars.ndata):
                         if cmdargs.phase_order:
                             if post_data.phase_order_normed_const:
-                                R      = np.absolute(post_data.phase_order_C_theta_triads[i, :, :] / np.sum(post_data.phase_order_norm_const[i, 0, :, :, :], axis=-1))
-                                R_1d   = np.absolute(post_data.phase_order_C_theta_triads_1d[i, :, :] / np.diagonal(post_data.phase_order_norm_const[i, 0, :, :], axis1=-2, axis2=-1))
-                                R_2d   = np.absolute(post_data.phase_order_C_theta_triads_2d[i, :, :, :] / post_data.phase_order_norm_const[i, 0, :, :, :])
-                                Phi    = np.angle(post_data.phase_order_C_theta_triads[i, :, :] / np.sum(post_data.phase_order_norm_const[i, 0, :, :, :], axis=-1))
-                                Phi_1d = np.angle(post_data.phase_order_C_theta_triads_1d[i, :, :] / np.diagonal(post_data.phase_order_norm_const[i, 0, :, :], axis1=-2, axis2=-1))
-                                Phi_2d = np.angle(post_data.phase_order_C_theta_triads_2d[i, :, :, :] / post_data.phase_order_norm_const[i, 0, :, :, :])
+                                R, Phi, enst          = np.zeros((post_data.NUM_TRIAD_TYPES, post_data.num_k3_sect)), np.zeros((sys_vars.ndata, post_data.NUM_TRIAD_TYPES, post_data.num_k3_sect)), np.zeros((sys_vars.ndata, post_data.NUM_TRIAD_TYPES, post_data.num_k3_sect))
+                                R_1d, Phi_1d, enst_1d = np.zeros((post_data.NUM_TRIAD_TYPES, post_data.num_k3_sect)), np.zeros((sys_vars.ndata, post_data.NUM_TRIAD_TYPES, post_data.num_k3_sect)), np.zeros((sys_vars.ndata, post_data.NUM_TRIAD_TYPES, post_data.num_k3_sect))
+                                R_2d, Phi_2d, enst_2d = np.zeros((post_data.NUM_TRIAD_TYPES, post_data.num_k3_sect, post_data.num_k1_sect)), np.zeros((sys_vars.ndata, post_data.NUM_TRIAD_TYPES, post_data.num_k3_sect, post_data.num_k1_sect)), np.zeros((sys_vars.ndata, post_data.NUM_TRIAD_TYPES, post_data.num_k3_sect, post_data.num_k1_sect))
+                                for try_type in range(post_data.NUM_TRIAD_TYPES):
+                                        R[i, try_type, :], Phi[i, try_type, :], enst[i, try_type, :]                   = get_normed_collective_phase(post_data.phase_order_C_theta_triads[i, try_type, :], np.sum(post_data.phase_order_norm_const[i, 0, try_type, :, :], axis=-1))
+                                        R_1d[i, try_type, :], Phi_1d[i, try_type, :], enst_1d[i, try_type, :]          = get_normed_collective_phase(post_data.phase_order_C_theta_triads_1d[i, try_type, :], np.diag(post_data.phase_order_norm_const[i, 0, try_type, :, :]))
+                                        R_2d[i, try_type, :, :], Phi_2d[i, try_type, :, :], enst_2d[i, try_type, :, :] = get_normed_collective_phase_2d(post_data.phase_order_C_theta_triads_2d[i, try_type, :, :], post_data.phase_order_norm_const[i, 0, try_type, :, :])
                             else:
-                                R      = np.absolute(post_data.phase_order_C_theta_triads[i, :, :])
-                                R_1d   = np.absolute(post_data.phase_order_C_theta_triads_1d[i, :, :])
-                                R_2d   = np.absolute(post_data.phase_order_C_theta_triads_2d[i, :, :, :])
-                                Phi    = np.angle(post_data.phase_order_C_theta_triads[i, i, :])
-                                Phi_1d = np.angle(post_data.phase_order_C_theta_triads_1d[i, :, :])
-                                Phi_2d = np.angle(post_data.phase_order_C_theta_triads_2d[i, :, :, :])
+                                R       = np.absolute(post_data.phase_order_C_theta_triads[i, :, :])
+                                R_1d    = np.absolute(post_data.phase_order_C_theta_triads_1d[i, :, :])
+                                R_2d    = np.absolute(post_data.phase_order_C_theta_triads_2d[i, :, :, :])
+                                Phi     = np.angle(post_data.phase_order_C_theta_triads[i, i, :])
+                                Phi_1d  = np.angle(post_data.phase_order_C_theta_triads_1d[i, :, :])
+                                Phi_2d  = np.angle(post_data.phase_order_C_theta_triads_2d[i, :, :, :])
+                                enst    = np.real(post_data.phase_order_C_theta_triads[i, :, :])
+                                enst_1d = np.real(post_data.phase_order_C_theta_triads_1d[i, :, :])
+                                enst_2d = np.real(post_data.phase_order_C_theta_triads_2d[i, :, :, :])
                         else:
                             R      = post_data.triad_R[i, :, :]
                             R_1d   = post_data.triad_R_1d[i, :, :]
@@ -1240,15 +1320,17 @@ if __name__ == '__main__':
                             Phi    = post_data.triad_Phi[i, :, :] 
                             Phi_1d = post_data.triad_Phi_1d[i, :, :]
                             Phi_2d = post_data.triad_Phi_2d[i, :, :, :]
-
+                            enst    =post_data.enst_flux_per_sec[i, :, :]
+                            enst_1d =post_data.enst_flux_per_sec_1d[i, :, :]
+                            enst_2d =post_data.enst_flux_per_sec_2d[i, :, :, :]
                         ## Plot the data
                         if cmdargs.full:
                             if cmdargs.triad_plot_type == "sec":
                                 plot_sector_phase_sync_snaps_full_sec(i, cmdargs.out_dir_triads, 
                                                                         run_data.w[i, :, :], 
                                                                         post_data.enst_spectrum[i, :, :], 
-                                                                        post_data.enst_flux_per_sec_1d[i, int(cmdargs.triad_type), :], 
-                                                                        post_data.enst_flux_per_sec_2d[i, int(cmdargs.triad_type), :, :], 
+                                                                        enst_1d[i, int(cmdargs.triad_type), :], 
+                                                                        enst_2d[i, int(cmdargs.triad_type), :, :], 
                                                                         post_data.phases[i, :, int(sys_vars.Nx/3):], 
                                                                         post_data.theta_k3, 
                                                                         R_1d[int(cmdargs.triad_type), :], R_2d[int(cmdargs.triad_type), :, :], 
@@ -1261,9 +1343,9 @@ if __name__ == '__main__':
                                 plot_sector_phase_sync_snaps_all(i, cmdargs.out_dir_triads, 
                                                                         run_data.w[i, :, :], 
                                                                         post_data.enst_spectrum[i, :, int(sys_vars.Nx/3):], 
-                                                                        post_data.enst_flux_per_sec[i, int(cmdargs.triad_type), :], 
-                                                                        post_data.enst_flux_per_sec_1d[i, int(cmdargs.triad_type), :], 
-                                                                        post_data.enst_flux_per_sec_2d[i, int(cmdargs.triad_type), :, :], 
+                                                                        enst[i, int(cmdargs.triad_type), :], 
+                                                                        enst_1d[i, int(cmdargs.triad_type), :], 
+                                                                        enst_2d[i, int(cmdargs.triad_type), :, :], 
                                                                         post_data.phases[i, :, int(sys_vars.Nx/3):], 
                                                                         post_data.theta_k3, 
                                                                         R[int(cmdargs.triad_type), :], R_1d[int(cmdargs.triad_type), :], R_2d[int(cmdargs.triad_type), :, :], 

@@ -1327,7 +1327,7 @@ def plot_sector_phase_sync_snaps_all(i, out_dir, w, enst_spec, enst_flux_sec, en
        # Plot Enstrophy Flux Across Sectors  (2D)
        #--------------------------------
        ax8 = fig.add_subplot(gs[3, 2])
-       im8 = ax8.imshow(np.flipud(enst_flux_2d), extent = (theta_k3_min, theta_k3_max, alpha_min, alpha_max), cmap = "seismic", vmin = -0.001, vmax = 0.001) #vmin = flux_lims[4], vmax = flux_lims[5] #, norm = mpl.colors.SymLogNorm(linthresh = 0.1)
+       im8 = ax8.imshow(np.flipud(enst_flux_2d), extent = (theta_k3_min, theta_k3_max, alpha_min, alpha_max), cmap = "seismic", vmin = flux_lims[4], vmax = flux_lims[5]) #vmin = flux_lims[4], vmax = flux_lims[5] #, norm = mpl.colors.SymLogNorm(linthresh = 0.1)
        ax8.set_xticks(angticks)
        ax8.set_xticklabels(angtickLabels_alpha)
        ax8.set_yticks(angticks)

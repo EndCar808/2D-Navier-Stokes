@@ -296,6 +296,15 @@ void PhaseSyncSector(int s) {
 	double phase_val[NUM_TRIAD_CLASS];
 	fftw_complex collective_phase_term;
 
+	// Set the in time histogram bins to 0
+	#if defined(__SEC_PHASE_SYNC_STATS_IN_TIME)
+	for (int triad_class = 0; triad_class < NUM_TRIAD_CLASS; ++triad_class) {
+		for (int types = 0; types < NUM_TRIAD_TYPES; ++types) {
+			gsl_histogram_reset(proc_data->triads_all_pdf_t[triad_class][types]);
+			gsl_histogram_reset(proc_data->triads_wghtd_all_pdf_t[triad_class][types]);
+		}
+	}
+	#endif
 
 	// Loop through the sectors for k3
 	for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
@@ -312,6 +321,18 @@ void PhaseSyncSector(int s) {
 			proc_data->phase_order_C_theta_triads_unidirec_1d[i][a] = 0.0 + 0.0 * I;
 		}
 
+		// Set the in time histogram bins to 0
+		#if defined(__SEC_PHASE_SYNC_STATS_IN_TIME_ALL) || defined(__SEC_PHASE_SYNC_STATS_IN_TIME_1D)
+		for (int triad_class = 0; triad_class < NUM_TRIAD_CLASS; ++triad_class) {
+			for (int types = 0; types < NUM_TRIAD_TYPES; ++types) {
+				gsl_histogram_reset(proc_data->triads_sect_all_pdf_t[triad_class][types][a]);
+				gsl_histogram_reset(proc_data->triads_sect_wghtd_all_pdf_t[triad_class][types][a]);
+				gsl_histogram_reset(proc_data->triads_sect_1d_pdf_t[triad_class][types][a]);
+				gsl_histogram_reset(proc_data->triads_sect_wghtd_1d_pdf_t[triad_class][types][a]);
+			}
+		}
+		#endif
+
 		// Loop through the sectors for k1
 		for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
 
@@ -325,6 +346,16 @@ void PhaseSyncSector(int s) {
 					proc_data->phase_order_norm_const[type][i][a][l] = 0.0;
 				}
 			}
+
+			// Set the in time histogram bins to 0
+			#if defined(__SEC_PHASE_SYNC_STATS_IN_TIME_2D)
+			for (int triad_class = 0; triad_class < NUM_TRIAD_CLASS; ++triad_class) {
+				for (int types = 0; types < NUM_TRIAD_TYPES; ++types) {
+					gsl_histogram_reset(proc_data->triads_sect_2d_pdf_t[triad_class][types][a][l]);
+					gsl_histogram_reset(proc_data->triads_sect_wghtd_2d_pdf_t[triad_class][types][a][l]);
+				}
+			}
+			#endif
 			
 			// Loop through wavevectors
 			if (proc_data->num_wave_vecs[a][l] != 0) {
