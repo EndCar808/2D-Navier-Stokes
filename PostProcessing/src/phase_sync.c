@@ -2670,8 +2670,8 @@ void AllocatePhaseSyncMemory(const long int* N) {
 
 			// Write Update to Screen 
 			double search_end = omp_get_wtime();
-			printf("Sector: %d/%d\tNum Terms: %ld (Tot) %ld (1D) %ld (2D)\tTime: %g(s)\n", a + 1, sys_vars->num_k3_sectors, total_terms_per_sec, total_1d_terms_per_sec, total_2d_terms_per_sec, (search_end - search_begin));
-			fprintf(fptr, "Sector: %d/%d\tNum Terms: %ld (Tot) %ld (1D) %ld (2D)\tTime: %g(s)\n", a + 1, sys_vars->num_k3_sectors, total_terms_per_sec, total_1d_terms_per_sec, total_2d_terms_per_sec, (search_end - search_begin));
+			printf("Sector: %d/%d\tNum Terms: %ld (Tot) -- %ld (1D) -- %ld (2D)\tTime: %g(s)\n", a + 1, sys_vars->num_k3_sectors, total_terms_per_sec, total_1d_terms_per_sec, total_2d_terms_per_sec, (search_end - search_begin));
+			fprintf(fptr, "Sector: %d/%d\tNum Terms: %ld (Tot) -- %ld (1D) -- %ld (2D)\tTime: %g(s)\n", a + 1, sys_vars->num_k3_sectors, total_terms_per_sec, total_1d_terms_per_sec, total_2d_terms_per_sec, (search_end - search_begin));
 		}
 
 		///-------------------- Realloc the last dimension in wavevector array to its correct size

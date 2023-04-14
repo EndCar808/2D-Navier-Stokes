@@ -29,7 +29,7 @@ import multiprocessing as mprocs
 import time as TIME
 from subprocess import Popen, PIPE, run
 from matplotlib.pyplot import cm
-from functions import tc, sim_data, import_data, import_spectra_data, import_post_processing_data
+from functions import tc, sim_data, import_data, import_spectra_data, import_post_processing_data, get_flux_spectrum
 from plot_functions import plot_sector_phase_sync_snaps, plot_sector_phase_sync_snaps_full, plot_sector_phase_sync_snaps_full_sec, plot_sector_phase_sync_snaps_all
 ###############################
 ##       FUNCTION DEFS       ##
@@ -264,6 +264,7 @@ if __name__ == '__main__':
     # # --------  Make Output Directories
     # -----------------------------------------
     ## Make output directory for snaps
+    cmdargs.out_dir_info     = cmdargs.out_dir + "RUN_INFO/"
     cmdargs.out_dir_avg     = cmdargs.out_dir + "PHASE_SYNC_AVG_SNAPS/"
     cmdargs.out_dir_valid     = cmdargs.out_dir + "PHASE_SYNC_VALID_SNAPS/"
     cmdargs.out_dir_phases     = cmdargs.out_dir + "PHASE_SYNC_SNAPS/"
@@ -271,6 +272,9 @@ if __name__ == '__main__':
     if os.path.isdir(cmdargs.out_dir_phases) != True:
         print("Making folder:" + tc.C + " PHASE_SYNC_SNAPS/" + tc.Rst)
         os.mkdir(cmdargs.out_dir_phases)
+    if os.path.isdir(cmdargs.out_dir_info) != True:
+        print("Making folder:" + tc.C + " RUN_INFO/" + tc.Rst)
+        os.mkdir(cmdargs.out_dir_info)
     if os.path.isdir(cmdargs.out_dir_triads) != True:
         print("Making folder:" + tc.C + " TRIAD_PHASE_SYNC_SNAPS/" + tc.Rst)
         os.mkdir(cmdargs.out_dir_triads)
@@ -280,6 +284,7 @@ if __name__ == '__main__':
     if os.path.isdir(cmdargs.out_dir_avg) != True:
         print("Making folder:" + tc.C + " PHASE_SYNC_AVG_SNAPS/" + tc.Rst)
         os.mkdir(cmdargs.out_dir_avg)
+    print("Run info Output Folder: "+ tc.C + "{}".format(cmdargs.out_dir_phases) + tc.Rst)
     print("Phases Output Folder: "+ tc.C + "{}".format(cmdargs.out_dir_phases) + tc.Rst)
     print("Triads Output Folder: "+ tc.C + "{}".format(cmdargs.out_dir_triads) + tc.Rst)
     print("Validation Output Folder: "+ tc.C + "{}".format(cmdargs.out_dir_valid) + tc.Rst)
@@ -294,6 +299,41 @@ if __name__ == '__main__':
         print("Making folder:" + tc.C + " SECT[{},{}]_KFRAC[{:1.2f},{:1.2f}]_TAG[{}]/".format(post_data.num_k3_sect, post_data.num_k1_sect, post_data.kmin_sqr, post_data.kmax_frac, cmdargs.tag) + tc.Rst)
         os.mkdir(cmdargs.out_dir_avg_snaps)
     
+
+    # -----------------------------------------
+    # # --------  Plot Flux Spectrum
+    # -----------------------------------------
+    ##------------------------ Time Averaged Enstorphy Spectra and Flux Spectra
+    fig = plt.figure(figsize = (21, 8))
+    gs  = GridSpec(1, 2)
+    ax2 = fig.add_subplot(gs[0, 0])
+    for i in range(spec_data.enst_spectrum.shape[0]):
+        ax2.plot(np.arange(1, int(sys_vars.Nx/3)), spec_data.enst_spectrum[i, 1:int(sys_vars.Nx/3)], 'r', alpha = 0.15)
+    ax2.plot(np.arange(1, int(sys_vars.Nx/3)), np.mean(spec_data.enst_spectrum[:, 1:int(sys_vars.Nx/3)], axis = 0), 'k')
+    ax2.set_xlabel(r"$k$")
+    ax2.set_xscale('log')
+    ax2.set_yscale('log')
+    ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+    ax2.set_title(r"$\mathcal{E}(|\mathbf{k}|)$: Enstrophy Spectrum")
+
+    flux_spect = np.zeros((spec_data.enst_flux_spectrum.shape[0], int(sys_vars.Nx/3)))
+    for i in range(spec_data.enst_flux_spectrum.shape[0]):
+        flux_spect[i, :] = get_flux_spectrum(spec_data.enst_flux_spectrum[i, 1:int(sys_vars.Nx/3)])
+
+    ax2 = fig.add_subplot(gs[0, 1])
+    for i in range(spec_data.enst_flux_spectrum.shape[0]):
+        ax2.plot(np.arange(1, int(sys_vars.Nx/3)), flux_spect[i, :], 'r', alpha = 0.15)
+    ax2.plot(np.arange(1, int(sys_vars.Nx/3)), np.mean(flux_spect, axis = 0), 'k')
+    ax2.set_xlabel(r"$k$")
+    ax2.set_xscale('log')
+    ax2.set_yscale('symlog')
+    ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+    ax2.set_title(r"$\Pi(|\mathbf{k}|)$: Enstrophy Flux Spectrum")
+    
+    plt.savefig(cmdargs.out_dir_info + "TimeAveraged_Enstrophy_EnstrophyFlux_Spectra.png")
+    plt.close()
+
+
     # -----------------------------------------
     # # --------  Plot Validation 
     # -----------------------------------------
@@ -542,44 +582,44 @@ if __name__ == '__main__':
         #####################################################################
         ## NORMAL PHASE ORDER PARAMETER ---- SpaceTime Plots ---- 1D Data
         #####################################################################
-        fig = plt.figure(figsize = (21, 9))
-        gs  = GridSpec(1, 3)
+        fig = plt.figure(figsize = (21, 13))
+        gs  = GridSpec(3, 1, hspace = 0.25)
         ax6 = fig.add_subplot(gs[0, 0])
-        im6 = ax6.imshow(np.flipud(post_data.triad_R_1d[:, try_type, :]), aspect='auto', extent = (theta_k3_min, theta_k3_max, 1, sys_vars.ndata), cmap = my_magma, vmin = 0.0, vmax = 1.0)
-        ax6.set_xticks(angticks)
-        ax6.set_xticklabels(angtickLabels)
-        ax6.set_ylabel(r"$t$")
-        ax6.set_xlabel(r"$\theta$")
+        im6 = ax6.imshow(np.rot90(np.flipud(post_data.triad_R_1d[:, try_type, :]), k=-1), aspect='auto', extent = (1, sys_vars.ndata, theta_k3_min, theta_k3_max), cmap = my_magma, vmin = 0.0, vmax = 1.0)
+        ax6.set_yticks(angticks)
+        ax6.set_yticklabels(angtickLabels)
+        ax6.set_xlabel(r"$t$")
+        ax6.set_ylabel(r"$\theta$")
         ax6.set_title(r"Sync Per Sector (1D)")
         div6  = make_axes_locatable(ax6)
-        cbax6 = div6.append_axes("right", size = "10%", pad = 0.05)
+        cbax6 = div6.append_axes("right", size = "5%", pad = 0.05)
         cb6   = plt.colorbar(im6, cax = cbax6)
         cb6.set_label(r"$\mathcal{R}^{1D}$")
-        ax7 = fig.add_subplot(gs[0, 1])
-        im7 = ax7.imshow(np.flipud(post_data.triad_Phi_1d[:, try_type, :]), aspect='auto', extent = (theta_k3_min, theta_k3_max, 1, sys_vars.ndata), cmap = my_hsv, vmin = -np.pi, vmax = np.pi)
-        ax7.set_xticks(angticks)
-        ax7.set_xticklabels(angtickLabels)
-        ax6.set_ylabel(r"$t$")
-        ax6.set_xlabel(r"$\theta$")
-        ax6.set_title(r"Sync Per Sector (1D)")
+        ax7 = fig.add_subplot(gs[1, 0])
+        im7 = ax7.imshow(np.rot90(np.flipud(post_data.triad_Phi_1d[:, try_type, :]), k=-1), aspect='auto', extent = (1, sys_vars.ndata, theta_k3_min, theta_k3_max), cmap = my_hsv, vmin = -np.pi, vmax = np.pi)
+        ax7.set_yticks(angticks)
+        ax7.set_yticklabels(angtickLabels)
+        ax7.set_xlabel(r"$t$")
+        ax7.set_ylabel(r"$\theta$")
+        ax7.set_title(r"Sync Per Sector (1D)")
         ax7.set_title(r"Average Angle Per Sector (1D)")
         div7  = make_axes_locatable(ax7)
-        cbax7 = div7.append_axes("right", size = "10%", pad = 0.05)
+        cbax7 = div7.append_axes("right", size = "5%", pad = 0.05)
         cb7   = plt.colorbar(im7, cax = cbax7)
         cb7.set_ticks([-np.pi, -np.pi/2.0, 0., np.pi/2, np.pi])
         cb7.set_ticklabels([r"$-\pi$", r"$\frac{-\pi}{2}$", r"$0$", r"$\frac{\pi}{2}$", r"$\pi$"])
         cb7.set_label(r"$\Phi^{1D}$")
-        ax8 = fig.add_subplot(gs[0, 2])
+        ax8 = fig.add_subplot(gs[2, 0])
         data = post_data.enst_flux_per_sec_1d[:, try_type, :]
-        im8 = ax8.imshow(np.flipud(post_data.enst_flux_per_sec_1d[:, try_type, :]), aspect='auto', extent = (theta_k3_min, theta_k3_max, 1, sys_vars.ndata), cmap = "seismic", vmin=np.amin(data), vmax=np.absolute(np.amin(data))) #vmin = flux_lims[4], vmax = flux_lims[5] #, norm = mpl.colors.SymLogNorm(linthresh = 0.1)
-        ax8.set_xticks(angticks)
-        ax8.set_xticklabels(angtickLabels)
-        ax8.set_ylabel(r"$t$")
-        ax8.set_xlabel(r"$\theta$")
+        im8 = ax8.imshow(np.rot90(np.flipud(post_data.enst_flux_per_sec_1d[:, try_type, :]), k=-1), aspect='auto', extent = (1, sys_vars.ndata, theta_k3_min, theta_k3_max), cmap = "seismic", vmin=np.amin(data), vmax=np.absolute(np.amin(data))) #vmin = flux_lims[4], vmax = flux_lims[5] #, norm = mpl.colors.SymLogNorm(linthresh = 0.1)
+        ax8.set_yticks(angticks)
+        ax8.set_yticklabels(angtickLabels)
+        ax8.set_xlabel(r"$t$")
+        ax8.set_ylabel(r"$\theta$")
         ax8.set_title(r"Sync Per Sector (1D)")
         ax8.set_title(r"Enstrophy Flux Per Sector (1D)")
         div8  = make_axes_locatable(ax8)
-        cbax8 = div8.append_axes("right", size = "10%", pad = 0.05)
+        cbax8 = div8.append_axes("right", size = "5%", pad = 0.05)
         cb8   = plt.colorbar(im8, cax = cbax8)
         cb8.set_label(r"$\Pi_{\mathcal{S}_\theta}^{1D}$")
         plt.suptitle(r"Spacetime 1D Data - Triad Type: {}".format(try_type))
@@ -589,24 +629,25 @@ if __name__ == '__main__':
         #####################################################################
         ## NORMAL PHASE ORDER PARAMETER ---- SpaceTime Plots ---- All Data
         #####################################################################
-        fig = plt.figure(figsize = (21, 9))
-        gs  = GridSpec(1, 3)
+        fig = plt.figure(figsize = (21, 13))
+        gs  = GridSpec(3, 1, hspace = 0.25)
         ax6 = fig.add_subplot(gs[0, 0])
-        im6 = ax6.imshow(np.flipud(post_data.triad_R[:, try_type, :]), aspect='auto', extent = (theta_k3_min, theta_k3_max, 1, sys_vars.ndata), cmap = my_magma, vmin = 0.0, vmax = 1.0)
-        ax6.set_xticks(angticks)
-        ax6.set_xticklabels(angtickLabels)
-        ax6.set_ylabel(r"$t$")
-        ax6.set_xlabel(r"$\theta$")
+        im6 = ax6.imshow(np.rot90(np.flipud(post_data.triad_R[:, try_type, :]), k=-1), aspect='auto', extent = (1, sys_vars.ndata, theta_k3_min, theta_k3_max), cmap = my_magma, vmin = 0.0, vmax = 1.0)
+        ax6.set_yticks(angticks)
+        ax6.set_yticklabels(angtickLabels)
+        ax6.set_xlabel(r"$t$")
+        ax6.set_ylabel(r"$\theta$")
         ax6.set_title(r"Sync Per Sector")
         div6  = make_axes_locatable(ax6)
         cbax6 = div6.append_axes("right", size = "10%", pad = 0.05)
         cb6   = plt.colorbar(im6, cax = cbax6)
         cb6.set_label(r"$\mathcal{R}^{1D}$")
-        ax7 = fig.add_subplot(gs[0, 1])
-        im7 = ax7.imshow(np.flipud(post_data.triad_Phi[:, try_type, :]), aspect='auto', extent = (theta_k3_min, theta_k3_max, 1, sys_vars.ndata), cmap = my_hsv, vmin = -np.pi, vmax = np.pi)
-        ax7.set_xticks(angticks)
-        ax7.set_xticklabels(angtickLabels)
-        ax7.set_xlabel(r"$\theta$")
+        ax7 = fig.add_subplot(gs[1, 0])
+        im7 = ax7.imshow(np.rot90(np.flipud(post_data.triad_Phi[:, try_type, :]), k=-1), aspect='auto', extent = (1, sys_vars.ndata, theta_k3_min, theta_k3_max), cmap = my_hsv, vmin = -np.pi, vmax = np.pi)
+        ax7.set_yticks(angticks)
+        ax7.set_yticklabels(angtickLabels)
+        ax7.set_ylabel(r"$\theta$")
+        ax7.set_xlabel(r"$t$")
         ax7.set_title(r"Average Angle Per Sector")
         div7  = make_axes_locatable(ax7)
         cbax7 = div7.append_axes("right", size = "10%", pad = 0.05)
@@ -614,12 +655,13 @@ if __name__ == '__main__':
         cb7.set_ticks([-np.pi, -np.pi/2.0, 0., np.pi/2, np.pi])
         cb7.set_ticklabels([r"$-\pi$", r"$\frac{-\pi}{2}$", r"$0$", r"$\frac{\pi}{2}$", r"$\pi$"])
         cb7.set_label(r"$\Phi^{1D}$")
-        ax8 = fig.add_subplot(gs[0, 2])
-        data = np.flipud(post_data.enst_flux_per_sec[:, try_type, :])
-        im8 = ax8.imshow(data, aspect='auto', extent = (theta_k3_min, theta_k3_max, 1, sys_vars.ndata), cmap = "seismic", vmin=np.amin(data), vmax=np.absolute(np.amin(data))) #vmin = flux_lims[4], vmax = flux_lims[5] #, norm = mpl.colors.SymLogNorm(linthresh = 0.1)
-        ax8.set_xticks(angticks)
-        ax8.set_xticklabels(angtickLabels)
-        ax8.set_xlabel(r"$\theta$")
+        ax8 = fig.add_subplot(gs[2, 0])
+        data = np.rot90(np.flipud(post_data.enst_flux_per_sec[:, try_type, :]), k=-1)
+        im8 = ax8.imshow(data, aspect='auto', extent = (1, sys_vars.ndata, theta_k3_min, theta_k3_max), cmap = "seismic", vmin=np.amin(data), vmax=np.absolute(np.amin(data))) #vmin = flux_lims[4], vmax = flux_lims[5] #, norm = mpl.colors.SymLogNorm(linthresh = 0.1)
+        ax8.set_yticks(angticks)
+        ax8.set_yticklabels(angtickLabels)
+        ax8.set_ylabel(r"$\theta$")
+        ax8.set_xlabel(r"$t$")
         ax8.set_title(r"Enstrophy Flux Per Sector")
         div8  = make_axes_locatable(ax8)
         cbax8 = div8.append_axes("right", size = "10%", pad = 0.05)
@@ -803,44 +845,44 @@ if __name__ == '__main__':
         #####################################################################
         ## COLLECTIVE PHASE ORDER PARAMETER ---- Spacetime Plots ---- 1D Data
         #####################################################################
-        fig = plt.figure(figsize = (21, 9))
-        gs  = GridSpec(1, 3)
+        fig = plt.figure(figsize = (21, 13))
+        gs  = GridSpec(3, 1, hspace=0.25)
         ax6 = fig.add_subplot(gs[0, 0])
-        im6 = ax6.imshow(np.flipud(phase_order_R_1D), aspect='auto', extent = (theta_k3_min, theta_k3_max, 1, sys_vars.ndata), cmap = my_magma, vmin = 0.0, vmax = 1.0)
-        ax6.set_xticks(angticks)
-        ax6.set_xticklabels(angtickLabels)
-        ax6.set_ylabel(r"$t$")
-        ax6.set_xlabel(r"$\theta$")
+        im6 = ax6.imshow(np.rot90(np.flipud(phase_order_R_1D), k=-1), aspect='auto', extent = (1, sys_vars.ndata, theta_k3_min, theta_k3_max), cmap = my_magma, vmin = 0.0, vmax = 1.0)
+        ax6.set_yticks(angticks)
+        ax6.set_yticklabels(angtickLabels)
+        ax6.set_xlabel(r"$t$")
+        ax6.set_ylabel(r"$\theta$")
         ax6.set_title(r"Sync Per Sector (1D)")
         div6  = make_axes_locatable(ax6)
-        cbax6 = div6.append_axes("right", size = "10%", pad = 0.05)
+        cbax6 = div6.append_axes("right", size = "5%", pad = 0.05)
         cb6   = plt.colorbar(im6, cax = cbax6)
         cb6.set_label(r"$|\mathcal{R}^{1D}|$")
-        ax7 = fig.add_subplot(gs[0, 1])
-        im7 = ax7.imshow(np.flipud(phase_order_Phi_1D), aspect='auto', extent = (theta_k3_min, theta_k3_max, 1, sys_vars.ndata), cmap = my_hsv, vmin = -np.pi, vmax = np.pi)
-        ax7.set_xticks(angticks)
-        ax7.set_xticklabels(angtickLabels)
-        ax6.set_ylabel(r"$t$")
-        ax6.set_xlabel(r"$\theta$")
-        ax6.set_title(r"Sync Per Sector (1D)")
+        ax7 = fig.add_subplot(gs[1, 0])
+        im7 = ax7.imshow(np.rot90(np.flipud(phase_order_Phi_1D), k=-1), aspect='auto', extent = (1, sys_vars.ndata, theta_k3_min, theta_k3_max), cmap = my_hsv, vmin = -np.pi, vmax = np.pi)
+        ax7.set_yticks(angticks)
+        ax7.set_yticklabels(angtickLabels)
+        ax7.set_xlabel(r"$t$")
+        ax7.set_ylabel(r"$\theta$")
+        ax7.set_title(r"Sync Per Sector (1D)")
         ax7.set_title(r"Average Angle Per Sector (1D)")
         div7  = make_axes_locatable(ax7)
-        cbax7 = div7.append_axes("right", size = "10%", pad = 0.05)
+        cbax7 = div7.append_axes("right", size = "5%", pad = 0.05)
         cb7   = plt.colorbar(im7, cax = cbax7)
         cb7.set_ticks([-np.pi, -np.pi/2.0, 0., np.pi/2, np.pi])
         cb7.set_ticklabels([r"$-\pi$", r"$\frac{-\pi}{2}$", r"$0$", r"$\frac{\pi}{2}$", r"$\pi$"])
         cb7.set_label(r"$\arg\{\mathcal{R}^{1D} \}$")
-        ax8 = fig.add_subplot(gs[0, 2])
-        data = np.flipud(phase_order_enst_1D)
-        im8 = ax8.imshow(data, aspect='auto', extent = (theta_k3_min, theta_k3_max, 1, sys_vars.ndata), cmap = "seismic", vmin=np.amin(data), vmax=np.absolute(np.amin(data))) #vmin = flux_lims[4], vmax = flux_lims[5] #, norm = mpl.colors.SymLogNorm(linthresh = 0.1)
-        ax8.set_xticks(angticks)
-        ax8.set_xticklabels(angtickLabels)
-        ax6.set_ylabel(r"$t$")
-        ax6.set_xlabel(r"$\theta$")
-        ax6.set_title(r"Sync Per Sector (1D)")
+        ax8 = fig.add_subplot(gs[2, 0])
+        data = np.rot90(np.flipud(phase_order_enst_1D), k=-1)
+        im8 = ax8.imshow(data, aspect='auto', extent = (1, sys_vars.ndata, theta_k3_min, theta_k3_max), cmap = "seismic", vmin=np.amin(data), vmax=np.absolute(np.amin(data))) #vmin = flux_lims[4], vmax = flux_lims[5] #, norm = mpl.colors.SymLogNorm(linthresh = 0.1)
+        ax8.set_yticks(angticks)
+        ax8.set_yticklabels(angtickLabels)
+        ax8.set_xlabel(r"$t$")
+        ax8.set_ylabel(r"$\theta$")
+        ax8.set_title(r"Sync Per Sector (1D)")
         ax8.set_title(r"Enstrophy Flux Per Sector (1D)")
         div8  = make_axes_locatable(ax8)
-        cbax8 = div8.append_axes("right", size = "10%", pad = 0.05)
+        cbax8 = div8.append_axes("right", size = "5%", pad = 0.05)
         cb8   = plt.colorbar(im8, cax = cbax8)
         cb8.set_label(r"$\Re\{\mathcal{R}^{1D} \}$")
         plt.suptitle(r"Spacetime Collective Phase 1D Data - Triad Type: {}".format(try_type))
@@ -850,40 +892,44 @@ if __name__ == '__main__':
         #####################################################################
         ## COLLECTIVE PHASE ORDER PARAMETER ---- SpaceTime Plots ---- All Data
         #####################################################################
-        fig = plt.figure(figsize = (21, 9))
-        gs  = GridSpec(1, 3)
+        fig = plt.figure(figsize = (21, 13))
+        gs  = GridSpec(3, 1, hspace=0.25)
         ax6 = fig.add_subplot(gs[0, 0])
-        im6 = ax6.imshow(np.flipud(phase_order_R), aspect='auto', extent = (theta_k3_min, theta_k3_max, 1, sys_vars.ndata), cmap = my_magma, vmin = 0.0, vmax = 1.0)
-        ax6.set_xticks(angticks)
-        ax6.set_xticklabels(angtickLabels)
-        ax6.set_ylabel(r"$t$")
-        ax6.set_xlabel(r"$\theta$")
+        if try_type == 0:
+            v_max = 0.2
+        else:
+            v_max = 1.0
+        im6 = ax6.imshow(np.rot90(np.flipud(phase_order_R), k=-1), aspect='auto', extent = (1, sys_vars.ndata, theta_k3_min, theta_k3_max), cmap = my_magma, vmin = 0.0, vmax = v_max)
+        ax6.set_yticks(angticks)
+        ax6.set_yticklabels(angtickLabels)
+        ax6.set_xlabel(r"$t$")
+        ax6.set_ylabel(r"$\theta$")
         ax6.set_title(r"Sync Per Sector")
         div6  = make_axes_locatable(ax6)
-        cbax6 = div6.append_axes("right", size = "10%", pad = 0.05)
+        cbax6 = div6.append_axes("right", size = "5%", pad = 0.05)
         cb6   = plt.colorbar(im6, cax = cbax6)
         cb6.set_label(r"$| \mathcal{R}_\theta |$")
-        ax7 = fig.add_subplot(gs[0, 1])
-        im7 = ax7.imshow(np.flipud(phase_order_Phi), aspect='auto', extent = (theta_k3_min, theta_k3_max, 1, sys_vars.ndata), cmap = my_hsv, vmin = -np.pi, vmax = np.pi)
-        ax7.set_xticks(angticks)
-        ax7.set_xticklabels(angtickLabels)
-        ax7.set_xlabel(r"$\theta$")
+        ax7 = fig.add_subplot(gs[1, 0])
+        im7 = ax7.imshow(np.rot90(np.flipud(phase_order_Phi), k=-1), aspect='auto', extent = (1, sys_vars.ndata, theta_k3_min, theta_k3_max), cmap = my_hsv, vmin = -np.pi, vmax = np.pi)
+        ax7.set_yticks(angticks)
+        ax7.set_yticklabels(angtickLabels)
+        ax7.set_ylabel(r"$\theta$")
         ax7.set_title(r"Average Angle Per Sector")
         div7  = make_axes_locatable(ax7)
-        cbax7 = div7.append_axes("right", size = "10%", pad = 0.05)
+        cbax7 = div7.append_axes("right", size = "5%", pad = 0.05)
         cb7   = plt.colorbar(im7, cax = cbax7)
         cb7.set_ticks([-np.pi, -np.pi/2.0, 0., np.pi/2, np.pi])
         cb7.set_ticklabels([r"$-\pi$", r"$\frac{-\pi}{2}$", r"$0$", r"$\frac{\pi}{2}$", r"$\pi$"])
         cb7.set_label(r"$\arg \{ \mathcal{R}_\theta \}$")
-        ax8 = fig.add_subplot(gs[0, 2])
-        data = np.flipud(phase_order_enst)
-        im8 = ax8.imshow(data, aspect='auto', extent = (theta_k3_min, theta_k3_max, 1, sys_vars.ndata), cmap = "seismic", vmin=np.amin(data), vmax=np.absolute(np.amin(data))) #vmin = flux_lims[4], vmax = flux_lims[5] #, norm = mpl.colors.SymLogNorm(linthresh = 0.1)
-        ax8.set_xticks(angticks)
-        ax8.set_xticklabels(angtickLabels)
-        ax8.set_xlabel(r"$\theta$")
+        ax8 = fig.add_subplot(gs[2, 0])
+        data = np.rot90(np.flipud(phase_order_enst), k=-1)
+        im8 = ax8.imshow(data, aspect='auto', extent = (1, sys_vars.ndata, theta_k3_min, theta_k3_max), cmap = "seismic", vmin=np.amin(data), vmax=np.absolute(np.amin(data))) #vmin = flux_lims[4], vmax = flux_lims[5] #, norm = mpl.colors.SymLogNorm(linthresh = 0.1)
+        ax8.set_yticks(angticks)
+        ax8.set_yticklabels(angtickLabels)
+        ax8.set_ylabel(r"$\theta$")
         ax8.set_title(r"Enstrophy Flux Per Sector")
         div8  = make_axes_locatable(ax8)
-        cbax8 = div8.append_axes("right", size = "10%", pad = 0.05)
+        cbax8 = div8.append_axes("right", size = "5%", pad = 0.05)
         cb8   = plt.colorbar(im8, cax = cbax8)
         cb8.set_label(r"$\Re \{ \mathcal{R}_\theta \}$")
         plt.savefig(cmdargs.out_dir_avg_snaps + "/Type[{}]_COLLECTIVE_SpaceTime_PerSector.png".format(try_type), bbox_inches="tight")
@@ -902,13 +948,36 @@ if __name__ == '__main__':
             ## IN TIME STATS -- ALL POSSIBLE TRIADS
             #####################################################################
             if post_data.all_triads_pdf_t and post_data.all_wghtd_triads_pdf_t:
+                if n_k3 == 0:
+                    indxs = [tt, tt + 10, tt + 100]
+                    print(post_data.all_triads_pdf_ranges_t[class_type, try_type, :], post_data.all_triads_pdf_counts_t[indxs, class_type, try_type, :])
+                    tt = 10
+                    fig = plt.figure(figsize = (21, 9))
+                    gs  = GridSpec(1, 2)
+                    bin_centres = (post_data.all_triads_pdf_ranges_t[class_type, try_type, 1:] + post_data.all_triads_pdf_ranges_t[class_type, try_type, :-1]) * 0.5
+                    bin_width = post_data.all_triads_pdf_ranges_t[class_type, try_type, 1] - post_data.all_triads_pdf_ranges_t[class_type, try_type, 0]
+                    ax8 = fig.add_subplot(gs[0, 0])
+                    for i in range(len(indxs)):
+                        pdf = compute_pdf_t(post_data.all_triads_pdf_counts_t[indxs[i], class_type, try_type, :], bin_width)
+                        ax8.plot(bin_centres, pdf, label="t = {}".format(i))
+                    ax8.legend()
+                    bin_centres = (post_data.all_wghtd_triads_pdf_ranges_t[class_type, try_type, 1:] + post_data.all_wghtd_triads_pdf_ranges_t[class_type, try_type, :-1]) * 0.5
+                    bin_width = post_data.all_wghtd_triads_pdf_ranges_t[class_type, try_type, 1] - post_data.all_wghtd_triads_pdf_ranges_t[class_type, try_type, 0]
+                    pdf = compute_pdf_t(post_data.all_wghtd_triads_pdf_counts_t[indxs, class_type, try_type, :], bin_width)
+                    ax8 = fig.add_subplot(gs[0, 1])
+                    for i in range(len(indxs)):
+                        ax8.plot(bin_centres, pdf[i], label="t = {}".format(i))
+                    ax8.legend()
+                    plt.savefig(cmdargs.out_dir_avg_snaps + "/Type[{}]_ALL_Triad_HISTOGRAM_InTime_Class[{}].png".format(try_type, class_type), bbox_inches="tight")
+                    plt.close()
+
                 fig = plt.figure(figsize = (21, 9))
                 gs  = GridSpec(1, 2)
                 ax8 = fig.add_subplot(gs[0, 0])
                 bin_centres = (post_data.all_triads_pdf_ranges_t[class_type, try_type, 1:] + post_data.all_triads_pdf_ranges_t[class_type, try_type, :-1]) * 0.5
                 bin_width = post_data.all_triads_pdf_ranges_t[class_type, try_type, 1] - post_data.all_triads_pdf_ranges_t[class_type, try_type, 0]
                 pdf = compute_pdf_t(post_data.all_triads_pdf_counts_t[:, class_type, try_type, :], bin_width)
-                im8 = ax8.imshow(np.flipud(pdf), aspect='auto', extent = (-np.pi + dtheta_k3/2, np.pi - dtheta_k3/2, 1, sys_vars.ndata), cmap = my_magma) # , norm=mpl.colors.LogNorm()
+                im8 = ax8.imshow(np.flipud(pdf), aspect='auto', extent = (-np.pi + dtheta_k3/2, np.pi - dtheta_k3/2, 1, sys_vars.ndata), cmap = my_magma) # , , norm=mpl.colors.LogNorm()
                 ax8.set_xticks([-np.pi, -np.pi/2.0, 0., np.pi/2, np.pi])
                 ax8.set_xticklabels([r"$-\pi$", r"$\frac{-\pi}{2}$", r"$0$", r"$\frac{\pi}{2}$", r"$\pi$"])
                 ax8.set_ylabel(r"$t$")
