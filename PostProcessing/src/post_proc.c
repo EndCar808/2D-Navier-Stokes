@@ -60,7 +60,7 @@ void PostProcessing(void) {
 	// Begin Snapshot Processing
 	//////////////////////////////
 	printf("\n\nStarting Snapshot Processing:\n");
-	for (int s = 0; s <  sys_vars->num_snaps; ++s) {
+	for (int s = 0; s < sys_vars->num_snaps; ++s) { 
 		
 		// Start timer
 		double loop_begin = omp_get_wtime();
@@ -99,9 +99,11 @@ void PostProcessing(void) {
 		// --------------------------------
 		//  Phase Sync
 		// --------------------------------
+		#if defined(__PHASE_SYNC)
+		PhaseSync(s);
+		#endif
 		#if defined(__SEC_PHASE_SYNC) 
 		PhaseSyncSector(s);
-		PhaseSync(s);
 		#endif
 
 		// --------------------------------
@@ -479,6 +481,7 @@ void InitializeFFTWPlans(const long int* N) {
  */
 void FreeMemoryAndCleanUp(void) {
 
+	printf("\n\n\nIN FINAL FREEEEEEEE\n\n");
 
 	// --------------------------------
 	//  Free memory
@@ -509,6 +512,7 @@ void FreeMemoryAndCleanUp(void) {
 	FreePhaseSyncObjects();
 	#endif
 	
+	printf("\n\n\nAFTER FINAL FREE\n\n\n\n");
 	#if defined(__FULL_FIELD) || defined(__SEC_PHASE_SYNC) || defined(__SPECTRA) || defined(__ENST_FLUX) || defined(__ENRG_FLUX)
 	FreeFullFieldObjects();
 	#endif

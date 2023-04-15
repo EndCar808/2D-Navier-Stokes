@@ -316,17 +316,18 @@ if __name__ == '__main__':
     ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
     ax2.set_title(r"$\mathcal{E}(|\mathbf{k}|)$: Enstrophy Spectrum")
 
-    flux_spect = np.zeros((spec_data.enst_flux_spectrum.shape[0], int(sys_vars.Nx/3)))
-    for i in range(spec_data.enst_flux_spectrum.shape[0]):
-        flux_spect[i, :] = get_flux_spectrum(spec_data.enst_flux_spectrum[i, 1:int(sys_vars.Nx/3)])
+
+    flux_spect = get_flux_spectrum(spec_data.enst_flux_spectrum[:, 1:int(sys_vars.Nx/3)])
 
     ax2 = fig.add_subplot(gs[0, 1])
     for i in range(spec_data.enst_flux_spectrum.shape[0]):
         ax2.plot(np.arange(1, int(sys_vars.Nx/3)), flux_spect[i, :], 'r', alpha = 0.15)
     ax2.plot(np.arange(1, int(sys_vars.Nx/3)), np.mean(flux_spect, axis = 0), 'k')
+    ax2.axvline(x=post_data.kmax_C, linestyle=':', color='k', label=r"$k_\kappa = ${}".format(post_data.kmax_C))
     ax2.set_xlabel(r"$k$")
     ax2.set_xscale('log')
-    ax2.set_yscale('symlog')
+    # ax2.set_yscale('symlog')
+    ax2.legend()
     ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
     ax2.set_title(r"$\Pi(|\mathbf{k}|)$: Enstrophy Flux Spectrum")
     
@@ -429,9 +430,9 @@ if __name__ == '__main__':
     my_jet.set_over(color = "white") 
 
     # print("Plotting Data")
-    # try_type = 0
+    try_type = 0
 
-    for try_type in range(post_data.triad_R_2d.shape[1] -1):  ## Ignore the last type as that is always 0
+    for try_type in range(post_data.triad_R_2d.shape[1]-1):  ## Ignore the last type as that is always 0
         print("Plotting Triad Type {}".format(try_type))
 
         #####################################################################
@@ -949,18 +950,18 @@ if __name__ == '__main__':
             #####################################################################
             if post_data.all_triads_pdf_t and post_data.all_wghtd_triads_pdf_t:
                 if n_k3 == 0:
-                    indxs = [tt, tt + 10, tt + 100]
-                    print(post_data.all_triads_pdf_ranges_t[class_type, try_type, :], post_data.all_triads_pdf_counts_t[indxs, class_type, try_type, :])
                     tt = 10
+                    indxs = [tt, tt + 10, sys_vars.ndata//2]
                     fig = plt.figure(figsize = (21, 9))
                     gs  = GridSpec(1, 2)
                     bin_centres = (post_data.all_triads_pdf_ranges_t[class_type, try_type, 1:] + post_data.all_triads_pdf_ranges_t[class_type, try_type, :-1]) * 0.5
                     bin_width = post_data.all_triads_pdf_ranges_t[class_type, try_type, 1] - post_data.all_triads_pdf_ranges_t[class_type, try_type, 0]
                     ax8 = fig.add_subplot(gs[0, 0])
+                    pdf = compute_pdf_t(post_data.all_triads_pdf_counts_t[indxs, class_type, try_type, :], bin_width)
                     for i in range(len(indxs)):
-                        pdf = compute_pdf_t(post_data.all_triads_pdf_counts_t[indxs[i], class_type, try_type, :], bin_width)
-                        ax8.plot(bin_centres, pdf, label="t = {}".format(i))
+                        ax8.plot(bin_centres, pdf[i], label="t = {}".format(i))
                     ax8.legend()
+                    print()
                     bin_centres = (post_data.all_wghtd_triads_pdf_ranges_t[class_type, try_type, 1:] + post_data.all_wghtd_triads_pdf_ranges_t[class_type, try_type, :-1]) * 0.5
                     bin_width = post_data.all_wghtd_triads_pdf_ranges_t[class_type, try_type, 1] - post_data.all_wghtd_triads_pdf_ranges_t[class_type, try_type, 0]
                     pdf = compute_pdf_t(post_data.all_wghtd_triads_pdf_counts_t[indxs, class_type, try_type, :], bin_width)
@@ -977,8 +978,8 @@ if __name__ == '__main__':
                 bin_centres = (post_data.all_triads_pdf_ranges_t[class_type, try_type, 1:] + post_data.all_triads_pdf_ranges_t[class_type, try_type, :-1]) * 0.5
                 bin_width = post_data.all_triads_pdf_ranges_t[class_type, try_type, 1] - post_data.all_triads_pdf_ranges_t[class_type, try_type, 0]
                 pdf = compute_pdf_t(post_data.all_triads_pdf_counts_t[:, class_type, try_type, :], bin_width)
-                im8 = ax8.imshow(np.flipud(pdf), aspect='auto', extent = (-np.pi + dtheta_k3/2, np.pi - dtheta_k3/2, 1, sys_vars.ndata), cmap = my_magma) # , , norm=mpl.colors.LogNorm()
-                ax8.set_xticks([-np.pi, -np.pi/2.0, 0., np.pi/2, np.pi])
+                im8 = ax8.imshow(np.flipud(pdf), aspect='auto', extent = (bin_centres[0], bin_centres[-1], 1, sys_vars.ndata), cmap = my_magma) # , , norm=mpl.colors.LogNorm()
+                ax8.set_xticks([bin_centres[0], -np.pi/2.0, 0., np.pi/2, bin_centres[-1]])
                 ax8.set_xticklabels([r"$-\pi$", r"$\frac{-\pi}{2}$", r"$0$", r"$\frac{\pi}{2}$", r"$\pi$"])
                 ax8.set_ylabel(r"$t$")
                 if class_type == 0:
@@ -994,8 +995,8 @@ if __name__ == '__main__':
                 bin_centres = (post_data.all_wghtd_triads_pdf_ranges_t[class_type, try_type, 1:] + post_data.all_wghtd_triads_pdf_ranges_t[class_type, try_type, :-1]) * 0.5
                 bin_width = post_data.all_wghtd_triads_pdf_ranges_t[class_type, try_type, 1] - post_data.all_wghtd_triads_pdf_ranges_t[class_type, try_type, 0]
                 pdf = compute_pdf_t(post_data.all_wghtd_triads_pdf_counts_t[:, class_type, try_type, :], bin_width)
-                im8 = ax8.imshow(np.flipud(pdf), aspect='auto', extent = (-np.pi + dtheta_k3/2, np.pi - dtheta_k3/2, 1, sys_vars.ndata), cmap = my_magma) # , norm=mpl.colors.LogNorm()
-                ax8.set_xticks([-np.pi, -np.pi/2.0, 0., np.pi/2, np.pi])
+                im8 = ax8.imshow(np.flipud(pdf), aspect='auto', extent = (bin_centres[0], bin_centres[-1], 1, sys_vars.ndata), cmap = my_magma) # , norm=mpl.colors.LogNorm()
+                ax8.set_xticks([bin_centres[0], -np.pi/2.0, 0., np.pi/2, bin_centres[-1]])
                 ax8.set_xticklabels([r"$-\pi$", r"$\frac{-\pi}{2}$", r"$0$", r"$\frac{\pi}{2}$", r"$\pi$"])
                 ax8.set_ylabel(r"$t$")
                 if class_type == 0:
@@ -1027,8 +1028,8 @@ if __name__ == '__main__':
                 bin_centres = (post_data.triads_all_pdf_ranges_t[1:] + post_data.triads_all_pdf_ranges_t[:-1]) * 0.5
                 bin_width = post_data.triads_all_pdf_ranges_t[1] - post_data.triads_all_pdf_ranges_t[0]
                 pdf = compute_pdf_t(post_data.triads_all_pdf_counts_t[:, class_type, try_type, n_k3, :], bin_width)
-                im8 = ax8.imshow(np.flipud(pdf), aspect='auto', extent = (-np.pi + dtheta_k3/2, np.pi - dtheta_k3/2, 1, sys_vars.ndata), cmap = my_magma) # , norm=mpl.colors.LogNorm()
-                ax8.set_xticks([-np.pi, -np.pi/2.0, 0., np.pi/2, np.pi])
+                im8 = ax8.imshow(np.flipud(pdf), aspect='auto', extent = (bin_centres[0], bin_centres[-1], 1, sys_vars.ndata), cmap = my_magma) # , norm=mpl.colors.LogNorm()
+                ax8.set_xticks([bin_centres[0], -np.pi/2.0, 0., np.pi/2, bin_centres[-1]])
                 ax8.set_xticklabels([r"$-\pi$", r"$\frac{-\pi}{2}$", r"$0$", r"$\frac{\pi}{2}$", r"$\pi$"])
                 ax8.set_ylabel(r"$t$")
                 if class_type == 0:
@@ -1044,8 +1045,8 @@ if __name__ == '__main__':
                 bin_centres = (post_data.wghtd_triads_all_pdf_ranges_t[1:] + post_data.wghtd_triads_all_pdf_ranges_t[:-1]) * 0.5
                 bin_width = post_data.wghtd_triads_all_pdf_ranges_t[1] - post_data.wghtd_triads_all_pdf_ranges_t[0]
                 pdf = compute_pdf_t(post_data.wghtd_triads_all_pdf_counts_t[:, class_type, try_type, n_k3, :], bin_width)
-                im8 = ax8.imshow(np.flipud(pdf), aspect='auto', extent = (-np.pi + dtheta_k3/2, np.pi - dtheta_k3/2, 1, sys_vars.ndata), cmap = my_magma) # , norm=mpl.colors.LogNorm()
-                ax8.set_xticks([-np.pi, -np.pi/2.0, 0., np.pi/2, np.pi])
+                im8 = ax8.imshow(np.flipud(pdf), aspect='auto', extent = (bin_centres[0], bin_centres[-1], 1, sys_vars.ndata), cmap = my_magma) # , norm=mpl.colors.LogNorm()
+                ax8.set_xticks([bin_centres[0], -np.pi/2.0, 0., np.pi/2, bin_centres[-1]])
                 ax8.set_xticklabels([r"$-\pi$", r"$\frac{-\pi}{2}$", r"$0$", r"$\frac{\pi}{2}$", r"$\pi$"])
                 ax8.set_ylabel(r"$t$")
                 if class_type == 0:
@@ -1071,8 +1072,8 @@ if __name__ == '__main__':
                 bin_centres = (post_data.triads_1d_pdf_ranges_t[1:] + post_data.triads_1d_pdf_ranges_t[:-1]) * 0.5
                 bin_width = post_data.triads_1d_pdf_ranges_t[1] - post_data.triads_1d_pdf_ranges_t[0]
                 pdf = compute_pdf_t(post_data.triads_1d_pdf_counts_t[:, class_type, try_type, n_k3, :], bin_width)
-                im8 = ax8.imshow(np.flipud(pdf), aspect='auto', extent = (-np.pi + dtheta_k3/2, np.pi - dtheta_k3/2, 1, sys_vars.ndata), cmap = my_magma) # , norm=mpl.colors.LogNorm()
-                ax8.set_xticks([-np.pi, -np.pi/2.0, 0., np.pi/2, np.pi])
+                im8 = ax8.imshow(np.flipud(pdf), aspect='auto', extent = (bin_centres[0], bin_centres[-1], 1, sys_vars.ndata), cmap = my_magma) # , norm=mpl.colors.LogNorm()
+                ax8.set_xticks([bin_centres[0], -np.pi/2.0, 0., np.pi/2, bin_centres[-1]])
                 ax8.set_xticklabels([r"$-\pi$", r"$\frac{-\pi}{2}$", r"$0$", r"$\frac{\pi}{2}$", r"$\pi$"])
                 ax8.set_ylabel(r"$t$")
                 if class_type == 0:
@@ -1088,8 +1089,8 @@ if __name__ == '__main__':
                 bin_centres = (post_data.wghtd_triads_1d_pdf_ranges_t[1:] + post_data.wghtd_triads_1d_pdf_ranges_t[:-1]) * 0.5
                 bin_width = post_data.wghtd_triads_1d_pdf_ranges_t[1] - post_data.wghtd_triads_1d_pdf_ranges_t[0]
                 pdf = compute_pdf_t(post_data.wghtd_triads_1d_pdf_counts_t[:, class_type, try_type, n_k3, :], bin_width)
-                im8 = ax8.imshow(np.flipud(pdf), aspect='auto', extent = (-np.pi + dtheta_k3/2, np.pi - dtheta_k3/2, 1, sys_vars.ndata), cmap = my_magma) # , norm=mpl.colors.LogNorm()
-                ax8.set_xticks([-np.pi, -np.pi/2.0, 0., np.pi/2, np.pi])
+                im8 = ax8.imshow(np.flipud(pdf), aspect='auto', extent = (bin_centres[0], bin_centres[-1], 1, sys_vars.ndata), cmap = my_magma) # , norm=mpl.colors.LogNorm()
+                ax8.set_xticks([bin_centres[0], -np.pi/2.0, 0., np.pi/2, bin_centres[-1]])
                 ax8.set_xticklabels([r"$-\pi$", r"$\frac{-\pi}{2}$", r"$0$", r"$\frac{\pi}{2}$", r"$\pi$"])
                 ax8.set_ylabel(r"$t$")
                 if class_type == 0:

@@ -10,8 +10,8 @@ save=10
 num_procs=4
 
 ## Set the post parameter space
-num_sects=(24 48 56)
-c_radius_frac=(0.25 0.50 0.75 0.80)
+num_sects=(24)
+c_radius_frac=(0.1 0.15 0.2 0.25 0.3)
 
 ## Command variables
 input_dir="./Data/SectorSyncResults/"
@@ -71,12 +71,12 @@ do
 		data_dir=$input_dir"NAV_AB4_FULL_N[$N,$N]_T[0.0,0.001,"$T"]_NU[5e-13,1,4.0]_DRAG[0.1,1,0.0]_FORC[BODY_FORC_COS,2,1]_u0[RANDOM_ENRG]_TAG[$solv_tag]/"
 
 		## Plotting command
-		plotting_command="python3 Plotting/plot_jet_sync.py -i $data_dir --triads=0 --plot --vid --phase_order --par -p $num_plot_procs -f PostProcessing_HDF_Data_THREADS[1,1]_SECTORS["$sec","$sec"]_KFRAC[0.00,"$c_rad"]_TAG[$tag].h5 --full=all -t $tag"
+		plotting_command="python3 Plotting/plot_jet_sync.py -i $data_dir --triads=0 --phase_order --vid --plot --par -p $num_plot_procs -f PostProcessing_HDF_Data_THREADS[1,1]_SECTORS["$sec","$sec"]_KFRAC[0.00,"$c_rad"]_TAG[$tag].h5 --full=all -t $tag"
 		echo -e "\nCommand run:\n\t \033[1;36m $plotting_command \033[0m"
 		$plotting_command &
 	done
 
-	# wait
+	wait
 done
 
 wait 

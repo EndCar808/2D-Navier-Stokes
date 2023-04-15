@@ -72,6 +72,7 @@
 #define __ENRG_FLUX
 #endif
 #if defined(__POST_SYNC)
+// #define __PHASE_SYNC
 #define __SEC_PHASE_SYNC
 // #define __SEC_PHASE_SYNC_STATS
 #define __SEC_PHASE_SYNC_STATS_IN_TIME
@@ -133,10 +134,10 @@
 #define CONTRIB_1D 0 		    // Indicates 1d contribution (same sector) to the flux 
 #define CONTRIB_2D 1            // Indicates 2d contribution (across sectors) to the flux
 #define CONTRIB_ALL 2           // Indicates when 1d and 2d contributions are combined
-#define N_BINS_SEC_1D_T 30      // The number of bins in the sector pdfs in time for 1D contributions
-#define N_BINS_SEC_2D_T 30      // The number of bins in the sector pdfs in time for 2D contributions
-#define N_BINS_SEC_ALL_T 30     // The number of bins in the sector pdfs in time for 1D and 2D contributions
-#define N_BINS_TRIADS_ALL_T 30  // The number of bins to use in the all triads pdf in time
+#define N_BINS_SEC_1D_T 50      // The number of bins in the sector pdfs in time for 1D contributions
+#define N_BINS_SEC_2D_T 50      // The number of bins in the sector pdfs in time for 2D contributions
+#define N_BINS_SEC_ALL_T 50     // The number of bins in the sector pdfs in time for 1D and 2D contributions
+#define N_BINS_TRIADS_ALL_T 50  // The number of bins to use in the all triads pdf in time
 // ---------------------------------------------------------------------
 //  Global Struct Definitions
 // ---------------------------------------------------------------------

@@ -486,6 +486,7 @@ void WriteDataToFile(double t, long int snap) {
 	static const hsize_t Dims4D = 4;
 	hsize_t dset_dims_4d[Dims4D];
 
+
 	// -------------------------------
 	// Check for Output File
 	// -------------------------------
@@ -794,6 +795,27 @@ void WriteDataToFile(double t, long int snap) {
     // -------------------------------
     // Write Phase Sync Data
     // -------------------------------
+    #if defined(__PHASE_SYNC)
+    dset_dims_1d[0] = NUM_TRIAD_TYPES + 1;
+    status = H5LTmake_dataset(group_id, "TriadPhaseSyncTest", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, proc_data->triad_R_test);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Phase Sync Parameter", t, snap);
+        exit(1);
+    }
+    status = H5LTmake_dataset(group_id, "TriadAverageAngleTest", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, proc_data->triad_Phi_test);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Average Angle", t, snap);
+        exit(1);
+    }    
+
+    dset_dims_1d[0] = NUM_TRIAD_TYPES + 1;
+    status = H5LTmake_dataset(group_id, "EnstrophyFluxTest", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, proc_data->enst_flux_test);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Enstrophy Flux Per Sector", t, snap);
+        exit(1);
+    }
+    #endif
+
 	#if defined(__SEC_PHASE_SYNC)
 	/// ----------------------- Phase Order Data
 	// Write the phase order data for the individual phases
@@ -804,18 +826,6 @@ void WriteDataToFile(double t, long int snap) {
         exit(1);
     }
     status = H5LTmake_dataset(group_id, "AverageAngle", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, proc_data->phase_Phi);
-	if (status < 0) {
-        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Average Angle", t, snap);
-        exit(1);
-    }    
-
-    dset_dims_1d[0] = NUM_TRIAD_TYPES + 1;
-    status = H5LTmake_dataset(group_id, "TriadPhaseSyncTest", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, proc_data->triad_R_test);
-	if (status < 0) {
-        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Phase Sync Parameter", t, snap);
-        exit(1);
-    }
-    status = H5LTmake_dataset(group_id, "TriadAverageAngleTest", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, proc_data->triad_Phi_test);
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Average Angle", t, snap);
         exit(1);
@@ -1028,13 +1038,6 @@ void WriteDataToFile(double t, long int snap) {
     
 
     ///------------------------ Enstrophy Flux
-    dset_dims_1d[0] = NUM_TRIAD_TYPES + 1;
-    status = H5LTmake_dataset(group_id, "EnstrophyFluxTest", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, proc_data->enst_flux_test);
-	if (status < 0) {
-        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Enstrophy Flux Per Sector", t, snap);
-        exit(1);
-    }
-
     for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
     	for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
     		tmp[i * sys_vars->num_k3_sectors + a] = proc_data->enst_flux[i][a];
@@ -1087,7 +1090,6 @@ void WriteDataToFile(double t, long int snap) {
     // Free tmp memory
     fftw_free(tmp);
     fftw_free(tmp1);
-
 
     ///------------------------- Phase Order Sync Stats Data
     #if defined(__SEC_PHASE_SYNC_STATS_IN_TIME)
@@ -1894,24 +1896,7 @@ void FinalWriteAndClose(void) {
     #endif
 	
 
-
-	#if defined(__SEC_PHASE_SYNC)
-	///-------------------------- Sector Angles
-	// k3 sector angles
-    dset_dims_1d[0] = sys_vars->num_k3_sectors;
-	status = H5LTmake_dataset(file_info->output_file_handle, "SectorAngles_k3", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, proc_data->theta_k3);
-	if (status < 0) {
-        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Sector Angles");
-        exit(1);
-    }	
-    // k1 sector angles
-    dset_dims_1d[0] = sys_vars->num_k1_sectors;
-	status = H5LTmake_dataset(file_info->output_file_handle, "SectorAngles_k1", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, proc_data->theta_k1);
-	if (status < 0) {
-        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Sector Angles");
-        exit(1);
-    }	
-
+    #if defined(__PHASE_SYNC)
     dset_dims_1d[0] = NUM_TRIAD_TYPES + 1;
 	status = H5LTmake_dataset(file_info->output_file_handle, "NumTriadsTest", Dims1D, dset_dims_1d, H5T_NATIVE_INT, proc_data->num_triads_test);
 	if (status < 0) {
@@ -1932,6 +1917,24 @@ void FinalWriteAndClose(void) {
         exit(1);
     }
     fftw_free(tmp_test);
+    #endif
+
+	#if defined(__SEC_PHASE_SYNC)
+	///-------------------------- Sector Angles
+	// k3 sector angles
+    dset_dims_1d[0] = sys_vars->num_k3_sectors;
+	status = H5LTmake_dataset(file_info->output_file_handle, "SectorAngles_k3", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, proc_data->theta_k3);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Sector Angles");
+        exit(1);
+    }	
+    // k1 sector angles
+    dset_dims_1d[0] = sys_vars->num_k1_sectors;
+	status = H5LTmake_dataset(file_info->output_file_handle, "SectorAngles_k1", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, proc_data->theta_k1);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Sector Angles");
+        exit(1);
+    }	
 
     ///------------------------- Number of Triads Per Sector
     int* tmp = (int*) fftw_malloc(sizeof(int) * sys_vars->num_k3_sectors * (NUM_TRIAD_TYPES + 1));

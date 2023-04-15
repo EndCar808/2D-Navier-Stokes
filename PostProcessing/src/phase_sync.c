@@ -125,6 +125,10 @@ void PhaseSync(int s) {
 								proc_data->phase_sync_wave_vecs_test[K3_Y][n] = k3_y;
 
 								n++;
+								if (n > sys_vars->num_triad_per_sec_est) {
+									fprintf(stderr, "\n["RED"ERROR"RESET"] --- The number of triads in ["CYAN"%s"RESET"] exceding the allocated number of ["CYAN"%d"RESET"] -- Need to allocate more memory\n-->> Exiting!!!\n", "PhaseSync", sys_vars->num_triad_per_sec_est);
+									exit(1);
+								}
 
 								if (flux_pre_fac < 0) {
 									//------------------------------------------ TRIAD TYPE 1
@@ -223,6 +227,10 @@ void PhaseSync(int s) {
 								proc_data->phase_sync_wave_vecs_test[K3_Y][n] = k3_y;
 
 								n++;
+								if (n > sys_vars->num_triad_per_sec_est) {
+									fprintf(stderr, "\n["RED"ERROR"RESET"] --- The number of triads in ["CYAN"%s"RESET"] exceding the allocated number of ["CYAN"%d"RESET"] -- Need to allocate more memory\n-->> Exiting!!!\n", "PhaseSync", sys_vars->num_triad_per_sec_est);
+									exit(1);
+								}
 
 								if (flux_pre_fac < 0) {
 									//------------------------------------------ TRIAD TYPE 3
@@ -2004,12 +2012,12 @@ void AllocatePhaseSyncMemory(const long int* N) {
 			}
 
 			// Initialize bins for all contirbutions
-			gsl_status = gsl_histogram_set_ranges_uniform(proc_data->triads_all_pdf_t[triad_class][triad_type], -M_PI - 0.05,  M_PI + 0.05);
+			gsl_status = gsl_histogram_set_ranges_uniform(proc_data->triads_all_pdf_t[triad_class][triad_type], -M_PI,  M_PI);
 			if (gsl_status != 0) {
 				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set bin ranges for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "All Triad Phase PDFs All Contribution");
 				exit(1);
 			}
-			gsl_status = gsl_histogram_set_ranges_uniform(proc_data->triads_wghtd_all_pdf_t[triad_class][triad_type], -M_PI - 0.05,  M_PI + 0.05);
+			gsl_status = gsl_histogram_set_ranges_uniform(proc_data->triads_wghtd_all_pdf_t[triad_class][triad_type], -M_PI,  M_PI);
 			if (gsl_status != 0) {
 				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set bin ranges for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "All Triad Phase PDFs All Contribution");
 				exit(1);
@@ -2030,12 +2038,12 @@ void AllocatePhaseSyncMemory(const long int* N) {
 				}
 
 				// Initialize bins for all contirbutions
-				gsl_status = gsl_histogram_set_ranges_uniform(proc_data->triads_sect_all_pdf_t[triad_class][triad_type][a], -M_PI - 0.05,  M_PI + 0.05);
+				gsl_status = gsl_histogram_set_ranges_uniform(proc_data->triads_sect_all_pdf_t[triad_class][triad_type][a], -M_PI,  M_PI);
 				if (gsl_status != 0) {
 					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set bin ranges for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Triad Phase PDFs All Contribution");
 					exit(1);
 				}
-				gsl_status = gsl_histogram_set_ranges_uniform(proc_data->triads_sect_wghtd_all_pdf_t[triad_class][triad_type][a], -M_PI - 0.05,  M_PI + 0.05);
+				gsl_status = gsl_histogram_set_ranges_uniform(proc_data->triads_sect_wghtd_all_pdf_t[triad_class][triad_type][a], -M_PI,  M_PI);
 				if (gsl_status != 0) {
 					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set bin ranges for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Triad Phase PDFs All Contribution");
 					exit(1);
@@ -2055,12 +2063,12 @@ void AllocatePhaseSyncMemory(const long int* N) {
 					exit(1);
 				}
 				// Initialize bins for all contirbutions
-				gsl_status = gsl_histogram_set_ranges_uniform(proc_data->triads_sect_1d_pdf_t[triad_class][triad_type][a], -M_PI - 0.05,  M_PI + 0.05);
+				gsl_status = gsl_histogram_set_ranges_uniform(proc_data->triads_sect_1d_pdf_t[triad_class][triad_type][a], -M_PI,  M_PI);
 				if (gsl_status != 0) {
 					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set bin ranges for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Triad Phase PDFs 1D Contribution");
 					exit(1);
 				}
-				gsl_status = gsl_histogram_set_ranges_uniform(proc_data->triads_sect_wghtd_1d_pdf_t[triad_class][triad_type][a], -M_PI - 0.05,  M_PI + 0.05);
+				gsl_status = gsl_histogram_set_ranges_uniform(proc_data->triads_sect_wghtd_1d_pdf_t[triad_class][triad_type][a], -M_PI,  M_PI);
 				if (gsl_status != 0) {
 					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set bin ranges for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Triad Phase PDFs 1D Contribution");
 					exit(1);
@@ -2084,12 +2092,12 @@ void AllocatePhaseSyncMemory(const long int* N) {
 
 					///-------------------------------------- Initialize histogram bin ranges
 					// Initialize bins for all contirbutions
-					gsl_status = gsl_histogram_set_ranges_uniform(proc_data->triads_sect_2d_pdf_t[triad_class][triad_type][a][l], -M_PI - 0.05,  M_PI + 0.05);
+					gsl_status = gsl_histogram_set_ranges_uniform(proc_data->triads_sect_2d_pdf_t[triad_class][triad_type][a][l], -M_PI,  M_PI);
 					if (gsl_status != 0) {
 						fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set bin ranges for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Triad Phase PDFs 1D + 2D Contribution");
 						exit(1);
 					}
-					gsl_status = gsl_histogram_set_ranges_uniform(proc_data->triads_sect_wghtd_2d_pdf_t[triad_class][triad_type][a][l], -M_PI - 0.05,  M_PI + 0.05);
+					gsl_status = gsl_histogram_set_ranges_uniform(proc_data->triads_sect_wghtd_2d_pdf_t[triad_class][triad_type][a][l], -M_PI,  M_PI);
 					if (gsl_status != 0) {
 						fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set bin ranges for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Triad Phase PDFs 1D + 2D Contribution");
 						exit(1);
@@ -2149,17 +2157,17 @@ void AllocatePhaseSyncMemory(const long int* N) {
 			exit(1);
 		}	
 		// Set bin ranges for the individual phases
-		gsl_status = gsl_histogram_set_ranges_uniform(proc_data->phase_sect_pdf[i], -M_PI - 0.05,  M_PI + 0.05);
+		gsl_status = gsl_histogram_set_ranges_uniform(proc_data->phase_sect_pdf[i], -M_PI,  M_PI);
 		if (gsl_status != 0) {
 			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set bin ranges for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Sector Phases PDF");
 			exit(1);
 		}
-		gsl_status = gsl_histogram_set_ranges_uniform(proc_data->phase_sect_pdf_t[i], -M_PI - 0.05,  M_PI + 0.05);
+		gsl_status = gsl_histogram_set_ranges_uniform(proc_data->phase_sect_pdf_t[i], -M_PI,  M_PI);
 		if (gsl_status != 0) {
 			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set bin ranges for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Sector Phases PDF In Time");
 			exit(1);
 		}
-		gsl_status = gsl_histogram_set_ranges_uniform(proc_data->phase_sect_wghtd_pdf_t[i], -M_PI - 0.05,  M_PI + 0.05);
+		gsl_status = gsl_histogram_set_ranges_uniform(proc_data->phase_sect_wghtd_pdf_t[i], -M_PI,  M_PI);
 		if (gsl_status != 0) {
 			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set bin ranges for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Sector Phases Weighted PDF In Time");
 			exit(1);
@@ -2189,7 +2197,7 @@ void AllocatePhaseSyncMemory(const long int* N) {
 				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set bin ranges for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Phase Sync 2D PDF");
 				exit(1);
 			}
-			gsl_status = gsl_histogram_set_ranges_uniform(proc_data->triad_Phi_2d_pdf[j][i][l], -M_PI - 0.05,  M_PI + 0.05);
+			gsl_status = gsl_histogram_set_ranges_uniform(proc_data->triad_Phi_2d_pdf[j][i][l], -M_PI,  M_PI);
 			if (gsl_status != 0) {
 				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set bin ranges for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Average Phase 2D PDF");
 				exit(1);
@@ -2226,17 +2234,17 @@ void AllocatePhaseSyncMemory(const long int* N) {
 				exit(1);
 			}	
 			// Set bin ranges for the triad phases
-			gsl_status = gsl_histogram_set_ranges_uniform(proc_data->triad_sect_pdf[j][i], -M_PI - 0.05,  M_PI + 0.05);
+			gsl_status = gsl_histogram_set_ranges_uniform(proc_data->triad_sect_pdf[j][i], -M_PI,  M_PI);
 			if (gsl_status != 0) {
 				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set bin ranges for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phases PDF");
 				exit(1);
 			}
-			gsl_status = gsl_histogram_set_ranges_uniform(proc_data->triad_sect_pdf_t[j][i], -M_PI - 0.05,  M_PI + 0.05);
+			gsl_status = gsl_histogram_set_ranges_uniform(proc_data->triad_sect_pdf_t[j][i], -M_PI,  M_PI);
 			if (gsl_status != 0) {
 				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set bin ranges for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phases PDF In Time");
 				exit(1);
 			}
-			gsl_status = gsl_histogram_set_ranges_uniform(proc_data->triad_sect_wghtd_pdf_t[j][i], -M_PI - 0.05,  M_PI + 0.05);
+			gsl_status = gsl_histogram_set_ranges_uniform(proc_data->triad_sect_wghtd_pdf_t[j][i], -M_PI,  M_PI);
 			if (gsl_status != 0) {
 				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set bin ranges for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Sector Triad Phases PDF In Time");
 				exit(1);
@@ -2270,11 +2278,6 @@ void AllocatePhaseSyncMemory(const long int* N) {
 			}	
 		}
 	}
-	proc_data->phase_sync_wave_vecs_test = (double** )fftw_malloc(sizeof(double*) * 6);
-	if (proc_data->phase_sync_wave_vecs_test == NULL) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Phase Sync Wavevectors");
-		exit(1);
-	}	
 	// Estimate for the number of triads across sectors -> we will resize this dimension to correct size after search is performed NOTE: Needs to be bigger than all triads in the cirlce i.e., one sector
 	int num_triad_est               = (int) ceil(M_PI * pow(sys_vars->N[0], 2.0) + 2.0 * sqrt(2) * M_PI * sys_vars->N[0]) * 1000;
 	sys_vars->num_triad_per_sec_est = num_triad_est;
@@ -2289,6 +2292,13 @@ void AllocatePhaseSyncMemory(const long int* N) {
 			}	
 		}
 	}
+
+	#if defined (__PHASE_SYNC)
+	proc_data->phase_sync_wave_vecs_test = (double** )fftw_malloc(sizeof(double*) * 6);
+	if (proc_data->phase_sync_wave_vecs_test == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Phase Sync Wavevectors");
+		exit(1);
+	}	
 	for (int n = 0; n < 6; ++n) {
 		proc_data->phase_sync_wave_vecs_test[n] = (double* )fftw_malloc(sizeof(double) * num_triad_est);
 		if (proc_data->phase_sync_wave_vecs_test[n] == NULL) {
@@ -2298,11 +2308,12 @@ void AllocatePhaseSyncMemory(const long int* N) {
 	}
 	// Initialize phase sync test data
 	for (int n = 0; n < 6; ++n) {
-		proc_data->num_triads_test[n] = 0.0;
+		proc_data->num_triads_test[n] = 0;
 		for (int i = 0; i < num_triad_est; ++i) {
 			proc_data->phase_sync_wave_vecs_test[n][i] = 0.0;
 		}
 	}
+	#endif
 
 	//------------ Allocate memory for the number of wavevector triads per sector
 	proc_data->num_wave_vecs = (int** )fftw_malloc(sizeof(int*) * sys_vars->num_k3_sectors);
@@ -2362,6 +2373,26 @@ void AllocatePhaseSyncMemory(const long int* N) {
 		for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
 			for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
 				proc_data->num_wave_vecs[a][l] = tmp_num_wavevecs[a * sys_vars->num_k1_sectors + l];
+			}
+		}
+
+		///-------------------- Realloc the last dimension in wavevector array to its correct size
+		for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
+			for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
+				for (int n = 0; n < NUM_K_DATA; ++n) {
+					if (proc_data->num_wave_vecs[a][l] == 0) {
+						// Free empty phase sync wavevector arrays
+						fftw_free(proc_data->phase_sync_wave_vecs[a][l][n]);
+					}
+					else {
+						// Otherwise reallocate the correct amount of memory
+						proc_data->phase_sync_wave_vecs[a][l][n] = (double* )realloc(proc_data->phase_sync_wave_vecs[a][l][n] , sizeof(double) * proc_data->num_wave_vecs[a][l]);
+						if (proc_data->phase_sync_wave_vecs[a][l][n] == NULL) {
+							fprintf(stderr, "\n["MAGENTA"WARNING"RESET"] --- Unable to Reallocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Phase Sync Wavevectors");
+							exit(1);
+						}
+					}
+				}	
 			}
 		}
 
@@ -2567,6 +2598,10 @@ void AllocatePhaseSyncMemory(const long int* N) {
 
 											// Increment
 											nn++;
+											if (nn > sys_vars->num_triad_per_sec_est) {
+												fprintf(stderr, "\n["RED"ERROR"RESET"] --- The number of triads in ["CYAN"%s"RESET"] exceding the allocated number of ["CYAN"%d"RESET"] terms -- Need to allocate more memory!!\n-->> Exiting!!!\n", "Wavevector Triad Search", sys_vars->num_triad_per_sec_est);
+												exit(1);
+											}
 										}
 									}
 								}
@@ -2655,6 +2690,10 @@ void AllocatePhaseSyncMemory(const long int* N) {
 
 											// Increment
 											nn++;
+											if (nn > sys_vars->num_triad_per_sec_est) {
+												fprintf(stderr, "\n["RED"ERROR"RESET"] --- The number of triads in ["CYAN"%s"RESET"] exceding the allocated number of ["CYAN"%d"RESET"] terms -- Need to allocate more memory!!\n-->> Exiting!!!\n", "Wavevector Triad Search", sys_vars->num_triad_per_sec_est);
+												exit(1);
+											}
 										}
 									}
 								}
@@ -2757,11 +2796,13 @@ void AllocatePhaseSyncMemory(const long int* N) {
 
 		// End timer 
 		double loop_end = omp_get_wtime();
+		printf("\n["YELLOW"NOTE"RESET"] --- Est Triad : %d\tTotal Est Triads: %d\n", num_triad_est, sys_vars->num_k3_sectors * sys_vars->num_k1_sectors * num_triad_est);
 		printf("\n["YELLOW"NOTE"RESET"] --- Total Triad Terms: %ld\n", total_terms);
 		printf("["YELLOW"NOTE"RESET"] --- Total Time for sector search: %g(s)\n", (loop_end - loop_begin));
 
 
 		// Close number of flux terms file
+		fprintf(fptr, "\n--- Est Triad : %d\tTotal Est Triads: %d\n", num_triad_est, sys_vars->num_k3_sectors * sys_vars->num_k1_sectors * num_triad_est);
 		fprintf(fptr, "\n--- Total Triad Terms: %ld\n", total_terms);
 		fprintf(fptr, "--- Total Time for sector search: %g(s)\n", (loop_end - loop_begin));
 		fclose(fptr);
@@ -2833,9 +2874,11 @@ void FreePhaseSyncObjects(void) {
 	for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
 		fftw_free(proc_data->num_wave_vecs[a]);
 	}
+	#if defined(__PHASE_SYNC)
 	for (int n = 0; n < 6; ++n) {
 		fftw_free(proc_data->phase_sync_wave_vecs_test[n]);
 	}	
+	#endif
 
 	// --------------------------------
 	//  Free GSL objects
