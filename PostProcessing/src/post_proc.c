@@ -52,7 +52,7 @@ void PostProcessing(void) {
 	// --------------------------------
 	//  Perform Precomputations
 	// --------------------------------
-	#if defined(__GRAD_STATS) || defined(__VEL_INC_STATS)
+	#if defined(__GRAD_STATS) || defined(__VEL_INC_STATS) || (defined(__SEC_PHASE_SYNC) && defined(__SEC_PHASE_SYNC_FLUX_STATS))
 	Precompute();
 	#endif
 
@@ -103,7 +103,7 @@ void PostProcessing(void) {
 		PhaseSync(s);
 		#endif
 		#if defined(__SEC_PHASE_SYNC) 
-		PhaseSyncSector(s);
+		PhaseSyncSector(s, 0);
 		#endif
 
 		// --------------------------------
@@ -162,9 +162,22 @@ void Precompute(void) {
 	// Loop Through Snapshots
 	// --------------------------------
 	for (int s = 0; s < sys_vars->num_snaps; ++s) {
+
+		printf("Precomputation Step: %d/%ld\n", s + 1, sys_vars->num_snaps);
 		
 		// Read in snaps
 		ReadInData(s);
+
+		// --------------------------------
+		// Precompute Stats
+		// --------------------------------
+		#if defined(__SEC_PHASE_SYNC) && defined(__SEC_PHASE_SYNC_FLUX_STATS)
+		// Compute full field needed for the sector phase sync data
+		FullFieldData();
+
+		// Call sector sync in pre compute mode
+		PhaseSyncSector(s, PRE_COMPUTE);
+		#endif
 
 		// --------------------------------
 		// Precompute Stats
@@ -191,6 +204,7 @@ void Precompute(void) {
 		fftw_execute_dft_c2r(sys_vars->fftw_2d_dft_batch_c2r, proc_data->grad_u_hat, proc_data->grad_u);
 		#endif
 
+		#if defined(__GRAD_STATS) || defined(__VEL_INC_STATS)
 		// Loop over real space
 		for (int i = 0; i < Nx; ++i) {
 			tmp = i * Ny;
@@ -249,6 +263,7 @@ void Precompute(void) {
 				#endif
 			}
 		}
+		#endif
 	}
 
 	// --------------------------------
@@ -481,7 +496,6 @@ void InitializeFFTWPlans(const long int* N) {
  */
 void FreeMemoryAndCleanUp(void) {
 
-	printf("\n\n\nIN FINAL FREEEEEEEE\n\n");
 
 	// --------------------------------
 	//  Free memory
@@ -512,7 +526,6 @@ void FreeMemoryAndCleanUp(void) {
 	FreePhaseSyncObjects();
 	#endif
 	
-	printf("\n\n\nAFTER FINAL FREE\n\n\n\n");
 	#if defined(__FULL_FIELD) || defined(__SEC_PHASE_SYNC) || defined(__SPECTRA) || defined(__ENST_FLUX) || defined(__ENRG_FLUX)
 	FreeFullFieldObjects();
 	#endif

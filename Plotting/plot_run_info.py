@@ -174,6 +174,9 @@ if __name__ == '__main__':
         ## Read in spectra data
         spec_data = import_spectra_data(cmdargs.in_dir, sys_vars)
 
+        with h5.File(cmdargs.in_dir + "SystemMeasures_HDF_Data.h5", "r") as main_file:
+            tot_enrg = main_file["TotalEnergy"][:]
+            eddy_turn = 2.0 * np.pi / np.sqrt(np.mean(tot_enrg))
         ##-------------------------
         ## Plot vorticity   
         ##-------------------------

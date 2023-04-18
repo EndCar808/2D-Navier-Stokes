@@ -227,7 +227,9 @@ def plot_phase_snaps_stream(input_dir, output_dir, post_file, i, Nx, Ny, spec_li
               else:
                      w_hat = main_file[group_name]["w_hat"][:, :]
                      w = np.fft.irfft2(w_hat) * Nx * Nx
-              
+
+              tot_enrg = main_file["TotalEnergy"][:]
+                     
        ## Get spectra data
        with h5.File(input_dir + post_file) as post_file:
               group_name = "Snap_{:05d}".format(i)
@@ -242,10 +244,10 @@ def plot_phase_snaps_stream(input_dir, output_dir, post_file, i, Nx, Ny, spec_li
               phases    = post_file[group_name]["FullFieldPhases"][:]
 
        ## Call plot flow summary function
-       plot_phase_snaps(output_dir, i, w, phases, enrg_spec, enst_spec, spec_lims, None, None, x, y, time, Nx, Ny, kx, ky)
+       plot_phase_snaps(output_dir, i, w, phases, enrg_spec, enst_spec, spec_lims, None, None, x, y, time[i], 2.0 * np.pi/np.sqrt(np.mean(tot_enrg)), Nx, Ny, kx, ky)
 
 
-def plot_phase_snaps(out_dir, i, w, phases, enrg_spec, enst_spec, spec_lims, w_min, w_max, x, y, time, Nx, Ny, kx, ky):
+def plot_phase_snaps(out_dir, i, w, phases, enrg_spec, enst_spec, spec_lims, w_min, w_max, x, y, time, eddy_t, Nx, Ny, kx, ky):
 
     """
     Plots summary snap of the solver data for the current iteration. Plots vorticity, full zero centre phases and spectra.
@@ -360,6 +362,7 @@ def plot_phase_snaps(out_dir, i, w, phases, enrg_spec, enst_spec, spec_lims, w_m
 
 
     ## Save figure
+    plt.suptitle(r"$t = {:.3f} - {:1.3f}\tau$".format(time, time/eddy_t))
     plt.savefig(out_dir + "Phase_SNAP_{:05d}.png".format(i), bbox_inches='tight') 
     plt.close()
 
@@ -700,7 +703,7 @@ def plot_sector_phase_sync_snaps(i, out_dir, phases, theta_k3, R, Phi, t, Nx, Ny
        plt.close()
 
 
-def plot_sector_phase_sync_snaps_full(i, out_dir, w, enst_spec, enst_flux, phases, theta, R, Phi, flux_min, flux_max, t, x, y, Nx, Ny):
+def plot_sector_phase_sync_snaps_full(i, out_dir, w, enst_spec, enst_flux, phases, theta, R, Phi, flux_min, flux_max, t, eddy_t, x, y, Nx, Ny):
 
        """
        Plots the phases and average phase and sync per sector of the phases
@@ -844,12 +847,12 @@ def plot_sector_phase_sync_snaps_full(i, out_dir, w, enst_spec, enst_flux, phase
        cb5.set_label(r"$\mathcal{E}(\hat{\omega}_\mathbf{k})$")
 
        ## Add title and save fig
-       plt.suptitle(r"$t = {:.5f}$".format(t))
+       plt.suptitle(r"$t = {:.3f} - {:1.3f}\tau$".format(t, t/eddy_t))
        plt.savefig(out_dir + "/Phase_Sync_SNAP_{:05d}.png".format(i), bbox_inches = 'tight')
        plt.close()
 
 
-def plot_sector_phase_sync_snaps_full_sec(i, out_dir, w, enst_spec, enst_flux, enst_flux_a_sec, phases, theta_k3, R, R_a_sec, Phi, Phi_a_sec, flux_lims, t, x, y, Nx, Ny):
+def plot_sector_phase_sync_snaps_full_sec(i, out_dir, w, enst_spec, enst_flux, enst_flux_a_sec, phases, theta_k3, R, R_a_sec, Phi, Phi_a_sec, flux_lims, t, eddy_t, x, y, Nx, Ny):
 
        """
        Plots the phases and average phase and sync per sector of the phases
@@ -1061,13 +1064,13 @@ def plot_sector_phase_sync_snaps_full_sec(i, out_dir, w, enst_spec, enst_flux, e
        cb8.set_label(r"$\Pi_{\mathcal{C}}^{2D}$")
 
        ## Add title and save fig
-       plt.suptitle(r"$t = {:.5f}$".format(t))
+       plt.suptitle(r"$t = {:.3f} - {:1.3f}\tau$".format(t, t/eddy_t))
        plt.savefig(out_dir + "/Phase_Sync_SNAP_{:05d}.png".format(i), bbox_inches = 'tight')
        plt.close()
 
 
 
-def plot_sector_phase_sync_snaps_all(i, out_dir, w, enst_spec, enst_flux_sec, enst_flux_1d, enst_flux_2d, phases, theta_k3, R_sec, R_1d, R_2d, Phi_sec, Phi_1d, Phi_2d, flux_lims, t, x, y, Nx, Ny):
+def plot_sector_phase_sync_snaps_all(i, out_dir, w, enst_spec, enst_flux_sec, enst_flux_1d, enst_flux_2d, phases, theta_k3, R_sec, R_1d, R_2d, Phi_sec, Phi_1d, Phi_2d, flux_lims, t, eddy_t, x, y, Nx, Ny):
 
        """
        Plots the phases and average phase and sync per sector of the phases
@@ -1341,7 +1344,7 @@ def plot_sector_phase_sync_snaps_all(i, out_dir, w, enst_spec, enst_flux_sec, en
        cb8.set_label(r"$\Pi_{\mathcal{C}}^{2D}$")
 
        ## Add title and save fig
-       plt.suptitle(r"$t = {:.5f}$".format(t))
+       plt.suptitle(r"$t = {:.3f} - {:1.3f}\tau$".format(t, t/eddy_t))
        plt.savefig(out_dir + "/Phase_Sync_SNAP_{:05d}.png".format(i), bbox_inches = 'tight')
        plt.close()
 

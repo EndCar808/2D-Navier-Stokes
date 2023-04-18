@@ -1092,12 +1092,65 @@ void WriteDataToFile(double t, long int snap) {
     fftw_free(tmp1);
 
     ///------------------------- Phase Order Sync Stats Data
+    #if defined(__SEC_PHASE_SYNC_FLUX_STATS)
+    int num_bin_x = proc_data->triads_wghtd_2d_pdf_t[0][0]->nx;
+    int num_bin_y = proc_data->triads_wghtd_2d_pdf_t[0][0]->ny;
+    double* triad2d_bin_ranges_x = (double*) fftw_malloc(sizeof(double) * NUM_TRIAD_CLASS * (NUM_TRIAD_TYPES - 1) * (num_bin_x + 1));
+    double* triad2d_bin_ranges_y = (double*) fftw_malloc(sizeof(double) * NUM_TRIAD_CLASS * (NUM_TRIAD_TYPES - 1) * (num_bin_y + 1));
+    double* triad2d_bin_counts = (double*) fftw_malloc(sizeof(double) * NUM_TRIAD_CLASS * (NUM_TRIAD_TYPES - 1) * num_bin_x * num_bin_y);
+    for (int class = 0; class < NUM_TRIAD_CLASS; ++class) {
+    	for (int type = 0; type < (NUM_TRIAD_TYPES - 1); ++type) {
+    		for (int j = 0; j < (num_bin_x + 1); ++j) {
+    			triad2d_bin_ranges_x[(num_bin_x + 1) * (class * (NUM_TRIAD_TYPES - 1) + type) + j] = proc_data->triads_wghtd_2d_pdf_t[class][type]->xrange[j];
+    			for (int i = 0; i < (num_bin_y + 1); ++i) {
+    				if (j == 0) {
+    					triad2d_bin_ranges_y[(num_bin_y + 1) * (class * (NUM_TRIAD_TYPES - 1) + type) + i] = proc_data->triads_wghtd_2d_pdf_t[class][type]->yrange[i];
+    				}
+	    			if (j < num_bin_x && i < num_bin_y) {
+	    				triad2d_bin_counts[(num_bin_y) * ((num_bin_x) * (class * (NUM_TRIAD_TYPES - 1) + type) + j) + i] = proc_data->triads_wghtd_2d_pdf_t[class][type]->bin[j * num_bin_y + i];
+	    			}
+    			}
+    		}
+    	}
+    }
+    dset_dims_3d[0] = NUM_TRIAD_CLASS;
+    dset_dims_3d[1] = NUM_TRIAD_TYPES - 1;
+    dset_dims_3d[2] = num_bin_x + 1;
+	status = H5LTmake_dataset(group_id, "TriadsWeighted_2D_InTime_Ranges_x", Dims3D, dset_dims_3d, H5T_NATIVE_DOUBLE, triad2d_bin_ranges_x);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file  at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "TriadsWeighted_2D_InTime_Ranges_x", t, snap);
+        exit(1);
+    }
+    dset_dims_3d[0] = NUM_TRIAD_CLASS;
+    dset_dims_3d[1] = NUM_TRIAD_TYPES - 1;
+    dset_dims_3d[2] = num_bin_y + 1;
+	status = H5LTmake_dataset(group_id, "TriadsWeighted_2D_InTime_Ranges_y", Dims3D, dset_dims_3d, H5T_NATIVE_DOUBLE, triad2d_bin_ranges_y);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file  at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "TriadsWeighted_2D_InTime_Ranges_y", t, snap);
+        exit(1);
+    }
+
+    dset_dims_4d[0] = NUM_TRIAD_CLASS;
+    dset_dims_4d[1] = NUM_TRIAD_TYPES - 1;
+    dset_dims_4d[2] = num_bin_x;
+    dset_dims_4d[3] = num_bin_y;
+	status = H5LTmake_dataset(group_id, "TriadsWeighted_2D_InTime_Counts", Dims4D, dset_dims_4d, H5T_NATIVE_DOUBLE, triad2d_bin_counts);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file  at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "TriadsWeighted_2D_InTime_Counts", t, snap);
+        exit(1);
+    }
+
+    fftw_free(triad2d_bin_counts);
+    fftw_free(triad2d_bin_ranges_x);
+    fftw_free(triad2d_bin_ranges_y);
+    #endif
+
     #if defined(__SEC_PHASE_SYNC_STATS_IN_TIME)
     int num_bin_triads = proc_data->triads_all_pdf_t[0][0]->n;
     double* triad_bin_ranges = (double*) fftw_malloc(sizeof(double) * NUM_TRIAD_CLASS * (NUM_TRIAD_TYPES + 1) * (num_bin_triads + 1));
     double* triad_bin_counts = (double*) fftw_malloc(sizeof(double) * NUM_TRIAD_CLASS * (NUM_TRIAD_TYPES + 1) * num_bin_triads);
     for (int class = 0; class < NUM_TRIAD_CLASS; ++class) {
-    	for (int i = 0; i < NUM_TRIAD_TYPES + 1; ++i) {
+    	for (int i = 0; i < (NUM_TRIAD_TYPES + 1); ++i) {
     		for (int j = 0; j < (num_bin_triads + 1); ++j) {
     			triad_bin_ranges[(num_bin_triads + 1) * (class * (NUM_TRIAD_TYPES + 1) + i) + j] = proc_data->triads_all_pdf_t[class][i]->range[j];
     			if (j < num_bin_triads) {

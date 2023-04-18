@@ -9,7 +9,7 @@
 ##  Library Imports  ##
 #######################
 import numpy as np
-import h5py
+import h5py as h5
 import sys
 import os
 from numba import njit
@@ -29,6 +29,7 @@ import multiprocessing as mprocs
 import time as TIME
 from subprocess import Popen, PIPE, run
 from matplotlib.pyplot import cm
+import concurrent.futures as cf
 from functions import tc, sim_data, import_data, import_spectra_data, import_post_processing_data, get_flux_spectrum
 from plot_functions import plot_sector_phase_sync_snaps, plot_sector_phase_sync_snaps_full, plot_sector_phase_sync_snaps_full_sec, plot_sector_phase_sync_snaps_all
 ###############################
@@ -214,6 +215,115 @@ def compute_pdf_t(counts, bin_width):
         pdf[t, :] = counts[t, :] / (np.sum(counts[t, :], axis=-1) * bin_width)
 
     return pdf
+
+@njit
+def compute_joint_pdf(counts, xranges, yranges):
+
+    pdf = np.zeros(counts.shape)
+
+    for typ in range(2):
+        num_t, nbins_x, nbins_y = counts[:, typ, :, :].shape 
+        for t in range(num_t):
+            dx = xranges[t, typ, 1] - xranges[t, typ, 0]
+            dy = yranges[t, typ, 1] - yranges[t, typ, 0]
+            nx = len(xranges[t, typ, :])
+            ny = len(yranges[t, typ, :])
+            counts_sum = np.sum(counts[t, typ, :, :])
+            for i in range(nx):
+                for j in range(ny):
+                    pdf[t, typ, i, j] = counts[t, typ, i, j] / (counts_sum * dx * dy)
+
+    return pdf
+
+
+
+def plot_enst_flux_joint_pdf(outdir, t, try_type, ranges_x, ranges_y, hist_counts, time):
+    
+    fig = plt.figure(figsize = (21, 9))
+    gs  = GridSpec(1, 2)
+        
+    min_enst_flux = ranges_y[0, 0]
+    max_enst_flux = ranges_y[0, -1]
+    dx = ranges_x[0, 1] - ranges_x[0, 0]
+    dy = ranges_y[0, 1] - ranges_y[0, 0]
+    counts = np.rot90(hist_counts[0, :, :])
+    pdf = counts / (np.sum(counts) * dx * dy)
+    
+    ax8 = fig.add_subplot(gs[0, 0])
+    im8 = ax8.imshow(pdf, aspect='auto', extent=(-np.pi, np.pi, min_enst_flux, max_enst_flux), cmap=my_magma, norm=mpl.colors.LogNorm())
+    ax8.set_xticks([-np.pi, -np.pi/2.0, 0., np.pi/2, np.pi])
+    ax8.set_xticklabels([r"$-\pi$", r"$\frac{-\pi}{2}$", r"$0$", r"$\frac{\pi}{2}$", r"$\pi$"])
+    ax8.set_xlabel(r"$\varphi_{\mathbf{k}_1, \mathbf{k}_2}^{\mathbf{k}_3}$")
+    ax8.set_ylabel(r"$\Omega_{\mathbf{k}_1, \mathbf{k}_2}^{\mathbf{k}_3}$")
+    ax8.set_title(r"Joint Triad Flux PDF in Time")
+    div8  = make_axes_locatable(ax8)
+    cbax8 = div8.append_axes("right", size = "10%", pad = 0.05)
+    cb8   = plt.colorbar(im8, cax = cbax8)
+    cb8.set_label(r"PDF")    
+    
+    
+    min_enst_flux = ranges_y[1, 0]
+    max_enst_flux = ranges_y[1, -1]
+    dx = ranges_x[1, 1] - ranges_x[1, 0]
+    dy = ranges_y[1, 1] - ranges_y[1, 0]
+    counts = np.rot90(hist_counts[1, :, :])
+    pdf = counts / (np.sum(counts) * dx * dy)
+
+    ax2 = fig.add_subplot(gs[0, 1])
+    im2 = ax2.imshow(pdf, aspect='auto', extent=(-np.pi, np.pi, min_enst_flux, max_enst_flux), cmap=my_magma, norm=mpl.colors.LogNorm())
+    ax2.set_xticks([-np.pi, -np.pi/2.0, 0., np.pi/2, np.pi])
+    ax2.set_xticklabels([r"$-\pi$", r"$\frac{-\pi}{2}$", r"$0$", r"$\frac{\pi}{2}$", r"$\pi$"])
+    ax2.set_xlabel(r"$\Phi_{\mathbf{k}_1, \mathbf{k}_2}^{\mathbf{k}_3}$")
+    ax2.set_ylabel(r"$\Omega_{\mathbf{k}_1, \mathbf{k}_2}^{\mathbf{k}_3}$")
+    ax2.set_title(r"Joint Generalized Triad Flux PDF in Time")
+    div2  = make_axes_locatable(ax2)
+    cbax2 = div2.append_axes("right", size = "10%", pad = 0.05)
+    cb2   = plt.colorbar(im2, cax = cbax2)
+    cb2.set_label(r"PDF")    
+    
+    plt.suptitle("Time: {:1.3f} - Triad Type {}".format(time, try_type))
+    plt.savefig(outdir + "/Triads_JointPDF_InTime_{:05d}.png".format(t), bbox_inches="tight")
+    plt.close()
+
+    return print("Snap {}".format(t))
+
+
+def plot_enst_flux_joint_pdf_ALL(outdir, t, try_type, pdf, v_min, v_max, max_enst_flux, time):
+    
+    fig = plt.figure(figsize = (21, 9))
+    gs  = GridSpec(1, 2)
+        
+    ax8 = fig.add_subplot(gs[0, 0])
+    im8 = ax8.imshow(np.rot90(pdf[0]), aspect='auto', extent=(-np.pi, np.pi, 0.0, max_enst_flux[0]), cmap=my_magma, norm=mpl.colors.LogNorm(vmin=1e-3, vmax=v_max[0]))
+    ax8.set_xticks([-np.pi, -np.pi/2.0, 0., np.pi/2, np.pi])
+    ax8.set_xticklabels([r"$-\pi$", r"$\frac{-\pi}{2}$", r"$0$", r"$\frac{\pi}{2}$", r"$\pi$"])
+    ax8.set_xlabel(r"$\varphi_{\mathbf{k}_1, \mathbf{k}_2}^{\mathbf{k}_3}$")
+    ax8.set_ylabel(r"$\Omega_{\mathbf{k}_1, \mathbf{k}_2}^{\mathbf{k}_3}$")
+    ax8.set_title(r"Joint Triad Flux PDF in Time")
+    div8  = make_axes_locatable(ax8)
+    cbax8 = div8.append_axes("right", size = "10%", pad = 0.05)
+    cb8   = plt.colorbar(im8, cax = cbax8)
+    cb8.set_label(r"PDF")    
+    
+    ax2 = fig.add_subplot(gs[0, 1])
+    im2 = ax2.imshow(np.rot90(pdf[1]), aspect='auto', extent=(-np.pi, np.pi, 0.0, max_enst_flux[1]), cmap=my_magma, norm=mpl.colors.LogNorm(vmin=1e-3, vmax=v_max[1]))
+    ax2.set_xticks([-np.pi, -np.pi/2.0, 0., np.pi/2, np.pi])
+    ax2.set_xticklabels([r"$-\pi$", r"$\frac{-\pi}{2}$", r"$0$", r"$\frac{\pi}{2}$", r"$\pi$"])
+    ax2.set_xlabel(r"$\Phi_{\mathbf{k}_1, \mathbf{k}_2}^{\mathbf{k}_3}$")
+    ax2.set_ylabel(r"$\Omega_{\mathbf{k}_1, \mathbf{k}_2}^{\mathbf{k}_3}$")
+    ax2.set_title(r"Joint Generalized Triad Flux PDF in Time")
+    div2  = make_axes_locatable(ax2)
+    cbax2 = div2.append_axes("right", size = "10%", pad = 0.05)
+    cb2   = plt.colorbar(im2, cax = cbax2)
+    cb2.set_label(r"PDF")    
+    
+    plt.suptitle("Time: {:1.3f} - Triad Type".format(time, try_type))
+    plt.savefig(outdir + "/Triads_JointPDF_InTime_{:05d}.png".format(t), bbox_inches="tight")
+    plt.close()
+
+    return print("Snap {}".format(t))
+
+
 ######################
 ##       MAIN       ##
 ######################
@@ -243,7 +353,9 @@ if __name__ == '__main__':
         for i in range(sys_vars.ndata):
             run_data.w[i, :, :] = np.fft.irfft2(run_data.w_hat[i, :, :])
         print("Finished!")
-        
+    
+    
+    eddy_turn = 2.0 * np.pi / np.sqrt(np.mean(run_data.tot_enrg))
     ## Read in spectra data
     spec_data = import_spectra_data(cmdargs.in_dir, sys_vars)
 
@@ -259,7 +371,7 @@ if __name__ == '__main__':
         # flux_2d_max = np.amax(post_data.enst_flux_per_sec_2d[:, 0, :, :])
         flux_2d_max = -flux_2d_min 
 
-    print("Finished Reading in Data")
+    print("Finished Reading in Data\n")
     # -----------------------------------------
     # # --------  Make Output Directories
     # -----------------------------------------
@@ -269,6 +381,7 @@ if __name__ == '__main__':
     cmdargs.out_dir_valid     = cmdargs.out_dir + "PHASE_SYNC_VALID_SNAPS/"
     cmdargs.out_dir_phases     = cmdargs.out_dir + "PHASE_SYNC_SNAPS/"
     cmdargs.out_dir_triads     = cmdargs.out_dir + "TRIAD_PHASE_SYNC_SNAPS/"
+    cmdargs.out_dir_joint     = cmdargs.out_dir + "JOINT_PDF_SNAPS/"
     if os.path.isdir(cmdargs.out_dir_phases) != True:
         print("Making folder:" + tc.C + " PHASE_SYNC_SNAPS/" + tc.Rst)
         os.mkdir(cmdargs.out_dir_phases)
@@ -284,21 +397,40 @@ if __name__ == '__main__':
     if os.path.isdir(cmdargs.out_dir_avg) != True:
         print("Making folder:" + tc.C + " PHASE_SYNC_AVG_SNAPS/" + tc.Rst)
         os.mkdir(cmdargs.out_dir_avg)
+    if os.path.isdir(cmdargs.out_dir_joint) != True:
+        print("Making folder:" + tc.C + " JOINT_PDF_SNAPS/" + tc.Rst)
+        os.mkdir(cmdargs.out_dir_joint)
     print("Run info Output Folder: "+ tc.C + "{}".format(cmdargs.out_dir_phases) + tc.Rst)
     print("Phases Output Folder: "+ tc.C + "{}".format(cmdargs.out_dir_phases) + tc.Rst)
     print("Triads Output Folder: "+ tc.C + "{}".format(cmdargs.out_dir_triads) + tc.Rst)
     print("Validation Output Folder: "+ tc.C + "{}".format(cmdargs.out_dir_valid) + tc.Rst)
     print("Time Avg Output Folder: "+ tc.C + "{}".format(cmdargs.out_dir_avg) + tc.Rst)
+    print("Joint PDF Output Folder: "+ tc.C + "{}".format(cmdargs.out_dir_joint) + tc.Rst)
     ## Make subfolder for validation snaps dependent on parameters
     cmdargs.out_dir_valid_snaps = cmdargs.out_dir_valid + "SECT[{},{}]_KFRAC[{:1.2f},{:1.2f}]_TAG[{}]/".format(post_data.num_k3_sect, post_data.num_k1_sect, post_data.kmin_sqr, post_data.kmax_frac, cmdargs.tag)
     cmdargs.out_dir_avg_snaps = cmdargs.out_dir_avg + "SECT[{},{}]_KFRAC[{:1.2f},{:1.2f}]_TAG[{}]/".format(post_data.num_k3_sect, post_data.num_k1_sect, post_data.kmin_sqr, post_data.kmax_frac, cmdargs.tag)
+    cmdargs.out_dir_joint_snaps = cmdargs.out_dir_joint + "SECT[{},{}]_KFRAC[{:1.2f},{:1.2f}]_TAG[{}]/".format(post_data.num_k3_sect, post_data.num_k1_sect, post_data.kmin_sqr, post_data.kmax_frac, cmdargs.tag)
     if os.path.isdir(cmdargs.out_dir_valid_snaps) != True:
         print("Making folder:" + tc.C + " SECT[{},{}]_KFRAC[{:1.2f},{:1.2f}]_TAG[{}]/".format(post_data.num_k3_sect, post_data.num_k1_sect, post_data.kmin_sqr, post_data.kmax_frac, cmdargs.tag) + tc.Rst)
         os.mkdir(cmdargs.out_dir_valid_snaps)
     if os.path.isdir(cmdargs.out_dir_avg_snaps) != True:
         print("Making folder:" + tc.C + " SECT[{},{}]_KFRAC[{:1.2f},{:1.2f}]_TAG[{}]/".format(post_data.num_k3_sect, post_data.num_k1_sect, post_data.kmin_sqr, post_data.kmax_frac, cmdargs.tag) + tc.Rst)
         os.mkdir(cmdargs.out_dir_avg_snaps)
+    if os.path.isdir(cmdargs.out_dir_joint_snaps) != True:
+        print("Making folder:" + tc.C + " SECT[{},{}]_KFRAC[{:1.2f},{:1.2f}]_TAG[{}]/".format(post_data.num_k3_sect, post_data.num_k1_sect, post_data.kmin_sqr, post_data.kmax_frac, cmdargs.tag) + tc.Rst)
+        os.mkdir(cmdargs.out_dir_joint_snaps)
     
+    print("\n")
+
+    my_magma = mpl.colors.ListedColormap(cm.magma.colors[::-1])
+    my_magma.set_under(color = "white")
+    my_magma.set_over(color = "black")
+    my_hsv = mpl.cm.hsv
+    my_hsv.set_under(color = "white")
+    my_hsv.set_over(color = "white")
+    my_jet = mpl.cm.jet
+    my_jet.set_under(color = "white") 
+    my_jet.set_over(color = "white") 
 
     # -----------------------------------------
     # # --------  Plot Flux Spectrum
@@ -419,16 +551,7 @@ if __name__ == '__main__':
     alpha_min = theta_k3_min
     alpha_max = theta_k3_max
 
-    my_magma = mpl.colors.ListedColormap(cm.magma.colors[::-1])
-    my_magma.set_under(color = "white")
-    my_magma.set_over(color = "white")
-    my_hsv = mpl.cm.hsv
-    my_hsv.set_under(color = "white")
-    my_hsv.set_over(color = "white")
-    my_jet = mpl.cm.jet
-    my_jet.set_under(color = "white") 
-    my_jet.set_over(color = "white") 
-
+    
     # print("Plotting Data")
     try_type = 0
 
@@ -1109,6 +1232,58 @@ if __name__ == '__main__':
                 plt.savefig(cmdargs.out_dir_avg_snaps + "/Type[{}]_TriadPDF_1D_InTime_Class[{}]_Sec[{}].png".format(try_type, class_type, n_k3), bbox_inches="tight")
                 plt.close()
 
+
+
+    if post_data.triads_wghtd_joint_pdf_t:
+        t = 100
+        try_type = 0
+        class_type = 1
+
+        xranges = post_data.triads_wghtd_joint_pdf_ranges_x_t[:, :, try_type, :]
+        yranges = post_data.triads_wghtd_joint_pdf_ranges_y_t[:, :, try_type, :]
+        counts  = post_data.triads_wghtd_joint_pdf_counts_t[:, :, try_type, :, :]
+        pdfs = compute_joint_pdf(counts, xranges, yranges)
+
+        v_min = [np.amin(pdfs[0]), np.amin(pdfs[1])]
+        v_max = [np.amax(pdfs[0]), np.amax(pdfs[1])]
+        max_enst_flux = [np.amax(yranges[:, 0, :]), np.amax(yranges[:, 1, :])]
+
+        # plot_enst_flux_joint_pdf_ALL(cmdargs.out_dir_joint_snaps, t, try_type, pdfs[t, :, :, :], v_min, v_max, max_enst_flux, run_data.time[t])
+        
+        # plot_enst_flux_joint_pdf(cmdargs.out_dir_joint_snaps, t, try_type, post_data.triads_wghtd_joint_pdf_ranges_x_t[t, :, try_type, :], post_data.triads_wghtd_joint_pdf_ranges_y_t[t, :, try_type, :], post_data.triads_wghtd_joint_pdf_counts_t[t, :, try_type, :, :], run_data.time[t])
+        
+        ## Create process Pool executer
+        executor = cf.ProcessPoolExecutor(cmdargs.num_procs)
+
+        # ## Submit jobs to the executor
+        # futures = [executor.submit(plot_enst_flux_joint_pdf, cmdargs.out_dir_joint_snaps, t, try_type, post_data.triads_wghtd_joint_pdf_ranges_x_t[t, :, try_type, :], post_data.triads_wghtd_joint_pdf_ranges_y_t[t, :, try_type, :], post_data.triads_wghtd_joint_pdf_counts_t[t, :, try_type, :, :], run_data.time[t]) for t in range(sys_vars.ndata)]
+        futures = [executor.submit(plot_enst_flux_joint_pdf_ALL, cmdargs.out_dir_joint_snaps, t, try_type, pdfs[t, :, :, :], v_min, v_max, max_enst_flux, run_data.time[t]) for t in range(sys_vars.ndata)]
+
+        ## Wait until these jobs are finished
+        cf.wait(futures)
+                
+
+        ## Video variables
+        framesPerSec = 15
+        inputFile    = cmdargs.out_dir_joint_snaps + "Triads_JointPDF_InTime_%05d.png"
+        videoName    = cmdargs.out_dir_joint_snaps + "Triad_EnstFlux_JointPDF_TriType[{}]_N[{},{}]_u0[{}]_NSECT[{},{}]_KFRAC[{:1.2f},{:1.2f}]_TAG[{}].mp4".format(try_type, sys_vars.Nx, sys_vars.Ny, sys_vars.u0, post_data.num_k3_sect, post_data.num_k1_sect, post_data.kmin_sqr, post_data.kmax_frac, cmdargs.tag)
+        cmd = "ffmpeg -y -r {} -f image2 -s 1920x1080 -i {} -vf 'pad=ceil(iw/2)*2:ceil(ih/2)*2' -vcodec libx264 -crf 25 -pix_fmt yuv420p {}".format(framesPerSec, inputFile, videoName)
+        # cmd = "ffmpeg -r {} -f image2 -s 1280×720 -i {} -vcodec libx264 -preset ultrafast -crf 35 -pix_fmt yuv420p {}".format(framesPerSec, inputFile, videoName)
+
+        process = Popen(cmd, shell = True, stdout = PIPE, stdin = PIPE, universal_newlines = True)
+        [runCodeOutput, runCodeErr] = process.communicate()
+        print(runCodeOutput)
+        print(runCodeErr)
+        process.wait()
+
+        ## Prin summary of timmings to screen
+        print("\n" + tc.Y + "Finished making video..." + tc.Rst)
+        print("Video Location: " + tc.C + videoName + tc.Rst + "\n")
+
+        ## Remove the generated snaps after video is created
+        print("cd {};".format(cmdargs.out_dir_joint_snaps) + "rm {};".format("./*.png") + "cd -;")
+        run("cd {};".format(cmdargs.out_dir_joint_snaps) + "rm {};".format("./*.png") + "cd -;", shell = True)
+
     # -----------------------------------------
     # # --------  Plot Data For Videos
     # -----------------------------------------
@@ -1126,7 +1301,7 @@ if __name__ == '__main__':
 
                 ## Create tasks for the process pool
                 if cmdargs.full:
-                    groups_args = [(mprocs.Process(target = plot_sector_phase_sync_snaps_full, args = (i, cmdargs.out_dir_triads, run_data.w[i, :, :], post_data.enst_spectrum[i, :, :], post_data.enst_flux_per_sec[i, 0, :], post_data.phases[i, :, int(sys_vars.Nx/3):], post_data.theta_k3, post_data.triad_R[i, int(cmdargs.triad_type), :], post_data.triad_Phi[i, int(cmdargs.triad_type), :], flux_min, flux_max, run_data.time[i], run_data.x, run_data.y, sys_vars.Nx, sys_vars.Ny)) for i in range(sys_vars.ndata))] * proc_lim
+                    groups_args = [(mprocs.Process(target = plot_sector_phase_sync_snaps_full, args = (i, cmdargs.out_dir_triads, run_data.w[i, :, :], post_data.enst_spectrum[i, :, :], post_data.enst_flux_per_sec[i, 0, :], post_data.phases[i, :, int(sys_vars.Nx/3):], post_data.theta_k3, post_data.triad_R[i, int(cmdargs.triad_type), :], post_data.triad_Phi[i, int(cmdargs.triad_type), :], flux_min, flux_max, run_data.time[i], eddy_turn, run_data.x, run_data.y, sys_vars.Nx, sys_vars.Ny)) for i in range(sys_vars.ndata))] * proc_lim
 
                 else:
                     groups_args = [(mprocs.Process(target = plot_sector_phase_sync_snaps, args = (i, cmdargs.out_dir_phases, post_data.phases[i, :, int(sys_vars.Nx/3):], post_data.theta_k3, post_data.phase_R[i, :], post_data.phase_Phi[i, :], run_data.time[i], sys_vars.Nx, sys_vars.Ny)) for i in range(sys_vars.ndata))] * proc_lim
@@ -1213,7 +1388,7 @@ if __name__ == '__main__':
                                                     R_1d[i, int(cmdargs.triad_type), :], R_2d[i, int(cmdargs.triad_type), :, :], 
                                                     Phi_1d[i, int(cmdargs.triad_type), :], Phi_2d[i, int(cmdargs.triad_type), :, :], 
                                                     [flux_min, flux_max, flux_2d_min, flux_2d_max],
-                                                    run_data.time[i], 
+                                                    run_data.time[i], eddy_turn, 
                                                     run_data.x, run_data.y, 
                                                     sys_vars.Nx, sys_vars.Ny)) for i in range(sys_vars.ndata))] * proc_lim
                         elif cmdargs.triad_plot_type == "all":
@@ -1228,13 +1403,13 @@ if __name__ == '__main__':
                                                                     R[i, int(cmdargs.triad_type), :], R_1d[i, int(cmdargs.triad_type), :], R_2d[i, int(cmdargs.triad_type), :, :], 
                                                                     Phi[i, int(cmdargs.triad_type), :], Phi_1d[i, int(cmdargs.triad_type), :], Phi_2d[i, int(cmdargs.triad_type), :, :],
                                                                     [flux_min, flux_max, flux_1d_min, flux_1d_max, flux_2d_min, flux_2d_max], 
-                                                                    run_data.time[i], 
+                                                                    run_data.time[i], eddy_turn, 
                                                                     run_data.x, run_data.y, 
                                                                     sys_vars.Nx, sys_vars.Ny)) for i in range(sys_vars.ndata))] * proc_lim
                         else:
-                            groups_args = [(mprocs.Process(target = plot_sector_phase_sync_snaps_full, args = (i, cmdargs.out_dir_triads, run_data.w[i, :, :], post_data.enst_spectrum[i, :, :], post_data.enst_flux_per_sec[i, int(cmdargs.triad_type), :], post_data.phases[i, :, int(sys_vars.Nx/3):], post_data.theta_k3, post_data.triad_R[i, int(cmdargs.triad_type), :], post_data.triad_Phi[i, int(cmdargs.triad_type), :], flux_min, flux_max, run_data.time[i], run_data.x, run_data.y, sys_vars.Nx, sys_vars.Ny)) for i in range(sys_vars.ndata))] * proc_lim
+                            groups_args = [(mprocs.Process(target = plot_sector_phase_sync_snaps_full, args = (i, cmdargs.out_dir_triads, run_data.w[i, :, :], post_data.enst_spectrum[i, :, :], post_data.enst_flux_per_sec[i, int(cmdargs.triad_type), :], post_data.phases[i, :, int(sys_vars.Nx/3):], post_data.theta_k3, post_data.triad_R[i, int(cmdargs.triad_type), :], post_data.triad_Phi[i, int(cmdargs.triad_type), :], flux_min, flux_max, run_data.time[i], eddy_turn, run_data.x, run_data.y, sys_vars.Nx, sys_vars.Ny)) for i in range(sys_vars.ndata))] * proc_lim
                     else:
-                        groups_args = [(mprocs.Process(target = plot_sector_phase_sync_snaps, args = (i, cmdargs.out_dir_triads, post_data.phases[i, :, int(sys_vars.Nx/3):], post_data.theta_k3, post_data.triad_R[i, int(cmdargs.triad_type), :], post_data.triad_Phi[i, int(cmdargs.triad_type), :], run_data.time[i], sys_vars.Nx, sys_vars.Ny)) for i in range(sys_vars.ndata))] * proc_lim
+                        groups_args = [(mprocs.Process(target = plot_sector_phase_sync_snaps, args = (i, cmdargs.out_dir_triads, post_data.phases[i, :, int(sys_vars.Nx/3):], post_data.theta_k3, post_data.triad_R[i, int(cmdargs.triad_type), :], post_data.triad_Phi[i, int(cmdargs.triad_type), :], run_data.time[i], eddy_turn, sys_vars.Nx, sys_vars.Ny)) for i in range(sys_vars.ndata))] * proc_lim
 
                     ## Loop of grouped iterable
                     for procs in zip_longest(*groups_args): 
@@ -1305,7 +1480,7 @@ if __name__ == '__main__':
                                                         R_1d[i, t, :], R_2d[i, t, :, :], 
                                                         Phi_1d[i, t, :], Phi_2d[i, t, :, :], 
                                                         [flux_min, flux_max, flux_2d_min, flux_2d_max],
-                                                        run_data.time[i], 
+                                                        run_data.time[i], eddy_turn, 
                                                         run_data.x, run_data.y, 
                                                         sys_vars.Nx, sys_vars.Ny)) for i in range(sys_vars.ndata))] * proc_lim
                             elif cmdargs.triad_plot_type == "all":
@@ -1320,13 +1495,13 @@ if __name__ == '__main__':
                                                                         R[i, t, :], R_1d[i, t, :], R_2d[i, t, :, :], 
                                                                         Phi[i, t, :], Phi_1d[i, t, :], Phi_2d[i, t, :, :], 
                                                                         [flux_min, flux_max, flux_1d_min, flux_1d_max, flux_2d_min, flux_2d_max], 
-                                                                        run_data.time[i], 
+                                                                        run_data.time[i], eddy_turn, 
                                                                         run_data.x, run_data.y, 
                                                                         sys_vars.Nx, sys_vars.Ny)) for i in range(sys_vars.ndata))] * proc_lim
                             else:
-                                groups_args = [(mprocs.Process(target = plot_sector_phase_sync_snaps_full, args = (i, cmdargs.out_dir_triads, run_data.w[i, :, :], post_data.enst_spectrum[i, :, :], post_data.enst_flux_per_sec[i, t, :], post_data.phases[i, :, int(sys_vars.Nx/3):], post_data.theta_k3, post_data.triad_R[i, int(cmdargs.triad_type), :], post_data.triad_Phi[i, int(cmdargs.triad_type), :], flux_min, flux_max, run_data.time[i], run_data.x, run_data.y, sys_vars.Nx, sys_vars.Ny)) for i in range(sys_vars.ndata))] * proc_lim
+                                groups_args = [(mprocs.Process(target = plot_sector_phase_sync_snaps_full, args = (i, cmdargs.out_dir_triads, run_data.w[i, :, :], post_data.enst_spectrum[i, :, :], post_data.enst_flux_per_sec[i, t, :], post_data.phases[i, :, int(sys_vars.Nx/3):], post_data.theta_k3, post_data.triad_R[i, int(cmdargs.triad_type), :], post_data.triad_Phi[i, int(cmdargs.triad_type), :], flux_min, flux_max, run_data.time[i], eddy_turn, run_data.x, run_data.y, sys_vars.Nx, sys_vars.Ny)) for i in range(sys_vars.ndata))] * proc_lim
                         else:
-                            groups_args = [(mprocs.Process(target = plot_sector_phase_sync_snaps, args = (i, cmdargs.out_dir_triads, post_data.phases[i, :, int(sys_vars.Nx/3):], post_data.theta_k3, post_data.triad_R[i, t, :], post_data.triad_Phi[i, t, :], run_data.time[i], sys_vars.Nx, sys_vars.Ny)) for i in range(sys_vars.ndata))] * proc_lim
+                            groups_args = [(mprocs.Process(target = plot_sector_phase_sync_snaps, args = (i, cmdargs.out_dir_triads, post_data.phases[i, :, int(sys_vars.Nx/3):], post_data.theta_k3, post_data.triad_R[i, t, :], post_data.triad_Phi[i, t, :], run_data.time[i], eddy_turn, sys_vars.Nx, sys_vars.Ny)) for i in range(sys_vars.ndata))] * proc_lim
 
                         ## Loop of grouped iterable
                         for procs in zip_longest(*groups_args): 
@@ -1406,7 +1581,7 @@ if __name__ == '__main__':
                                                                         R_1d[int(cmdargs.triad_type), :], R_2d[int(cmdargs.triad_type), :, :], 
                                                                         Phi_1d[int(cmdargs.triad_type), :], Phi_2d[int(cmdargs.triad_type), :, :], 
                                                                         [flux_min, flux_max, flux_2d_min, flux_2d_max], 
-                                                                        run_data.time[i], 
+                                                                        run_data.time[i], eddy_turn, 
                                                                         run_data.x, run_data.y, 
                                                                         sys_vars.Nx, sys_vars.Ny)
                             elif cmdargs.triad_plot_type == "all":
@@ -1421,13 +1596,13 @@ if __name__ == '__main__':
                                                                         R[int(cmdargs.triad_type), :], R_1d[int(cmdargs.triad_type), :], R_2d[int(cmdargs.triad_type), :, :], 
                                                                         Phi[int(cmdargs.triad_type), :], Phi_1d[int(cmdargs.triad_type), :], Phi_2d[int(cmdargs.triad_type), :, :], 
                                                                         [flux_min, flux_max, flux_1d_min, flux_1d_max, flux_2d_min, flux_2d_max], 
-                                                                        run_data.time[i], 
+                                                                        run_data.time[i], eddy_turn, 
                                                                         run_data.x, run_data.y, 
                                                                         sys_vars.Nx, sys_vars.Ny)
                             else:
-                                plot_sector_phase_sync_snaps_full(i, cmdargs.out_dir_triads, run_data.w[i, :, :], post_data.enst_spectrum[i, :, :], post_data.enst_flux_per_sec[i, 0, :], post_data.phases[i, :, int(sys_vars.Nx/3):], post_data.theta_k3, post_data.triad_R[i, int(cmdargs.triad_type), :], post_data.triad_Phi[i, int(cmdargs.triad_type), :], flux_min, flux_max, run_data.time[i], run_data.x, run_data.y, sys_vars.Nx, sys_vars.Ny)
+                                plot_sector_phase_sync_snaps_full(i, cmdargs.out_dir_triads, run_data.w[i, :, :], post_data.enst_spectrum[i, :, :], post_data.enst_flux_per_sec[i, 0, :], post_data.phases[i, :, int(sys_vars.Nx/3):], post_data.theta_k3, post_data.triad_R[i, int(cmdargs.triad_type), :], post_data.triad_Phi[i, int(cmdargs.triad_type), :], flux_min, flux_max, run_data.time[i], eddy_turn, run_data.x, run_data.y, sys_vars.Nx, sys_vars.Ny)
                         else:
-                            plot_sector_phase_sync_snaps(i, cmdargs.out_dir_triads, post_data.phases[i, :, int(sys_vars.Nx/3):], post_data.theta_k3, post_data.triad_R[i, int(cmdargs.triad_type), :], post_data.triad_Phi[i, int(cmdargs.triad_type), :], run_data.time[i], sys_vars.Nx, sys_vars.Ny)
+                            plot_sector_phase_sync_snaps(i, cmdargs.out_dir_triads, post_data.phases[i, :, int(sys_vars.Nx/3):], post_data.theta_k3, post_data.triad_R[i, int(cmdargs.triad_type), :], post_data.triad_Phi[i, int(cmdargs.triad_type), :], run_data.time[i], eddy_turn, sys_vars.Nx, sys_vars.Ny)
                 else:
                     num_triad_types = post_data.triad_R_2d.shape[1]
                     for t in range(num_triad_types):
@@ -1447,7 +1622,7 @@ if __name__ == '__main__':
                                                                             post_data.triad_R_1d[i, t, :], post_data.triad_R_2d[i, t, :, :], 
                                                                             post_data.triad_Phi_1d[i, t, :], post_data.triad_Phi_2d[i, t, :, :], 
                                                                             [flux_min, flux_max, flux_2d_min, flux_2d_max], 
-                                                                            run_data.time[i], 
+                                                                            run_data.time[i], eddy_turn, 
                                                                             run_data.x, run_data.y, 
                                                                             sys_vars.Nx, sys_vars.Ny)
                                 elif cmdargs.triad_plot_type == "all":
@@ -1462,13 +1637,13 @@ if __name__ == '__main__':
                                                                             post_data.triad_R[i, t, :], post_data.triad_R_1d[i, t, :], post_data.triad_R_2d[i, t, :, :], 
                                                                             post_data.triad_Phi[i, t, :], post_data.triad_Phi_1d[i, t, :], post_data.triad_Phi_2d[i, t, :, :], 
                                                                             [flux_min, flux_max, flux_1d_min, flux_1d_max, flux_2d_min, flux_2d_max], 
-                                                                            run_data.time[i], 
+                                                                            run_data.time[i], eddy_turn, 
                                                                             run_data.x, run_data.y, 
                                                                             sys_vars.Nx, sys_vars.Ny)
                                 else:
-                                    plot_sector_phase_sync_snaps_full(i, cmdargs.out_dir_triads, run_data.w[i, :, :], post_data.enst_spectrum[i, :, :], post_data.enst_flux_per_sec[i, 0, :], post_data.phases[i, :, int(sys_vars.Nx/3):], post_data.theta_k3, post_data.triad_R[i, t, :], post_data.triad_Phi[i, t, :], flux_min, flux_max, run_data.time[i], run_data.x, run_data.y, sys_vars.Nx, sys_vars.Ny)
+                                    plot_sector_phase_sync_snaps_full(i, cmdargs.out_dir_triads, run_data.w[i, :, :], post_data.enst_spectrum[i, :, :], post_data.enst_flux_per_sec[i, 0, :], post_data.phases[i, :, int(sys_vars.Nx/3):], post_data.theta_k3, post_data.triad_R[i, t, :], post_data.triad_Phi[i, t, :], flux_min, flux_max, run_data.time[i], eddy_turn, run_data.x, run_data.y, sys_vars.Nx, sys_vars.Ny)
                             else:
-                                plot_sector_phase_sync_snaps(i, cmdargs.out_dir_triads, post_data.phases[i, :, int(sys_vars.Nx/3):], post_data.theta_k3, post_data.triad_R[i, t, :], post_data.triad_Phi[i, t, :], run_data.time[i], sys_vars.Nx, sys_vars.Ny)
+                                plot_sector_phase_sync_snaps(i, cmdargs.out_dir_triads, post_data.phases[i, :, int(sys_vars.Nx/3):], post_data.theta_k3, post_data.triad_R[i, t, :], post_data.triad_Phi[i, t, :], run_data.time[i], eddy_turn, sys_vars.Nx, sys_vars.Ny)
 
                         ## Video variables
                         framesPerSec = 15

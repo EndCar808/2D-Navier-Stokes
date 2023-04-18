@@ -861,101 +861,6 @@ void NonlinearRHSBatch(fftw_complex* w_hat, fftw_complex* dw_hat_dt, double* non
 
 	// Ensure conjugacy in the ky = 0 modes
     ForceConjugacy(dw_hat_dt, sys_vars->N, 1);
-
-	// // ----------------------------------
-	// // Transform to Real Space
-	// // ----------------------------------
-	// // Batch transform both fourier velocites to real space
-	// fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_batch_c2r), dw_hat_dt, u);
-
-	// // ---------------------------------------------
-	// // Compute Fourier Space Vorticity Derivatives
-	// // ---------------------------------------------
-	// // Compute \nabla\omega - i.e., d\omegahat_dx = -I kx \omegahat_k, d\omegahat_dy = -I ky \omegahat_k
-	// for (int i = 0; i < local_Nx; ++i) {
-	// 	tmp = i * (Ny_Fourier);
-	// 	for (int j = 0; j < Ny_Fourier; ++j) {
-	// 		indx = tmp + j;
-
-	// 		// Fill vorticity derivatives array
-	// 		if ((run_data->k[0][i] != 0) || (run_data->k[1][j]  != 0)) {
-	// 			dw_hat_dt[SYS_DIM * indx + 0] = I * ((double) run_data->k[0][i]) * w_hat[indx];
-	// 			dw_hat_dt[SYS_DIM * indx + 1] = I * ((double) run_data->k[1][j]) * w_hat[indx]; 
-	// 		}
-	// 		else {
-	// 			dw_hat_dt[SYS_DIM * indx + 0] = 0.0 + 0.0 * I;
-	// 			dw_hat_dt[SYS_DIM * indx + 1] = 0.0 + 0.0 * I;
-	// 		}
-	// 	}
-	// }
-
-	// // ----------------------------------
-	// // Transform to Real Space
-	// // ----------------------------------
-	// // Batch transform both fourier vorticity derivatives to real space
-	// fftw_mpi_execute_dft_c2r((sys_vars->fftw_2d_dft_batch_c2r), dw_hat_dt, nabla_w);
-	
-
-	// // -----------------------------------
-	// // Perform Convolution in Real Space
-	// // -----------------------------------
-	// // Perform the multiplication in real space
-	// for (int i = 0; i < local_Nx; ++i) {
-	// 	tmp = i * (Ny + 2);
-	// 	for (int j = 0; j < Ny; ++j) {
-	// 		indx = tmp + j; 
- 			
- 	// 		// Perform multiplication of the nonlinear term 
- 	// 		vel1 = u[SYS_DIM * indx + 0];
- 	// 		vel2 = u[SYS_DIM * indx + 1];
- 	// 		nonlinear[indx] = 1.0 * (vel1 * nabla_w[SYS_DIM * indx + 0] + vel2 * nabla_w[SYS_DIM * indx + 1]);
- 	// 	}
- 	// }
-
- 	// // -------------------------------------
- 	// // Transform Nonlinear Term To Fourier
- 	// // -------------------------------------
- 	// // Transform Fourier nonlinear term back to Fourier space
- 	// fftw_mpi_execute_dft_r2c((sys_vars->fftw_2d_dft_r2c), nonlinear, dw_hat_dt);
-
-
- 	// for (int i = 0; i < local_Nx; ++i) {
- 	// 	tmp = i * (Ny_Fourier);
- 	// 	for (int j = 0; j < Ny_Fourier; ++j) {
- 	// 		indx = tmp + j;
-
- 	// 		if ((run_data->k[0][i] != 0) || (run_data->k[1][j]  != 0)) {
- 	// 			dw_hat_dt[indx] *= 1.0 / pow((Nx * Ny), 2.0);
- 	// 		}
- 	// 		else {
- 	// 			dw_hat_dt[indx] = 0.0 + 0.0 * I;
- 	// 			dw_hat_dt[indx] = 0.0 + 0.0 * I;
- 	// 		}
- 	// 	}
-
- 	// }
- 	// // ----------------------------------------
- 	// // Apply Dealiasing & Forcing & Conjugacy
- 	// // ----------------------------------------
- 	// // Add the forcing
-	// if (sys_vars->local_forcing_proc) {
-	// 	for (int i = 0; i < sys_vars->num_forced_modes; ++i) {
-	//  		// printf("scale: %lf\t-\tk[%d, %d]: %1.16lf\t%1.16lfi\t\t forc: %1.16lf\t%1.16lfi\tamp: %1.16lf\tamp_f:%1.16lf\tratio:%1.16lf\n", 
-	//  		// 				sys_vars->force_scale_var, 
-	//  		// 				run_data->forcing_k[0][i], run_data->forcing_k[1][i], 
-	//  		// 				creal(dw_hat_dt[run_data->forcing_indx[i]]), cimag(dw_hat_dt[run_data->forcing_indx[i]]), 
-	//  		// 				creal(run_data->forcing[i]), cimag(run_data->forcing[i]), cimag(dw_hat_dt[run_data->forcing_indx[i]]), 
-	//  		// 				cabs(dw_hat_dt[run_data->forcing_indx[i]]), cabs(run_data->forcing[i]), 
-	//  		// 				cabs(dw_hat_dt[run_data->forcing_indx[i]]) / cabs(run_data->forcing[i]));
-	// 		dw_hat_dt[run_data->forcing_indx[i]] += run_data->forcing[i]; 
-	// 	}
-	// }
-
- 	// // Apply dealiasing 
- 	// ApplyDealiasing(dw_hat_dt, 1, sys_vars->N);
-
-	// // Ensure conjugacy in the ky = 0 modes of the intial condition
-    // ForceConjugacy(dw_hat_dt, sys_vars->N, 1);
 }
 /**
  * Wrapper function for computing the dissipative terms in the equation of motion
@@ -1148,10 +1053,10 @@ void InitialConditions(fftw_complex* w_hat, double* u, fftw_complex* u_hat, cons
 				indx = (tmp + j);
 
 				// Top Layer
-				run_data->w[indx] = DELTA * cos(run_data->x[1][j]) - SIGMA / pow(cosh(SIGMA * (run_data->x[0][i] - 0.5 * M_PI)), 2.0); 
+				run_data->w[indx] = (DELTA * cos(run_data->x[1][j]) - SIGMA / pow(cosh(SIGMA * (run_data->x[0][i] - 0.5 * M_PI)), 2.0) )/ pow(sys_vars->N[0] * sys_vars->N[0], 1.0); 
 
 				// Bottom Layer
-				run_data->w[indx] += DELTA * cos(run_data->x[1][j]) + SIGMA / pow(cosh(SIGMA * (1.5 * M_PI - run_data->x[0][i])), 2.0); 
+				run_data->w[indx] += (DELTA * cos(run_data->x[1][j]) + SIGMA / pow(cosh(SIGMA * (1.5 * M_PI - run_data->x[0][i])), 2.0) )/ pow(sys_vars->N[0] * sys_vars->N[0], 1.0); 
 			}
 		}
 

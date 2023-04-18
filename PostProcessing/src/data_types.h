@@ -22,6 +22,7 @@
 #define __OPENMP
 #endif
 #include <gsl/gsl_histogram.h> 
+#include <gsl/gsl_histogram2d.h> 
 #include <gsl/gsl_statistics_double.h>
 #include <gsl/gsl_rstat.h>
 #include <gsl/gsl_math.h>
@@ -75,6 +76,7 @@
 // #define __PHASE_SYNC
 #define __SEC_PHASE_SYNC
 // #define __SEC_PHASE_SYNC_STATS
+#define __SEC_PHASE_SYNC_FLUX_STATS
 #define __SEC_PHASE_SYNC_STATS_IN_TIME
 // #define __SEC_PHASE_SYNC_STATS_IN_TIME_ALL
 // #define __SEC_PHASE_SYNC_STATS_IN_TIME_1D
@@ -96,48 +98,50 @@
 //  Global Variables
 // ---------------------------------------------------------------------
 // These definitions define some of the solver parameters.
-#define SYS_DIM 2 				// The system dimension i.e., 2D
-// Statistics definitions
-#define N_BINS 1000				// The number of histogram bins to use
-#define NUM_INCR 2              // The number of increment length scales
-#define INCR_TYPES 2 			// The number of increment directions i.e., longitudinal and transverse
-#define STR_FUNC_MAX_POW 6      // The maximum pow of the structure functions to compute
-#define BIN_LIM 40              // The limit of the bins for the velocity increments
+#define SYS_DIM 2 					// The system dimension i.e., 2D
+// Statistics definitions	
+#define N_BINS 1000					// The number of histogram bins to use
+#define NUM_INCR 2              	// The number of increment length scales
+#define INCR_TYPES 2 				// The number of increment directions i.e., longitudinal and transverse
+#define STR_FUNC_MAX_POW 6      	// The maximum pow of the structure functions to compute
+#define BIN_LIM 40              	// The limit of the bins for the velocity increments
 // Phase sync 
-// #define N_SECTORS 40		 	// The number of phase sectors
-#define N_BINS_SEC 1000         // The number of bins in the sector pdfs
-#define NUM_MOMENTS 4 			// The number of moments to record for the 2d contribution stats
-#define NUM_CONTRIB	3			// The number of types of contribution, i.e., 1d, 2d, both 1d and 2d combined
-#define NUM_TRIAD_CLASS 2 		// The number of triad classes i.e., either normal triad or generalized triads
-#define NUM_TRIAD_TYPES 6 		// The number of triad types contributing to the flux, these are dependent on the term and sign of the term 
-#define NUM_K1_SECTORS 8		// The number of k1 sectors to search over in a reduced search @ +/- 30, 45, 60 & 90 degrees
-#define NUM_K_DATA 17           // The number of wavevector data to precompute and store
-#define	K1_X	  0 			// The index for the k1_x wavenuber
-#define	K1_Y	  1 			// The index for the k1_y wavenuber
-#define	K2_X 	  2 			// The index for the k2_x wavenuber
-#define	K2_Y  	  3 			// The index for the k2_y wavenuber
-#define	K3_X  	  4 			// The index for the k3_x wavenuber
-#define	K3_Y  	  5 			// The index for the k3_y wavenuber
-#define	K1_SQR	  6 			// The index for the |k1|^2
-#define	K2_SQR	  7 			// The index for the |k2|^2
-#define	K3_SQR	  8 			// The index for the |k3|^2
-#define	K1_ANGLE  9 			// The index for the anlge of k1
-#define	K2_ANGLE  10 			// The index for the anlge of k2
-#define	K3_ANGLE  11 			// The index for the anlge of k3
-#define	K1_ANGLE_NEG  12 		// The index for the anlge of -k1
-#define	K2_ANGLE_NEG  13 		// The index for the anlge of -k2
-#define	K3_ANGLE_NEG  14 		// The index for the anlge of -k3
-#define FLUX_TERM 15			// Indicator which identifies whether data is in postive or negative flux term
-#define CONTRIB_TYPE 16         // Indicator for which type of contribution to the flux, either 1d or 2d
-#define POS_FLUX_TERM 0 		// Indicates postive flux term
-#define NEG_FLUX_TERM 1         // Indicates negative flux term
-#define CONTRIB_1D 0 		    // Indicates 1d contribution (same sector) to the flux 
-#define CONTRIB_2D 1            // Indicates 2d contribution (across sectors) to the flux
-#define CONTRIB_ALL 2           // Indicates when 1d and 2d contributions are combined
-#define N_BINS_SEC_1D_T 50      // The number of bins in the sector pdfs in time for 1D contributions
-#define N_BINS_SEC_2D_T 50      // The number of bins in the sector pdfs in time for 2D contributions
-#define N_BINS_SEC_ALL_T 50     // The number of bins in the sector pdfs in time for 1D and 2D contributions
-#define N_BINS_TRIADS_ALL_T 50  // The number of bins to use in the all triads pdf in time
+#define PRE_COMPUTE 1   			// Indicator for pre compute mode
+#define N_BINS_SEC 1000         	// The number of bins in the sector pdfs
+#define NUM_MOMENTS 4 				// The number of moments to record for the 2d contribution stats
+#define NUM_CONTRIB	3				// The number of types of contribution, i.e., 1d, 2d, both 1d and 2d combined
+#define NUM_TRIAD_CLASS 2 			// The number of triad classes i.e., either normal triad or generalized triads
+#define NUM_TRIAD_TYPES 6 			// The number of triad types contributing to the flux, these are dependent on the term and sign of the term 
+#define NUM_K1_SECTORS 8			// The number of k1 sectors to search over in a reduced search @ +/- 30, 45, 60 & 90 degrees
+#define NUM_K_DATA 17           	// The number of wavevector data to precompute and store
+#define	K1_X	  0 				// The index for the k1_x wavenuber
+#define	K1_Y	  1 				// The index for the k1_y wavenuber
+#define	K2_X 	  2 				// The index for the k2_x wavenuber
+#define	K2_Y  	  3 				// The index for the k2_y wavenuber
+#define	K3_X  	  4 				// The index for the k3_x wavenuber
+#define	K3_Y  	  5 				// The index for the k3_y wavenuber
+#define	K1_SQR	  6 				// The index for the |k1|^2
+#define	K2_SQR	  7 				// The index for the |k2|^2
+#define	K3_SQR	  8 				// The index for the |k3|^2
+#define	K1_ANGLE  9 				// The index for the anlge of k1
+#define	K2_ANGLE  10 				// The index for the anlge of k2
+#define	K3_ANGLE  11 				// The index for the anlge of k3
+#define	K1_ANGLE_NEG  12 			// The index for the anlge of -k1
+#define	K2_ANGLE_NEG  13 			// The index for the anlge of -k2
+#define	K3_ANGLE_NEG  14 			// The index for the anlge of -k3
+#define FLUX_TERM 15				// Indicator which identifies whether data is in postive or negative flux term
+#define CONTRIB_TYPE 16         	// Indicator for which type of contribution to the flux, either 1d or 2d
+#define POS_FLUX_TERM 0 			// Indicates postive flux term
+#define NEG_FLUX_TERM 1         	// Indicates negative flux term
+#define CONTRIB_1D 0 		    	// Indicates 1d contribution (same sector) to the flux 
+#define CONTRIB_2D 1            	// Indicates 2d contribution (across sectors) to the flux
+#define CONTRIB_ALL 2           	// Indicates when 1d and 2d contributions are combined
+#define N_BINS_SEC_1D_T 50      	// The number of bins in the sector pdfs in time for 1D contributions
+#define N_BINS_SEC_2D_T 50      	// The number of bins in the sector pdfs in time for 2D contributions
+#define N_BINS_SEC_ALL_T 50     	// The number of bins in the sector pdfs in time for 1D and 2D contributions
+#define N_BINS_TRIADS_ALL_T 50  	// The number of bins to use in the all triads pdf in time
+#define N_BINS_X_JOINT_ALL_T 100	// The number of bins for the joint PDF in time in the x direction  
+#define N_BINS_Y_JOINT_ALL_T 100	// The number of bins for the joint PDF in time in the y direction  
 // ---------------------------------------------------------------------
 //  Global Struct Definitions
 // ---------------------------------------------------------------------
@@ -289,6 +293,9 @@ typedef struct postprocess_data_struct {
     int** num_triads_2d[NUM_TRIAD_TYPES + 1];					 			 				// Array to hold the number of triads for each triad type
     double** triad_R_2d[NUM_TRIAD_TYPES + 1];					 			 				// Array to hold the phase sync per sector for each of the triad phase types including all together
     double** triad_Phi_2d[NUM_TRIAD_TYPES + 1];		  				 	     				// Array to hold the average phase per sector for each of the triad phase types including all together
+    double max_bin_enst_flux[NUM_TRIAD_CLASS][NUM_TRIAD_TYPES - 1];							// Workplace for the running stats for enstrophy flux
+	double* max_enst_flux[NUM_TRIAD_CLASS][NUM_TRIAD_TYPES - 1];							// Workplace for the running stats for enstrophy flux
+	gsl_histogram2d* triads_wghtd_2d_pdf_t[NUM_TRIAD_CLASS][NUM_TRIAD_TYPES - 1];				// Workplace for the running stats for enstrophy flux
 	// In time stats objects
 	gsl_histogram* triads_all_pdf_t[NUM_TRIAD_CLASS][NUM_TRIAD_TYPES + 1];					// Array Structs to hold the pdfs for all triads both triad class: the normal triads and generalized triads, each triad type, for each contribution type in time
 	gsl_histogram* triads_wghtd_all_pdf_t[NUM_TRIAD_CLASS][NUM_TRIAD_TYPES + 1];			// Array Structs to hold the pdfs for all triads both triad class: the normal triads and generalized triads, each triad type, for each contribution type in time

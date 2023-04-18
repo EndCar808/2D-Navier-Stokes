@@ -212,7 +212,7 @@ int GetCMLArgs(int argc, char** argv) {
 				else if (visc_flag == 2) {
 					// Read in the hyperviscosity power
 					sys_vars->HYPER_VISC_POW = atof(optarg);
-					if (sys_vars->HYPER_VISC_POW <= 0.0) {
+					if (sys_vars->HYPER_VISC_POW < 0.0) {
 						fprintf(stderr, "\n["RED"ERROR"RESET"] Parsing of Command Line Arguements Failed: The provided hyperviscosity power: [%lf] must be strictly positive\n-->> Exiting!\n\n", sys_vars->HYPER_VISC_POW);		
 						exit(1);
 					}

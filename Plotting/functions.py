@@ -430,6 +430,9 @@ def import_data(input_file, sim_data, method = "default"):
     index   = data.k2 != 0.0
     data.k2Inv[index] = 1. / data.k2[index]
 
+    ## System Measures
+    data.eddy_turn = 2.0 * np.pi / np.sqrt(2.0 * np.mean(data.tot_enrg))
+
     return data
 
 
@@ -610,6 +613,7 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
             self.wghtd_1d_pdf_t   = False
             self.triads_2d_pdf_t  = False
             self.wghtd_2d_pdf_t   = False
+            self.triads_wghtd_joint_pdf_t = False
             ## Collective phase order normed const
             self.phase_order_normed_const = False
 
@@ -732,6 +736,14 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                     if 'W_1D_Ranges' in list(f["Snap_00000"]['TriadPhaseWeightedFlux_1D_PDF_InTime'].keys()):
                         self.wghtd_triads_1d_pdf_ranges_t = f["Snap_00000"]['TriadPhaseWeightedFlux_1D_PDF_InTime']['W_1D_Ranges'][:]
                         self.nbin_wghtd_triads_1d_pdf_t = len(self.wghtd_triads_1d_pdf_ranges_t) - 1
+                if 'TriadsWeighted_2D_InTime_Ranges_x' in list(f["Snap_00000"].keys()):
+                    tmp = f["Snap_00000"]['TriadsWeighted_2D_InTime_Ranges_x'][:, :, :]
+                    self.num_x_joint_pdf_t = tmp.shape[-1] - 1
+                    self.triads_wghtd_joint_pdf_t = True
+                if 'TriadsWeighted_2D_InTime_Ranges_y' in list(f["Snap_00000"].keys()):
+                    tmp = f["Snap_00000"]['TriadsWeighted_2D_InTime_Ranges_y'][:, :, :]
+                    self.num_y_joint_pdf_t = tmp.shape[-1] - 1
+                    self.triads_wghtd_joint_pdf_t = True
 
             ## Get the max wavenumber
             self.kmax      = int((sim_data.Nx / 3))
@@ -830,6 +842,11 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                 self.triads_1d_pdf_counts_t = np.zeros((sim_data.ndata, self.NUM_TRIAD_CLASS, self.NUM_TRIAD_TYPES, self.num_k3_sect, self.nbin_triads_1d_pdf_t))
             if self.wghtd_1d_pdf_t:
                 self.wghtd_triads_1d_pdf_counts_t  = np.zeros((sim_data.ndata, self.NUM_TRIAD_CLASS, self.NUM_TRIAD_TYPES, self.num_k3_sect, self.nbin_wghtd_triads_1d_pdf_t))
+            if self.triads_wghtd_joint_pdf_t:
+                self.triads_wghtd_joint_pdf_ranges_x_t = np.zeros((sim_data.ndata, self.NUM_TRIAD_CLASS, self.NUM_TRIAD_TYPES - 2, self.num_x_joint_pdf_t + 1))
+                self.triads_wghtd_joint_pdf_ranges_y_t = np.zeros((sim_data.ndata, self.NUM_TRIAD_CLASS, self.NUM_TRIAD_TYPES - 2, self.num_y_joint_pdf_t + 1))
+                self.triads_wghtd_joint_pdf_counts_t   = np.zeros((sim_data.ndata, self.NUM_TRIAD_CLASS, self.NUM_TRIAD_TYPES - 2, self.num_x_joint_pdf_t, self.num_y_joint_pdf_t))
+
             ## Phase Sync Stats
             # self.phase_sector_counts = np.zeros((sim_data.ndata, self.num_k3_sect, 200))
             # self.phase_sector_ranges = np.zeros((sim_data.ndata, self.num_k3_sect, 201))
@@ -859,6 +876,13 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                     data.all_triads_pdf_counts_t[nn, :, :, :] = f[group]["All_TriadsPDF_InTime_Counts"][:, :, :]
                 if 'All_WeightedTriadsPDF_InTime_Counts' in list(f[group].keys()):
                     data.all_wghtd_triads_pdf_counts_t[nn, :, :, :] = f[group]["All_WeightedTriadsPDF_InTime_Counts"][:, :, :]
+
+                if 'TriadsWeighted_2D_InTime_Ranges_x' in list(f[group].keys()):
+                    data.triads_wghtd_joint_pdf_ranges_x_t[nn, :, :, :] = f[group]["TriadsWeighted_2D_InTime_Ranges_x"][:, :, :]
+                if 'TriadsWeighted_2D_InTime_Ranges_y' in list(f[group].keys()):
+                    data.triads_wghtd_joint_pdf_ranges_y_t[nn, :, :, :] = f[group]["TriadsWeighted_2D_InTime_Ranges_y"][:, :, :]
+                if 'TriadsWeighted_2D_InTime_Counts' in list(f[group].keys()):
+                    data.triads_wghtd_joint_pdf_counts_t[nn, :, :, :, :] = f[group]["TriadsWeighted_2D_InTime_Counts"][:, :, :, :]
                 # # Read in the in time phase sync stats
                 # for class_type in range(data.NUM_TRIAD_CLASS):
                 #     for triad_type in range(data.NUM_TRIAD_TYPES):
