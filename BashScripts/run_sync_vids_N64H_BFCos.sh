@@ -4,18 +4,19 @@
 
 ## Set solver parameters
 N=64
-T=100.000
+T=200.000
 trans_frac=0.7
-save=10
+save=100
 num_procs=4
 
 
 ## Set the post parameter space
-num_sects=(24 48 56)
-c_radius_frac=(0.25 0.50 0.60 0.70 0.80)
+num_sects=(24)
+kmin=0.00
+c_radius_frac=(0.25 0.30 0.50)
 
 ## Command variables
-input_dir="./Data/SectorSyncResults/"
+input_dir="./Data/SectorSyncResults/kmin/"
 tag="FULL-PHASE-SYNC"
 
 num_plot_procs=25
@@ -26,7 +27,7 @@ do
 	for c_rad in "${c_radius_frac[@]}"
 	do
 		## Get solver tags and data directory
-		solv_tag="Tag-S$sec-$c_rad"
+		solv_tag="$tag-S$sec-$c_rad"
 		data_dir=$input_dir"NAV_AB4_FULL_N[$N,$N]_T[0.0,0.005,"$T"]_NU[5e-11,1,4.0]_DRAG[0.1,1,0.0]_FORC[BODY_FORC_COS,2,1]_u0[RANDOM]_TAG[$solv_tag]/"
 
 		## Solver command
@@ -45,11 +46,11 @@ do
 	for c_rad in "${c_radius_frac[@]}"
 	do
 		## Get solver tags and data directory
-		solv_tag="Tag-S$sec-$c_rad"
+		solv_tag="$tag-S$sec-$c_rad"
 		data_dir=$input_dir"NAV_AB4_FULL_N[$N,$N]_T[0.0,0.005,"$T"]_NU[5e-11,1,4.0]_DRAG[0.1,1,0.0]_FORC[BODY_FORC_COS,2,1]_u0[RANDOM]_TAG[$solv_tag]/"
 
 		## Post command
-		post_command="PostProcessing/bin/PostProcess_phase_sync -i $data_dir -o $data_dir -v 5e-11 -v 1 -v 4.0 -d 0.1 -d 1 -d 0.0 -f BODY_FORC_COS -f 2 -f 1.0 -t $tag -a $sec -a $sec -k $c_rad -k 0.0 -p 1 -p 1"
+		post_command="PostProcessing/bin/PostProcess_phase_sync -i $data_dir -o $data_dir -v 5e-11 -v 1 -v 4.0 -d 0.1 -d 1 -d 0.0 -f BODY_FORC_COS -f 2 -f 1.0 -t $tag -a $sec -a $sec -k $c_rad -k $kmin -p 1 -p 1"
 		echo -e "\nCommand run:\n\t \033[1;36m $post_command \033[0m"
 		$post_command &
 	done
@@ -65,11 +66,11 @@ do
 	for c_rad in "${c_radius_frac[@]}"
 	do
 		## Get solver tags and data directory
-		solv_tag="Tag-S$sec-$c_rad"
+		solv_tag="$tag-S$sec-$c_rad"
 		data_dir=$input_dir"NAV_AB4_FULL_N[$N,$N]_T[0.0,0.005,"$T"]_NU[5e-11,1,4.0]_DRAG[0.1,1,0.0]_FORC[BODY_FORC_COS,2,1]_u0[RANDOM]_TAG[$solv_tag]/"
 
 		## Plotting command
-		plotting_command="python3 Plotting/plot_jet_sync.py -i $data_dir --triads=0 --plot --vid --phase_order --par -p $num_plot_procs -f PostProcessing_HDF_Data_THREADS[1,1]_SECTORS["$sec","$sec"]_KFRAC[0.00,"$c_rad"]_TAG[$tag].h5 --full=all -t $tag"
+		plotting_command="python3 Plotting/plot_jet_sync.py -i $data_dir --triads=0 --plot --vid --phase_order --par -p $num_plot_procs -f PostProcessing_HDF_Data_THREADS[1,1]_SECTORS["$sec","$sec"]_KFRAC["$kmin","$c_rad"]_TAG[$tag].h5 --full=all -t $tag"
 		echo -e "\nCommand run:\n\t \033[1;36m $plotting_command \033[0m"
 		$plotting_command &
 	done

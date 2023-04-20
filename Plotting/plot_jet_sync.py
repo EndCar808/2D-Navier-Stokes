@@ -288,7 +288,7 @@ def plot_enst_flux_joint_pdf(outdir, t, try_type, ranges_x, ranges_y, hist_count
     return print("Snap {}".format(t))
 
 
-def plot_enst_flux_joint_pdf_ALL(outdir, t, try_type, pdf, v_min, v_max, max_enst_flux, time):
+def plot_enst_flux_joint_pdf_ALL(outdir, t, try_type, pdf, v_min, v_max, max_enst_flux, time, eddy_t):
     
     fig = plt.figure(figsize = (21, 9))
     gs  = GridSpec(1, 2)
@@ -317,8 +317,8 @@ def plot_enst_flux_joint_pdf_ALL(outdir, t, try_type, pdf, v_min, v_max, max_ens
     cb2   = plt.colorbar(im2, cax = cbax2)
     cb2.set_label(r"PDF")    
     
-    plt.suptitle("Time: {:1.3f} - Triad Type".format(time, try_type))
-    plt.savefig(outdir + "/Triads_JointPDF_InTime_{:05d}.png".format(t), bbox_inches="tight")
+    plt.suptitle(r"Time: {:1.3f} - {:1.3f}$\tau$ --- Triad Type {}".format(time, time/eddy_t, try_type))
+    plt.savefig(outdir + "/Triads_JointPDF_InTime_TriType{}_{:05d}.png".format(int(try_type), t), bbox_inches="tight")
     plt.close()
 
     return print("Snap {}".format(t))
@@ -1235,54 +1235,57 @@ if __name__ == '__main__':
 
 
     if post_data.triads_wghtd_joint_pdf_t:
-        t = 100
-        try_type = 0
-        class_type = 1
+        for try_type in range(5):
+            # t = 100
+            # try_type = 0
+            # class_type = 1
 
-        xranges = post_data.triads_wghtd_joint_pdf_ranges_x_t[:, :, try_type, :]
-        yranges = post_data.triads_wghtd_joint_pdf_ranges_y_t[:, :, try_type, :]
-        counts  = post_data.triads_wghtd_joint_pdf_counts_t[:, :, try_type, :, :]
-        pdfs = compute_joint_pdf(counts, xranges, yranges)
+            xranges = post_data.triads_wghtd_joint_pdf_ranges_x_t[:, :, try_type, :]
+            yranges = post_data.triads_wghtd_joint_pdf_ranges_y_t[:, :, try_type, :]
+            counts  = post_data.triads_wghtd_joint_pdf_counts_t[:, :, try_type, :, :]
+            pdfs = compute_joint_pdf(counts, xranges, yranges)
 
-        v_min = [np.amin(pdfs[0]), np.amin(pdfs[1])]
-        v_max = [np.amax(pdfs[0]), np.amax(pdfs[1])]
-        max_enst_flux = [np.amax(yranges[:, 0, :]), np.amax(yranges[:, 1, :])]
+            v_min = [np.amin(pdfs[0]), np.amin(pdfs[1])]
+            v_max = [np.amax(pdfs[0]), np.amax(pdfs[1])]
+            max_enst_flux = [np.amax(yranges[:, 0, :]), np.amax(yranges[:, 1, :])]
 
-        # plot_enst_flux_joint_pdf_ALL(cmdargs.out_dir_joint_snaps, t, try_type, pdfs[t, :, :, :], v_min, v_max, max_enst_flux, run_data.time[t])
-        
-        # plot_enst_flux_joint_pdf(cmdargs.out_dir_joint_snaps, t, try_type, post_data.triads_wghtd_joint_pdf_ranges_x_t[t, :, try_type, :], post_data.triads_wghtd_joint_pdf_ranges_y_t[t, :, try_type, :], post_data.triads_wghtd_joint_pdf_counts_t[t, :, try_type, :, :], run_data.time[t])
-        
-        ## Create process Pool executer
-        executor = cf.ProcessPoolExecutor(cmdargs.num_procs)
+            # plot_enst_flux_joint_pdf_ALL(cmdargs.out_dir_joint_snaps, t, try_type, pdfs[t, :, :, :], v_min, v_max, max_enst_flux, run_data.time[t])        
+            # plot_enst_flux_joint_pdf(cmdargs.out_dir_joint_snaps, t, try_type, post_data.triads_wghtd_joint_pdf_ranges_x_t[t, :, try_type, :], post_data.triads_wghtd_joint_pdf_ranges_y_t[t, :, try_type, :], post_data.triads_wghtd_joint_pdf_counts_t[t, :, try_type, :, :], run_data.time[t])
+            
+            ## Create process Pool executer
+            executor = cf.ProcessPoolExecutor(cmdargs.num_procs)
 
-        # ## Submit jobs to the executor
-        # futures = [executor.submit(plot_enst_flux_joint_pdf, cmdargs.out_dir_joint_snaps, t, try_type, post_data.triads_wghtd_joint_pdf_ranges_x_t[t, :, try_type, :], post_data.triads_wghtd_joint_pdf_ranges_y_t[t, :, try_type, :], post_data.triads_wghtd_joint_pdf_counts_t[t, :, try_type, :, :], run_data.time[t]) for t in range(sys_vars.ndata)]
-        futures = [executor.submit(plot_enst_flux_joint_pdf_ALL, cmdargs.out_dir_joint_snaps, t, try_type, pdfs[t, :, :, :], v_min, v_max, max_enst_flux, run_data.time[t]) for t in range(sys_vars.ndata)]
+            # ## Submit jobs to the executor
+            # futures = [executor.submit(plot_enst_flux_joint_pdf, cmdargs.out_dir_joint_snaps, t, try_type, post_data.triads_wghtd_joint_pdf_ranges_x_t[t, :, try_type, :], post_data.triads_wghtd_joint_pdf_ranges_y_t[t, :, try_type, :], post_data.triads_wghtd_joint_pdf_counts_t[t, :, try_type, :, :], run_data.time[t]) for t in range(sys_vars.ndata)]
+            futures = [executor.submit(plot_enst_flux_joint_pdf_ALL, cmdargs.out_dir_joint_snaps, t, try_type, pdfs[t, :, :, :], v_min, v_max, max_enst_flux, run_data.time[t], eddy_turn) for t in range(sys_vars.ndata)]
 
-        ## Wait until these jobs are finished
-        cf.wait(futures)
-                
+            ## Wait until these jobs are finished
+            cf.wait(futures)
+            # for f in futures:
+            #     res = f.result()
+            #     if res not None
+            #         print(res)
 
-        ## Video variables
-        framesPerSec = 15
-        inputFile    = cmdargs.out_dir_joint_snaps + "Triads_JointPDF_InTime_%05d.png"
-        videoName    = cmdargs.out_dir_joint_snaps + "Triad_EnstFlux_JointPDF_TriType[{}]_N[{},{}]_u0[{}]_NSECT[{},{}]_KFRAC[{:1.2f},{:1.2f}]_TAG[{}].mp4".format(try_type, sys_vars.Nx, sys_vars.Ny, sys_vars.u0, post_data.num_k3_sect, post_data.num_k1_sect, post_data.kmin_sqr, post_data.kmax_frac, cmdargs.tag)
-        cmd = "ffmpeg -y -r {} -f image2 -s 1920x1080 -i {} -vf 'pad=ceil(iw/2)*2:ceil(ih/2)*2' -vcodec libx264 -crf 25 -pix_fmt yuv420p {}".format(framesPerSec, inputFile, videoName)
-        # cmd = "ffmpeg -r {} -f image2 -s 1280×720 -i {} -vcodec libx264 -preset ultrafast -crf 35 -pix_fmt yuv420p {}".format(framesPerSec, inputFile, videoName)
+            ## Video variables
+            framesPerSec = 15
+            inputFile    = cmdargs.out_dir_joint_snaps + "Triads_JointPDF_InTime_TriType{}_%05d.png".format(int(try_type))
+            videoName    = cmdargs.out_dir_joint_snaps + "Triad_EnstFlux_JointPDF_TriType[{}]_N[{},{}]_u0[{}]_NSECT[{},{}]_KFRAC[{:1.2f},{:1.2f}]_TAG[{}].mp4".format(try_type, sys_vars.Nx, sys_vars.Ny, sys_vars.u0, post_data.num_k3_sect, post_data.num_k1_sect, post_data.kmin_sqr, post_data.kmax_frac, cmdargs.tag)
+            cmd = "ffmpeg -y -r {} -f image2 -s 1920x1080 -i {} -vf 'pad=ceil(iw/2)*2:ceil(ih/2)*2' -vcodec libx264 -crf 25 -pix_fmt yuv420p {}".format(framesPerSec, inputFile, videoName)
+            # cmd = "ffmpeg -r {} -f image2 -s 1280×720 -i {} -vcodec libx264 -preset ultrafast -crf 35 -pix_fmt yuv420p {}".format(framesPerSec, inputFile, videoName)
 
-        process = Popen(cmd, shell = True, stdout = PIPE, stdin = PIPE, universal_newlines = True)
-        [runCodeOutput, runCodeErr] = process.communicate()
-        print(runCodeOutput)
-        print(runCodeErr)
-        process.wait()
+            process = Popen(cmd, shell = True, stdout = PIPE, stdin = PIPE, universal_newlines = True)
+            [runCodeOutput, runCodeErr] = process.communicate()
+            print(runCodeOutput)
+            print(runCodeErr)
+            process.wait()
 
-        ## Prin summary of timmings to screen
-        print("\n" + tc.Y + "Finished making video..." + tc.Rst)
-        print("Video Location: " + tc.C + videoName + tc.Rst + "\n")
+            ## Prin summary of timmings to screen
+            print("\n" + tc.Y + "Finished making video..." + tc.Rst)
+            print("Video Location: " + tc.C + videoName + tc.Rst + "\n")
 
-        ## Remove the generated snaps after video is created
-        print("cd {};".format(cmdargs.out_dir_joint_snaps) + "rm {};".format("./*.png") + "cd -;")
-        run("cd {};".format(cmdargs.out_dir_joint_snaps) + "rm {};".format("./*.png") + "cd -;", shell = True)
+            ## Remove the generated snaps after video is created
+            print("cd {};".format(cmdargs.out_dir_joint_snaps) + "rm {};".format("./*.png") + "cd -;")
+            run("cd {};".format(cmdargs.out_dir_joint_snaps) + "rm {};".format("./*.png") + "cd -;", shell = True)
 
     # -----------------------------------------
     # # --------  Plot Data For Videos
@@ -1691,6 +1694,7 @@ if __name__ == '__main__':
 
             process = Popen(cmd, shell = True, stdout = PIPE, stdin = PIPE, universal_newlines = True)
             [runCodeOutput, runCodeErr] = process.communicate()
+            [runCodeOutput, runCodeErr] = process.communicate()
             print(runCodeOutput)
             print(runCodeErr)
             process.wait()
@@ -1726,3 +1730,6 @@ if __name__ == '__main__':
         ## Start timer
         end = TIME.perf_counter()
         print("Movie Time:" + tc.C + " {:5.8f}s\n\n".format(end - start) + tc.Rst)
+
+
+    

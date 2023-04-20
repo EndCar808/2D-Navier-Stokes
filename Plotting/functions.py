@@ -430,8 +430,6 @@ def import_data(input_file, sim_data, method = "default"):
     index   = data.k2 != 0.0
     data.k2Inv[index] = 1. / data.k2[index]
 
-    ## System Measures
-    data.eddy_turn = 2.0 * np.pi / np.sqrt(2.0 * np.mean(data.tot_enrg))
 
     return data
 
