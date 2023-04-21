@@ -15,7 +15,7 @@ kmin=0.00
 c_radius_frac=(0.05 0.10 0.20 0.30)
 
 ## Command variables
-input_dir="./Data/SectorSyncResults/Long/"
+input_dir="./Data/SectorSyncResults/"
 tag="Test"
 
 num_plot_procs=25
@@ -54,9 +54,9 @@ do
 		post_command="PostProcessing/bin/PostProcess_phase_sync -i $data_dir -o $data_dir -v 5e-18 -v 1 -v 4.0 -d 0.1 -d 1 -d 0.0 -f BODY_FORC_COS -f 2 -f 1.0 -t $tag -a $sec -a $sec -k $c_rad -k $kmin -p 1 -p 1"
 		echo -e "\nCommand run:\n\t \033[1;36m $post_command \033[0m"
 		$post_command &
+	wait
 	done
 
-	wait
 done
 
 wait
@@ -76,9 +76,9 @@ do
 		echo -e "\nCommand run:\n\t \033[1;36m $plotting_command \033[0m"
 		$plotting_command &
 		
+	wait
 	done
 	
-	wait
 done
 
 wait 
