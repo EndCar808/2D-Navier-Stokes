@@ -4,19 +4,19 @@
 
 ## Set solver parameters
 N=128
-T=2000.000
-trans_frac=0.5
-save=800
+T=1000.000
+trans_frac=0.02
+save=100
 num_procs=4
 
 ## Set the post parameter space
 num_sects=(24)
 kmin=0.00
-c_radius_frac=(0.05 0.10 0.20 0.30 0.40 0.50)
+c_radius_frac=(0.10 0.50)
 
 ## Command variables
-input_dir="./Data/SectorSyncResults/Long/"
-tag="Long-Run"
+input_dir="./Data/SectorSyncResults/Stats/"
+tag="LongStats-Run"
 
 num_plot_procs=25
 
