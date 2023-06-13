@@ -356,6 +356,7 @@ if __name__ == '__main__':
     
     
     eddy_turn = 2.0 * np.pi / np.sqrt(np.mean(run_data.tot_enrg))
+    
     ## Read in spectra data
     spec_data = import_spectra_data(cmdargs.in_dir, sys_vars)
 

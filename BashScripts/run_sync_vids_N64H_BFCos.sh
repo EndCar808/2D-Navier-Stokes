@@ -6,17 +6,17 @@
 N=64
 T=200.000
 trans_frac=0.7
-save=100
+save=2
 num_procs=4
 
 
 ## Set the post parameter space
 num_sects=(24)
 kmin=0.00
-c_radius_frac=(0.25 0.30 0.50)
+c_radius_frac=(0.15 0.20 0.25 0.30 0.80)
 
 ## Command variables
-input_dir="./Data/SectorSyncResults/kmin/"
+input_dir="./Data/SectorSyncResults/Stats/"
 tag="FULL-PHASE-SYNC"
 
 num_plot_procs=25

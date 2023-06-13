@@ -4,15 +4,15 @@
 
 ## Set solver parameters
 N=128
-T=1000.000
-trans_frac=0.02
-save=100
+T=200.000
+trans_frac=0.9
+save=5
 num_procs=4
 
 ## Set the post parameter space
 num_sects=(24)
 kmin=0.00
-c_radius_frac=(0.10 0.50)
+c_radius_frac=(0.10 0.15 0.20 0.25)
 
 ## Command variables
 input_dir="./Data/SectorSyncResults/Stats/"
