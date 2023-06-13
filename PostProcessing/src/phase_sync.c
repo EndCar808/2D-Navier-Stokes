@@ -393,25 +393,16 @@ void PhaseSyncSector(int s, int pre_compute_flag) {
 				for (int n = 0; n < proc_data->num_wave_vecs[a][l]; ++n) {
 					
 					// Get k1 and k2 and k3
-					k1_x = (int) (proc_data->phase_sync_wave_vecs[a][l][K1_X][n]);
-					k1_y = (int) (proc_data->phase_sync_wave_vecs[a][l][K1_Y][n]);
-					k2_x = (int) (proc_data->phase_sync_wave_vecs[a][l][K2_X][n]);
-					k2_y = (int) (proc_data->phase_sync_wave_vecs[a][l][K2_Y][n]);
-					k3_x = (int) (proc_data->phase_sync_wave_vecs[a][l][K3_X][n]);
-					k3_y = (int) (proc_data->phase_sync_wave_vecs[a][l][K3_Y][n]);
+					k1_x = proc_data->phase_sync_wave_vecs[a][l][K1_X][n];
+					k1_y = proc_data->phase_sync_wave_vecs[a][l][K1_Y][n];
+					k2_x = proc_data->phase_sync_wave_vecs[a][l][K2_X][n];
+					k2_y = proc_data->phase_sync_wave_vecs[a][l][K2_Y][n];
+					k3_x = proc_data->phase_sync_wave_vecs[a][l][K3_X][n];
+					k3_y = proc_data->phase_sync_wave_vecs[a][l][K3_Y][n];
 
 					// Get the mod square of the wavevectors
-					k1_sqr = proc_data->phase_sync_wave_vecs[a][l][K1_SQR][n];
-					k2_sqr = proc_data->phase_sync_wave_vecs[a][l][K2_SQR][n];
-					k3_sqr = proc_data->phase_sync_wave_vecs[a][l][K3_SQR][n];
-
-					// Get the angles of the wavevectors
-					k1_angle     = proc_data->phase_sync_wave_vecs[a][l][K1_ANGLE][n];
-					k2_angle     = proc_data->phase_sync_wave_vecs[a][l][K2_ANGLE][n];
-					k3_angle     = proc_data->phase_sync_wave_vecs[a][l][K3_ANGLE][n];
-					k1_angle_neg = proc_data->phase_sync_wave_vecs[a][l][K1_ANGLE_NEG][n];
-					k2_angle_neg = proc_data->phase_sync_wave_vecs[a][l][K2_ANGLE_NEG][n];
-					k3_angle_neg = proc_data->phase_sync_wave_vecs[a][l][K3_ANGLE_NEG][n];
+					k1_sqr = (double) (k1_x * k1_x + k1_y * k1_y); // proc_data->phase_sync_wave_vecs[a][l][K1_SQR][n];
+					k2_sqr = (double) (k2_x * k2_x + k2_y * k2_y); // proc_data->phase_sync_wave_vecs[a][l][K2_SQR][n];
 
 					// Get correct phase index -> recall that to access kx > 0, use -kx
 					tmp_k1 = (sys_vars->kmax - k1_x) * (2 * sys_vars->kmax + 1);	
@@ -2352,17 +2343,21 @@ void AllocatePhaseSyncMemory(const long int* N) {
 	}
 	#endif
 
+
+
+
+
 	// -------------------------------------
 	//  Allocate Triad Wavevector Array
 	// -------------------------------------
 	//------------ Allocate memory for the triad wavevectors per sector and their data 
-	proc_data->phase_sync_wave_vecs = (double**** )fftw_malloc(sizeof(double***) * sys_vars->num_k3_sectors);
+	proc_data->phase_sync_wave_vecs = (int**** )fftw_malloc(sizeof(int***) * sys_vars->num_k3_sectors);
 	if (proc_data->phase_sync_wave_vecs == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Phase Sync Wavevectors");
 		exit(1);
 	}
 	for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
-		proc_data->phase_sync_wave_vecs[a] = (double*** )fftw_malloc(sizeof(double**) * sys_vars->num_k1_sectors);
+		proc_data->phase_sync_wave_vecs[a] = (int*** )fftw_malloc(sizeof(int**) * sys_vars->num_k1_sectors);
 		if (proc_data->phase_sync_wave_vecs[a] == NULL) {
 			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Phase Sync Wavevectors");
 			exit(1);
@@ -2370,7 +2365,7 @@ void AllocatePhaseSyncMemory(const long int* N) {
 	}
 	for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
 		for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
-			proc_data->phase_sync_wave_vecs[a][l] = (double** )fftw_malloc(sizeof(double*) * NUM_K_DATA);
+			proc_data->phase_sync_wave_vecs[a][l] = (int** )fftw_malloc(sizeof(int*) * NUM_K_DATA);
 			if (proc_data->phase_sync_wave_vecs[a][l] == NULL) {
 				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Phase Sync Wavevectors");
 				exit(1);
@@ -2383,7 +2378,7 @@ void AllocatePhaseSyncMemory(const long int* N) {
 	for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
 		for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
 			for (int n = 0; n < NUM_K_DATA; ++n) {
-				proc_data->phase_sync_wave_vecs[a][l][n] = (double* )fftw_malloc(sizeof(double) * num_triad_est);
+				proc_data->phase_sync_wave_vecs[a][l][n] = (int* )fftw_malloc(sizeof(int) * num_triad_est);
 				if (proc_data->phase_sync_wave_vecs[a][l][n] == NULL) {
 					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Phase Sync Wavevectors");
 					exit(1);
@@ -2393,13 +2388,13 @@ void AllocatePhaseSyncMemory(const long int* N) {
 	}
 
 	#if defined (__PHASE_SYNC)
-	proc_data->phase_sync_wave_vecs_test = (double** )fftw_malloc(sizeof(double*) * 6);
+	proc_data->phase_sync_wave_vecs_test = (int** )fftw_malloc(sizeof(int*) * 6);
 	if (proc_data->phase_sync_wave_vecs_test == NULL) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Phase Sync Wavevectors");
 		exit(1);
 	}	
 	for (int n = 0; n < 6; ++n) {
-		proc_data->phase_sync_wave_vecs_test[n] = (double* )fftw_malloc(sizeof(double) * num_triad_est);
+		proc_data->phase_sync_wave_vecs_test[n] = (int* )fftw_malloc(sizeof(int) * num_triad_est);
 		if (proc_data->phase_sync_wave_vecs_test[n] == NULL) {
 			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Phase Sync Wavevectors");
 			exit(1);
@@ -2485,7 +2480,7 @@ void AllocatePhaseSyncMemory(const long int* N) {
 					}
 					else {
 						// Otherwise reallocate the correct amount of memory
-						proc_data->phase_sync_wave_vecs[a][l][n] = (double* )realloc(proc_data->phase_sync_wave_vecs[a][l][n] , sizeof(double) * proc_data->num_wave_vecs[a][l]);
+						proc_data->phase_sync_wave_vecs[a][l][n] = (int* )realloc(proc_data->phase_sync_wave_vecs[a][l][n] , sizeof(int) * proc_data->num_wave_vecs[a][l]);
 						if (proc_data->phase_sync_wave_vecs[a][l][n] == NULL) {
 							fprintf(stderr, "\n["MAGENTA"WARNING"RESET"] --- Unable to Reallocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Phase Sync Wavevectors");
 							exit(1);
@@ -2498,10 +2493,10 @@ void AllocatePhaseSyncMemory(const long int* N) {
 		// Read in wavevector data
 		for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
 			for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
-				double* tmp_wave_vec_data = (double*)fftw_malloc(sizeof(double) * NUM_K_DATA * proc_data->num_wave_vecs[a][l]);
+				int* tmp_wave_vec_data = (int*)fftw_malloc(sizeof(int) * NUM_K_DATA * proc_data->num_wave_vecs[a][l]);
 				sprintf(dset_name, "WVData_Sector_%d_%d", a, l);
 
-				if(H5LTread_dataset(file_info->wave_vec_file_handle, dset_name, H5T_NATIVE_DOUBLE, tmp_wave_vec_data) < 0) {
+				if(H5LTread_dataset(file_info->wave_vec_file_handle, dset_name, H5T_NATIVE_INT, tmp_wave_vec_data) < 0) {
 					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to read in data for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", dset_name);
 					exit(1);	
 				}
@@ -2662,17 +2657,17 @@ void AllocatePhaseSyncMemory(const long int* N) {
 											// Add the k3 vector
 											proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K3_X][nn] = k3_x;
 											proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K3_Y][nn] = k3_y;
-											// Add the |k1|^2, |k2|^2, |k3|^2 
-											proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K1_SQR][nn] = k1_sqr;
-											proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K2_SQR][nn] = k2_sqr;
-											proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K3_SQR][nn] = k3_sqr;
-											// Add the angles for +/- k1, k2, k3
-											proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K1_ANGLE][nn]     = k1_angle;
-											proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K2_ANGLE][nn]     = k2_angle;
-											proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K3_ANGLE][nn]     = k3_angle;
-											proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K1_ANGLE_NEG][nn] = k1_angle_neg;
-											proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K2_ANGLE_NEG][nn] = k2_angle_neg;
-											proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K3_ANGLE_NEG][nn] = k3_angle_neg;
+											// // Add the |k1|^2, |k2|^2, |k3|^2 
+											// proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K1_SQR][nn] = k1_sqr;
+											// proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K2_SQR][nn] = k2_sqr;
+											// proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K3_SQR][nn] = k3_sqr;
+											// // Add the angles for +/- k1, k2, k3
+											// proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K1_ANGLE][nn]     = k1_angle;
+											// proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K2_ANGLE][nn]     = k2_angle;
+											// proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K3_ANGLE][nn]     = k3_angle;
+											// proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K1_ANGLE_NEG][nn] = k1_angle_neg;
+											// proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K2_ANGLE_NEG][nn] = k2_angle_neg;
+											// proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K3_ANGLE_NEG][nn] = k3_angle_neg;
 											// Indicate which flux term this data is in
 											proc_data->phase_sync_wave_vecs[a][k1_sec_indx][FLUX_TERM][nn] = POS_FLUX_TERM;
 											// Indicate which type of contribution to the flux
@@ -2754,17 +2749,17 @@ void AllocatePhaseSyncMemory(const long int* N) {
 											// Add the k3 vector
 											proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K3_X][nn] = k3_x;
 											proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K3_Y][nn] = k3_y;
-											// Add the |k1|^2, |k2|^2, |k3|^2 
-											proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K1_SQR][nn] = k1_sqr;
-											proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K2_SQR][nn] = k2_sqr;
-											proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K3_SQR][nn] = k3_sqr;
-											// Add the angles for +/- k1, k2, k3
-											proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K1_ANGLE][nn]     = k1_angle;
-											proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K2_ANGLE][nn]     = k2_angle;
-											proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K3_ANGLE][nn]     = k3_angle;
-											proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K1_ANGLE_NEG][nn] = k1_angle_neg;
-											proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K2_ANGLE_NEG][nn] = k2_angle_neg;
-											proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K3_ANGLE_NEG][nn] = k3_angle_neg;
+											// // Add the |k1|^2, |k2|^2, |k3|^2 
+											// proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K1_SQR][nn] = k1_sqr;
+											// proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K2_SQR][nn] = k2_sqr;
+											// proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K3_SQR][nn] = k3_sqr;
+											// // Add the angles for +/- k1, k2, k3
+											// proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K1_ANGLE][nn]     = k1_angle;
+											// proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K2_ANGLE][nn]     = k2_angle;
+											// proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K3_ANGLE][nn]     = k3_angle;
+											// proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K1_ANGLE_NEG][nn] = k1_angle_neg;
+											// proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K2_ANGLE_NEG][nn] = k2_angle_neg;
+											// proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K3_ANGLE_NEG][nn] = k3_angle_neg;
 											// Indicate which flux term this data is in
 											proc_data->phase_sync_wave_vecs[a][k1_sec_indx][FLUX_TERM][nn] = NEG_FLUX_TERM;
 											// Indicate which type of contribution to the flux
@@ -2822,7 +2817,7 @@ void AllocatePhaseSyncMemory(const long int* N) {
 					}
 					else {
 						// Otherwise reallocate the correct amount of memory
-						proc_data->phase_sync_wave_vecs[a][l][n] = (double* )realloc(proc_data->phase_sync_wave_vecs[a][l][n] , sizeof(double) * proc_data->num_wave_vecs[a][l]);
+						proc_data->phase_sync_wave_vecs[a][l][n] = (int* )realloc(proc_data->phase_sync_wave_vecs[a][l][n] , sizeof(int) * proc_data->num_wave_vecs[a][l]);
 						if (proc_data->phase_sync_wave_vecs[a][l][n] == NULL) {
 							fprintf(stderr, "\n["MAGENTA"WARNING"RESET"] --- Unable to Reallocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Phase Sync Wavevectors");
 							exit(1);
@@ -2862,7 +2857,7 @@ void AllocatePhaseSyncMemory(const long int* N) {
 		// Write the wavevector data
 		for (int a = 0; a < sys_vars->num_k3_sectors; ++a){
 			for (int l = 0; l < sys_vars->num_k1_sectors; ++l){
-				double* tmp_wave_vec_data = (double* )fftw_malloc(sizeof(double) * NUM_K_DATA * proc_data->num_wave_vecs[a][l]);
+				int* tmp_wave_vec_data = (int* )fftw_malloc(sizeof(int) * NUM_K_DATA * proc_data->num_wave_vecs[a][l]);
 				for (int k = 0; k < NUM_K_DATA; ++k) {
 					for (int n = 0; n < proc_data->num_wave_vecs[a][l]; ++n) {
 						tmp_wave_vec_data[k * proc_data->num_wave_vecs[a][l] + n] = proc_data->phase_sync_wave_vecs[a][l][k][n];
@@ -2872,7 +2867,7 @@ void AllocatePhaseSyncMemory(const long int* N) {
 				dset_dims_2d[0] = NUM_K_DATA;
 				dset_dims_2d[1] = proc_data->num_wave_vecs[a][l];
 				sprintf(dset_name, "WVData_Sector_%d_%d", a, l);
-				status = H5LTmake_dataset(file_info->wave_vec_file_handle, dset_name, Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, tmp_wave_vec_data);
+				status = H5LTmake_dataset(file_info->wave_vec_file_handle, dset_name, Dims2D, dset_dims_2d, H5T_NATIVE_INT, tmp_wave_vec_data);
 				if (status < 0) {
 					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to wavevector data file!!\n-->> Exiting...\n", dset_name);
 					exit(1);

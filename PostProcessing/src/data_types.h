@@ -73,7 +73,7 @@
 #define __ENRG_FLUX
 #endif
 #if defined(__POST_SYNC)
-// #define __PHASE_SYNC
+#define __PHASE_SYNC
 #define __SEC_PHASE_SYNC
 // #define __SEC_PHASE_SYNC_STATS
 // #define __SEC_PHASE_SYNC_FLUX_STATS
@@ -113,24 +113,25 @@
 #define NUM_TRIAD_CLASS 2 			// The number of triad classes i.e., either normal triad or generalized triads
 #define NUM_TRIAD_TYPES 6 			// The number of triad types contributing to the flux, these are dependent on the term and sign of the term 
 #define NUM_K1_SECTORS 8			// The number of k1 sectors to search over in a reduced search @ +/- 30, 45, 60 & 90 degrees
-#define NUM_K_DATA 17           	// The number of wavevector data to precompute and store
+#define NUM_K_DATA 8           	    // The number of wavevector data to precompute and store
 #define	K1_X	  0 				// The index for the k1_x wavenuber
 #define	K1_Y	  1 				// The index for the k1_y wavenuber
 #define	K2_X 	  2 				// The index for the k2_x wavenuber
 #define	K2_Y  	  3 				// The index for the k2_y wavenuber
 #define	K3_X  	  4 				// The index for the k3_x wavenuber
 #define	K3_Y  	  5 				// The index for the k3_y wavenuber
-#define	K1_SQR	  6 				// The index for the |k1|^2
-#define	K2_SQR	  7 				// The index for the |k2|^2
-#define	K3_SQR	  8 				// The index for the |k3|^2
-#define	K1_ANGLE  9 				// The index for the anlge of k1
-#define	K2_ANGLE  10 				// The index for the anlge of k2
-#define	K3_ANGLE  11 				// The index for the anlge of k3
-#define	K1_ANGLE_NEG  12 			// The index for the anlge of -k1
-#define	K2_ANGLE_NEG  13 			// The index for the anlge of -k2
-#define	K3_ANGLE_NEG  14 			// The index for the anlge of -k3
-#define FLUX_TERM 15				// Indicator which identifies whether data is in postive or negative flux term
-#define CONTRIB_TYPE 16         	// Indicator for which type of contribution to the flux, either 1d or 2d
+#define FLUX_TERM 6					// Indicator which identifies whether data is in postive or negative flux term
+#define CONTRIB_TYPE 7         		// Indicator for which type of contribution to the flux, either 1d or 2d
+// The following are not needed anymore
+// #define	K1_SQR	  6 				// The index for the |k1|^2
+// #define	K2_SQR	  7 				// The index for the |k2|^2
+// #define	K3_SQR	  8 				// The index for the |k3|^2
+// #define	K1_ANGLE  9 				// The index for the anlge of k1
+// #define	K2_ANGLE  10 				// The index for the anlge of k2
+// #define	K3_ANGLE  11 				// The index for the anlge of k3
+// #define	K1_ANGLE_NEG  12 			// The index for the anlge of -k1
+// #define	K2_ANGLE_NEG  13 			// The index for the anlge of -k2
+// #define	K3_ANGLE_NEG  14 			// The index for the anlge of -k3
 #define POS_FLUX_TERM 0 			// Indicates postive flux term
 #define NEG_FLUX_TERM 1         	// Indicates negative flux term
 #define CONTRIB_1D 0 		    	// Indicates 1d contribution (same sector) to the flux 
@@ -267,8 +268,8 @@ typedef struct postprocess_data_struct {
     double* mid_angle_sum;									     			 				// Array to hold the pre computed midpoint angle sums -> this will determine which sector k2 is in
     double* phase_angle;										 			 				// Array to hold the pre computed arctangents of the wavevectors for the individual phases   
     double* k1_sector_angles;									 			 				// Array to hold the pre computed arctangents of the wavevectors for the individual phases   
-    double**** phase_sync_wave_vecs;										 				// Array of pointers to arrays to hold the wavevectors in a given sector
-    double** phase_sync_wave_vecs_test;									     				// Array of pointers to arrays to hold the wavevectors in the test case
+    int**** phase_sync_wave_vecs;										 					// Array of pointers to arrays to hold the wavevectors in a given sector
+    int** phase_sync_wave_vecs_test;									     				// Array of pointers to arrays to hold the wavevectors in the test case
     int** num_wave_vecs;													 				// Array to hold the number of wavevector triads per secotr
     fftw_complex* phase_order;       							 			 				// Array to hold the phase order parameter for each sector for the individual phases
 	fftw_complex* triad_phase_order[NUM_TRIAD_TYPES + 1]; 		 			 				// Array to hold the phase order parameter for each sector for each of the triad phase types including combined
