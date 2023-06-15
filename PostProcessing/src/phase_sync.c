@@ -20,6 +20,7 @@
 // ---------------------------------------------------------------------
 #include "utils.h"
 #include "data_types.h"
+#include "phase_sync.h"
 
 
 // ---------------------------------------------------------------------
@@ -125,10 +126,10 @@ void PhaseSync(int s) {
 								proc_data->phase_sync_wave_vecs_test[K3_Y][n] = k3_y;
 
 								n++;
-								if (n > sys_vars->num_triad_per_sec_est) {
-									fprintf(stderr, "\n["RED"ERROR"RESET"] --- The number of triads in ["CYAN"%s"RESET"] exceding the allocated number of ["CYAN"%d"RESET"] -- Need to allocate more memory\n-->> Exiting!!!\n", "PhaseSync", sys_vars->num_triad_per_sec_est);
-									exit(1);
-								}
+								// if (n > sys_vars->num_triad_per_sec_est) {
+								// 	fprintf(stderr, "\n["RED"ERROR"RESET"] --- The number of triads in ["CYAN"%s"RESET"] exceding the allocated number of ["CYAN"%d"RESET"] -- Need to allocate more memory\n-->> Exiting!!!\n", "PhaseSync", sys_vars->num_triad_per_sec_est);
+								// 	exit(1);
+								// }
 
 								if (flux_pre_fac < 0) {
 									//------------------------------------------ TRIAD TYPE 1
@@ -227,10 +228,10 @@ void PhaseSync(int s) {
 								proc_data->phase_sync_wave_vecs_test[K3_Y][n] = k3_y;
 
 								n++;
-								if (n > sys_vars->num_triad_per_sec_est) {
-									fprintf(stderr, "\n["RED"ERROR"RESET"] --- The number of triads in ["CYAN"%s"RESET"] exceding the allocated number of ["CYAN"%d"RESET"] -- Need to allocate more memory\n-->> Exiting!!!\n", "PhaseSync", sys_vars->num_triad_per_sec_est);
-									exit(1);
-								}
+								// if (n > sys_vars->num_triad_per_sec_est) {
+								// 	fprintf(stderr, "\n["RED"ERROR"RESET"] --- The number of triads in ["CYAN"%s"RESET"] exceding the allocated number of ["CYAN"%d"RESET"] -- Need to allocate more memory\n-->> Exiting!!!\n", "PhaseSync", sys_vars->num_triad_per_sec_est);
+								// 	exit(1);
+								// }
 
 								if (flux_pre_fac < 0) {
 									//------------------------------------------ TRIAD TYPE 3
@@ -293,13 +294,11 @@ void PhaseSyncSector(int s, int pre_compute_flag) {
 	// Initialize variables
 	int k1_x, k1_y, k2_x, k2_y, k3_x, k3_y;
 	int tmp_k1, tmp_k2, tmp_k3;
-	double k1_sqr, k2_sqr, k3_sqr;
+	double k1_sqr, k2_sqr;
 	double flux_pre_fac;
 	double flux_wght;
 	double triad_phase;
 	double gen_triad_phase; 
-	double k1_angle, k2_angle, k3_angle;
-	double k1_angle_neg, k2_angle_neg, k3_angle_neg;
 	int gsl_status;
 	double flux_term;
 	double phase_val[NUM_TRIAD_CLASS];
@@ -1953,7 +1952,7 @@ void AllocatePhaseSyncMemory(const long int* N) {
 
 		///---------------- Allocate the memory for the normalization constants for the phase order parameters
 		for (int type = 0; type < 2; ++type){
-			proc_data->phase_order_norm_const[type][i] = (fftw_complex** )fftw_malloc(sizeof(fftw_complex*) * sys_vars->num_k3_sectors);
+			proc_data->phase_order_norm_const[type][i] = (double** )fftw_malloc(sizeof(double*) * sys_vars->num_k3_sectors);
 			if (proc_data->phase_order_norm_const[type][i] == NULL) {
 				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Triad Phase Sync Phase Order Normalization Constant");
 				exit(1);
@@ -1992,7 +1991,7 @@ void AllocatePhaseSyncMemory(const long int* N) {
 			}
 			// Allocate the memory for the normalization constants for the phase order parameters
 			for (int type = 0; type < 2; ++type){
-				proc_data->phase_order_norm_const[type][i][l] = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->num_k1_sectors);
+				proc_data->phase_order_norm_const[type][i][l] = (double* )fftw_malloc(sizeof(double) * sys_vars->num_k1_sectors);
 				if (proc_data->phase_order_norm_const[type][i][l] == NULL) {
 					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Triad Phase Sync Phase Order Normalization Constant");
 					exit(1);
@@ -2350,556 +2349,1378 @@ void AllocatePhaseSyncMemory(const long int* N) {
 	// -------------------------------------
 	//  Allocate Triad Wavevector Array
 	// -------------------------------------
-	//------------ Allocate memory for the triad wavevectors per sector and their data 
-	proc_data->phase_sync_wave_vecs = (int**** )fftw_malloc(sizeof(int***) * sys_vars->num_k3_sectors);
-	if (proc_data->phase_sync_wave_vecs == NULL) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Phase Sync Wavevectors");
-		exit(1);
-	}
-	for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
-		proc_data->phase_sync_wave_vecs[a] = (int*** )fftw_malloc(sizeof(int**) * sys_vars->num_k1_sectors);
-		if (proc_data->phase_sync_wave_vecs[a] == NULL) {
-			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Phase Sync Wavevectors");
-			exit(1);
-		}	
-	}
-	for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
-		for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
-			proc_data->phase_sync_wave_vecs[a][l] = (int** )fftw_malloc(sizeof(int*) * NUM_K_DATA);
-			if (proc_data->phase_sync_wave_vecs[a][l] == NULL) {
-				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Phase Sync Wavevectors");
-				exit(1);
-			}	
-		}
-	}
-	// Estimate for the number of triads across sectors -> we will resize this dimension to correct size after search is performed NOTE: Needs to be bigger than all triads in the cirlce i.e., one sector
-	int num_triad_est               = (int) ceil(M_PI * pow(sys_vars->N[0], 2.0) + 2.0 * sqrt(2) * M_PI * sys_vars->N[0]) * 1000;
-	sys_vars->num_triad_per_sec_est = num_triad_est;
-	for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
-		for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
-			for (int n = 0; n < NUM_K_DATA; ++n) {
-				proc_data->phase_sync_wave_vecs[a][l][n] = (int* )fftw_malloc(sizeof(int) * num_triad_est);
-				if (proc_data->phase_sync_wave_vecs[a][l][n] == NULL) {
-					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Phase Sync Wavevectors");
-					exit(1);
-				}
-			}	
-		}
-	}
-
 	#if defined (__PHASE_SYNC)
-	proc_data->phase_sync_wave_vecs_test = (int** )fftw_malloc(sizeof(int*) * 6);
-	if (proc_data->phase_sync_wave_vecs_test == NULL) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Phase Sync Wavevectors");
-		exit(1);
-	}	
-	for (int n = 0; n < 6; ++n) {
-		proc_data->phase_sync_wave_vecs_test[n] = (int* )fftw_malloc(sizeof(int) * num_triad_est);
-		if (proc_data->phase_sync_wave_vecs_test[n] == NULL) {
-			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Phase Sync Wavevectors");
-			exit(1);
-		}
-	}
-	// Initialize phase sync test data
-	for (int n = 0; n < 6; ++n) {
-		proc_data->num_triads_test[n] = 0;
-		for (int i = 0; i < num_triad_est; ++i) {
-			proc_data->phase_sync_wave_vecs_test[n][i] = 0.0;
-		}
-	}
+	// Allocate the wavevector objects for the phase sync test computation
+	AllocateWavecData(SYNC_TEST_DATA_FLAG);
 	#endif
 
-	//------------ Allocate memory for the number of wavevector triads per sector
-	proc_data->num_wave_vecs = (int** )fftw_malloc(sizeof(int*) * sys_vars->num_k3_sectors);
-	if (proc_data->num_wave_vecs == NULL) {
-		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Number of Phase Sync Wavevectors");
-		exit(1);
-	}
-	for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
-		proc_data->num_wave_vecs[a] = (int* )fftw_malloc(sizeof(int) * sys_vars->num_k1_sectors);
-		if (proc_data->num_wave_vecs[a] == NULL) {
-			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Number of Phase Sync Wavevectors");
-			exit(1);
-		}	
-	}
-	for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
-		for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
-			proc_data->num_wave_vecs[a][l] = sys_vars->num_triad_per_sec_est;
-		}
-	}
+	// //------------ Allocate memory for the triad wavevectors per sector and their data 
+	// proc_data->phase_sync_wave_vecs = (int**** )fftw_malloc(sizeof(int***) * sys_vars->num_k3_sectors);
+	// if (proc_data->phase_sync_wave_vecs == NULL) {
+	// 	fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Phase Sync Wavevectors");
+	// 	exit(1);
+	// }
+	// for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
+	// 	proc_data->phase_sync_wave_vecs[a] = (int*** )fftw_malloc(sizeof(int**) * sys_vars->num_k1_sectors);
+	// 	if (proc_data->phase_sync_wave_vecs[a] == NULL) {
+	// 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Phase Sync Wavevectors");
+	// 		exit(1);
+	// 	}	
+	// }
+	// for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
+	// 	for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
+	// 		proc_data->phase_sync_wave_vecs[a][l] = (int** )fftw_malloc(sizeof(int*) * NUM_K_DATA);
+	// 		if (proc_data->phase_sync_wave_vecs[a][l] == NULL) {
+	// 			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Phase Sync Wavevectors");
+	// 			exit(1);
+	// 		}	
+	// 	}
+	// }
+	// // Estimate for the number of triads across sectors -> we will resize this dimension to correct size after search is performed NOTE: Needs to be bigger than all triads in the cirlce i.e., one sector
+	// int num_triad_est               = (int) ceil(M_PI * pow(sys_vars->N[0], 2.0) + 2.0 * sqrt(2) * M_PI * sys_vars->N[0]) * 1000;
+	// sys_vars->num_triad_per_sec_est = num_triad_est;
+	// for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
+	// 	for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
+	// 		for (int n = 0; n < NUM_K_DATA; ++n) {
+	// 			proc_data->phase_sync_wave_vecs[a][l][n] = (int* )fftw_malloc(sizeof(int) * num_triad_est);
+	// 			if (proc_data->phase_sync_wave_vecs[a][l][n] == NULL) {
+	// 				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Phase Sync Wavevectors");
+	// 				exit(1);
+	// 			}
+	// 		}	
+	// 	}
+	// }
+
+	// //------------ Allocate memory for the number of wavevector triads per sector
+	// proc_data->num_wave_vecs = (int** )fftw_malloc(sizeof(int*) * sys_vars->num_k3_sectors);
+	// if (proc_data->num_wave_vecs == NULL) {
+	// 	fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Number of Phase Sync Wavevectors");
+	// 	exit(1);
+	// }
+	// for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
+	// 	proc_data->num_wave_vecs[a] = (int* )fftw_malloc(sizeof(int) * sys_vars->num_k1_sectors);
+	// 	if (proc_data->num_wave_vecs[a] == NULL) {
+	// 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Number of Phase Sync Wavevectors");
+	// 		exit(1);
+	// 	}	
+	// }
+	// for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
+	// 	for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
+	// 		proc_data->num_wave_vecs[a][l] = sys_vars->num_triad_per_sec_est;
+	// 	}
+	// }
 
 
 	///----------- Allocate memory for the sparse search k1 sector angles
-	double k1_sector_angles[NUM_K1_SECTORS] = {-sys_vars->num_k3_sectors/2.0, -sys_vars->num_k3_sectors/3.0, -sys_vars->num_k3_sectors/4.0, -sys_vars->num_k3_sectors/6.0, sys_vars->num_k3_sectors/6.0, sys_vars->num_k3_sectors/4.0, sys_vars->num_k3_sectors/3.0, sys_vars->num_k3_sectors/2.0};
-	proc_data->k1_sector_angles = (double* )fftw_malloc(sizeof(double) * NUM_K1_SECTORS);
-	memcpy(proc_data->k1_sector_angles, k1_sector_angles, sizeof(k1_sector_angles));
+	// double k1_sector_angles[NUM_K1_SECTORS] = {-sys_vars->num_k3_sectors/2.0, -sys_vars->num_k3_sectors/3.0, -sys_vars->num_k3_sectors/4.0, -sys_vars->num_k3_sectors/6.0, sys_vars->num_k3_sectors/6.0, sys_vars->num_k3_sectors/4.0, sys_vars->num_k3_sectors/3.0, sys_vars->num_k3_sectors/2.0};
+	// proc_data->k1_sector_angles = (double* )fftw_malloc(sizeof(double) * NUM_K1_SECTORS);
+	// memcpy(proc_data->k1_sector_angles, k1_sector_angles, sizeof(k1_sector_angles));
 
 
-	///--------------------- Check if Phase Sync Wavevector Data file exist if not create it
-	// Get Phase Sync wavevector data file path
-	herr_t status;
-	char dset_name[64];
-	char wave_vec_file[128];
-	strncpy(file_info->wave_vec_data_name, "./Data/PostProcess/PhaseSync", 1024);
-	sprintf(wave_vec_file, "/Wavevector_Data_N[%d,%d]_SECTORS[%d,%d]_KFRAC[%1.2lf,%1.2lf].h5", (int)sys_vars->N[0], (int)sys_vars->N[1], sys_vars->num_k3_sectors, sys_vars->num_k1_sectors, sys_vars->kmin_sqr, sys_vars->kmax_frac);	
-	strcat(file_info->wave_vec_data_name, wave_vec_file);
+	// ///--------------------- Check if Phase Sync Wavevector Data file exist if not create it
+	// // Get Phase Sync wavevector data file path
+	// herr_t status;
+	// char dset_name[64];
+	// char wave_vec_file[128];
+	// strncpy(file_info->wave_vec_data_name, "./Data/PostProcess/PhaseSync", 1024);
+	// sprintf(wave_vec_file, "/Wavevector_Data_N[%d,%d]_SECTORS[%d,%d]_KFRAC[%1.2lf,%1.2lf].h5", (int)sys_vars->N[0], (int)sys_vars->N[1], sys_vars->num_k3_sectors, sys_vars->num_k1_sectors, sys_vars->kmin_sqr, sys_vars->kmax_frac);	
+	// strcat(file_info->wave_vec_data_name, wave_vec_file);
+
+
+	// Allocate the wavevector objects for the phase sync test computation
+	AllocateWavecData(SYNC_DATA_FLAG);
+
 
 	// Check if Wavector file exists
-	if (access(file_info->wave_vec_data_name, F_OK) == 0) {
-		printf("\n["YELLOW"NOTE"RESET"] --- Reading in wavevectors data for Phase Sync computation...");
-		printf("\nNumber of k_3 Sectors: ["CYAN"%d"RESET"]\nNumber of k_1 Sectors: ["CYAN"%d"RESET"]\n\n", sys_vars->num_k3_sectors, sys_vars->num_k1_sectors);
+	// if (access(file_info->wave_vec_data_name, F_OK) == 0) {
+	// 	// printf("\n["YELLOW"NOTE"RESET"] --- Reading in wavevectors data for Phase Sync computation...");
+	// 	// printf("\nNumber of k_3 Sectors: ["CYAN"%d"RESET"]\nNumber of k_1 Sectors: ["CYAN"%d"RESET"]\n\n", sys_vars->num_k3_sectors, sys_vars->num_k1_sectors);
 
 		
-		//----------------------- Open file with default I/O access properties
-		file_info->wave_vec_file_handle = H5Fopen(file_info->wave_vec_data_name, H5F_ACC_RDWR, H5P_DEFAULT);
-		if (file_info->wave_vec_file_handle < 0) {
-			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to open output file ["CYAN"%s"RESET"]\n-->> Exiting...\n", file_info->wave_vec_data_name);
-			exit(1);
-		}
+	// 	// //----------------------- Open file with default I/O access properties
+	// 	// file_info->wave_vec_file_handle = H5Fopen(file_info->wave_vec_data_name, H5F_ACC_RDWR, H5P_DEFAULT);
+	// 	// if (file_info->wave_vec_file_handle < 0) {
+	// 	// 	fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to open output file ["CYAN"%s"RESET"]\n-->> Exiting...\n", file_info->wave_vec_data_name);
+	// 	// 	exit(1);
+	// 	// }
 
-		///----------------------- Read in Wavector Data
-		// Read in the number of wavevectors
-		int* tmp_num_wavevecs = (int* )fftw_malloc(sizeof(int) * sys_vars->num_k3_sectors * sys_vars->num_k1_sectors);
-		if(H5LTread_dataset(file_info->wave_vec_file_handle, "NumWavevectors", H5T_NATIVE_INT, tmp_num_wavevecs) < 0) {
-			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to read in data for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Number of Wavevectors");
-			exit(1);	
-		}
-		for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
-			for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
-				proc_data->num_wave_vecs[a][l] = tmp_num_wavevecs[a * sys_vars->num_k1_sectors + l];
-			}
-		}
+	// 	// ///----------------------- Read in Wavector Data
+	// 	// // Read in the number of wavevectors
+	// 	// int* tmp_num_wavevecs = (int* )fftw_malloc(sizeof(int) * sys_vars->num_k3_sectors * sys_vars->num_k1_sectors);
+	// 	// if(H5LTread_dataset(file_info->wave_vec_file_handle, "NumWavevectors", H5T_NATIVE_INT, tmp_num_wavevecs) < 0) {
+	// 	// 	fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to read in data for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Number of Wavevectors");
+	// 	// 	exit(1);	
+	// 	// }
+	// 	// for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
+	// 	// 	for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
+	// 	// 		proc_data->num_wave_vecs[a][l] = tmp_num_wavevecs[a * sys_vars->num_k1_sectors + l];
+	// 	// 	}
+	// 	// }
 
-		///-------------------- Realloc the last dimension in wavevector array to its correct size
-		for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
-			for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
-				for (int n = 0; n < NUM_K_DATA; ++n) {
-					if (proc_data->num_wave_vecs[a][l] == 0) {
-						// Free empty phase sync wavevector arrays
-						fftw_free(proc_data->phase_sync_wave_vecs[a][l][n]);
-					}
-					else {
-						// Otherwise reallocate the correct amount of memory
-						proc_data->phase_sync_wave_vecs[a][l][n] = (int* )realloc(proc_data->phase_sync_wave_vecs[a][l][n] , sizeof(int) * proc_data->num_wave_vecs[a][l]);
-						if (proc_data->phase_sync_wave_vecs[a][l][n] == NULL) {
-							fprintf(stderr, "\n["MAGENTA"WARNING"RESET"] --- Unable to Reallocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Phase Sync Wavevectors");
-							exit(1);
-						}
-					}
-				}	
-			}
-		}
+	// 	// ///-------------------- Realloc the last dimension in wavevector array to its correct size
+	// 	// for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
+	// 	// 	for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
+	// 	// 		for (int n = 0; n < NUM_K_DATA; ++n) {
+	// 	// 			if (proc_data->num_wave_vecs[a][l] == 0) {
+	// 	// 				// Free empty phase sync wavevector arrays
+	// 	// 				fftw_free(proc_data->phase_sync_wave_vecs[a][l][n]);
+	// 	// 			}
+	// 	// 			else {
+	// 	// 				// Otherwise reallocate the correct amount of memory
+	// 	// 				proc_data->phase_sync_wave_vecs[a][l][n] = (int* )realloc(proc_data->phase_sync_wave_vecs[a][l][n] , sizeof(int) * proc_data->num_wave_vecs[a][l]);
+	// 	// 				if (proc_data->phase_sync_wave_vecs[a][l][n] == NULL) {
+	// 	// 					fprintf(stderr, "\n["MAGENTA"WARNING"RESET"] --- Unable to Reallocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Phase Sync Wavevectors");
+	// 	// 					exit(1);
+	// 	// 				}
+	// 	// 			}
+	// 	// 		}	
+	// 	// 	}
+	// 	// }
 
-		// Read in wavevector data
-		for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
-			for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
-				int* tmp_wave_vec_data = (int*)fftw_malloc(sizeof(int) * NUM_K_DATA * proc_data->num_wave_vecs[a][l]);
-				sprintf(dset_name, "WVData_Sector_%d_%d", a, l);
+	// 	// // Read in wavevector data
+	// 	// for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
+	// 	// 	for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
+	// 	// 		int* tmp_wave_vec_data = (int*)fftw_malloc(sizeof(int) * NUM_K_DATA * proc_data->num_wave_vecs[a][l]);
+	// 	// 		sprintf(dset_name, "WVData_Sector_%d_%d", a, l);
 
-				if(H5LTread_dataset(file_info->wave_vec_file_handle, dset_name, H5T_NATIVE_INT, tmp_wave_vec_data) < 0) {
-					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to read in data for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", dset_name);
-					exit(1);	
-				}
+	// 	// 		if(H5LTread_dataset(file_info->wave_vec_file_handle, dset_name, H5T_NATIVE_INT, tmp_wave_vec_data) < 0) {
+	// 	// 			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to read in data for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", dset_name);
+	// 	// 			exit(1);	
+	// 	// 		}
 	
-				for (int k = 0; k < NUM_K_DATA; ++k) {
-					for (int n = 0; n < proc_data->num_wave_vecs[a][l]; ++n) {
-						proc_data->phase_sync_wave_vecs[a][l][k][n] = tmp_wave_vec_data[k * proc_data->num_wave_vecs[a][l] + n];
-					}
-				}
-				fftw_free(tmp_wave_vec_data);
-			}
-		}
-		// Free temporary memory
-		fftw_free(tmp_num_wavevecs);
+	// 	// 		for (int k = 0; k < NUM_K_DATA; ++k) {
+	// 	// 			for (int n = 0; n < proc_data->num_wave_vecs[a][l]; ++n) {
+	// 	// 				proc_data->phase_sync_wave_vecs[a][l][k][n] = tmp_wave_vec_data[k * proc_data->num_wave_vecs[a][l] + n];
+	// 	// 			}
+	// 	// 		}
+	// 	// 		fftw_free(tmp_wave_vec_data);
+	// 	// 	}
+	// 	// }
+	// 	// // Free temporary memory
+	// 	// fftw_free(tmp_num_wavevecs);
 
-		status = H5Fclose(file_info->wave_vec_file_handle);
-		if (status < 0) {
-			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close wavevector data file ["CYAN"%s"RESET"]\n-->> Exiting...\n", file_info->wave_vec_data_name);
-			exit(1);		
-		}
-	}
-	else {
-		//------------------- Fill the wavevector arrays
-		int nn;
-		int k1_sec_indx; 
-		double C_theta_k3, C_theta_k1, C_theta_k2;
-		int k3_x, k3_y, k1_x, k1_y, k2_x, k2_y;
-		double k1_sqr, k1_angle, k2_sqr, k2_angle, k3_sqr, k3_angle;
-		double k3_angle_neg, k1_angle_neg, k2_angle_neg;
-		double C_theta_k3_lwr, C_theta_k3_upr, C_theta_k1_upr, C_theta_k1_lwr;
-		long int total_terms = 0;
-		long int total_terms_per_sec = 0;
-		long int total_1d_terms_per_sec = 0;
-		long int total_2d_terms_per_sec = 0;
-		double search_end, search_begin;
+	// 	// status = H5Fclose(file_info->wave_vec_file_handle);
+	// 	// if (status < 0) {
+	// 	// 	fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close wavevector data file ["CYAN"%s"RESET"]\n-->> Exiting...\n", file_info->wave_vec_data_name);
+	// 	// 	exit(1);		
+	// 	// }
+	// }
+	//  else {
+	// 	//------------------- Fill the wavevector arrays
+	// 	int nn;
+	// 	int k3_x, k3_y, k1_x, k1_y, k2_x, k2_y;
+	// 	double k1_sqr, k1_angle, k2_sqr, k2_angle, k3_sqr, k3_angle;
+	// 	double k3_angle_neg, k1_angle_neg, k2_angle_neg;
+	// 	int k1_sec_indx; 
+	// 	double C_theta_k3, C_theta_k1, C_theta_k2;
+	// 	double C_theta_k3_lwr, C_theta_k3_upr, C_theta_k1_upr, C_theta_k1_lwr;
+	// 	long int total_terms = 0;
+	// 	long int total_terms_per_sec = 0;
+	// 	long int total_1d_terms_per_sec = 0;
+	// 	long int total_2d_terms_per_sec = 0;
+	// 	double search_end, search_begin;
 
-		// Inialize pointer to txt file and open for writing the numbers of terms
-		FILE *fptr;
-		char num_terms_file[64];
-		char num_terms_file_path[1024];
-		sprintf(num_terms_file, "/NumFluxTerms_SECTORS[%d,%d]_KFRAC[%1.2lf,%1.2lf].txt", sys_vars->num_k3_sectors, sys_vars->num_k1_sectors, sys_vars->kmin_sqr, sys_vars->kmax_frac);
-		strncpy(num_terms_file_path, file_info->output_dir, 1024);
-		strcat(num_terms_file_path, num_terms_file);
-		fptr = fopen(num_terms_file_path,"w");
+	// 	// Inialize pointer to txt file and open for writing the numbers of terms
+	// 	FILE *fptr;
+	// 	char num_terms_file[64];
+	// 	char num_terms_file_path[1024];
+	// 	sprintf(num_terms_file, "/NumFluxTerms_SECTORS[%d,%d]_KFRAC[%1.2lf,%1.2lf].txt", sys_vars->num_k3_sectors, sys_vars->num_k1_sectors, sys_vars->kmin_sqr, sys_vars->kmax_frac);
+	// 	strncpy(num_terms_file_path, file_info->output_dir, 1024);
+	// 	strcat(num_terms_file_path, num_terms_file);
+	// 	fptr = fopen(num_terms_file_path,"w");
 
-		// Start timer
-		double loop_begin = omp_get_wtime();
+	// 	// Start timer
+	// 	double loop_begin = omp_get_wtime();
 
-		// Print to screen that a pre computation search is needed for the phase sync wavevectors and begin timeing it
-		printf("\n["YELLOW"NOTE"RESET"] --- Performing search over wavevectors for Phase Sync computation...\n");
-		printf("\nNumber of k_3 Sectors: ["CYAN"%d"RESET"]\nNumber of k_1 Sectors: ["CYAN"%d"RESET"]\n\n", sys_vars->num_k3_sectors, sys_vars->num_k1_sectors);
+	// 	// Print to screen that a pre computation search is needed for the phase sync wavevectors and begin timeing it
+	// 	printf("\n["YELLOW"NOTE"RESET"] --- Performing search over wavevectors for Phase Sync computation...\n");
+	// 	printf("\nNumber of k_3 Sectors: ["CYAN"%d"RESET"]\nNumber of k_1 Sectors: ["CYAN"%d"RESET"]\n\n", sys_vars->num_k3_sectors, sys_vars->num_k1_sectors);
 
-		// Loop through the sectors for k3
-		for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
+	// 	// Loop through the sectors for k3
+	// 	for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
 
-			// Initialize counter for terms per sector and start time of the current loop
-			double search_begin = omp_get_wtime();
-			total_terms_per_sec    = 0;
-			total_1d_terms_per_sec = 0;
-			total_2d_terms_per_sec = 0;
+	// 		// Initialize counter for terms per sector and start time of the current loop
+	// 		double search_begin = omp_get_wtime();
+	// 		total_terms_per_sec    = 0;
+	// 		total_1d_terms_per_sec = 0;
+	// 		total_2d_terms_per_sec = 0;
 			
-			// Get the angles for the current sector
-			C_theta_k3 = proc_data->theta_k3[a];
-			C_theta_k3_lwr = C_theta_k3 - proc_data->dtheta_k3 / 2.0;
-			C_theta_k3_upr = C_theta_k3 + proc_data->dtheta_k3 / 2.0;
+	// 		// Get the angles for the current sector
+	// 		C_theta_k3 = proc_data->theta_k3[a];
+	// 		C_theta_k3_lwr = C_theta_k3 - proc_data->dtheta_k3 / 2.0;
+	// 		C_theta_k3_upr = C_theta_k3 + proc_data->dtheta_k3 / 2.0;
 
-			// Loop through k1 sector choice
-			for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
+	// 		// Loop through k1 sector choice
+	// 		for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
 
-				// Get the angles for the k1 sector
-				if (sys_vars->REDUCED_K1_SEARCH_FLAG) {
-					// Reduced k1 sector search
-					C_theta_k1     = MyMod(C_theta_k3 + (k1_sector_angles[l] * proc_data->dtheta_k3/2.0) + M_PI, 2.0 * M_PI) - M_PI;
-					C_theta_k1_lwr = C_theta_k1 - proc_data->dtheta_k3 / 2.0;
-					C_theta_k1_upr = C_theta_k1 + proc_data->dtheta_k3 / 2.0;
-				}
-				else if (sys_vars->num_k1_sectors == 1){
-					// When k1 can vary anywhere -> no restriction to sector
-					C_theta_k1     = 0.0;
-					C_theta_k1_lwr = C_theta_k1 - M_PI / 2.0 + 1e-10;
-					C_theta_k1_upr = C_theta_k1 + M_PI / 2.0 + 1e-10;
-				}
-				else {
-					// Full search over sectors
-					C_theta_k1     = proc_data->theta_k1[(a + l) % sys_vars->num_k1_sectors];
-					C_theta_k1_lwr = C_theta_k1 - proc_data->dtheta_k1 / 2.0;
-					C_theta_k1_upr = C_theta_k1 + proc_data->dtheta_k1 / 2.0;
-				}
+	// 			// Get the angles for the k1 sector
+	// 			if (sys_vars->REDUCED_K1_SEARCH_FLAG) {
+	// 				// Reduced k1 sector search
+	// 				C_theta_k1     = MyMod(C_theta_k3 + (k1_sector_angles[l] * proc_data->dtheta_k3/2.0) + M_PI, 2.0 * M_PI) - M_PI;
+	// 				C_theta_k1_lwr = C_theta_k1 - proc_data->dtheta_k3 / 2.0;
+	// 				C_theta_k1_upr = C_theta_k1 + proc_data->dtheta_k3 / 2.0;
+	// 			}
+	// 			else if (sys_vars->num_k1_sectors == 1){
+	// 				// When k1 can vary anywhere -> no restriction to sector
+	// 				C_theta_k1     = 0.0;
+	// 				C_theta_k1_lwr = C_theta_k1 - M_PI / 2.0 + 1e-10;
+	// 				C_theta_k1_upr = C_theta_k1 + M_PI / 2.0 + 1e-10;
+	// 			}
+	// 			else {
+	// 				// Full search over sectors
+	// 				C_theta_k1     = proc_data->theta_k1[(a + l) % sys_vars->num_k1_sectors];
+	// 				C_theta_k1_lwr = C_theta_k1 - proc_data->dtheta_k1 / 2.0;
+	// 				C_theta_k1_upr = C_theta_k1 + proc_data->dtheta_k1 / 2.0;
+	// 			}
 
-				// Get the index for saving the k1 sector data in the right order -> 1d contribution should be on the diagonal
-				k1_sec_indx = (l + a) % sys_vars->num_k1_sectors;
+	// 			// Get the index for saving the k1 sector data in the right order -> 1d contribution should be on the diagonal
+	// 			k1_sec_indx = (l + a) % sys_vars->num_k1_sectors;
 				
-				// Initialize increment
-				nn = 0;
+	// 			// Initialize increment
+	// 			nn = 0;
 
-				// Loop through the k wavevector (k is the k3 wavevector)
-				for (int tmp_k3_x = 0; tmp_k3_x <= sys_vars->N[0] - 1; ++tmp_k3_x) {
+	// 			// Loop through the k wavevector (k is the k3 wavevector)
+	// 			for (int tmp_k3_x = 0; tmp_k3_x <= sys_vars->N[0] - 1; ++tmp_k3_x) {
 					
-					// Get k3_x
-					k3_x = tmp_k3_x - (int) (sys_vars->N[0] / 2) + 1;
+	// 				// Get k3_x
+	// 				k3_x = tmp_k3_x - (int) (sys_vars->N[0] / 2) + 1;
 
-					for (int tmp_k3_y = 0; tmp_k3_y <= sys_vars->N[1] - 1; ++tmp_k3_y) {
+	// 				for (int tmp_k3_y = 0; tmp_k3_y <= sys_vars->N[1] - 1; ++tmp_k3_y) {
 						
-						// Get k3_y
-						k3_y = tmp_k3_y - (int) (sys_vars->N[1] / 2) + 1;
+	// 					// Get k3_y
+	// 					k3_y = tmp_k3_y - (int) (sys_vars->N[1] / 2) + 1;
 
-						// Get polar coords for the k wavevector
-						k3_sqr       = (double) (k3_x * k3_x + k3_y * k3_y);
-						k3_angle     = atan2((double)k3_x, (double)k3_y);
-						k3_angle_neg = atan2((double)-k3_x, (double)-k3_y);
+	// 					// Get polar coords for the k wavevector
+	// 					k3_sqr       = (double) (k3_x * k3_x + k3_y * k3_y);
+	// 					k3_angle     = atan2((double)k3_x, (double)k3_y);
+	// 					k3_angle_neg = atan2((double)-k3_x, (double)-k3_y);
 						
-						if ( (k3_sqr > sys_vars->kmax_C_sqr && k3_sqr <= sys_vars->kmax_sqr) 
-							 && ((k3_angle >= C_theta_k3_lwr && k3_angle < C_theta_k3_upr) || (k3_angle_neg >= C_theta_k3_lwr && k3_angle_neg < C_theta_k3_upr)) ) {  
+	// 					if ( (k3_sqr > sys_vars->kmax_C_sqr && k3_sqr <= sys_vars->kmax_sqr) 
+	// 						 && ((k3_angle >= C_theta_k3_lwr && k3_angle < C_theta_k3_upr) || (k3_angle_neg >= C_theta_k3_lwr && k3_angle_neg < C_theta_k3_upr)) ) {  
 
-							// Loop through the k1 wavevector
-							for (int tmp_k1_x = 0; tmp_k1_x <= sys_vars->N[0] - 1; ++tmp_k1_x) {
+	// 						// Loop through the k1 wavevector
+	// 						for (int tmp_k1_x = 0; tmp_k1_x <= sys_vars->N[0] - 1; ++tmp_k1_x) {
 								
-								// Get k1_x
-								k1_x = tmp_k1_x - (int) (sys_vars->N[0] / 2) + 1;
+	// 							// Get k1_x
+	// 							k1_x = tmp_k1_x - (int) (sys_vars->N[0] / 2) + 1;
 
-								for (int tmp_k1_y = 0; tmp_k1_y <= sys_vars->N[1] - 1; ++tmp_k1_y) {
+	// 							for (int tmp_k1_y = 0; tmp_k1_y <= sys_vars->N[1] - 1; ++tmp_k1_y) {
 									
-									// Get k1_y
-									k1_y = tmp_k1_y - (int) (sys_vars->N[1] / 2) + 1;
+	// 								// Get k1_y
+	// 								k1_y = tmp_k1_y - (int) (sys_vars->N[1] / 2) + 1;
 
-									// Get polar coords for k1
-									k1_sqr       = (double) (k1_x * k1_x + k1_y * k1_y);
-									k1_angle     = atan2((double) k1_x, (double) k1_y);
-									k1_angle_neg = atan2((double)-k1_x, (double)-k1_y);
+	// 								// Get polar coords for k1
+	// 								k1_sqr       = (double) (k1_x * k1_x + k1_y * k1_y);
+	// 								k1_angle     = atan2((double) k1_x, (double) k1_y);
+	// 								k1_angle_neg = atan2((double)-k1_x, (double)-k1_y);
 
-									if( ((k1_sqr > sys_vars->kmin_sqr && k1_sqr <= sys_vars->kmax_C_sqr) 
-										&& ((k1_angle >= C_theta_k3_lwr && k1_angle < C_theta_k3_upr) || (k1_angle_neg >= C_theta_k3_lwr && k1_angle_neg < C_theta_k3_upr)) 
-										&& ((k1_angle >= C_theta_k1_lwr && k1_angle < C_theta_k1_upr) || (k1_angle_neg >= C_theta_k1_lwr && k1_angle_neg < C_theta_k1_upr)))
-										|| 
-										((k1_sqr > sys_vars->kmin_sqr && k1_sqr <= sys_vars->kmax_sqr) 
-										&& ((k1_angle >= C_theta_k1_lwr && k1_angle < C_theta_k1_upr) || (k1_angle_neg >= C_theta_k1_lwr && k1_angle_neg < C_theta_k1_upr)) 
-										&& !((k1_angle >= C_theta_k3_lwr && k1_angle < C_theta_k3_upr) || (k1_angle_neg >= C_theta_k3_lwr && k1_angle_neg < C_theta_k3_upr))) ) { 
+	// 								if( ((k1_sqr > sys_vars->kmin_sqr && k1_sqr <= sys_vars->kmax_C_sqr) 
+	// 									&& ((k1_angle >= C_theta_k3_lwr && k1_angle < C_theta_k3_upr) || (k1_angle_neg >= C_theta_k3_lwr && k1_angle_neg < C_theta_k3_upr)) 
+	// 									&& ((k1_angle >= C_theta_k1_lwr && k1_angle < C_theta_k1_upr) || (k1_angle_neg >= C_theta_k1_lwr && k1_angle_neg < C_theta_k1_upr)))
+	// 									|| 
+	// 									((k1_sqr > sys_vars->kmin_sqr && k1_sqr <= sys_vars->kmax_sqr) 
+	// 									&& ((k1_angle >= C_theta_k1_lwr && k1_angle < C_theta_k1_upr) || (k1_angle_neg >= C_theta_k1_lwr && k1_angle_neg < C_theta_k1_upr)) 
+	// 									&& !((k1_angle >= C_theta_k3_lwr && k1_angle < C_theta_k3_upr) || (k1_angle_neg >= C_theta_k3_lwr && k1_angle_neg < C_theta_k3_upr))) ) { 
 										
-										// Find the k2 wavevector
-										k2_x = k3_x - k1_x;
-										k2_y = k3_y - k1_y;
+	// 									// Find the k2 wavevector
+	// 									k2_x = k3_x - k1_x;
+	// 									k2_y = k3_y - k1_y;
 										
-										// Get polar coords for k2
-										k2_sqr       = (double) (k2_x * k2_x + k2_y * k2_y);
-										k2_angle     = atan2((double)k2_x, (double) k2_y);
-										k2_angle_neg = atan2((double)-k2_x, (double) -k2_y);
+	// 									// Get polar coords for k2
+	// 									k2_sqr       = (double) (k2_x * k2_x + k2_y * k2_y);
+	// 									k2_angle     = atan2((double)k2_x, (double) k2_y);
+	// 									k2_angle_neg = atan2((double)-k2_x, (double) -k2_y);
 
-										if ( (k2_sqr > sys_vars->kmin_sqr && k2_sqr <= sys_vars->kmax_sqr) 
-											&& !((k2_sqr > sys_vars->kmax_C_sqr && k2_sqr <= sys_vars->kmax_sqr) 
-											&& ((k2_angle >= C_theta_k3_lwr && k2_angle < C_theta_k3_upr) || (k2_angle_neg >= C_theta_k3_lwr && k2_angle_neg < C_theta_k3_upr))) ) {
+	// 									if ( (k2_sqr > sys_vars->kmin_sqr && k2_sqr <= sys_vars->kmax_sqr) 
+	// 										&& !((k2_sqr > sys_vars->kmax_C_sqr && k2_sqr <= sys_vars->kmax_sqr) 
+	// 										&& ((k2_angle >= C_theta_k3_lwr && k2_angle < C_theta_k3_upr) || (k2_angle_neg >= C_theta_k3_lwr && k2_angle_neg < C_theta_k3_upr))) ) {
 
-											// Add k1 vector
-											proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K1_X][nn] = k1_x;
-											proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K1_Y][nn] = k1_y;
-											// Add the k2 vector
-											proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K2_X][nn] = k2_x;
-											proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K2_Y][nn] = k2_y;
-											// Add the k3 vector
-											proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K3_X][nn] = k3_x;
-											proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K3_Y][nn] = k3_y;
-											// // Add the |k1|^2, |k2|^2, |k3|^2 
-											// proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K1_SQR][nn] = k1_sqr;
-											// proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K2_SQR][nn] = k2_sqr;
-											// proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K3_SQR][nn] = k3_sqr;
-											// // Add the angles for +/- k1, k2, k3
-											// proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K1_ANGLE][nn]     = k1_angle;
-											// proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K2_ANGLE][nn]     = k2_angle;
-											// proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K3_ANGLE][nn]     = k3_angle;
-											// proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K1_ANGLE_NEG][nn] = k1_angle_neg;
-											// proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K2_ANGLE_NEG][nn] = k2_angle_neg;
-											// proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K3_ANGLE_NEG][nn] = k3_angle_neg;
-											// Indicate which flux term this data is in
-											proc_data->phase_sync_wave_vecs[a][k1_sec_indx][FLUX_TERM][nn] = POS_FLUX_TERM;
-											// Indicate which type of contribution to the flux
-											if ( (k1_sqr > sys_vars->kmin_sqr && k1_sqr <= sys_vars->kmax_C_sqr) 
-												&& ((k1_angle >= C_theta_k3_lwr && k1_angle < C_theta_k3_upr) || (k1_angle_neg >= C_theta_k3_lwr && k1_angle_neg < C_theta_k3_upr)) 
-												&& ((k1_angle >= C_theta_k1_lwr && k1_angle < C_theta_k1_upr) || (k1_angle_neg >= C_theta_k1_lwr && k1_angle_neg < C_theta_k1_upr)) ) {
-												// 1d contribution
-												proc_data->phase_sync_wave_vecs[a][k1_sec_indx][CONTRIB_TYPE][nn] = CONTRIB_1D;
+	// 										// Add k1 vector
+	// 										proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K1_X][nn] = k1_x;
+	// 										proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K1_Y][nn] = k1_y;
+	// 										// Add the k2 vector
+	// 										proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K2_X][nn] = k2_x;
+	// 										proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K2_Y][nn] = k2_y;
+	// 										// Add the k3 vector
+	// 										proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K3_X][nn] = k3_x;
+	// 										proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K3_Y][nn] = k3_y;
+	// 										// // Add the |k1|^2, |k2|^2, |k3|^2 
+	// 										// proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K1_SQR][nn] = k1_sqr;
+	// 										// proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K2_SQR][nn] = k2_sqr;
+	// 										// proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K3_SQR][nn] = k3_sqr;
+	// 										// // Add the angles for +/- k1, k2, k3
+	// 										// proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K1_ANGLE][nn]     = k1_angle;
+	// 										// proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K2_ANGLE][nn]     = k2_angle;
+	// 										// proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K3_ANGLE][nn]     = k3_angle;
+	// 										// proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K1_ANGLE_NEG][nn] = k1_angle_neg;
+	// 										// proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K2_ANGLE_NEG][nn] = k2_angle_neg;
+	// 										// proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K3_ANGLE_NEG][nn] = k3_angle_neg;
+	// 										// Indicate which flux term this data is in
+	// 										proc_data->phase_sync_wave_vecs[a][k1_sec_indx][FLUX_TERM][nn] = POS_FLUX_TERM;
+	// 										// Indicate which type of contribution to the flux
+	// 										if ( (k1_sqr > sys_vars->kmin_sqr && k1_sqr <= sys_vars->kmax_C_sqr) 
+	// 											&& ((k1_angle >= C_theta_k3_lwr && k1_angle < C_theta_k3_upr) || (k1_angle_neg >= C_theta_k3_lwr && k1_angle_neg < C_theta_k3_upr)) 
+	// 											&& ((k1_angle >= C_theta_k1_lwr && k1_angle < C_theta_k1_upr) || (k1_angle_neg >= C_theta_k1_lwr && k1_angle_neg < C_theta_k1_upr)) ) {
+	// 											// 1d contribution
+	// 											proc_data->phase_sync_wave_vecs[a][k1_sec_indx][CONTRIB_TYPE][nn] = CONTRIB_1D;
 
-												// Update count of 1d terms
-												total_1d_terms_per_sec++;
-											}
-											else if ( (k1_sqr > sys_vars->kmin_sqr && k1_sqr <= sys_vars->kmax_sqr) 
-												&& ((k1_angle >= C_theta_k1_lwr && k1_angle < C_theta_k1_upr) || (k1_angle_neg >= C_theta_k1_lwr && k1_angle_neg < C_theta_k1_upr)) 
-												&& !((k1_angle >= C_theta_k3_lwr && k1_angle < C_theta_k3_upr) || (k1_angle_neg >= C_theta_k3_lwr && k1_angle_neg < C_theta_k3_upr)) ) {
-												// 2d contribution
-												proc_data->phase_sync_wave_vecs[a][k1_sec_indx][CONTRIB_TYPE][nn] = CONTRIB_2D;
+	// 											// Update count of 1d terms
+	// 											total_1d_terms_per_sec++;
+	// 										}
+	// 										else if ( (k1_sqr > sys_vars->kmin_sqr && k1_sqr <= sys_vars->kmax_sqr) 
+	// 											&& ((k1_angle >= C_theta_k1_lwr && k1_angle < C_theta_k1_upr) || (k1_angle_neg >= C_theta_k1_lwr && k1_angle_neg < C_theta_k1_upr)) 
+	// 											&& !((k1_angle >= C_theta_k3_lwr && k1_angle < C_theta_k3_upr) || (k1_angle_neg >= C_theta_k3_lwr && k1_angle_neg < C_theta_k3_upr)) ) {
+	// 											// 2d contribution
+	// 											proc_data->phase_sync_wave_vecs[a][k1_sec_indx][CONTRIB_TYPE][nn] = CONTRIB_2D;
 
-												// Update count for 2d terms
-												total_2d_terms_per_sec++;
-											}
+	// 											// Update count for 2d terms
+	// 											total_2d_terms_per_sec++;
+	// 										}
 
-											// Increment
-											nn++;
-											if (nn > sys_vars->num_triad_per_sec_est) {
-												fprintf(stderr, "\n["RED"ERROR"RESET"] --- The number of triads in ["CYAN"%s"RESET"] exceding the allocated number of ["CYAN"%d"RESET"] terms -- Need to allocate more memory!!\n-->> Exiting!!!\n", "Wavevector Triad Search", sys_vars->num_triad_per_sec_est);
-												exit(1);
-											}
-										}
-									}
-								}
-							}
-						}
-						else if ( ((k3_sqr > sys_vars->kmin_sqr && k3_sqr <= sys_vars->kmax_sqr) && 
-							((k3_angle >= C_theta_k1_lwr && k3_angle < C_theta_k1_upr) || (k3_angle_neg >= C_theta_k1_lwr && k3_angle_neg < C_theta_k1_upr)) 
-							&& !((k3_angle >= C_theta_k3_lwr && k3_angle < C_theta_k3_upr) || (k3_angle_neg >= C_theta_k3_lwr && k3_angle_neg < C_theta_k3_upr))) 
-							|| 
-							((k3_sqr > sys_vars->kmin_sqr && k3_sqr <= sys_vars->kmax_C_sqr) 
-							&& ((k3_angle >= C_theta_k3_lwr && k3_angle < C_theta_k3_upr) || (k3_angle_neg >= C_theta_k3_lwr && k3_angle_neg < C_theta_k3_upr)) 
-							&& ((k3_angle >= C_theta_k1_lwr && k3_angle < C_theta_k1_upr) || (k3_angle_neg >= C_theta_k1_lwr && k3_angle_neg < C_theta_k1_upr))) ) { 
+	// 										// Increment
+	// 										nn++;
+	// 										// if (nn > sys_vars->num_triad_per_sec_est) {
+	// 										// 	fprintf(stderr, "\n["RED"ERROR"RESET"] --- The number of triads in ["CYAN"%s"RESET"] exceding the allocated number of ["CYAN"%d"RESET"] terms -- Need to allocate more memory!!\n-->> Exiting!!!\n", "Wavevector Triad Search", sys_vars->num_triad_per_sec_est);
+	// 										// 	exit(1);
+	// 										// }
+	// 									}
+	// 								}
+	// 							}
+	// 						}
+	// 					}
+	// 					else if ( ((k3_sqr > sys_vars->kmin_sqr && k3_sqr <= sys_vars->kmax_sqr) && 
+	// 						((k3_angle >= C_theta_k1_lwr && k3_angle < C_theta_k1_upr) || (k3_angle_neg >= C_theta_k1_lwr && k3_angle_neg < C_theta_k1_upr)) 
+	// 						&& !((k3_angle >= C_theta_k3_lwr && k3_angle < C_theta_k3_upr) || (k3_angle_neg >= C_theta_k3_lwr && k3_angle_neg < C_theta_k3_upr))) 
+	// 						|| 
+	// 						((k3_sqr > sys_vars->kmin_sqr && k3_sqr <= sys_vars->kmax_C_sqr) 
+	// 						&& ((k3_angle >= C_theta_k3_lwr && k3_angle < C_theta_k3_upr) || (k3_angle_neg >= C_theta_k3_lwr && k3_angle_neg < C_theta_k3_upr)) 
+	// 						&& ((k3_angle >= C_theta_k1_lwr && k3_angle < C_theta_k1_upr) || (k3_angle_neg >= C_theta_k1_lwr && k3_angle_neg < C_theta_k1_upr))) ) { 
 
-							// Loop through the k1 wavevector
-							for (int tmp_k1_x = 0; tmp_k1_x <= sys_vars->N[0] - 1; ++tmp_k1_x) {
+	// 						// Loop through the k1 wavevector
+	// 						for (int tmp_k1_x = 0; tmp_k1_x <= sys_vars->N[0] - 1; ++tmp_k1_x) {
 								
-								// Get k1_x
-								k1_x = tmp_k1_x - (int) (sys_vars->N[0] / 2) + 1;
+	// 							// Get k1_x
+	// 							k1_x = tmp_k1_x - (int) (sys_vars->N[0] / 2) + 1;
 
-								for (int tmp_k1_y = 0; tmp_k1_y <= sys_vars->N[1] - 1; ++tmp_k1_y) {
+	// 							for (int tmp_k1_y = 0; tmp_k1_y <= sys_vars->N[1] - 1; ++tmp_k1_y) {
 									
-									// Get k1_y
-									k1_y = tmp_k1_y - (int) (sys_vars->N[1] / 2) + 1;
+	// 								// Get k1_y
+	// 								k1_y = tmp_k1_y - (int) (sys_vars->N[1] / 2) + 1;
 
-									// Get polar coords for k1
-									k1_sqr       = (double) (k1_x * k1_x + k1_y * k1_y);
-									k1_angle     = atan2((double) k1_x, (double) k1_y);
-									k1_angle_neg = atan2((double)-k1_x, (double)-k1_y);
+	// 								// Get polar coords for k1
+	// 								k1_sqr       = (double) (k1_x * k1_x + k1_y * k1_y);
+	// 								k1_angle     = atan2((double) k1_x, (double) k1_y);
+	// 								k1_angle_neg = atan2((double)-k1_x, (double)-k1_y);
 
-									if( (k1_sqr > sys_vars->kmax_C_sqr && k1_sqr <= sys_vars->kmax_sqr) 
-										&& ((k1_angle >= C_theta_k3_lwr && k1_angle < C_theta_k3_upr) || (k1_angle_neg >= C_theta_k3_lwr && k1_angle_neg < C_theta_k3_upr)) ) { 
+	// 								if( (k1_sqr > sys_vars->kmax_C_sqr && k1_sqr <= sys_vars->kmax_sqr) 
+	// 									&& ((k1_angle >= C_theta_k3_lwr && k1_angle < C_theta_k3_upr) || (k1_angle_neg >= C_theta_k3_lwr && k1_angle_neg < C_theta_k3_upr)) ) { 
 										
-										// Find the k2 wavevector
-										k2_x = k3_x - k1_x;
-										k2_y = k3_y - k1_y;
+	// 									// Find the k2 wavevector
+	// 									k2_x = k3_x - k1_x;
+	// 									k2_y = k3_y - k1_y;
 										
-										// Get polar coords for k2
-										k2_sqr       = (double) (k2_x * k2_x + k2_y * k2_y);
-										k2_angle     = atan2((double)k2_x, (double) k2_y);
-										k2_angle_neg = atan2((double)-k2_x, (double) -k2_y);
+	// 									// Get polar coords for k2
+	// 									k2_sqr       = (double) (k2_x * k2_x + k2_y * k2_y);
+	// 									k2_angle     = atan2((double)k2_x, (double) k2_y);
+	// 									k2_angle_neg = atan2((double)-k2_x, (double) -k2_y);
 
-										if ( (k2_sqr > sys_vars->kmax_C_sqr && k2_sqr <= sys_vars->kmax_sqr) 
-											&& ((k2_angle >= C_theta_k3_lwr && k2_angle < C_theta_k3_upr) || (k2_angle_neg >= C_theta_k3_lwr && k2_angle_neg < C_theta_k3_upr)) ) {
+	// 									if ( (k2_sqr > sys_vars->kmax_C_sqr && k2_sqr <= sys_vars->kmax_sqr) 
+	// 										&& ((k2_angle >= C_theta_k3_lwr && k2_angle < C_theta_k3_upr) || (k2_angle_neg >= C_theta_k3_lwr && k2_angle_neg < C_theta_k3_upr)) ) {
 											
-											// Add k1 vector
-											proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K1_X][nn] = k1_x;
-											proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K1_Y][nn] = k1_y;
-											// Add the k2 vector
-											proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K2_X][nn] = k2_x;
-											proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K2_Y][nn] = k2_y;
-											// Add the k3 vector
-											proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K3_X][nn] = k3_x;
-											proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K3_Y][nn] = k3_y;
-											// // Add the |k1|^2, |k2|^2, |k3|^2 
-											// proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K1_SQR][nn] = k1_sqr;
-											// proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K2_SQR][nn] = k2_sqr;
-											// proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K3_SQR][nn] = k3_sqr;
-											// // Add the angles for +/- k1, k2, k3
-											// proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K1_ANGLE][nn]     = k1_angle;
-											// proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K2_ANGLE][nn]     = k2_angle;
-											// proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K3_ANGLE][nn]     = k3_angle;
-											// proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K1_ANGLE_NEG][nn] = k1_angle_neg;
-											// proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K2_ANGLE_NEG][nn] = k2_angle_neg;
-											// proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K3_ANGLE_NEG][nn] = k3_angle_neg;
-											// Indicate which flux term this data is in
-											proc_data->phase_sync_wave_vecs[a][k1_sec_indx][FLUX_TERM][nn] = NEG_FLUX_TERM;
-											// Indicate which type of contribution to the flux
-											if ( (k3_sqr > sys_vars->kmin_sqr && k3_sqr <= sys_vars->kmax_C_sqr) 
-												&& ((k3_angle >= C_theta_k3_lwr && k3_angle < C_theta_k3_upr) || (k3_angle_neg >= C_theta_k3_lwr && k3_angle_neg < C_theta_k3_upr)) 
-												&& ((k3_angle >= C_theta_k1_lwr && k3_angle < C_theta_k1_upr) || (k3_angle_neg >= C_theta_k1_lwr && k3_angle_neg < C_theta_k1_upr)) ) {
-												// 1d contribution
-												proc_data->phase_sync_wave_vecs[a][k1_sec_indx][CONTRIB_TYPE][nn] = CONTRIB_1D;
+	// 										// Add k1 vector
+	// 										proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K1_X][nn] = k1_x;
+	// 										proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K1_Y][nn] = k1_y;
+	// 										// Add the k2 vector
+	// 										proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K2_X][nn] = k2_x;
+	// 										proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K2_Y][nn] = k2_y;
+	// 										// Add the k3 vector
+	// 										proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K3_X][nn] = k3_x;
+	// 										proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K3_Y][nn] = k3_y;
+	// 										// // Add the |k1|^2, |k2|^2, |k3|^2 
+	// 										// proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K1_SQR][nn] = k1_sqr;
+	// 										// proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K2_SQR][nn] = k2_sqr;
+	// 										// proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K3_SQR][nn] = k3_sqr;
+	// 										// // Add the angles for +/- k1, k2, k3
+	// 										// proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K1_ANGLE][nn]     = k1_angle;
+	// 										// proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K2_ANGLE][nn]     = k2_angle;
+	// 										// proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K3_ANGLE][nn]     = k3_angle;
+	// 										// proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K1_ANGLE_NEG][nn] = k1_angle_neg;
+	// 										// proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K2_ANGLE_NEG][nn] = k2_angle_neg;
+	// 										// proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K3_ANGLE_NEG][nn] = k3_angle_neg;
+	// 										// Indicate which flux term this data is in
+	// 										proc_data->phase_sync_wave_vecs[a][k1_sec_indx][FLUX_TERM][nn] = NEG_FLUX_TERM;
+	// 										// Indicate which type of contribution to the flux
+	// 										if ( (k3_sqr > sys_vars->kmin_sqr && k3_sqr <= sys_vars->kmax_C_sqr) 
+	// 											&& ((k3_angle >= C_theta_k3_lwr && k3_angle < C_theta_k3_upr) || (k3_angle_neg >= C_theta_k3_lwr && k3_angle_neg < C_theta_k3_upr)) 
+	// 											&& ((k3_angle >= C_theta_k1_lwr && k3_angle < C_theta_k1_upr) || (k3_angle_neg >= C_theta_k1_lwr && k3_angle_neg < C_theta_k1_upr)) ) {
+	// 											// 1d contribution
+	// 											proc_data->phase_sync_wave_vecs[a][k1_sec_indx][CONTRIB_TYPE][nn] = CONTRIB_1D;
 
-												// Update count of 1d terms
-												total_1d_terms_per_sec++;
-											}
-											else if ( ((k3_sqr > sys_vars->kmin_sqr && k3_sqr <= sys_vars->kmax_sqr) 
-												&& ((k3_angle >= C_theta_k1_lwr && k3_angle < C_theta_k1_upr) || (k3_angle_neg >= C_theta_k1_lwr && k3_angle_neg < C_theta_k1_upr)) 
-												&& !((k3_angle >= C_theta_k3_lwr && k3_angle < C_theta_k3_upr) || (k3_angle_neg >= C_theta_k3_lwr && k3_angle_neg < C_theta_k3_upr))) ) {
-												// 2d contribution
-												proc_data->phase_sync_wave_vecs[a][k1_sec_indx][CONTRIB_TYPE][nn] = CONTRIB_2D;
+	// 											// Update count of 1d terms
+	// 											total_1d_terms_per_sec++;
+	// 										}
+	// 										else if ( ((k3_sqr > sys_vars->kmin_sqr && k3_sqr <= sys_vars->kmax_sqr) 
+	// 											&& ((k3_angle >= C_theta_k1_lwr && k3_angle < C_theta_k1_upr) || (k3_angle_neg >= C_theta_k1_lwr && k3_angle_neg < C_theta_k1_upr)) 
+	// 											&& !((k3_angle >= C_theta_k3_lwr && k3_angle < C_theta_k3_upr) || (k3_angle_neg >= C_theta_k3_lwr && k3_angle_neg < C_theta_k3_upr))) ) {
+	// 											// 2d contribution
+	// 											proc_data->phase_sync_wave_vecs[a][k1_sec_indx][CONTRIB_TYPE][nn] = CONTRIB_2D;
 
-												// Update count for 2d terms
-												total_2d_terms_per_sec++;
-											}
+	// 											// Update count for 2d terms
+	// 											total_2d_terms_per_sec++;
+	// 										}
 
-											// Increment
-											nn++;
-											if (nn > sys_vars->num_triad_per_sec_est) {
-												fprintf(stderr, "\n["RED"ERROR"RESET"] --- The number of triads in ["CYAN"%s"RESET"] exceding the allocated number of ["CYAN"%d"RESET"] terms -- Need to allocate more memory!!\n-->> Exiting!!!\n", "Wavevector Triad Search", sys_vars->num_triad_per_sec_est);
-												exit(1);
-											}
-										}
-									}
+	// 										// Increment
+	// 										nn++;
+	// 										// if (nn > sys_vars->num_triad_per_sec_est) {
+	// 										// 	fprintf(stderr, "\n["RED"ERROR"RESET"] --- The number of triads in ["CYAN"%s"RESET"] exceding the allocated number of ["CYAN"%d"RESET"] terms -- Need to allocate more memory!!\n-->> Exiting!!!\n", "Wavevector Triad Search", sys_vars->num_triad_per_sec_est);
+	// 										// 	exit(1);
+	// 										// }
+	// 									}
+	// 								}
+	// 							}
+	// 						}
+	// 					}
+	// 				}
+	// 			}
+	// 			// Record the number of triad wavevectors
+	// 			proc_data->num_wave_vecs[a][k1_sec_indx] = nn;
+	// 			total_terms += nn;
+	// 			total_terms_per_sec += nn;
+	// 		}
+
+	// 		// Write Update to Screen 
+	// 		double search_end = omp_get_wtime();
+	// 		printf("Sector: %d/%d\tNum Terms: %ld (Tot) -- %ld (1D) -- %ld (2D)\tTime: %g(s)\n", a + 1, sys_vars->num_k3_sectors, total_terms_per_sec, total_1d_terms_per_sec, total_2d_terms_per_sec, (search_end - search_begin));
+	// 		fprintf(fptr, "Sector: %d/%d\tNum Terms: %ld (Tot) -- %ld (1D) -- %ld (2D)\tTime: %g(s)\n", a + 1, sys_vars->num_k3_sectors, total_terms_per_sec, total_1d_terms_per_sec, total_2d_terms_per_sec, (search_end - search_begin));
+	// 	}
+
+	// 	///-------------------- Realloc the last dimension in wavevector array to its correct size
+	// 	for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
+	// 		for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
+	// 			for (int n = 0; n < NUM_K_DATA; ++n) {
+	// 				if (proc_data->num_wave_vecs[a][l] == 0) {
+	// 					// Free empty phase sync wavevector arrays
+	// 					fftw_free(proc_data->phase_sync_wave_vecs[a][l][n]);
+	// 				}
+	// 				else {
+	// 					// Otherwise reallocate the correct amount of memory
+	// 					proc_data->phase_sync_wave_vecs[a][l][n] = (int* )realloc(proc_data->phase_sync_wave_vecs[a][l][n] , sizeof(int) * proc_data->num_wave_vecs[a][l]);
+	// 					if (proc_data->phase_sync_wave_vecs[a][l][n] == NULL) {
+	// 						fprintf(stderr, "\n["MAGENTA"WARNING"RESET"] --- Unable to Reallocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Phase Sync Wavevectors");
+	// 						exit(1);
+	// 					}
+	// 				}
+	// 			}	
+	// 		}
+	// 	}
+
+	// 	///------------------- Write Phase Sync Wavevector Data to File for Future Use
+	// 	static const hsize_t Dims2D = 2;
+	// 	hsize_t dset_dims_2d[Dims2D];   
+
+	// 	// Create wavector data file
+	// 	file_info->wave_vec_file_handle = H5Fcreate(file_info->wave_vec_data_name, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+	// 	if (file_info->wave_vec_file_handle < 0) {
+	// 		fprintf(stderr, "\n["RED"ERROR"RESET"]  --- Could not create wavevector file name: "CYAN"%s"RESET" \n-->>Exiting....\n", file_info->wave_vec_data_name);
+	// 		exit(1);
+	// 	}	
+
+	// 	// Write the number of wavevectors per sector
+	// 	int* tmp_num_wavevecs = (int* )fftw_malloc(sizeof(int) * sys_vars->num_k3_sectors * sys_vars->num_k1_sectors);
+	// 	for (int a = 0; a < sys_vars->num_k3_sectors; ++a){
+	// 		for (int l = 0; l < sys_vars->num_k1_sectors; ++l){
+	// 			tmp_num_wavevecs[a * sys_vars->num_k1_sectors + l] = proc_data->num_wave_vecs[a][l];
+	// 		}
+	// 	}
+
+	// 	dset_dims_2d[0] = sys_vars->num_k3_sectors;
+	// 	dset_dims_2d[1] = sys_vars->num_k1_sectors;
+	// 	status = H5LTmake_dataset(file_info->wave_vec_file_handle, "NumWavevectors", Dims2D, dset_dims_2d, H5T_NATIVE_INT, tmp_num_wavevecs);
+	// 	if (status < 0) {
+	// 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to wavevector data file!!\n-->> Exiting...\n", "NumWavevectors");
+	// 		exit(1);
+	// 	}
+
+	// 	// Write the wavevector data
+	// 	for (int a = 0; a < sys_vars->num_k3_sectors; ++a){
+	// 		for (int l = 0; l < sys_vars->num_k1_sectors; ++l){
+	// 			int* tmp_wave_vec_data = (int* )fftw_malloc(sizeof(int) * NUM_K_DATA * proc_data->num_wave_vecs[a][l]);
+	// 			for (int k = 0; k < NUM_K_DATA; ++k) {
+	// 				for (int n = 0; n < proc_data->num_wave_vecs[a][l]; ++n) {
+	// 					tmp_wave_vec_data[k * proc_data->num_wave_vecs[a][l] + n] = proc_data->phase_sync_wave_vecs[a][l][k][n];
+	// 				}
+	// 			}
+
+	// 			dset_dims_2d[0] = NUM_K_DATA;
+	// 			dset_dims_2d[1] = proc_data->num_wave_vecs[a][l];
+	// 			sprintf(dset_name, "WVData_Sector_%d_%d", a, l);
+	// 			status = H5LTmake_dataset(file_info->wave_vec_file_handle, dset_name, Dims2D, dset_dims_2d, H5T_NATIVE_INT, tmp_wave_vec_data);
+	// 			if (status < 0) {
+	// 				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to wavevector data file!!\n-->> Exiting...\n", dset_name);
+	// 				exit(1);
+	// 			}
+
+	// 			fftw_free(tmp_wave_vec_data);
+	// 		}
+	// 	}
+
+	// 	// Free temporary memory
+	// 	fftw_free(tmp_num_wavevecs);
+
+	// 	status = H5Fclose(file_info->wave_vec_file_handle);
+	// 	if (status < 0) {
+	// 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close wavevector data file ["CYAN"%s"RESET"]\n-->> Exiting...\n", file_info->wave_vec_data_name);
+	// 		exit(1);		
+	// 	}
+
+	// 	printf("\n["YELLOW"NOTE"RESET"] --- Saved wavevector data to file at ["CYAN"%s"RESET"]...\n", file_info->wave_vec_data_name);
+
+	// 	// End timer 
+	// 	double loop_end = omp_get_wtime();
+	// 	// printf("\n["YELLOW"NOTE"RESET"] --- Est Triad : %d\tTotal Est Triads: %d\n", num_triad_est, sys_vars->num_k3_sectors * sys_vars->num_k1_sectors * num_triad_est);
+	// 	printf("\n["YELLOW"NOTE"RESET"] --- Total Triad Terms: %ld\n", total_terms);
+	// 	printf("["YELLOW"NOTE"RESET"] --- Total Time for sector search: %g(s)\n", (loop_end - loop_begin));
+
+
+	// 	// Close number of flux terms file
+	// 	// fprintf(fptr, "\n--- Est Triad : %d\tTotal Est Triads: %d\n", num_triad_est, sys_vars->num_k3_sectors * sys_vars->num_k1_sectors * num_triad_est);
+	// 	fprintf(fptr, "\n--- Total Triad Terms: %ld\n", total_terms);
+	// 	fprintf(fptr, "--- Total Time for sector search: %g(s)\n", (loop_end - loop_begin));
+	// 	fclose(fptr);
+	// }
+}
+void AllocateWavecData(int data_flag) {
+
+	// Initialize vairables
+	int k3_x, k3_y, k2_x, k2_y, k1_x, k1_y;
+	double k1_sqr, k2_sqr, k3_sqr;
+
+	// --------------------------------
+	//  Phase Sync: Test Data Size Search
+	// --------------------------------
+	if (data_flag == SYNC_TEST_DATA_FLAG) {
+		int test_data_size = 0;
+
+		// --------------------------------
+		//  Pre Search to Find Data Size
+		// --------------------------------
+		// Loop through the wavevectors to find the triad wavevector data
+		// That falls into each sector
+		printf("\n["YELLOW"NOTE"RESET"] --- Performing search over wavevectors for Phase Sync -TEST- computation...\n");
+		
+		// Loop through the k wavevector (k is the k3 wavevector)
+		for (int tmp_k3_x = 0; tmp_k3_x <= sys_vars->N[0] - 1; ++tmp_k3_x) {
+			
+			// Get k3_x
+			k3_x = tmp_k3_x - (int) (sys_vars->N[0] / 2) + 1;
+
+			for (int tmp_k3_y = 0; tmp_k3_y <= sys_vars->N[1] - 1; ++tmp_k3_y) {
+				
+				// Get k3_y
+				k3_y = tmp_k3_y - (int) (sys_vars->N[1] / 2) + 1;
+
+				// Get polar coords for the k wavevector
+				k3_sqr       = (double) (k3_x * k3_x + k3_y * k3_y);
+				
+				if ((k3_sqr > sys_vars->kmax_C_sqr && k3_sqr <= sys_vars->kmax_sqr)) {
+
+					// Loop through the k1 wavevector
+					for (int tmp_k1_x = 0; tmp_k1_x <= sys_vars->N[0] - 1; ++tmp_k1_x) {
+						
+						// Get k1_x
+						k1_x = tmp_k1_x - (int) (sys_vars->N[0] / 2) + 1;
+
+						for (int tmp_k1_y = 0; tmp_k1_y <= sys_vars->N[1] - 1; ++tmp_k1_y) {
+							
+							// Get k1_y
+							k1_y = tmp_k1_y - (int) (sys_vars->N[1] / 2) + 1;
+
+							// Get polar coords for k1
+							k1_sqr       = (double) (k1_x * k1_x + k1_y * k1_y);
+
+							if((k1_sqr > 0.0 && k1_sqr <= sys_vars->kmax_C_sqr)) {
+								
+								// Find the k2 wavevector
+								k2_x = k3_x - k1_x;
+								k2_y = k3_y - k1_y;
+								
+								// Get polar coords for k2
+								k2_sqr       = (double) (k2_x * k2_x + k2_y * k2_y);
+
+								if ((k2_sqr > 0.0 && k2_sqr <= sys_vars->kmax_C_sqr)) {
+
+									// Increment test data size counter
+									test_data_size++;
 								}
 							}
 						}
 					}
 				}
-				// Record the number of triad wavevectors
-				proc_data->num_wave_vecs[a][k1_sec_indx] = nn;
-				total_terms += nn;
-				total_terms_per_sec += nn;
-			}
+				else if ((k3_sqr > 0.0 && k3_sqr <= sys_vars->kmax_C_sqr)) {
 
-			// Write Update to Screen 
-			double search_end = omp_get_wtime();
-			printf("Sector: %d/%d\tNum Terms: %ld (Tot) -- %ld (1D) -- %ld (2D)\tTime: %g(s)\n", a + 1, sys_vars->num_k3_sectors, total_terms_per_sec, total_1d_terms_per_sec, total_2d_terms_per_sec, (search_end - search_begin));
-			fprintf(fptr, "Sector: %d/%d\tNum Terms: %ld (Tot) -- %ld (1D) -- %ld (2D)\tTime: %g(s)\n", a + 1, sys_vars->num_k3_sectors, total_terms_per_sec, total_1d_terms_per_sec, total_2d_terms_per_sec, (search_end - search_begin));
+					// Loop through the k1 wavevector
+					for (int tmp_k1_x = 0; tmp_k1_x <= sys_vars->N[0] - 1; ++tmp_k1_x) {
+						
+						// Get k1_x
+						k1_x = tmp_k1_x - (int) (sys_vars->N[0] / 2) + 1;
+
+						for (int tmp_k1_y = 0; tmp_k1_y <= sys_vars->N[1] - 1; ++tmp_k1_y) {
+							
+							// Get k1_y
+							k1_y = tmp_k1_y - (int) (sys_vars->N[1] / 2) + 1;
+
+							// Get polar coords for k1
+							k1_sqr       = (double) (k1_x * k1_x + k1_y * k1_y);
+
+							if((k1_sqr > sys_vars->kmax_C_sqr && k1_sqr <= sys_vars->kmax_sqr)) {									
+								
+								// Find the k2 wavevector
+								k2_x = k3_x - k1_x;
+								k2_y = k3_y - k1_y;
+								
+								// Get polar coords for k2
+								k2_sqr       = (double) (k2_x * k2_x + k2_y * k2_y);
+
+								if ((k2_sqr > sys_vars->kmax_C_sqr && k2_sqr <= sys_vars->kmax_sqr)) {
+
+									// Increment test data size counter
+									test_data_size++;
+								}
+							}
+						}	
+					}
+				}
+			}
 		}
 
-		///-------------------- Realloc the last dimension in wavevector array to its correct size
-		for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
-			for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
-				for (int n = 0; n < NUM_K_DATA; ++n) {
-					if (proc_data->num_wave_vecs[a][l] == 0) {
-						// Free empty phase sync wavevector arrays
-						fftw_free(proc_data->phase_sync_wave_vecs[a][l][n]);
-					}
-					else {
-						// Otherwise reallocate the correct amount of memory
-						proc_data->phase_sync_wave_vecs[a][l][n] = (int* )realloc(proc_data->phase_sync_wave_vecs[a][l][n] , sizeof(int) * proc_data->num_wave_vecs[a][l]);
-						if (proc_data->phase_sync_wave_vecs[a][l][n] == NULL) {
-							fprintf(stderr, "\n["MAGENTA"WARNING"RESET"] --- Unable to Reallocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Phase Sync Wavevectors");
-							exit(1);
-						}
-					}
-				}	
-			}
-		}
-
-		///------------------- Write Phase Sync Wavevector Data to File for Future Use
-		static const hsize_t Dims2D = 2;
-		hsize_t dset_dims_2d[Dims2D];   
-
-		// Create wavector data file
-		file_info->wave_vec_file_handle = H5Fcreate(file_info->wave_vec_data_name, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
-		if (file_info->wave_vec_file_handle < 0) {
-			fprintf(stderr, "\n["RED"ERROR"RESET"]  --- Could not create wavevector file name: "CYAN"%s"RESET" \n-->>Exiting....\n", file_info->wave_vec_data_name);
+		// --------------------------------
+		//  Allocate Memory with Appropriate Size
+		// --------------------------------
+		proc_data->phase_sync_wave_vecs_test = (int** )fftw_malloc(sizeof(int*) * 6);
+		if (proc_data->phase_sync_wave_vecs_test == NULL) {
+			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Phase Sync Wavevectors");
 			exit(1);
 		}	
-
-		// Write the number of wavevectors per sector
-		int* tmp_num_wavevecs = (int* )fftw_malloc(sizeof(int) * sys_vars->num_k3_sectors * sys_vars->num_k1_sectors);
-		for (int a = 0; a < sys_vars->num_k3_sectors; ++a){
-			for (int l = 0; l < sys_vars->num_k1_sectors; ++l){
-				tmp_num_wavevecs[a * sys_vars->num_k1_sectors + l] = proc_data->num_wave_vecs[a][l];
+		for (int n = 0; n < 6; ++n) {
+			proc_data->phase_sync_wave_vecs_test[n] = (int* )fftw_malloc(sizeof(int) * test_data_size);
+			if (proc_data->phase_sync_wave_vecs_test[n] == NULL) {
+				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Phase Sync Wavevectors");
+				exit(1);
 			}
 		}
-
-		dset_dims_2d[0] = sys_vars->num_k3_sectors;
-		dset_dims_2d[1] = sys_vars->num_k1_sectors;
-		status = H5LTmake_dataset(file_info->wave_vec_file_handle, "NumWavevectors", Dims2D, dset_dims_2d, H5T_NATIVE_INT, tmp_num_wavevecs);
-		if (status < 0) {
-			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to wavevector data file!!\n-->> Exiting...\n", "NumWavevectors");
-			exit(1);
+		// Initialize phase sync test data
+		for (int n = 0; n < 6; ++n) {
+			proc_data->num_triads_test[n] = 0;
+			for (int i = 0; i < test_data_size; ++i) {
+				proc_data->phase_sync_wave_vecs_test[n][i] = 0.0;
+			}
 		}
+	}
+	// --------------------------------
+	//  Phase Sync: Data Size Search
+	// --------------------------------
+	else if (data_flag == SYNC_DATA_FLAG) {
 
-		// Write the wavevector data
-		for (int a = 0; a < sys_vars->num_k3_sectors; ++a){
-			for (int l = 0; l < sys_vars->num_k1_sectors; ++l){
-				int* tmp_wave_vec_data = (int* )fftw_malloc(sizeof(int) * NUM_K_DATA * proc_data->num_wave_vecs[a][l]);
-				for (int k = 0; k < NUM_K_DATA; ++k) {
-					for (int n = 0; n < proc_data->num_wave_vecs[a][l]; ++n) {
-						tmp_wave_vec_data[k * proc_data->num_wave_vecs[a][l] + n] = proc_data->phase_sync_wave_vecs[a][l][k][n];
-					}
-				}
+		// Allocate k1 sector angles
+		double k1_sector_angles[NUM_K1_SECTORS] = {-sys_vars->num_k3_sectors/2.0, -sys_vars->num_k3_sectors/3.0, -sys_vars->num_k3_sectors/4.0, -sys_vars->num_k3_sectors/6.0, sys_vars->num_k3_sectors/6.0, sys_vars->num_k3_sectors/4.0, sys_vars->num_k3_sectors/3.0, sys_vars->num_k3_sectors/2.0};
+		proc_data->k1_sector_angles = (double* )fftw_malloc(sizeof(double) * NUM_K1_SECTORS);
+		memcpy(proc_data->k1_sector_angles, k1_sector_angles, sizeof(k1_sector_angles));
 
-				dset_dims_2d[0] = NUM_K_DATA;
-				dset_dims_2d[1] = proc_data->num_wave_vecs[a][l];
-				sprintf(dset_name, "WVData_Sector_%d_%d", a, l);
-				status = H5LTmake_dataset(file_info->wave_vec_file_handle, dset_name, Dims2D, dset_dims_2d, H5T_NATIVE_INT, tmp_wave_vec_data);
-				if (status < 0) {
-					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to wavevector data file!!\n-->> Exiting...\n", dset_name);
+		// --------------------------------
+		//  Wavevector Data File Check
+		// --------------------------------
+		// Check if wavevector data file exist already and read in data from that
+		// No size search or object allocation is needed if file exists
+		
+		//----------- Get Phase Sync wavevector data file path
+		herr_t status;
+		char dset_name[64];
+		char wave_vec_file[128];
+		strncpy(file_info->wave_vec_data_name, "./Data/PostProcess/PhaseSync", 1024);
+		sprintf(wave_vec_file, "/Wavevector_Data_N[%d,%d]_SECTORS[%d,%d]_KFRAC[%1.2lf,%1.2lf].h5", (int)sys_vars->N[0], (int)sys_vars->N[1], sys_vars->num_k3_sectors, sys_vars->num_k1_sectors, sys_vars->kmin_sqr, sys_vars->kmax_frac);	
+		strcat(file_info->wave_vec_data_name, wave_vec_file);
+		
+		////////////////////////////////////////////////////////////////////
+		// Check if Wavector file exists: IF FILE DOES EXIST
+		///////////////////////////////////////////////////////////////////
+		if (access(file_info->wave_vec_data_name, F_OK) == 0) {
+			printf("\n["YELLOW"NOTE"RESET"] --- Reading in wavevectors data for Phase Sync computation...");
+			printf("\nNumber of k_3 Sectors: ["CYAN"%d"RESET"]\nNumber of k_1 Sectors: ["CYAN"%d"RESET"]\n\n", sys_vars->num_k3_sectors, sys_vars->num_k1_sectors);
+			
+			// --------------------------------
+			//  Open Phase Sync Data File
+			// --------------------------------
+			//----------------------- Open file with default I/O access properties
+			file_info->wave_vec_file_handle = H5Fopen(file_info->wave_vec_data_name, H5F_ACC_RDWR, H5P_DEFAULT);
+			if (file_info->wave_vec_file_handle < 0) {
+				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to open output file ["CYAN"%s"RESET"]\n-->> Exiting...\n", file_info->wave_vec_data_name);
+				exit(1);
+			}
+
+			// --------------------------------
+			//  Read in Num Triads Data
+			// --------------------------------
+			//------------ Allocate memory for the number of wavevector triads per sector
+			proc_data->num_wave_vecs = (int** )fftw_malloc(sizeof(int*) * sys_vars->num_k3_sectors);
+			if (proc_data->num_wave_vecs == NULL) {
+				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Number of Phase Sync Wavevectors");
+				exit(1);
+			}
+			for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
+				proc_data->num_wave_vecs[a] = (int* )fftw_malloc(sizeof(int) * sys_vars->num_k1_sectors);
+				if (proc_data->num_wave_vecs[a] == NULL) {
+					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Number of Phase Sync Wavevectors");
 					exit(1);
-				}
+				}	
+			}
 
-				fftw_free(tmp_wave_vec_data);
+			///----------------------- Read in Number of Triad Wavectors Data
+			// Read in the number of wavevectors
+			int* tmp_num_wavevecs = (int* )fftw_malloc(sizeof(int) * sys_vars->num_k3_sectors * sys_vars->num_k1_sectors);
+			if(H5LTread_dataset(file_info->wave_vec_file_handle, "NumWavevectors", H5T_NATIVE_INT, tmp_num_wavevecs) < 0) {
+				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to read in data for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Number of Wavevectors");
+				exit(1);	
+			}
+			for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
+				for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
+					proc_data->num_wave_vecs[a][l] = tmp_num_wavevecs[a * sys_vars->num_k1_sectors + l];
+				}
+			}
+
+
+			// --------------------------------
+			//  Read in Wavevector Data
+			// --------------------------------
+			//------------ Allocate memory for the triad wavevectors per sector and their data 
+			proc_data->phase_sync_wave_vecs = (int**** )fftw_malloc(sizeof(int***) * sys_vars->num_k3_sectors);
+			if (proc_data->phase_sync_wave_vecs == NULL) {
+				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Phase Sync Wavevectors");
+				exit(1);
+			}
+			for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
+				proc_data->phase_sync_wave_vecs[a] = (int*** )fftw_malloc(sizeof(int**) * sys_vars->num_k1_sectors);
+				if (proc_data->phase_sync_wave_vecs[a] == NULL) {
+					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Phase Sync Wavevectors");
+					exit(1);
+				}	
+			}
+			for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
+				for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
+					proc_data->phase_sync_wave_vecs[a][l] = (int** )fftw_malloc(sizeof(int*) * NUM_K_DATA);
+					if (proc_data->phase_sync_wave_vecs[a][l] == NULL) {
+						fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Phase Sync Wavevectors");
+						exit(1);
+					}	
+				}
+			}
+			for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
+				for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
+					for (int n = 0; n < NUM_K_DATA; ++n) {
+						if (proc_data->num_wave_vecs[a][l] != 0) {
+							proc_data->phase_sync_wave_vecs[a][l][n] = (int* )fftw_malloc(sizeof(int) * proc_data->num_wave_vecs[a][l]);
+							if (proc_data->phase_sync_wave_vecs[a][l][n] == NULL) {
+								fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Phase Sync Wavevectors");
+								exit(1);
+							}
+						}
+					}	
+				}
+			}
+
+			//----------- Read in wavevector data
+			for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
+				for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
+					int* tmp_wave_vec_data = (int*)fftw_malloc(sizeof(int) * NUM_K_DATA * proc_data->num_wave_vecs[a][l]);
+					sprintf(dset_name, "WVData_Sector_%d_%d", a, l);
+
+					if(H5LTread_dataset(file_info->wave_vec_file_handle, dset_name, H5T_NATIVE_INT, tmp_wave_vec_data) < 0) {
+						fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to read in data for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", dset_name);
+						exit(1);	
+					}
+			
+					for (int k = 0; k < NUM_K_DATA; ++k) {
+						for (int n = 0; n < proc_data->num_wave_vecs[a][l]; ++n) {
+							proc_data->phase_sync_wave_vecs[a][l][k][n] = tmp_wave_vec_data[k * proc_data->num_wave_vecs[a][l] + n];
+						}
+					}
+					fftw_free(tmp_wave_vec_data);
+				}
+			}
+			// Free temporary memory
+			fftw_free(tmp_num_wavevecs);
+
+			// --------------------------------
+			//  Open Phase Sync Data File
+			// --------------------------------
+			status = H5Fclose(file_info->wave_vec_file_handle);
+			if (status < 0) {
+				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close wavevector data file ["CYAN"%s"RESET"]\n-->> Exiting...\n", file_info->wave_vec_data_name);
+				exit(1);		
 			}
 		}
+		////////////////////////////////////////////////////////////////////
+		// Check if Wavector file exists: IF FILE DOES NOT EXIST
+		///////////////////////////////////////////////////////////////////
+		else {
+			int k1_sec_indx; 
+			double C_theta_k3, C_theta_k1, C_theta_k2;
+			double C_theta_k3_lwr, C_theta_k3_upr, C_theta_k1_upr, C_theta_k1_lwr;
+			double k1_angle, k2_angle, k3_angle;
+			double k1_angle_neg, k2_angle_neg, k3_angle_neg;
+			long int pre_search_terms = 0;
 
-		// Free temporary memory
-		fftw_free(tmp_num_wavevecs);
+			// --------------------------------
+			//  Pre Search to Find Data Size
+			// --------------------------------
+			// Loop through the wavevectors to find the triad wavevector data
+			// That falls into each sector
+			// Print to screen that a pre computation search is needed for the phase sync wavevectors and begin timeing it
+			printf("\n["YELLOW"NOTE"RESET"] --- Performing pre-search for number wavevectors for Phase Sync computation...\n");
 
-		status = H5Fclose(file_info->wave_vec_file_handle);
-		if (status < 0) {
-			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close wavevector data file ["CYAN"%s"RESET"]\n-->> Exiting...\n", file_info->wave_vec_data_name);
-			exit(1);		
+			//------------ Allocate memory for the number of wavevector triads per sector
+			proc_data->num_wave_vecs = (int** )fftw_malloc(sizeof(int*) * sys_vars->num_k3_sectors);
+			if (proc_data->num_wave_vecs == NULL) {
+				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Number of Phase Sync Wavevectors");
+				exit(1);
+			}
+			for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
+				proc_data->num_wave_vecs[a] = (int* )fftw_malloc(sizeof(int) * sys_vars->num_k1_sectors);
+				if (proc_data->num_wave_vecs[a] == NULL) {
+					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Number of Phase Sync Wavevectors");
+					exit(1);
+				}	
+			}
+
+			// Loop through the sectors for k3
+			for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
+				
+				// Get the angles for the current sector
+				C_theta_k3 = proc_data->theta_k3[a];
+				C_theta_k3_lwr = C_theta_k3 - proc_data->dtheta_k3 / 2.0;
+				C_theta_k3_upr = C_theta_k3 + proc_data->dtheta_k3 / 2.0;
+
+				// Loop through k1 sector choice
+				for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
+
+					// Get the angles for the k1 sector
+					if (sys_vars->REDUCED_K1_SEARCH_FLAG) {
+						// Reduced k1 sector search
+						C_theta_k1     = MyMod(C_theta_k3 + (k1_sector_angles[l] * proc_data->dtheta_k3/2.0) + M_PI, 2.0 * M_PI) - M_PI;
+						C_theta_k1_lwr = C_theta_k1 - proc_data->dtheta_k3 / 2.0;
+						C_theta_k1_upr = C_theta_k1 + proc_data->dtheta_k3 / 2.0;
+					}
+					else if (sys_vars->num_k1_sectors == 1){
+						// When k1 can vary anywhere -> no restriction to sector
+						C_theta_k1     = 0.0;
+						C_theta_k1_lwr = C_theta_k1 - M_PI / 2.0 + 1e-10;
+						C_theta_k1_upr = C_theta_k1 + M_PI / 2.0 + 1e-10;
+					}
+					else {
+						// Full search over sectors
+						C_theta_k1     = proc_data->theta_k1[(a + l) % sys_vars->num_k1_sectors];
+						C_theta_k1_lwr = C_theta_k1 - proc_data->dtheta_k1 / 2.0;
+						C_theta_k1_upr = C_theta_k1 + proc_data->dtheta_k1 / 2.0;
+					}
+
+					// Get the index for saving the k1 sector data in the right order -> 1d contribution should be on the diagonal
+					k1_sec_indx = (l + a) % sys_vars->num_k1_sectors;
+					
+					// Loop through the k wavevector (k is the k3 wavevector)
+					for (int tmp_k3_x = 0; tmp_k3_x <= sys_vars->N[0] - 1; ++tmp_k3_x) {
+						
+						// Get k3_x
+						k3_x = tmp_k3_x - (int) (sys_vars->N[0] / 2) + 1;
+
+						for (int tmp_k3_y = 0; tmp_k3_y <= sys_vars->N[1] - 1; ++tmp_k3_y) {
+							
+							// Get k3_y
+							k3_y = tmp_k3_y - (int) (sys_vars->N[1] / 2) + 1;
+
+							// Get polar coords for the k wavevector
+							k3_sqr       = (double) (k3_x * k3_x + k3_y * k3_y);
+							k3_angle     = atan2((double)k3_x, (double)k3_y);
+							k3_angle_neg = atan2((double)-k3_x, (double)-k3_y);
+							
+							if ( (k3_sqr > sys_vars->kmax_C_sqr && k3_sqr <= sys_vars->kmax_sqr) 
+								 && ((k3_angle >= C_theta_k3_lwr && k3_angle < C_theta_k3_upr) || (k3_angle_neg >= C_theta_k3_lwr && k3_angle_neg < C_theta_k3_upr)) ) {  
+
+								// Loop through the k1 wavevector
+								for (int tmp_k1_x = 0; tmp_k1_x <= sys_vars->N[0] - 1; ++tmp_k1_x) {
+									
+									// Get k1_x
+									k1_x = tmp_k1_x - (int) (sys_vars->N[0] / 2) + 1;
+
+									for (int tmp_k1_y = 0; tmp_k1_y <= sys_vars->N[1] - 1; ++tmp_k1_y) {
+										
+										// Get k1_y
+										k1_y = tmp_k1_y - (int) (sys_vars->N[1] / 2) + 1;
+
+										// Get polar coords for k1
+										k1_sqr       = (double) (k1_x * k1_x + k1_y * k1_y);
+										k1_angle     = atan2((double) k1_x, (double) k1_y);
+										k1_angle_neg = atan2((double)-k1_x, (double)-k1_y);
+
+										if( ((k1_sqr > sys_vars->kmin_sqr && k1_sqr <= sys_vars->kmax_C_sqr) 
+											&& ((k1_angle >= C_theta_k3_lwr && k1_angle < C_theta_k3_upr) || (k1_angle_neg >= C_theta_k3_lwr && k1_angle_neg < C_theta_k3_upr)) 
+											&& ((k1_angle >= C_theta_k1_lwr && k1_angle < C_theta_k1_upr) || (k1_angle_neg >= C_theta_k1_lwr && k1_angle_neg < C_theta_k1_upr)))
+											|| 
+											((k1_sqr > sys_vars->kmin_sqr && k1_sqr <= sys_vars->kmax_sqr) 
+											&& ((k1_angle >= C_theta_k1_lwr && k1_angle < C_theta_k1_upr) || (k1_angle_neg >= C_theta_k1_lwr && k1_angle_neg < C_theta_k1_upr)) 
+											&& !((k1_angle >= C_theta_k3_lwr && k1_angle < C_theta_k3_upr) || (k1_angle_neg >= C_theta_k3_lwr && k1_angle_neg < C_theta_k3_upr))) ) { 
+											
+											// Find the k2 wavevector
+											k2_x = k3_x - k1_x;
+											k2_y = k3_y - k1_y;
+											
+											// Get polar coords for k2
+											k2_sqr       = (double) (k2_x * k2_x + k2_y * k2_y);
+											k2_angle     = atan2((double)k2_x, (double) k2_y);
+											k2_angle_neg = atan2((double)-k2_x, (double) -k2_y);
+
+											if ( (k2_sqr > sys_vars->kmin_sqr && k2_sqr <= sys_vars->kmax_sqr) 
+												&& !((k2_sqr > sys_vars->kmax_C_sqr && k2_sqr <= sys_vars->kmax_sqr) 
+												&& ((k2_angle >= C_theta_k3_lwr && k2_angle < C_theta_k3_upr) || (k2_angle_neg >= C_theta_k3_lwr && k2_angle_neg < C_theta_k3_upr))) ) {
+
+												// Increment data size counter
+												proc_data->num_wave_vecs[a][k1_sec_indx]++;
+											}
+										}
+									}
+								}
+							}
+							else if ( ((k3_sqr > sys_vars->kmin_sqr && k3_sqr <= sys_vars->kmax_sqr) && 
+								((k3_angle >= C_theta_k1_lwr && k3_angle < C_theta_k1_upr) || (k3_angle_neg >= C_theta_k1_lwr && k3_angle_neg < C_theta_k1_upr)) 
+								&& !((k3_angle >= C_theta_k3_lwr && k3_angle < C_theta_k3_upr) || (k3_angle_neg >= C_theta_k3_lwr && k3_angle_neg < C_theta_k3_upr))) 
+								|| 
+								((k3_sqr > sys_vars->kmin_sqr && k3_sqr <= sys_vars->kmax_C_sqr) 
+								&& ((k3_angle >= C_theta_k3_lwr && k3_angle < C_theta_k3_upr) || (k3_angle_neg >= C_theta_k3_lwr && k3_angle_neg < C_theta_k3_upr)) 
+								&& ((k3_angle >= C_theta_k1_lwr && k3_angle < C_theta_k1_upr) || (k3_angle_neg >= C_theta_k1_lwr && k3_angle_neg < C_theta_k1_upr))) ) { 
+
+								// Loop through the k1 wavevector
+								for (int tmp_k1_x = 0; tmp_k1_x <= sys_vars->N[0] - 1; ++tmp_k1_x) {
+									
+									// Get k1_x
+									k1_x = tmp_k1_x - (int) (sys_vars->N[0] / 2) + 1;
+
+									for (int tmp_k1_y = 0; tmp_k1_y <= sys_vars->N[1] - 1; ++tmp_k1_y) {
+										
+										// Get k1_y
+										k1_y = tmp_k1_y - (int) (sys_vars->N[1] / 2) + 1;
+
+										// Get polar coords for k1
+										k1_sqr       = (double) (k1_x * k1_x + k1_y * k1_y);
+										k1_angle     = atan2((double) k1_x, (double) k1_y);
+										k1_angle_neg = atan2((double)-k1_x, (double)-k1_y);
+
+										if( (k1_sqr > sys_vars->kmax_C_sqr && k1_sqr <= sys_vars->kmax_sqr) 
+											&& ((k1_angle >= C_theta_k3_lwr && k1_angle < C_theta_k3_upr) || (k1_angle_neg >= C_theta_k3_lwr && k1_angle_neg < C_theta_k3_upr)) ) { 
+											
+											// Find the k2 wavevector
+											k2_x = k3_x - k1_x;
+											k2_y = k3_y - k1_y;
+											
+											// Get polar coords for k2
+											k2_sqr       = (double) (k2_x * k2_x + k2_y * k2_y);
+											k2_angle     = atan2((double)k2_x, (double) k2_y);
+											k2_angle_neg = atan2((double)-k2_x, (double) -k2_y);
+
+											if ( (k2_sqr > sys_vars->kmax_C_sqr && k2_sqr <= sys_vars->kmax_sqr) 
+												&& ((k2_angle >= C_theta_k3_lwr && k2_angle < C_theta_k3_upr) || (k2_angle_neg >= C_theta_k3_lwr && k2_angle_neg < C_theta_k3_upr)) ) {
+												
+												// Increment data size counter
+												proc_data->num_wave_vecs[a][k1_sec_indx]++;
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+
+					pre_search_terms += proc_data->num_wave_vecs[a][k1_sec_indx];
+				}
+			}
+			printf("["YELLOW"NOTE"RESET"] --- Total number of terms presearch: %ld...\n", pre_search_terms);
+
+			// --------------------------------
+			//  Allocate Wavevector Data
+			// --------------------------------
+			//------------ Allocate memory for the triad wavevectors per sector and their data 
+			proc_data->phase_sync_wave_vecs = (int**** )fftw_malloc(sizeof(int***) * sys_vars->num_k3_sectors);
+			if (proc_data->phase_sync_wave_vecs == NULL) {
+				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Phase Sync Wavevectors");
+				exit(1);
+			}
+			for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
+				proc_data->phase_sync_wave_vecs[a] = (int*** )fftw_malloc(sizeof(int**) * sys_vars->num_k1_sectors);
+				if (proc_data->phase_sync_wave_vecs[a] == NULL) {
+					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Phase Sync Wavevectors");
+					exit(1);
+				}	
+			}
+			for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
+				for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
+					proc_data->phase_sync_wave_vecs[a][l] = (int** )fftw_malloc(sizeof(int*) * NUM_K_DATA);
+					if (proc_data->phase_sync_wave_vecs[a][l] == NULL) {
+						fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Phase Sync Wavevectors");
+						exit(1);
+					}	
+				}
+			}
+			for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
+				for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
+					for (int n = 0; n < NUM_K_DATA; ++n) {
+						if (proc_data->num_wave_vecs[a][l] != 0) {
+							proc_data->phase_sync_wave_vecs[a][l][n] = (int* )fftw_malloc(sizeof(int) * proc_data->num_wave_vecs[a][l]);
+							if (proc_data->phase_sync_wave_vecs[a][l][n] == NULL) {
+								fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Phase Sync Wavevectors");
+								exit(1);
+							}
+						}
+					}	
+				}
+			}
+
+			// --------------------------------
+			//  Wavevector Search
+			// --------------------------------
+			int nn = 0;
+			long int total_terms = 0;
+			long int total_terms_per_sec = 0;
+			long int total_1d_terms_per_sec = 0;
+			long int total_2d_terms_per_sec = 0;
+			double search_end, search_begin;
+
+			//-------- Inialize pointer to txt file and open for writing the numbers of terms
+			FILE *fptr;
+			char num_terms_file[64];
+			char num_terms_file_path[1024];
+			sprintf(num_terms_file, "/NumFluxTerms_SECTORS[%d,%d]_KFRAC[%1.2lf,%1.2lf].txt", sys_vars->num_k3_sectors, sys_vars->num_k1_sectors, sys_vars->kmin_sqr, sys_vars->kmax_frac);
+			strncpy(num_terms_file_path, file_info->output_dir, 1024);
+			strcat(num_terms_file_path, num_terms_file);
+			fptr = fopen(num_terms_file_path,"w");
+
+			//----------- Start timer
+			double loop_begin = omp_get_wtime();
+
+			// Print to screen that a pre computation search is needed for the phase sync wavevectors and begin timeing it
+			printf("\n["YELLOW"NOTE"RESET"] --- Performing search over wavevectors for Phase Sync computation...\n");
+			printf("\nNumber of k_3 Sectors: ["CYAN"%d"RESET"]\nNumber of k_1 Sectors: ["CYAN"%d"RESET"]\n\n", sys_vars->num_k3_sectors, sys_vars->num_k1_sectors);
+
+			//---------- Loop through the sectors for k3
+			for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
+
+				// Initialize counter for terms per sector and start time of the current loop
+				double search_begin = omp_get_wtime();
+				total_terms_per_sec    = 0;
+				total_1d_terms_per_sec = 0;
+				total_2d_terms_per_sec = 0;
+				
+				// Get the angles for the current sector
+				C_theta_k3 = proc_data->theta_k3[a];
+				C_theta_k3_lwr = C_theta_k3 - proc_data->dtheta_k3 / 2.0;
+				C_theta_k3_upr = C_theta_k3 + proc_data->dtheta_k3 / 2.0;
+
+				// Loop through k1 sector choice
+				for (int l = 0; l < sys_vars->num_k1_sectors; ++l) {
+
+					// Get the angles for the k1 sector
+					if (sys_vars->REDUCED_K1_SEARCH_FLAG) {
+						// Reduced k1 sector search
+						C_theta_k1     = MyMod(C_theta_k3 + (k1_sector_angles[l] * proc_data->dtheta_k3/2.0) + M_PI, 2.0 * M_PI) - M_PI;
+						C_theta_k1_lwr = C_theta_k1 - proc_data->dtheta_k3 / 2.0;
+						C_theta_k1_upr = C_theta_k1 + proc_data->dtheta_k3 / 2.0;
+					}
+					else if (sys_vars->num_k1_sectors == 1){
+						// When k1 can vary anywhere -> no restriction to sector
+						C_theta_k1     = 0.0;
+						C_theta_k1_lwr = C_theta_k1 - M_PI / 2.0 + 1e-10;
+						C_theta_k1_upr = C_theta_k1 + M_PI / 2.0 + 1e-10;
+					}
+					else {
+						// Full search over sectors
+						C_theta_k1     = proc_data->theta_k1[(a + l) % sys_vars->num_k1_sectors];
+						C_theta_k1_lwr = C_theta_k1 - proc_data->dtheta_k1 / 2.0;
+						C_theta_k1_upr = C_theta_k1 + proc_data->dtheta_k1 / 2.0;
+					}
+
+					// Get the index for saving the k1 sector data in the right order -> 1d contribution should be on the diagonal
+					k1_sec_indx = (l + a) % sys_vars->num_k1_sectors;
+
+					// Initialize increment
+					nn = 0;
+
+					// Loop through the k wavevector (k is the k3 wavevector)
+					for (int tmp_k3_x = 0; tmp_k3_x <= sys_vars->N[0] - 1; ++tmp_k3_x) {
+						
+						// Get k3_x
+						k3_x = tmp_k3_x - (int) (sys_vars->N[0] / 2) + 1;
+
+						for (int tmp_k3_y = 0; tmp_k3_y <= sys_vars->N[1] - 1; ++tmp_k3_y) {
+							
+							// Get k3_y
+							k3_y = tmp_k3_y - (int) (sys_vars->N[1] / 2) + 1;
+
+							// Get polar coords for the k wavevector
+							k3_sqr       = (double) (k3_x * k3_x + k3_y * k3_y);
+							k3_angle     = atan2((double)k3_x, (double)k3_y);
+							k3_angle_neg = atan2((double)-k3_x, (double)-k3_y);
+							
+							if ( (k3_sqr > sys_vars->kmax_C_sqr && k3_sqr <= sys_vars->kmax_sqr) 
+								 && ((k3_angle >= C_theta_k3_lwr && k3_angle < C_theta_k3_upr) || (k3_angle_neg >= C_theta_k3_lwr && k3_angle_neg < C_theta_k3_upr)) ) {  
+
+								// Loop through the k1 wavevector
+								for (int tmp_k1_x = 0; tmp_k1_x <= sys_vars->N[0] - 1; ++tmp_k1_x) {
+									
+									// Get k1_x
+									k1_x = tmp_k1_x - (int) (sys_vars->N[0] / 2) + 1;
+
+									for (int tmp_k1_y = 0; tmp_k1_y <= sys_vars->N[1] - 1; ++tmp_k1_y) {
+										
+										// Get k1_y
+										k1_y = tmp_k1_y - (int) (sys_vars->N[1] / 2) + 1;
+
+										// Get polar coords for k1
+										k1_sqr       = (double) (k1_x * k1_x + k1_y * k1_y);
+										k1_angle     = atan2((double) k1_x, (double) k1_y);
+										k1_angle_neg = atan2((double)-k1_x, (double)-k1_y);
+
+										if( ((k1_sqr > sys_vars->kmin_sqr && k1_sqr <= sys_vars->kmax_C_sqr) 
+											&& ((k1_angle >= C_theta_k3_lwr && k1_angle < C_theta_k3_upr) || (k1_angle_neg >= C_theta_k3_lwr && k1_angle_neg < C_theta_k3_upr)) 
+											&& ((k1_angle >= C_theta_k1_lwr && k1_angle < C_theta_k1_upr) || (k1_angle_neg >= C_theta_k1_lwr && k1_angle_neg < C_theta_k1_upr)))
+											|| 
+											((k1_sqr > sys_vars->kmin_sqr && k1_sqr <= sys_vars->kmax_sqr) 
+											&& ((k1_angle >= C_theta_k1_lwr && k1_angle < C_theta_k1_upr) || (k1_angle_neg >= C_theta_k1_lwr && k1_angle_neg < C_theta_k1_upr)) 
+											&& !((k1_angle >= C_theta_k3_lwr && k1_angle < C_theta_k3_upr) || (k1_angle_neg >= C_theta_k3_lwr && k1_angle_neg < C_theta_k3_upr))) ) { 
+											
+											// Find the k2 wavevector
+											k2_x = k3_x - k1_x;
+											k2_y = k3_y - k1_y;
+											
+											// Get polar coords for k2
+											k2_sqr       = (double) (k2_x * k2_x + k2_y * k2_y);
+											k2_angle     = atan2((double)k2_x, (double) k2_y);
+											k2_angle_neg = atan2((double)-k2_x, (double) -k2_y);
+
+											if ( (k2_sqr > sys_vars->kmin_sqr && k2_sqr <= sys_vars->kmax_sqr) 
+												&& !((k2_sqr > sys_vars->kmax_C_sqr && k2_sqr <= sys_vars->kmax_sqr) 
+												&& ((k2_angle >= C_theta_k3_lwr && k2_angle < C_theta_k3_upr) || (k2_angle_neg >= C_theta_k3_lwr && k2_angle_neg < C_theta_k3_upr))) ) {
+
+												// Add k1 vector
+												proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K1_X][nn] = k1_x;
+												proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K1_Y][nn] = k1_y;
+												// Add the k2 vector
+												proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K2_X][nn] = k2_x;
+												proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K2_Y][nn] = k2_y;
+												// Add the k3 vector
+												proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K3_X][nn] = k3_x;
+												proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K3_Y][nn] = k3_y;
+												// Indicate which flux term this data is in
+												proc_data->phase_sync_wave_vecs[a][k1_sec_indx][FLUX_TERM][nn] = POS_FLUX_TERM;
+												// Indicate which type of contribution to the flux
+												if ( (k1_sqr > sys_vars->kmin_sqr && k1_sqr <= sys_vars->kmax_C_sqr) 
+													&& ((k1_angle >= C_theta_k3_lwr && k1_angle < C_theta_k3_upr) || (k1_angle_neg >= C_theta_k3_lwr && k1_angle_neg < C_theta_k3_upr)) 
+													&& ((k1_angle >= C_theta_k1_lwr && k1_angle < C_theta_k1_upr) || (k1_angle_neg >= C_theta_k1_lwr && k1_angle_neg < C_theta_k1_upr)) ) {
+													// 1d contribution
+													proc_data->phase_sync_wave_vecs[a][k1_sec_indx][CONTRIB_TYPE][nn] = CONTRIB_1D;
+
+													// Update count of 1d terms
+													total_1d_terms_per_sec++;
+												}
+												else if ( (k1_sqr > sys_vars->kmin_sqr && k1_sqr <= sys_vars->kmax_sqr) 
+													&& ((k1_angle >= C_theta_k1_lwr && k1_angle < C_theta_k1_upr) || (k1_angle_neg >= C_theta_k1_lwr && k1_angle_neg < C_theta_k1_upr)) 
+													&& !((k1_angle >= C_theta_k3_lwr && k1_angle < C_theta_k3_upr) || (k1_angle_neg >= C_theta_k3_lwr && k1_angle_neg < C_theta_k3_upr)) ) {
+													// 2d contribution
+													proc_data->phase_sync_wave_vecs[a][k1_sec_indx][CONTRIB_TYPE][nn] = CONTRIB_2D;
+
+													// Update count for 2d terms
+													total_2d_terms_per_sec++;
+												}
+
+												// Increment
+												nn++;
+												if (nn > proc_data->num_wave_vecs[a][k1_sec_indx]) {
+													fprintf(stderr, "\n["RED"ERROR"RESET"] --- The number of triads in ["CYAN"%s"RESET"] exceding the allocated number of ["CYAN"%d"RESET"] terms -- Need to allocate more memory!!\n-->> Exiting!!!\n", "Wavevector Triad Search", proc_data->num_wave_vecs[a][k1_sec_indx]);
+													exit(1);
+												}
+											}
+										}
+									}
+								}
+							}
+							else if ( ((k3_sqr > sys_vars->kmin_sqr && k3_sqr <= sys_vars->kmax_sqr) && 
+								((k3_angle >= C_theta_k1_lwr && k3_angle < C_theta_k1_upr) || (k3_angle_neg >= C_theta_k1_lwr && k3_angle_neg < C_theta_k1_upr)) 
+								&& !((k3_angle >= C_theta_k3_lwr && k3_angle < C_theta_k3_upr) || (k3_angle_neg >= C_theta_k3_lwr && k3_angle_neg < C_theta_k3_upr))) 
+								|| 
+								((k3_sqr > sys_vars->kmin_sqr && k3_sqr <= sys_vars->kmax_C_sqr) 
+								&& ((k3_angle >= C_theta_k3_lwr && k3_angle < C_theta_k3_upr) || (k3_angle_neg >= C_theta_k3_lwr && k3_angle_neg < C_theta_k3_upr)) 
+								&& ((k3_angle >= C_theta_k1_lwr && k3_angle < C_theta_k1_upr) || (k3_angle_neg >= C_theta_k1_lwr && k3_angle_neg < C_theta_k1_upr))) ) { 
+
+								// Loop through the k1 wavevector
+								for (int tmp_k1_x = 0; tmp_k1_x <= sys_vars->N[0] - 1; ++tmp_k1_x) {
+									
+									// Get k1_x
+									k1_x = tmp_k1_x - (int) (sys_vars->N[0] / 2) + 1;
+
+									for (int tmp_k1_y = 0; tmp_k1_y <= sys_vars->N[1] - 1; ++tmp_k1_y) {
+										
+										// Get k1_y
+										k1_y = tmp_k1_y - (int) (sys_vars->N[1] / 2) + 1;
+
+										// Get polar coords for k1
+										k1_sqr       = (double) (k1_x * k1_x + k1_y * k1_y);
+										k1_angle     = atan2((double) k1_x, (double) k1_y);
+										k1_angle_neg = atan2((double)-k1_x, (double)-k1_y);
+
+										if( (k1_sqr > sys_vars->kmax_C_sqr && k1_sqr <= sys_vars->kmax_sqr) 
+											&& ((k1_angle >= C_theta_k3_lwr && k1_angle < C_theta_k3_upr) || (k1_angle_neg >= C_theta_k3_lwr && k1_angle_neg < C_theta_k3_upr)) ) { 
+											
+											// Find the k2 wavevector
+											k2_x = k3_x - k1_x;
+											k2_y = k3_y - k1_y;
+											
+											// Get polar coords for k2
+											k2_sqr       = (double) (k2_x * k2_x + k2_y * k2_y);
+											k2_angle     = atan2((double)k2_x, (double) k2_y);
+											k2_angle_neg = atan2((double)-k2_x, (double) -k2_y);
+
+											if ( (k2_sqr > sys_vars->kmax_C_sqr && k2_sqr <= sys_vars->kmax_sqr) 
+												&& ((k2_angle >= C_theta_k3_lwr && k2_angle < C_theta_k3_upr) || (k2_angle_neg >= C_theta_k3_lwr && k2_angle_neg < C_theta_k3_upr)) ) {
+												
+												// Add k1 vector
+												proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K1_X][nn] = k1_x;
+												proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K1_Y][nn] = k1_y;
+												// Add the k2 vector
+												proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K2_X][nn] = k2_x;
+												proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K2_Y][nn] = k2_y;
+												// Add the k3 vector
+												proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K3_X][nn] = k3_x;
+												proc_data->phase_sync_wave_vecs[a][k1_sec_indx][K3_Y][nn] = k3_y;
+												// Indicate which flux term this data is in
+												proc_data->phase_sync_wave_vecs[a][k1_sec_indx][FLUX_TERM][nn] = NEG_FLUX_TERM;
+												// Indicate which type of contribution to the flux
+												if ( (k3_sqr > sys_vars->kmin_sqr && k3_sqr <= sys_vars->kmax_C_sqr) 
+													&& ((k3_angle >= C_theta_k3_lwr && k3_angle < C_theta_k3_upr) || (k3_angle_neg >= C_theta_k3_lwr && k3_angle_neg < C_theta_k3_upr)) 
+													&& ((k3_angle >= C_theta_k1_lwr && k3_angle < C_theta_k1_upr) || (k3_angle_neg >= C_theta_k1_lwr && k3_angle_neg < C_theta_k1_upr)) ) {
+													// 1d contribution
+													proc_data->phase_sync_wave_vecs[a][k1_sec_indx][CONTRIB_TYPE][nn] = CONTRIB_1D;
+
+													// Update count of 1d terms
+													total_1d_terms_per_sec++;
+												}
+												else if ( ((k3_sqr > sys_vars->kmin_sqr && k3_sqr <= sys_vars->kmax_sqr) 
+													&& ((k3_angle >= C_theta_k1_lwr && k3_angle < C_theta_k1_upr) || (k3_angle_neg >= C_theta_k1_lwr && k3_angle_neg < C_theta_k1_upr)) 
+													&& !((k3_angle >= C_theta_k3_lwr && k3_angle < C_theta_k3_upr) || (k3_angle_neg >= C_theta_k3_lwr && k3_angle_neg < C_theta_k3_upr))) ) {
+													// 2d contribution
+													proc_data->phase_sync_wave_vecs[a][k1_sec_indx][CONTRIB_TYPE][nn] = CONTRIB_2D;
+
+													// Update count for 2d terms
+													total_2d_terms_per_sec++;
+												}
+
+												// Increment
+												nn++;
+												if (nn > proc_data->num_wave_vecs[a][k1_sec_indx]) {
+													fprintf(stderr, "\n["RED"ERROR"RESET"] --- The number of triads in ["CYAN"%s"RESET"] exceding the allocated number of ["CYAN"%d"RESET"] terms -- Need to allocate more memory!!\n-->> Exiting!!!\n", "Wavevector Triad Search", proc_data->num_wave_vecs[a][k1_sec_indx]);
+													exit(1);
+												}
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+
+					// Record the number of triad wavevectors
+					total_terms += nn;
+					total_terms_per_sec += nn;
+				}
+
+				// Write Update to Screen 
+				double search_end = omp_get_wtime();
+				printf("Sector: %d/%d\tNum Terms: %ld (Tot) -- %ld (1D) -- %ld (2D)\tTime: %g(s)\n", a + 1, sys_vars->num_k3_sectors, total_terms_per_sec, total_1d_terms_per_sec, total_2d_terms_per_sec, (search_end - search_begin));
+				fprintf(fptr, "Sector: %d/%d\tNum Terms: %ld (Tot) -- %ld (1D) -- %ld (2D)\tTime: %g(s)\n", a + 1, sys_vars->num_k3_sectors, total_terms_per_sec, total_1d_terms_per_sec, total_2d_terms_per_sec, (search_end - search_begin));
+			}
+
+
+			// --------------------------------
+			//  Write Wavevector Data To File
+			// --------------------------------
+			///------------------- Write Phase Sync Wavevector Data to File for Future Use
+			static const hsize_t Dims2D = 2;
+			hsize_t dset_dims_2d[Dims2D];   
+
+			//-------------------- Create wavector data file
+			file_info->wave_vec_file_handle = H5Fcreate(file_info->wave_vec_data_name, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+			if (file_info->wave_vec_file_handle < 0) {
+				fprintf(stderr, "\n["RED"ERROR"RESET"]  --- Could not create wavevector file name: "CYAN"%s"RESET" \n-->>Exiting....\n", file_info->wave_vec_data_name);
+				exit(1);
+			}	
+
+			//------------------- Write the number of wavevectors per sector
+			int* tmp_num_wavevecs = (int* )fftw_malloc(sizeof(int) * sys_vars->num_k3_sectors * sys_vars->num_k1_sectors);
+			for (int a = 0; a < sys_vars->num_k3_sectors; ++a){
+				for (int l = 0; l < sys_vars->num_k1_sectors; ++l){
+					tmp_num_wavevecs[a * sys_vars->num_k1_sectors + l] = proc_data->num_wave_vecs[a][l];
+				}
+			}
+
+			dset_dims_2d[0] = sys_vars->num_k3_sectors;
+			dset_dims_2d[1] = sys_vars->num_k1_sectors;
+			status = H5LTmake_dataset(file_info->wave_vec_file_handle, "NumWavevectors", Dims2D, dset_dims_2d, H5T_NATIVE_INT, tmp_num_wavevecs);
+			if (status < 0) {
+				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to wavevector data file!!\n-->> Exiting...\n", "NumWavevectors");
+				exit(1);
+			}
+
+			// Write the wavevector data
+			for (int a = 0; a < sys_vars->num_k3_sectors; ++a){
+				for (int l = 0; l < sys_vars->num_k1_sectors; ++l){
+					int* tmp_wave_vec_data = (int* )fftw_malloc(sizeof(int) * NUM_K_DATA * proc_data->num_wave_vecs[a][l]);
+					for (int k = 0; k < NUM_K_DATA; ++k) {
+						for (int n = 0; n < proc_data->num_wave_vecs[a][l]; ++n) {
+							tmp_wave_vec_data[k * proc_data->num_wave_vecs[a][l] + n] = proc_data->phase_sync_wave_vecs[a][l][k][n];
+						}
+					}
+
+					dset_dims_2d[0] = NUM_K_DATA;
+					dset_dims_2d[1] = proc_data->num_wave_vecs[a][l];
+					sprintf(dset_name, "WVData_Sector_%d_%d", a, l);
+					status = H5LTmake_dataset(file_info->wave_vec_file_handle, dset_name, Dims2D, dset_dims_2d, H5T_NATIVE_INT, tmp_wave_vec_data);
+					if (status < 0) {
+						fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to wavevector data file!!\n-->> Exiting...\n", dset_name);
+						exit(1);
+					}
+
+					fftw_free(tmp_wave_vec_data);
+				}
+			}
+
+			// Free temporary memory
+			fftw_free(tmp_num_wavevecs);
+
+			//------------------- Close Wavector Data File
+			status = H5Fclose(file_info->wave_vec_file_handle);
+			if (status < 0) {
+				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close wavevector data file ["CYAN"%s"RESET"]\n-->> Exiting...\n", file_info->wave_vec_data_name);
+				exit(1);		
+			}
+
+			printf("\n["YELLOW"NOTE"RESET"] --- Saved wavevector data to file at ["CYAN"%s"RESET"]...\n", file_info->wave_vec_data_name);
+
+			// End timer 
+			double loop_end = omp_get_wtime();
+			printf("\n["YELLOW"NOTE"RESET"] --- Total Triad Terms: %ld\n", total_terms);
+			printf("["YELLOW"NOTE"RESET"] --- Total Time for sector search: %g(s)\n", (loop_end - loop_begin));
+
+
+			// Close number of flux terms file
+			fprintf(fptr, "\n--- Total Triad Terms: %ld\n", total_terms);
+			fprintf(fptr, "--- Total Time for sector search: %g(s)\n", (loop_end - loop_begin));
+			fclose(fptr);
 		}
 
-		printf("\n["YELLOW"NOTE"RESET"] --- Saved wavevector data to file at ["CYAN"%s"RESET"]...\n", file_info->wave_vec_data_name);
-
-		// End timer 
-		double loop_end = omp_get_wtime();
-		printf("\n["YELLOW"NOTE"RESET"] --- Est Triad : %d\tTotal Est Triads: %d\n", num_triad_est, sys_vars->num_k3_sectors * sys_vars->num_k1_sectors * num_triad_est);
-		printf("\n["YELLOW"NOTE"RESET"] --- Total Triad Terms: %ld\n", total_terms);
-		printf("["YELLOW"NOTE"RESET"] --- Total Time for sector search: %g(s)\n", (loop_end - loop_begin));
-
-
-		// Close number of flux terms file
-		fprintf(fptr, "\n--- Est Triad : %d\tTotal Est Triads: %d\n", num_triad_est, sys_vars->num_k3_sectors * sys_vars->num_k1_sectors * num_triad_est);
-		fprintf(fptr, "\n--- Total Triad Terms: %ld\n", total_terms);
-		fprintf(fptr, "--- Total Time for sector search: %g(s)\n", (loop_end - loop_begin));
-		fclose(fptr);
 	}
 }
 /**

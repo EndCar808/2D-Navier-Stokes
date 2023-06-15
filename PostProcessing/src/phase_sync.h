@@ -17,6 +17,7 @@
 // ---------------------------------------------------------------------
 void PhaseSyncSector(int s, int pre_compute_flag);
 void PhaseSync(int s);
+void AllocateWavecData(int data_flag);
 void AllocatePhaseSyncMemory(const long int* N);
 void FreePhaseSyncObjects(void);
 // ---------------------------------------------------------------------

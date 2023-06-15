@@ -113,6 +113,7 @@
 #define NUM_TRIAD_CLASS 2 			// The number of triad classes i.e., either normal triad or generalized triads
 #define NUM_TRIAD_TYPES 6 			// The number of triad types contributing to the flux, these are dependent on the term and sign of the term 
 #define NUM_K1_SECTORS 8			// The number of k1 sectors to search over in a reduced search @ +/- 30, 45, 60 & 90 degrees
+#define NUM_K_TEST_DATA 6	    	// The number of wavevector test data to precompute and store.
 #define NUM_K_DATA 8           	    // The number of wavevector data to precompute and store
 #define	K1_X	  0 				// The index for the k1_x wavenuber
 #define	K1_Y	  1 				// The index for the k1_y wavenuber
@@ -122,6 +123,8 @@
 #define	K3_Y  	  5 				// The index for the k3_y wavenuber
 #define FLUX_TERM 6					// Indicator which identifies whether data is in postive or negative flux term
 #define CONTRIB_TYPE 7         		// Indicator for which type of contribution to the flux, either 1d or 2d
+#define SYNC_TEST_DATA_FLAG 0       // Indicator for the precompute test data for phase sync
+#define SYNC_DATA_FLAG 1 			// Indicator for the precompute data for phase sync
 // The following are not needed anymore
 // #define	K1_SQR	  6 				// The index for the |k1|^2
 // #define	K2_SQR	  7 				// The index for the |k2|^2

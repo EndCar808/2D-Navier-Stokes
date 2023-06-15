@@ -468,7 +468,7 @@ void FluxSpectra(int snap) {
 	double norm_fac  = 0.5 / pow(Nx * Ny, 2.0);
 	double const_fac = 4.0 * pow(M_PI, 2.0);
 	double tmp_deriv, tmp_diss;
-	double tmp_phase_order;
+	fftw_complex tmp_phase_order;
 
 	// ------------------------------------
 	// Initialize Arrays
