@@ -123,6 +123,12 @@ void PostProcessing(void) {
 	///////////////////////////////
 
 	// ---------------------------------
+	//  Phase Sync Conditional Stats
+	// ---------------------------------
+	ComputePhaseSyncConditionalStats();
+
+
+	// ---------------------------------
 	//  Final Write of Data and Close 
 	// ---------------------------------
 	// Write any remaining datasets to output file
