@@ -664,21 +664,21 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                     self.enrg_diss_C = f["EnergyDissC"][:]
                 ## Get the increment histogram data
                 if 'LongitudinalVelIncrements_BinRanges' in list(f.keys()):
-                    self.long_vel_incr_ranges = f["LongitudinalVelIncrements_BinRanges"][:, :]
+                    self.vel_long_incr_ranges = f["LongitudinalVelIncrements_BinRanges"][:, :]
                 if 'LongitudinalVelIncrements_BinCounts' in list(f.keys()):
-                    self.long_vel_incr_counts = f["LongitudinalVelIncrements_BinCounts"][:, :]
+                    self.vel_long_incr_counts = f["LongitudinalVelIncrements_BinCounts"][:, :]
                 if 'TransverseVelIncrements_BinRanges' in list(f.keys()):
-                    self.trans_vel_incr_ranges = f["TransverseVelIncrements_BinRanges"][:, :]
+                    self.vel_trans_incr_ranges = f["TransverseVelIncrements_BinRanges"][:, :]
                 if 'TransverseVelIncrements_BinCounts' in list(f.keys()):
-                    self.trans_vel_incr_counts = f["TransverseVelIncrements_BinCounts"][:, :]
+                    self.vel_trans_incr_counts = f["TransverseVelIncrements_BinCounts"][:, :]
                 if 'LongitudinalVortIncrements_BinRanges' in list(f.keys()):
-                    self.long_vort_incr_ranges = f["LongitudinalVortIncrements_BinRanges"][:, :]
+                    self.vort_long_incr_ranges = f["LongitudinalVortIncrements_BinRanges"][:, :]
                 if 'LongitudinalVortIncrements_BinCounts' in list(f.keys()):
-                    self.long_vort_incr_counts = f["LongitudinalVortIncrements_BinCounts"][:, :]
+                    self.vort_long_incr_counts = f["LongitudinalVortIncrements_BinCounts"][:, :]
                 if 'TransverseVortIncrements_BinRanges' in list(f.keys()):
-                    self.trans_vort_incr_ranges = f["TransverseVortIncrements_BinRanges"][:, :]
+                    self.vort_trans_incr_ranges = f["TransverseVortIncrements_BinRanges"][:, :]
                 if 'TransverseVortIncrements_BinCounts' in list(f.keys()):
-                    self.trans_vort_incr_counts = f["TransverseVortIncrements_BinCounts"][:, :]
+                    self.vort_trans_incr_counts = f["TransverseVortIncrements_BinCounts"][:, :]
                 ## Get the structure function data
                 if 'LongitudinalStructureFunctions' in list(f.keys()):
                     self.long_str_func = f["LongitudinalStructureFunctions"][:, :]
@@ -699,8 +699,8 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                     self.grad_u_y_counts = f["VelocityGradient_y_BinCounts"][:]
                 if 'VorticityGradient_x_BinRanges' in list(f.keys()):
                     self.grad_w_x_ranges = f["VorticityGradient_x_BinRanges"][:]
-                if 'VorticityGradient_x_BinCounts' in list(f.keys()):
-                    self.grad_w_x_counts = f["VorticityGradient_x_BinCounts"][:]
+                if 'VortcityGradient_x_BinCounts' in list(f.keys()):
+                    self.grad_w_x_counts = f["VortcityGradient_x_BinCounts"][:]
                 if 'VorticityGradient_y_BinRanges' in list(f.keys()):
                     self.grad_w_y_ranges = f["VorticityGradient_y_BinRanges"][:]
                 if 'VorticityGradient_y_BinCounts' in list(f.keys()):

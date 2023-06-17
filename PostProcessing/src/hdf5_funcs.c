@@ -269,7 +269,7 @@ void ReadInData(int snap_indx) {
 	// --------------------------------
 	//  Read in Real Vorticity
 	// --------------------------------
-	#if defined(__REAL_STATS) || defined(__VEL_INC_STATS) || defined(__STR_FUNC_STATS) || defined(__GRAD_STATS)
+	#if defined(__REAL_STATS) || defined(__VEL_INC_STATS) || defined(__STR_FUNC_STATS) || defined(__VEL_GRAD_STATS) || defined(__VORT_GRAD_STATS)
 	// If Real Space vorticity exists read it in
 	sprintf(group_string, "/Iter_%05d/w", snap_indx);	
 	if (H5Lexists(file_info->input_file_handle, group_string, H5P_DEFAULT) > 0 ) {
@@ -317,7 +317,7 @@ void ReadInData(int snap_indx) {
 	// --------------------------------
 	//  Read in Real Velocity
 	// --------------------------------
-	#if defined(__REAL_STATS) || defined(__VEL_INC_STATS) || defined(__STR_FUNC_STATS) || defined(__GRAD_STATS)
+	#if defined(__REAL_STATS) || defined(__VEL_INC_STATS) || defined(__STR_FUNC_STATS) || defined(__VEL_GRAD_STATS) || defined(__VORT_GRAD_STATS)
 	// If Real Space Velocity exists read it in
 	sprintf(group_string, "/Iter_%05d/u", snap_indx);	
 	if (H5Lexists(file_info->input_file_handle, group_string, H5P_DEFAULT) > 0 ) {
@@ -332,7 +332,7 @@ void ReadInData(int snap_indx) {
 			exit(1);	
 		}
 
-		#if defined(__GRAD_STATS)
+		#if defined(__VEL_GRAD_STATS) || defined(__VORT_GRAD_STATS)
 		// Transform from Real space To Fourier Space
 		for (int i = 0; i < Nx; ++i) {	
 			tmp = i * Ny;
@@ -693,28 +693,28 @@ void WriteDataToFile(double t, long int snap) {
 	// -------------------------------
 	#if defined(__REAL_STATS)
 	// The vorticity histogram bin ranges and bin counts
-	dset_dims_1d[0] = stats_data->w_pdf->n + 1;
-	status = H5LTmake_dataset(group_id, "VorticityPDFRanges", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, stats_data->w_pdf->range);
+	dset_dims_1d[0] = stats_data->w_hist->n + 1;
+	status = H5LTmake_dataset(group_id, "VorticityPDFRanges", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, stats_data->w_hist->range);
 	if (status < 0) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Vorticity PDF Bin Ranges", t, snap);
 		exit(1);
 	}		
-	dset_dims_1d[0] = stats_data->w_pdf->n;
-	status = H5LTmake_dataset(group_id, "VorticityPDFCounts", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, stats_data->w_pdf->bin);	
+	dset_dims_1d[0] = stats_data->w_hist->n;
+	status = H5LTmake_dataset(group_id, "VorticityPDFCounts", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, stats_data->w_hist->bin);	
 	if (status < 0) {
 		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Vorticity PDF Bin Counts", t, snap);
 		exit(1);
 	}
 	
 	// The velocity histogram bin ranges and bin counts
-	dset_dims_1d[0] = stats_data->u_pdf->n + 1;
-	status = H5LTmake_dataset(group_id, "VelocityPDFRanges", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, stats_data->u_pdf->range);
+	dset_dims_1d[0] = stats_data->u_hist->n + 1;
+	status = H5LTmake_dataset(group_id, "VelocityPDFRanges", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, stats_data->u_hist->range);
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Velocity PDF Bin Ranges", t, snap);
         exit(1);
     }		
-	dset_dims_1d[0] = stats_data->u_pdf->n;
-	status = H5LTmake_dataset(group_id, "VelocityPDFCounts", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, stats_data->u_pdf->bin);	
+	dset_dims_1d[0] = stats_data->u_hist->n;
+	status = H5LTmake_dataset(group_id, "VelocityPDFCounts", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, stats_data->u_hist->bin);	
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at: t = ["CYAN"%lf"RESET"] Snap = ["CYAN"%ld"RESET"]!!\n-->> Exiting...\n", "Velocity PDF Bin Counts", t, snap);
         exit(1);
@@ -1628,20 +1628,20 @@ void FinalWriteAndClose(void) {
     double u_stats[SYS_DIM + 1][6];
     for (int i = 0; i < SYS_DIM + 1; ++i) {
     	// Velocity stats
-    	u_stats[i][0] = gsl_rstat_min(stats_data->r_stat_u[i]);
-    	u_stats[i][1] = gsl_rstat_max(stats_data->r_stat_u[i]);
-    	u_stats[i][2] = gsl_rstat_mean(stats_data->r_stat_u[i]);
-    	u_stats[i][3] = gsl_rstat_sd(stats_data->r_stat_u[i]);
-    	u_stats[i][4] = gsl_rstat_skew(stats_data->r_stat_u[i]);
-    	u_stats[i][5] = gsl_rstat_kurtosis(stats_data->r_stat_u[i]);
-    	// Vorticity stats
-    	w_stats[0] = gsl_rstat_min(stats_data->r_stat_w);
-    	w_stats[1] = gsl_rstat_max(stats_data->r_stat_w);
-    	w_stats[2] = gsl_rstat_mean(stats_data->r_stat_w);
-    	w_stats[3] = gsl_rstat_sd(stats_data->r_stat_w);
-    	w_stats[4] = gsl_rstat_skew(stats_data->r_stat_w);
-    	w_stats[5] = gsl_rstat_kurtosis(stats_data->r_stat_w);
+    	u_stats[i][0] = gsl_rstat_min(stats_data->u_stats[i]);
+    	u_stats[i][1] = gsl_rstat_max(stats_data->u_stats[i]);
+    	u_stats[i][2] = gsl_rstat_mean(stats_data->u_stats[i]);
+    	u_stats[i][3] = gsl_rstat_sd(stats_data->u_stats[i]);
+    	u_stats[i][4] = gsl_rstat_skew(stats_data->u_stats[i]);
+    	u_stats[i][5] = gsl_rstat_kurtosis(stats_data->u_stats[i]);
     }
+	// Vorticity stats
+	w_stats[0] = gsl_rstat_min(stats_data->w_stats);
+	w_stats[1] = gsl_rstat_max(stats_data->w_stats);
+	w_stats[2] = gsl_rstat_mean(stats_data->w_stats);
+	w_stats[3] = gsl_rstat_sd(stats_data->w_stats);
+	w_stats[4] = gsl_rstat_skew(stats_data->w_stats);
+	w_stats[5] = gsl_rstat_kurtosis(stats_data->w_stats);
 
     dset_dims_2d[0] = SYS_DIM + 1;
    	dset_dims_2d[1] = 6;
@@ -1661,119 +1661,122 @@ void FinalWriteAndClose(void) {
     ///----------------------------------- Write the Velocity & Vorticity Increments
 	#if defined(__VEL_INC_STATS)
 	// Allocate temporary memory to record the histogram data contiguously
-    double* inc_range  = (double*) fftw_malloc(sizeof(double) * NUM_INCR * (N_BINS + 1));
-    double* inc_counts = (double*) fftw_malloc(sizeof(double) * NUM_INCR * (N_BINS));
+    double* vel_inc_range  = (double*) fftw_malloc(sizeof(double) * NUM_INCR * (N_BINS + 1));
+    double* vel_inc_counts = (double*) fftw_malloc(sizeof(double) * NUM_INCR * (N_BINS));
 
     //-------------- Write the longitudinal increments
-    // Velocity Increments
    	for (int r = 0; r < NUM_INCR; ++r) {
    		for (int b = 0; b < N_BINS + 1; ++b) {
-	   		inc_range[r * (N_BINS + 1) + b] = stats_data->vel_incr[0][r]->range[b];
+	   		vel_inc_range[r * (N_BINS + 1) + b] = stats_data->u_incr_hist[0][r]->range[b];
 	   		if (b < N_BINS) {
-	   			inc_counts[r * (N_BINS) + b] = stats_data->vel_incr[0][r]->bin[b];	   			
+	   			vel_inc_counts[r * (N_BINS) + b] = stats_data->u_incr_hist[0][r]->bin[b];	   			
 	   		}
    		}
    	}
    	dset_dims_2d[0] = NUM_INCR;
    	dset_dims_2d[1] = N_BINS + 1;
-   	status = H5LTmake_dataset(file_info->output_file_handle, "LongitudinalVelIncrements_BinRanges", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, inc_range);
+   	status = H5LTmake_dataset(file_info->output_file_handle, "LongitudinalVelIncrements_BinRanges", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, vel_inc_range);
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Longitudinal Velocity Increment PDF Bin Ranges");
         exit(1);
     }		
 	dset_dims_2d[1] = N_BINS;
-	status = H5LTmake_dataset(file_info->output_file_handle, "LongitudinalVelIncrements_BinCounts", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, inc_counts);	
+	status = H5LTmake_dataset(file_info->output_file_handle, "LongitudinalVelIncrements_BinCounts", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, vel_inc_counts);	
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Longitudinal Velocity Increment PDF Bin Counts");
         exit(1);
     }
-    // Vorticity Increments
-    for (int r = 0; r < NUM_INCR; ++r) {
-   		for (int b = 0; b < N_BINS + 1; ++b) {
-	   		inc_range[r * (N_BINS + 1) + b] = stats_data->w_incr[0][r]->range[b];
-	   		if (b < N_BINS) {
-	   			inc_counts[r * (N_BINS) + b] = stats_data->w_incr[0][r]->bin[b];	   			
-	   		}
-   		}
-   	}
-   	dset_dims_2d[0] = NUM_INCR;
-   	dset_dims_2d[1] = N_BINS + 1;
-   	status = H5LTmake_dataset(file_info->output_file_handle, "LongitudinalVortIncrements_BinRanges", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, inc_range);
-	if (status < 0) {
-        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Longitudinal Vorticity Increment PDF Bin Ranges");
-        exit(1);
-    }		
-	dset_dims_2d[1] = N_BINS;
-	status = H5LTmake_dataset(file_info->output_file_handle, "LongitudinalVortIncrements_BinCounts", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, inc_counts);	
-	if (status < 0) {
-        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Longitudinal Vorticity Increment PDF Bin Counts");
-        exit(1);
-    }
 
     //--------------- Write the transverse increments
-    // Velocity
     for (int r = 0; r < NUM_INCR; ++r) {
    		for (int b = 0; b < N_BINS + 1; ++b) {
-	   		inc_range[r * (N_BINS + 1) + b] = stats_data->vel_incr[1][r]->range[b];
+	   		vel_inc_range[r * (N_BINS + 1) + b] = stats_data->u_incr_hist[1][r]->range[b];
 	   		if (b < N_BINS) {
-	   			inc_counts[r * (N_BINS) + b] = stats_data->vel_incr[1][r]->bin[b];	   			
+	   			vel_inc_counts[r * (N_BINS) + b] = stats_data->u_incr_hist[1][r]->bin[b];	   			
 	   		}
    		}
    	}
    	dset_dims_2d[1] = N_BINS + 1;
-   	status = H5LTmake_dataset(file_info->output_file_handle, "TransverseVelIncrements_BinRanges", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, inc_range);
+   	status = H5LTmake_dataset(file_info->output_file_handle, "TransverseVelIncrements_BinRanges", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, vel_inc_range);
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Transverse Velocity Increment PDF Bin Ranges");
         exit(1);
     }		
 	dset_dims_2d[1] = N_BINS;
-	status = H5LTmake_dataset(file_info->output_file_handle, "TransverseVelIncrements_BinCounts", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, inc_counts);	
+	status = H5LTmake_dataset(file_info->output_file_handle, "TransverseVelIncrements_BinCounts", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, vel_inc_counts);	
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Transverse Velocity Increment PDF Bin Counts");
+        exit(1);
+    }
+
+    // Free temporary memory
+    fftw_free(vel_inc_range);
+    fftw_free(vel_inc_counts);
+    #endif	
+
+    // Vorticity Increments
+	#if defined(__VORT_INC_STATS)
+	double* vort_inc_range  = (double*) fftw_malloc(sizeof(double) * NUM_INCR * (N_BINS + 1));
+    double* vort_inc_counts = (double*) fftw_malloc(sizeof(double) * NUM_INCR * (N_BINS));
+    for (int r = 0; r < NUM_INCR; ++r) {
+   		for (int b = 0; b < N_BINS + 1; ++b) {
+	   		vort_inc_range[r * (N_BINS + 1) + b] = stats_data->w_incr_hist[0][r]->range[b];
+	   		if (b < N_BINS) {
+	   			vort_inc_counts[r * (N_BINS) + b] = stats_data->w_incr_hist[0][r]->bin[b];	   			
+	   		}
+   		}
+   	}
+   	dset_dims_2d[0] = NUM_INCR;
+   	dset_dims_2d[1] = N_BINS + 1;
+   	status = H5LTmake_dataset(file_info->output_file_handle, "LongitudinalVortIncrements_BinRanges", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, vort_inc_range);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Longitudinal Vorticity Increment PDF Bin Ranges");
+        exit(1);
+    }		
+	dset_dims_2d[1] = N_BINS;
+	status = H5LTmake_dataset(file_info->output_file_handle, "LongitudinalVortIncrements_BinCounts", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, vort_inc_counts);	
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Longitudinal Vorticity Increment PDF Bin Counts");
         exit(1);
     }
     // Vorticity
     for (int r = 0; r < NUM_INCR; ++r) {
    		for (int b = 0; b < N_BINS + 1; ++b) {
-	   		inc_range[r * (N_BINS + 1) + b] = stats_data->w_incr[1][r]->range[b];
+	   		vort_inc_range[r * (N_BINS + 1) + b] = stats_data->w_incr_hist[1][r]->range[b];
 	   		if (b < N_BINS) {
-	   			inc_counts[r * (N_BINS) + b] = stats_data->w_incr[1][r]->bin[b];	   			
+	   			vort_inc_counts[r * (N_BINS) + b] = stats_data->w_incr_hist[1][r]->bin[b];	   			
 	   		}
    		}
    	}
    	dset_dims_2d[1] = N_BINS + 1;
-   	status = H5LTmake_dataset(file_info->output_file_handle, "TransverseVortIncrements_BinRanges", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, inc_range);
+   	status = H5LTmake_dataset(file_info->output_file_handle, "TransverseVortIncrements_BinRanges", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, vort_inc_range);
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Transverse Vorticity Increment PDF Bin Ranges");
         exit(1);
     }		
 	dset_dims_2d[1] = N_BINS;
-	status = H5LTmake_dataset(file_info->output_file_handle, "TransverseVortIncrements_BinCounts", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, inc_counts);	
+	status = H5LTmake_dataset(file_info->output_file_handle, "TransverseVortIncrements_BinCounts", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, vort_inc_counts);	
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Transverse Vorticity Increment PDF Bin Counts");
         exit(1);
     }
+    // Free temporary memory
+    fftw_free(vort_inc_range);
+    fftw_free(vort_inc_counts);
+    #endif
 
     //--------------- Write increment statistics
+	#if defined(__VEL_INC_STATS)
     double vel_incr_stats[INCR_TYPES][NUM_INCR][6];
-    double vort_incr_stats[INCR_TYPES][NUM_INCR][6];
     for (int i = 0; i < INCR_TYPES; ++i) {
     	for (int j = 0; j < NUM_INCR; ++j) {
-			// Velocity increment stats
-			vel_incr_stats[i][j][0] = gsl_rstat_min(stats_data->r_stat_vel_incr[i][j]);
-			vel_incr_stats[i][j][1] = gsl_rstat_max(stats_data->r_stat_vel_incr[i][j]);
-			vel_incr_stats[i][j][2] = gsl_rstat_mean(stats_data->r_stat_vel_incr[i][j]);
-			vel_incr_stats[i][j][3] = gsl_rstat_sd(stats_data->r_stat_vel_incr[i][j]);
-			vel_incr_stats[i][j][4] = gsl_rstat_skew(stats_data->r_stat_vel_incr[i][j]);
-			vel_incr_stats[i][j][5] = gsl_rstat_kurtosis(stats_data->r_stat_vel_incr[i][j]);
-			// Vorticity increment stats
-			vort_incr_stats[i][j][0] = gsl_rstat_min(stats_data->r_stat_vort_incr[i][j]);
-			vort_incr_stats[i][j][1] = gsl_rstat_max(stats_data->r_stat_vort_incr[i][j]);
-			vort_incr_stats[i][j][2] = gsl_rstat_mean(stats_data->r_stat_vort_incr[i][j]);
-			vort_incr_stats[i][j][3] = gsl_rstat_sd(stats_data->r_stat_vort_incr[i][j]);
-			vort_incr_stats[i][j][4] = gsl_rstat_skew(stats_data->r_stat_vort_incr[i][j]);
-			vort_incr_stats[i][j][5] = gsl_rstat_kurtosis(stats_data->r_stat_vort_incr[i][j]);
-	    }
+			vel_incr_stats[i][j][0] = gsl_rstat_min(stats_data->u_incr_stats[i][j]);
+			vel_incr_stats[i][j][1] = gsl_rstat_max(stats_data->u_incr_stats[i][j]);
+			vel_incr_stats[i][j][2] = gsl_rstat_mean(stats_data->u_incr_stats[i][j]);
+			vel_incr_stats[i][j][3] = gsl_rstat_sd(stats_data->u_incr_stats[i][j]);
+			vel_incr_stats[i][j][4] = gsl_rstat_skew(stats_data->u_incr_stats[i][j]);
+			vel_incr_stats[i][j][5] = gsl_rstat_kurtosis(stats_data->u_incr_stats[i][j]);
+        }
     }
     dset_dims_3d[0] = INCR_TYPES;
    	dset_dims_3d[1] = NUM_INCR;
@@ -1783,94 +1786,105 @@ void FinalWriteAndClose(void) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Velocity Increment Stats");
         exit(1);
     }
-    status = H5LTmake_dataset(file_info->output_file_handle, "VorticityIncrementStats", Dims3D, dset_dims_3d, H5T_NATIVE_DOUBLE, vort_incr_stats);
+    #endif
+
+	#if defined(__VORT_INC_STATS)
+	// Vorticity increment stats
+	double vort_incr_stats[INCR_TYPES][NUM_INCR][6];
+    for (int i = 0; i < INCR_TYPES; ++i) {
+    	for (int j = 0; j < NUM_INCR; ++j) {
+			// Velocity increment stats
+			vort_incr_stats[i][j][0] = gsl_rstat_min(stats_data->w_incr_stats[i][j]);
+			vort_incr_stats[i][j][1] = gsl_rstat_max(stats_data->w_incr_stats[i][j]);
+			vort_incr_stats[i][j][2] = gsl_rstat_mean(stats_data->w_incr_stats[i][j]);
+			vort_incr_stats[i][j][3] = gsl_rstat_sd(stats_data->w_incr_stats[i][j]);
+			vort_incr_stats[i][j][4] = gsl_rstat_skew(stats_data->w_incr_stats[i][j]);
+			vort_incr_stats[i][j][5] = gsl_rstat_kurtosis(stats_data->w_incr_stats[i][j]);
+	    }
+	}
+    dset_dims_3d[0] = INCR_TYPES;
+   	dset_dims_3d[1] = NUM_INCR;
+   	dset_dims_3d[2] = 6;
+   	status = H5LTmake_dataset(file_info->output_file_handle, "VorticityIncrementStats", Dims3D, dset_dims_3d, H5T_NATIVE_DOUBLE, vort_incr_stats);
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Vorticity Increment Stats");
         exit(1);
     }
-
-
-    // Free temporary memory
-    fftw_free(inc_range);
-    fftw_free(inc_counts);
 	#endif
 
     ///----------------------------------- Gradient Statistics
-	#if defined(__GRAD_STATS)
+	#if defined(__VEL_GRAD_STATS)
 	//----------------- Write the x gradients
-	// Velocity
    	dset_dims_1d[0] = N_BINS + 1;
-   	status = H5LTmake_dataset(file_info->output_file_handle, "VelocityGradient_x_BinRanges", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, stats_data->vel_grad[0]->range);
+   	status = H5LTmake_dataset(file_info->output_file_handle, "VelocityGradient_x_BinRanges", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, stats_data->u_grad_hist[0]->range);
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Velocity Gradient X PDF Bin Ranges");
         exit(1);
     }		
 	dset_dims_1d[0] = N_BINS;
-	status = H5LTmake_dataset(file_info->output_file_handle, "VelocityGradient_x_BinCounts", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, stats_data->vel_grad[0]->bin);	
+	status = H5LTmake_dataset(file_info->output_file_handle, "VelocityGradient_x_BinCounts", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, stats_data->u_grad_hist[0]->bin);	
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Velocity Gradient X PDF Bin Counts");
         exit(1);
     }
-    // Vorticity
-   	dset_dims_1d[0] = N_BINS + 1;
-   	status = H5LTmake_dataset(file_info->output_file_handle, "VorticityGradient_x_BinRanges", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, stats_data->vort_grad[0]->range);
-	if (status < 0) {
-        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Vorticity Gradient X PDF Bin Ranges");
-        exit(1);
-    }		
-	dset_dims_1d[0] = N_BINS;
-	status = H5LTmake_dataset(file_info->output_file_handle, "VortcityGradient_x_BinCounts", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, stats_data->vort_grad[0]->bin);	
-	if (status < 0) {
-        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Vorticity Gradient X PDF Bin Counts");
-        exit(1);
-    }
-
     //--------------- Write the y gradients
     // Velocity
    	dset_dims_1d[0] = N_BINS + 1;
-   	status = H5LTmake_dataset(file_info->output_file_handle, "VelocityGradient_y_BinRanges", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, stats_data->vel_grad[1]->range);
+   	status = H5LTmake_dataset(file_info->output_file_handle, "VelocityGradient_y_BinRanges", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, stats_data->u_grad_hist[1]->range);
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Velocity Gradient Y PDF Bin Ranges");
         exit(1);
     }		
 	dset_dims_1d[0] = N_BINS;
-	status = H5LTmake_dataset(file_info->output_file_handle, "VelocityGradient_y_BinCounts", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, stats_data->vel_grad[1]->bin);	
+	status = H5LTmake_dataset(file_info->output_file_handle, "VelocityGradient_y_BinCounts", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, stats_data->u_grad_hist[1]->bin);	
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Velocity Gradient Y PDF Bin Counts");
         exit(1);
     }
+    #endif
+
+	#if defined(__VORT_GRAD_STATS)
     // Vorticity
-   	dset_dims_1d[1] = N_BINS + 1;
-   	status = H5LTmake_dataset(file_info->output_file_handle, "VorticityGradient_y_BinRanges", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, stats_data->vort_grad[1]->range);
+   	dset_dims_1d[0] = N_BINS + 1;
+   	status = H5LTmake_dataset(file_info->output_file_handle, "VorticityGradient_x_BinRanges", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, stats_data->w_grad_hist[0]->range);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Vorticity Gradient X PDF Bin Ranges");
+        exit(1);
+    }		
+	dset_dims_1d[0] = N_BINS;
+	status = H5LTmake_dataset(file_info->output_file_handle, "VortcityGradient_x_BinCounts", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, stats_data->w_grad_hist[0]->bin);	
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Vorticity Gradient X PDF Bin Counts");
+        exit(1);
+    }
+    //--------------- Write the y gradients
+    // Vorticity
+   	dset_dims_1d[0] = N_BINS + 1;
+   	status = H5LTmake_dataset(file_info->output_file_handle, "VorticityGradient_y_BinRanges", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, stats_data->w_grad_hist[1]->range);
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Vorticity Gradient Y PDF Bin Ranges");
         exit(1);
     }		
-	dset_dims_1d[1] = N_BINS;
-	status = H5LTmake_dataset(file_info->output_file_handle, "VorticityGradient_y_BinCounts", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, stats_data->vort_grad[1]->bin);	
+	dset_dims_1d[0] = N_BINS;
+	status = H5LTmake_dataset(file_info->output_file_handle, "VorticityGradient_y_BinCounts", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, stats_data->w_grad_hist[1]->bin);	
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Vorticity Gradient Y PDF Bin Counts");
         exit(1);
     }
+    #endif
+
 
     //--------------- Write the gradient statistics
+	#if defined(__VEL_GRAD_STATS)
     double grad_u_stats[SYS_DIM + 1][6];
-    double grad_w_stats[SYS_DIM + 1][6];
     for (int i = 0; i < SYS_DIM + 1; ++i) {
     	// Velocity gradient stats
-    	grad_u_stats[i][0] = gsl_rstat_min(stats_data->r_stat_grad_u[i]);
-    	grad_u_stats[i][1] = gsl_rstat_max(stats_data->r_stat_grad_u[i]);
-    	grad_u_stats[i][2] = gsl_rstat_mean(stats_data->r_stat_grad_u[i]);
-    	grad_u_stats[i][3] = gsl_rstat_sd(stats_data->r_stat_grad_u[i]);
-    	grad_u_stats[i][4] = gsl_rstat_skew(stats_data->r_stat_grad_u[i]);
-    	grad_u_stats[i][5] = gsl_rstat_kurtosis(stats_data->r_stat_grad_u[i]);
-    	// Vorticity gradient stats
-    	grad_w_stats[i][0] = gsl_rstat_min(stats_data->r_stat_grad_w[i]);
-    	grad_w_stats[i][1] = gsl_rstat_max(stats_data->r_stat_grad_w[i]);
-    	grad_w_stats[i][2] = gsl_rstat_mean(stats_data->r_stat_grad_w[i]);
-    	grad_w_stats[i][3] = gsl_rstat_sd(stats_data->r_stat_grad_w[i]);
-    	grad_w_stats[i][4] = gsl_rstat_skew(stats_data->r_stat_grad_w[i]);
-    	grad_w_stats[i][5] = gsl_rstat_kurtosis(stats_data->r_stat_grad_w[i]);
+    	grad_u_stats[i][0] = gsl_rstat_min(stats_data->u_grad_stats[i]);
+    	grad_u_stats[i][1] = gsl_rstat_max(stats_data->u_grad_stats[i]);
+    	grad_u_stats[i][2] = gsl_rstat_mean(stats_data->u_grad_stats[i]);
+    	grad_u_stats[i][3] = gsl_rstat_sd(stats_data->u_grad_stats[i]);
+    	grad_u_stats[i][4] = gsl_rstat_skew(stats_data->u_grad_stats[i]);
+    	grad_u_stats[i][5] = gsl_rstat_kurtosis(stats_data->u_grad_stats[i]);
     }
 
     dset_dims_2d[0] = SYS_DIM + 1;
@@ -1880,7 +1894,22 @@ void FinalWriteAndClose(void) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Velocity Gradient Stats");
         exit(1);
     }
-    status = H5LTmake_dataset(file_info->output_file_handle, "VorticityGradientStats", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, grad_w_stats);
+    #endif
+
+	#if defined(__VORT_GRAD_STATS)
+    double grad_w_stats[SYS_DIM + 1][6];
+    for (int i = 0; i < SYS_DIM + 1; ++i) {
+    	// Vorticity gradient stats
+    	grad_w_stats[i][0] = gsl_rstat_min(stats_data->w_grad_stats[i]);
+    	grad_w_stats[i][1] = gsl_rstat_max(stats_data->w_grad_stats[i]);
+    	grad_w_stats[i][2] = gsl_rstat_mean(stats_data->w_grad_stats[i]);
+    	grad_w_stats[i][3] = gsl_rstat_sd(stats_data->w_grad_stats[i]);
+    	grad_w_stats[i][4] = gsl_rstat_skew(stats_data->w_grad_stats[i]);
+    	grad_w_stats[i][5] = gsl_rstat_kurtosis(stats_data->w_grad_stats[i]);
+    }
+	dset_dims_2d[0] = SYS_DIM + 1;
+   	dset_dims_2d[1] = 6;
+   	status = H5LTmake_dataset(file_info->output_file_handle, "VorticityGradientStats", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, grad_w_stats);
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Vorticity Gradient Stats");
         exit(1);
