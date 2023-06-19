@@ -1694,14 +1694,18 @@ void PhaseSyncSector(int s, int pre_compute_flag) {
 					}
 					#endif
 				}
-
 				// // Normalize the combined collective phase order parameters
 				// if (tot_norm_const_1 > 0.0) {
 				// 	proc_data->phase_order_C_theta_triads[i][a] /= tot_norm_const_1;
 				// }
 				// if (tot_norm_const_2 > 0.0) {
 				// 	proc_data->phase_order_C_theta_triads_unidirec[i][a] /= tot_norm_const_2;
-				// }			
+				// }
+							
+				#if defined(__SEC_PHASE_SYNC_COND_STATS)
+				// Update the maximum Sync value
+				proc_data->max_sync[i][a] = fmax(cabs(proc_data->phase_order_C_theta_triads[i][a]), proc_data->max_sync[i][a]);
+				#endif
 			}
 		}
 
@@ -1717,8 +1721,83 @@ void PhaseSyncSector(int s, int pre_compute_flag) {
 		}
 	}
 }
+
 void ComputePhaseSyncConditionalStats(void) {
 
+	// Initialize Variables
+	int indx, tmp;
+	const long int Nx 		  = sys_vars->N[0];
+	const long int Ny 		  = sys_vars->N[1];
+	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
+	herr_t status;
+	hid_t dset;
+	char group_string[64];
+
+	// Initialize temp memory
+	fftw_complex* tmp_collec_phase = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->num_k3_sectors * (NUM_TRIAD_TYPES + 1));
+
+	for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
+		printf("Max[%d]: %1.16lf\n", a, proc_data->max_sync[0][a]);
+	}
+
+	// --------------------------------	
+	//	Loop Through Data
+	// --------------------------------
+	// Loop over snapshots
+	for (int s = 0; s < sys_vars->num_snaps; ++s) { 
+		
+		// --------------------------------	
+		//	Open File
+		// --------------------------------
+		// Open file with default I/O access properties
+		file_info->output_file_handle = H5Fopen(file_info->output_file_name, H5F_ACC_RDWR, H5P_DEFAULT);
+		if (file_info->output_file_handle < 0) {
+			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to open output file ["CYAN"%s"RESET"] at: Snap = ["CYAN"%d"RESET"]\n-->> Exiting...\n", file_info->output_file_name, s);
+			exit(1);
+		}
+
+		// --------------------------------	
+		//	Read in Collective Phase
+		// --------------------------------
+		// Initialize Group Name
+		sprintf(group_string, "/Snap_%05d/CollectivePhaseOrder_C_theta_Triads", s);
+		if (H5Lexists(file_info->output_file_handle, group_string, H5P_DEFAULT) > 0 ) {
+			dset = H5Dopen (file_info->output_file_handle, group_string, H5P_DEFAULT);
+			if (dset < 0 ) {
+				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to open dataset for ["CYAN"%s"RESET"] at Snap = ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", "Collective Phase Order", s);
+				exit(1);		
+			} 
+			// Read in Fourier space vorticity
+			if(H5LTread_dataset(file_info->output_file_handle, group_string, file_info->COMPLEX_DTYPE, tmp_collec_phase) < 0) {
+				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to read in data for ["CYAN"%s"RESET"] at Snap = ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", "Collective Phase Order", s);
+				exit(1);	
+			}
+		}
+		else {
+			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to find ["CYAN"%s"RESET"] in file ["CYAN"%s"RESET"]. Please check input file\n-->> Exiting...\n", "Collective Phase Order", file_info->output_file_name);
+			exit(1);
+		}
+		for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
+			proc_data->phase_order_C_theta_triads[0][a] = tmp_collec_phase[0 * sys_vars->num_k3_sectors + a];
+		}
+		printf("Snap: %d - Cp: %1.16lf %1.21lf\n", s, creal(proc_data->phase_order_C_theta_triads[0][0]), cimag(proc_data->phase_order_C_theta_triads[0][0]));
+
+
+		// --------------------------------	
+		//	Close File
+		// --------------------------------
+		status = H5Dclose(dset);
+		status = H5Fclose(file_info->output_file_handle);
+		if (status < 0) {
+			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close input file ["CYAN"%s"RESET"] at: Snap = ["CYAN"%d"RESET"]\n-->> Exiting...\n", file_info->output_file_name, s);
+			exit(1);		
+		}
+	}
+
+	// --------------------------------	
+	//	Free temp Memory
+	// --------------------------------
+	fftw_free(tmp_collec_phase);
 }
 /**
  * Allocate memory and objects needed for the Phase sync computation
@@ -2048,8 +2127,8 @@ void AllocatePhaseSyncMemory(const long int* N) {
 	// -------------------------------------
 	//  Allocate Phases Sync Stats
 	// -------------------------------------
-	#if defined(__SEC_PHASE_SYNC_STATS_IN_TIME_ALL) || defined(__SEC_PHASE_SYNC_STATS_IN_TIME_1D) || defined(__SEC_PHASE_SYNC_STATS_IN_TIME_2D)
 	///------------------------------------- Allocate memory for the In time Stats -> triad pdfs and weighted flux pdfs
+	#if defined(__SEC_PHASE_SYNC_STATS_IN_TIME_ALL) || defined(__SEC_PHASE_SYNC_STATS_IN_TIME_1D) || defined(__SEC_PHASE_SYNC_STATS_IN_TIME_2D) || defined(__SEC_PHASE_SYNC_COND_STATS)
 	for (int triad_class = 0; triad_class < NUM_TRIAD_CLASS; ++triad_class) {
 		for (int triad_type = 0; triad_type < NUM_TRIAD_TYPES + 1; ++triad_type) {
 			proc_data->triads_sect_all_pdf_t[triad_class][triad_type]       = (gsl_histogram** )fftw_malloc(sizeof(gsl_histogram*) * sys_vars->num_k3_sectors);
@@ -2064,6 +2143,15 @@ void AllocatePhaseSyncMemory(const long int* N) {
 			for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
 				proc_data->triads_sect_2d_pdf_t[triad_class][triad_type][a]       = (gsl_histogram** )fftw_malloc(sizeof(gsl_histogram*) * sys_vars->num_k1_sectors);
 				proc_data->triads_sect_wghtd_2d_pdf_t[triad_class][triad_type][a] = (gsl_histogram** )fftw_malloc(sizeof(gsl_histogram*) * sys_vars->num_k1_sectors);
+			}
+			#endif
+			#if defined(__SEC_PHASE_SYNC_COND_STATS)
+			if (triad_class == 0) {
+				// Allocate memory for the maximum sync over the sectors
+				proc_data->max_sync[triad_type] = (double* )fftw_malloc(sizeof(double) * sys_vars->num_k3_sectors);
+				for (int a = 0; a < sys_vars->num_k3_sectors; ++a) {
+					proc_data->max_sync[triad_type][a] = 0.0;
+				}
 			}
 			#endif
 		}
@@ -3274,9 +3362,14 @@ void FreePhaseSyncObjects(void) {
 	// --------------------------------
 	//  Free GSL objects
 	// --------------------------------
-	#if defined (__SEC_PHASE_SYNC_FLUX_STATS) || defined (__SEC_PHASE_SYNC_STATS_IN_TIME) || defined (__SEC_PHASE_SYNC_STATS_IN_TIME_ALL) || defined (__SEC_PHASE_SYNC_STATS_IN_TIME_2D) || defined (__SEC_PHASE_SYNC_STATS_IN_TIME_1D)
+	#if defined (__SEC_PHASE_SYNC_FLUX_STATS) || defined (__SEC_PHASE_SYNC_STATS_IN_TIME) || defined (__SEC_PHASE_SYNC_STATS_IN_TIME_ALL) || defined (__SEC_PHASE_SYNC_STATS_IN_TIME_2D) || defined (__SEC_PHASE_SYNC_STATS_IN_TIME_1D) || defined(__SEC_PHASE_SYNC_COND_STATS)
 	for (int triad_class = 0; triad_class < NUM_TRIAD_CLASS; ++triad_class) {
 		for (int triad_type = 0; triad_type < NUM_TRIAD_TYPES + 1; ++triad_type) {
+			#if defined(__SEC_PHASE_SYNC_COND_STATS)
+			if (triad_class == 0) {
+				fftw_free(proc_data->max_sync[triad_type]);
+			}
+			#endif
 			#if defined (__SEC_PHASE_SYNC_FLUX_STATS)
 			if (triad_type < 5) {
 				gsl_histogram2d_free(proc_data->triads_wghtd_2d_pdf_t[triad_class][triad_type]);

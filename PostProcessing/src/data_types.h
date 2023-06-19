@@ -75,6 +75,7 @@
 #if defined(__POST_SYNC)
 #define __PHASE_SYNC
 #define __SEC_PHASE_SYNC
+#define __SEC_PHASE_SYNC_COND_STATS
 // #define __SEC_PHASE_SYNC_STATS
 // #define __SEC_PHASE_SYNC_FLUX_STATS
 // #define __SEC_PHASE_SYNC_STATS_IN_TIME
@@ -299,6 +300,7 @@ typedef struct postprocess_data_struct {
     double** triad_Phi_2d[NUM_TRIAD_TYPES + 1];		  				 	     				// Array to hold the average phase per sector for each of the triad phase types including all together
     double max_bin_enst_flux[NUM_TRIAD_CLASS][NUM_TRIAD_TYPES - 1];							// Workplace for the running stats for enstrophy flux
 	double* max_enst_flux[NUM_TRIAD_CLASS][NUM_TRIAD_TYPES - 1];							// Workplace for the running stats for enstrophy flux
+	double* max_sync[NUM_TRIAD_TYPES + 1];													// The maximum sync parameter over the simulation for each sector
 	gsl_histogram2d* triads_wghtd_2d_pdf_t[NUM_TRIAD_CLASS][NUM_TRIAD_TYPES - 1];				// Workplace for the running stats for enstrophy flux
 	// In time stats objects
 	gsl_histogram* triads_all_pdf_t[NUM_TRIAD_CLASS][NUM_TRIAD_TYPES + 1];					// Array Structs to hold the pdfs for all triads both triad class: the normal triads and generalized triads, each triad type, for each contribution type in time

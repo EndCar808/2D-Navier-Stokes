@@ -311,9 +311,10 @@ if __name__ == '__main__':
 		print("Making folder:" + tc.C + " PHASE_SYNC_STATS/" + tc.Rst)
 		os.mkdir(cmdargs.out_dir_stats)
 
-	cmdargs.out_dir = "/home/enda/PhD/2D-Navier-Stokes/Data/ThesisPlots"
+	# cmdargs.out_dir = "/home/enda/PhD/2D-Navier-Stokes/Data/ThesisPlots"
 
-	fig_format = 'pdf'
+	fig_format = 'png'
+	print("Jello")
 
 
 	try_type = 0
@@ -349,10 +350,14 @@ if __name__ == '__main__':
 		print(post_data.phase_order_C_theta_triads.shape)
 		_ , phase_order_Phi, phase_order_enst = get_normed_collective_phase_over_t(post_data.phase_order_C_theta_triads[:, try_type, :])
 		tmp_R = np.absolute(post_data.phase_order_C_theta_triads[:, try_type, :])
+		for a in list(np.amax(tmp_R, axis=0)):
+			print(a)
+		for n in range(sys_vars.ndata):
+			print(n, np.real(post_data.phase_order_C_theta_triads[n, try_type, 0]), np.imag(post_data.phase_order_C_theta_triads[n, try_type, 0]))
 		phase_order_R = tmp_R / np.amax(tmp_R, axis=0)[np.newaxis, :]
 
 		tmp_R = np.absolute(post_data.phase_order_C_theta_triads_1d[:, try_type, :])
-		print(np.amax(tmp_R, axis=0)[np.newaxis, :])
+		# print(np.amax(tmp_R, axis=0)[np.newaxis, :])
 		phase_order_R_1D = tmp_R / np.amax(tmp_R, axis=0)[np.newaxis, :]
 		_ , phase_order_Phi_1D, phase_order_enst_1D = get_normed_collective_phase_over_t(post_data.phase_order_C_theta_triads_1d[:, try_type, :])
 
@@ -396,7 +401,8 @@ if __name__ == '__main__':
 	cbax8 = div8.append_axes("right", size = "5%", pad = 0.05)
 	cb8   = plt.colorbar(im8, cax = cbax8)
 	cb8.set_label(r"$\Re \{ \mathcal{R}_\theta \}$")
-	plt.savefig(cmdargs.out_dir + "/2D_Sync_kappa{}".format(post_data.kmax_frac) + "." + fig_format, format=fig_format, bbox_inches="tight", dpi=1200)
+	# plt.savefig(cmdargs.out_dir + "/2D_Sync_kappa{}".format(post_data.kmax_frac) + "." + fig_format, format=fig_format, bbox_inches="tight", dpi=1200)
+	plt.savefig(cmdargs.out_dir_stats + "/2D_Sync_kappa{}".format(post_data.kmax_frac) + "." + fig_format, format=fig_format, bbox_inches="tight", dpi=1200)
 	plt.close()
 
 
@@ -434,7 +440,8 @@ if __name__ == '__main__':
 	cbax8 = div8.append_axes("right", size = "5%", pad = 0.05)
 	cb8   = plt.colorbar(im8, cax = cbax8)
 	cb8.set_label(r"$\Re \{ \mathcal{R}_\theta \}$")
-	plt.savefig(cmdargs.out_dir + "/2D_Sync_1D_kappa{}".format(post_data.kmax_frac) + "." + fig_format, format=fig_format, bbox_inches="tight", dpi=1200)
+	# plt.savefig(cmdargs.out_dir + "/2D_Sync_1D_kappa{}".format(post_data.kmax_frac) + "." + fig_format, format=fig_format, bbox_inches="tight", dpi=1200)
+	plt.savefig(cmdargs.out_dir_stats + "/2D_Sync_1D_kappa{}".format(post_data.kmax_frac) + "." + fig_format, format=fig_format, bbox_inches="tight", dpi=1200)
 	plt.close()
 
 
@@ -470,7 +477,7 @@ if __name__ == '__main__':
 	cb1.set_label(r"PDF")
 	
 	# plt.savefig(cmdargs.out_dir + "/2D_Hist{}".format(post_data.kmax_frac) + "." + fig_format, format=fig_format, bbox_inches="tight", dpi=1200)
-	plt.savefig(cmdargs.out_dir + "/2D_Hist{}".format(post_data.kmax_frac) + "." + fig_format, format=fig_format, bbox_inches="tight")
+	plt.savefig(cmdargs.out_dir_stats + "/2D_Hist{}".format(post_data.kmax_frac) + "." + fig_format, format=fig_format, bbox_inches="tight")
 	plt.close()
 
 	# ############################
@@ -549,4 +556,4 @@ if __name__ == '__main__':
 	# 		plt.savefig(cmdargs.out_dir_stats + "/Incremnt_PDF_Inc[{}]_Sync[{}].png".format(incrments[i], sync_cutoff), bbox_inches="tight")
 	# 		plt.close()
 
-	# 	
+		

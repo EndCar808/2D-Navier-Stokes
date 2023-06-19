@@ -125,8 +125,9 @@ void PostProcessing(void) {
 	// ---------------------------------
 	//  Phase Sync Conditional Stats
 	// ---------------------------------
+	#if defined(__SEC_PHASE_SYNC_COND_STATS)
 	ComputePhaseSyncConditionalStats();
-
+	#endif
 
 	// ---------------------------------
 	//  Final Write of Data and Close 
