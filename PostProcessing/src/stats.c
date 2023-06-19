@@ -239,7 +239,7 @@ void RealSpaceStats(int s) {
 				y_incr = j + r;
 				if (y_incr < Ny) {
 					// Longitudinal increment in the y direction
-					vel_long_increment  = run_data->u[SYS_DIM * (i * Ny + y_incr) + 1] - run_data->u[SYS_DIM * (i * Ny + y_incr) + 1];
+					vel_long_increment  = run_data->u[SYS_DIM * (i * Ny + y_incr) + 1] - run_data->u[SYS_DIM * (i * Ny + j) + 1];
 					gsl_status = gsl_histogram_increment(stats_data->u_incr_hist[0][r_indx], vel_long_increment);
 					if (gsl_status != 0) {
 						fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Longitudinal Velocity Increment", s, gsl_status, vel_long_increment);
