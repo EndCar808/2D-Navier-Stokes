@@ -355,10 +355,14 @@ if __name__ == '__main__':
 		for n in range(sys_vars.ndata):
 			print(n, np.real(post_data.phase_order_C_theta_triads[n, try_type, 0]), np.imag(post_data.phase_order_C_theta_triads[n, try_type, 0]))
 		phase_order_R = tmp_R / np.amax(tmp_R, axis=0)[np.newaxis, :]
+		phase_order_enst = phase_order_enst / np.amax(tmp_R, axis=0)[np.newaxis, :]
+		for n in phase_order_R[:, 0]:
+			print(n)
 
-		tmp_R = np.absolute(post_data.phase_order_C_theta_triads_1d[:, try_type, :])
-		# print(np.amax(tmp_R, axis=0)[np.newaxis, :])
-		phase_order_R_1D = tmp_R / np.amax(tmp_R, axis=0)[np.newaxis, :]
+		## 1D	
+		tmp_R_1D = np.absolute(post_data.phase_order_C_theta_triads_1d[:, try_type, :])
+		# print(np.amax(tmp_R_1D, axis=0)[np.newaxis, :])
+		phase_order_R_1D = tmp_R_1D / np.amax(tmp_R_1D, axis=0)[np.newaxis, :]
 		_ , phase_order_Phi_1D, phase_order_enst_1D = get_normed_collective_phase_over_t(post_data.phase_order_C_theta_triads_1d[:, try_type, :])
 
 		for i in range(sys_vars.ndata):
@@ -480,80 +484,82 @@ if __name__ == '__main__':
 	plt.savefig(cmdargs.out_dir_stats + "/2D_Hist{}".format(post_data.kmax_frac) + "." + fig_format, format=fig_format, bbox_inches="tight")
 	plt.close()
 
-	# ############################
-	# # Condiitonal PDFs
-	# ############################
-	# Q_theta_t = phase_order_R
+	############################
+	# Condiitonal PDFs
+	############################
+	Q_theta_t = phase_order_R
 
-	# q_max, q_avg, q_l2 = get_q_norms(Q_theta_t)
+	q_max, q_avg, q_l2 = get_q_norms(Q_theta_t)
+	print()
+	print(q_max)
 
-	# fig = plt.figure(figsize = (12, 9))
-	# gs  = GridSpec(1, 1, hspace=0.25)
-	# ax6 = fig.add_subplot(gs[0, 0])
-	# ax6.plot(q_max, label=r"max")
-	# ax6.plot(q_avg, label=r"avg")
-	# ax6.plot(q_l2, label=r"L2")
-	# ax6.legend()
-	# plt.savefig(cmdargs.out_dir_stats + "/Q_norm.png".format(try_type), bbox_inches="tight")
-	# plt.close()
+	fig = plt.figure(figsize = (12, 9))
+	gs  = GridSpec(1, 1, hspace=0.25)
+	ax6 = fig.add_subplot(gs[0, 0])
+	ax6.plot(q_max, label=r"max")
+	ax6.plot(q_avg, label=r"avg")
+	ax6.plot(q_l2, label=r"L2")
+	ax6.legend()
+	plt.savefig(cmdargs.out_dir_stats + "/Q_norm.png".format(try_type), bbox_inches="tight")
+	plt.close()
 
-	# sync_cutoff = 0.55
-	# for sync_cutoff in [0.25, 0.5, 0.75, 0.9]:
-	# 	print(sync_cutoff)
-	# 	incrments = [1, 10, 128//2]
-	# 	w_un_sync = run_data.w[q_max <= sync_cutoff, :, :]
-	# 	w_sync    = run_data.w[q_max > sync_cutoff, :, :]
-	# 	print(w_un_sync.shape[0], w_sync.shape[0])
+	sync_cutoff = 0.55
+	for sync_cutoff in [0.25, 0.5, 0.75, 0.9]:
+		print(sync_cutoff)
+		incrments = [1, 10, 128//2]
+		w_un_sync = run_data.w[q_max <= sync_cutoff, :, :]
+		w_sync    = run_data.w[q_max > sync_cutoff, :, :]
+		print(w_un_sync.shape[0], w_sync.shape[0])
 
-	# 	mind, maxd = get_min_max_incr(w_un_sync)
-	# 	print(mind, maxd)
-	# 	unsync_hist, unsync_ranges = get_incr_hist(w_un_sync, mind, maxd, 500)
+		mind, maxd = get_min_max_incr(w_un_sync)
+		print(mind, maxd)
+		unsync_hist, unsync_ranges = get_incr_hist(w_un_sync, mind, maxd, 500)
 
-	# 	mind, maxd = get_min_max_incr(w_sync)
-	# 	print(mind, maxd)
-	# 	sync_hist, sync_ranges = get_incr_hist(w_sync, mind, maxd, 500)
+		mind, maxd = get_min_max_incr(w_sync)
+		print(mind, maxd)
+		sync_hist, sync_ranges = get_incr_hist(w_sync, mind, maxd, 500)
 		
-	# 	mind, maxd = get_min_max_incr(run_data.w)
-	# 	print(mind, maxd)
-	# 	w_hist, w_ranges = get_incr_hist(run_data.w, mind, maxd, 500)
-		
-
-	# 	fig = plt.figure(figsize = (12, 9))
-	# 	gs  = GridSpec(1, 2, hspace=0.25)
-	# 	ax1 = fig.add_subplot(gs[0, 0])
-	# 	for i in range(len(incrments)):
-	# 		bin_cent, pdf = compute_pdf(unsync_ranges, unsync_hist[:, i], normalized = True)
-	# 		ax1.plot(bin_cent, pdf, label=r"{}".format(incrments[i]))
-	# 	ax1.set_yscale('log')
-	# 	ax1.legend()
-		
-		
-	# 	ax1 = fig.add_subplot(gs[0, 1])
-	# 	for i in range(len(incrments)):
-	# 		bin_cent, pdf = compute_pdf(sync_ranges, sync_hist[:, i], normalized = True)
-	# 		ax1.plot(bin_cent, pdf, label=r"{}".format(incrments[i]))
-	# 	ax1.set_yscale('log')
-	# 	ax1.legend()
-	# 	plt.savefig(cmdargs.out_dir_stats + "/PDF.png".format(try_type), bbox_inches="tight")
-	# 	plt.close()
+		mind, maxd = get_min_max_incr(run_data.w)
+		print(mind, maxd)
+		w_hist, w_ranges = get_incr_hist(run_data.w, mind, maxd, 500)
 		
 
-	# 	for i in range(len(incrments)):
-	# 		fig = plt.figure(figsize = (12, 9))
-	# 		gs  = GridSpec(1, 1, hspace=0.25)
-	# 		ax1 = fig.add_subplot(gs[0, 0])
-	# 		bin_cent, pdf = compute_pdf(unsync_ranges, unsync_hist[:, i], normalized = True)
-	# 		ax1.plot(bin_cent, pdf, label=r"$Q \leq {}$".format(np.around(sync_cutoff, 2)))
-	# 		bin_cent, pdf = compute_pdf(sync_ranges, sync_hist[:, i], normalized = True)
-	# 		ax1.plot(bin_cent, pdf, label=r"$Q > {}$".format(np.around(sync_cutoff, 2)))
-	# 		bin_cent, pdf = compute_pdf(w_ranges, w_hist[:, i], normalized = True)
-	# 		ax1.plot(bin_cent, pdf, label=r"$Q \in [0, 1]$")
-	# 		ax1.set_yscale('log')
-	# 		ax1.legend()
-	# 		ax1.set_ylabel(r"PDF")
-	# 		ax1.set_xlabel(r"$\delta \omega (r) / \langle \delta \omega (r)^2\rangle^{1/2}$")
-	# 		ax1.grid()
-	# 		plt.savefig(cmdargs.out_dir_stats + "/Incremnt_PDF_Inc[{}]_Sync[{}].png".format(incrments[i], sync_cutoff), bbox_inches="tight")
-	# 		plt.close()
+		fig = plt.figure(figsize = (12, 9))
+		gs  = GridSpec(1, 2, hspace=0.25)
+		ax1 = fig.add_subplot(gs[0, 0])
+		for i in range(len(incrments)):
+			bin_cent, pdf = compute_pdf(unsync_ranges, unsync_hist[:, i], normalized = True)
+			ax1.plot(bin_cent, pdf, label=r"{}".format(incrments[i]))
+		ax1.set_yscale('log')
+		ax1.legend()
+		
+		
+		ax1 = fig.add_subplot(gs[0, 1])
+		for i in range(len(incrments)):
+			bin_cent, pdf = compute_pdf(sync_ranges, sync_hist[:, i], normalized = True)
+			ax1.plot(bin_cent, pdf, label=r"{}".format(incrments[i]))
+		ax1.set_yscale('log')
+		ax1.legend()
+		plt.savefig(cmdargs.out_dir_stats + "/PDF.png".format(try_type), bbox_inches="tight")
+		plt.close()
+		
+
+		for i in range(len(incrments)):
+			fig = plt.figure(figsize = (12, 9))
+			gs  = GridSpec(1, 1, hspace=0.25)
+			ax1 = fig.add_subplot(gs[0, 0])
+			bin_cent, pdf = compute_pdf(unsync_ranges, unsync_hist[:, i], normalized = True)
+			ax1.plot(bin_cent, pdf, label=r"$Q \leq {}$".format(np.around(sync_cutoff, 2)))
+			bin_cent, pdf = compute_pdf(sync_ranges, sync_hist[:, i], normalized = True)
+			ax1.plot(bin_cent, pdf, label=r"$Q > {}$".format(np.around(sync_cutoff, 2)))
+			bin_cent, pdf = compute_pdf(w_ranges, w_hist[:, i], normalized = True)
+			ax1.plot(bin_cent, pdf, label=r"$Q \in [0, 1]$")
+			ax1.set_yscale('log')
+			ax1.legend()
+			ax1.set_ylabel(r"PDF")
+			ax1.set_xlabel(r"$\delta \omega (r) / \langle \delta \omega (r)^2\rangle^{1/2}$")
+			ax1.grid()
+			plt.savefig(cmdargs.out_dir_stats + "/Incremnt_PDF_Inc[{}]_Sync[{}].png".format(incrments[i], sync_cutoff), bbox_inches="tight")
+			plt.close()
 
 		

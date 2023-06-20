@@ -126,6 +126,7 @@
 #define CONTRIB_TYPE 7         		// Indicator for which type of contribution to the flux, either 1d or 2d
 #define SYNC_TEST_DATA_FLAG 0       // Indicator for the precompute test data for phase sync
 #define SYNC_DATA_FLAG 1 			// Indicator for the precompute data for phase sync
+#define NUM_COND_TYPES 3 			// The number of conidtional time stats types
 // The following are not needed anymore
 // #define	K1_SQR	  6 				// The index for the |k1|^2
 // #define	K2_SQR	  7 				// The index for the |k2|^2
@@ -146,7 +147,9 @@
 #define N_BINS_SEC_ALL_T 50     	// The number of bins in the sector pdfs in time for 1D and 2D contributions
 #define N_BINS_TRIADS_ALL_T 50  	// The number of bins to use in the all triads pdf in time
 #define N_BINS_X_JOINT_ALL_T 100	// The number of bins for the joint PDF in time in the x direction  
-#define N_BINS_Y_JOINT_ALL_T 100	// The number of bins for the joint PDF in time in the y direction  
+#define N_BINS_Y_JOINT_ALL_T 100	// The number of bins for the joint PDF in time in the y direction
+#define N_BINS_X_JOINT 250			// The number of bins for the joint PDF  
+#define N_BINS_Y_JOINT 250			// The number of bins for the joint PDF  
 // ---------------------------------------------------------------------
 //  Global Struct Definitions
 // ---------------------------------------------------------------------
@@ -301,7 +304,8 @@ typedef struct postprocess_data_struct {
     double max_bin_enst_flux[NUM_TRIAD_CLASS][NUM_TRIAD_TYPES - 1];							// Workplace for the running stats for enstrophy flux
 	double* max_enst_flux[NUM_TRIAD_CLASS][NUM_TRIAD_TYPES - 1];							// Workplace for the running stats for enstrophy flux
 	double* max_sync[NUM_TRIAD_TYPES + 1];													// The maximum sync parameter over the simulation for each sector
-	gsl_histogram2d* triads_wghtd_2d_pdf_t[NUM_TRIAD_CLASS][NUM_TRIAD_TYPES - 1];				// Workplace for the running stats for enstrophy flux
+	gsl_histogram2d* triads_wghtd_2d_pdf_t[NUM_TRIAD_CLASS][NUM_TRIAD_TYPES - 1];			// Workplace for the running stats for enstrophy flux
+	gsl_histogram2d* joint_sync_enst_flux_hist[NUM_TRIAD_TYPES + 1];						// 2D Histogram objects for the joint distribution of sync and enstrophy flux
 	// In time stats objects
 	gsl_histogram* triads_all_pdf_t[NUM_TRIAD_CLASS][NUM_TRIAD_TYPES + 1];					// Array Structs to hold the pdfs for all triads both triad class: the normal triads and generalized triads, each triad type, for each contribution type in time
 	gsl_histogram* triads_wghtd_all_pdf_t[NUM_TRIAD_CLASS][NUM_TRIAD_TYPES + 1];			// Array Structs to hold the pdfs for all triads both triad class: the normal triads and generalized triads, each triad type, for each contribution type in time
@@ -318,6 +322,9 @@ typedef struct postprocess_data_struct {
 	gsl_rstat_workspace*** triad_R_2d_stats;												// Workplace for the running stats for the 2d phase sync
 	gsl_rstat_workspace*** triad_Phi_2d_stats;												// Workplace for the running stats for 2d average phase
 	gsl_rstat_workspace*** enst_flux_2d_stats;												// Workplace for the running stats for the 2d enstrophy flux contribution
+	// Conditional Time Stats
+	gsl_histogram* cond_t_w_incr_hist[3][INCR_TYPES][NUM_INCR];								// Array to hold the PDFs of the longitudinal and transverse vorticity increments for each increment conditional in time
+	gsl_rstat_workspace* cond_t_w_incr_stats[3][INCR_TYPES][NUM_INCR];						// Workplace for the running stats for the vorticity increments conditional in time
 } postprocess_data_struct;
 
 // Post processing stats data struct
