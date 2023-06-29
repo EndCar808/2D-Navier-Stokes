@@ -72,6 +72,169 @@ def plot_vort(outdir, w, x, y, time, snaps, file_type=".png", fig_size=(16, 8)):
        plt.savefig(outdir + "Vorticity" + file_type, bbox_inches='tight')
        plt.close()
 
+def plot_time_averaged_spectra_both(outdir, spect, flux_spect, kmax, spect_type, file_type=".png", fig_size=(21, 8)):
+
+       ##------------------------ Time Averaged Enstorphy Spectra and Flux Spectra
+       fig = plt.figure(figsize = fig_size)
+       gs  = GridSpec(1, 2)
+       ax2 = fig.add_subplot(gs[0, 0])
+       for i in range(spect.shape[0]):
+              ax2.plot(np.arange(1, kmax), spect[i, 1:kmax], 'r', alpha = 0.15)
+       ax2.plot(np.arange(1, kmax), np.mean(spect[:, 1:kmax], axis = 0), 'k')
+       ax2.set_xlabel(r"$k$")
+       ax2.set_xscale('log')
+       ax2.set_yscale('log')
+       ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+       if spect_type == "Enstrophy":
+              ax2.set_title(r"$\mathcal{E}(|\mathbf{k}|)$: Enstrophy Spectrum")
+       else:
+              ax2.set_title(r"$\mathcal{K}(|\mathbf{k}|)$: Energy Spectrum")
+
+       ax2 = fig.add_subplot(gs[0, 1])
+       for i in range(flux_spect.shape[0]):
+              ax2.plot(np.arange(1, kmax), flux_spect[i, 1:kmax], 'r', alpha = 0.15)
+       ax2.plot(np.arange(1, kmax), np.mean(flux_spect[:, 1:kmax], axis = 0), 'k')
+       ax2.set_xlabel(r"$k$")
+       ax2.set_xscale('log')
+       ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+       if spect_type == "Enstrophy":
+              ax2.set_title(r"$\Pi_{\mathcal{E}}(|\mathbf{k}|)$: Enstrophy Flux Spectrum")
+       else:
+              ax2.set_title(r"$\Pi_{\mathcal{K}}(|\mathbf{k}|)$: Energy Flux Spectrum")
+
+       if spect_type == "Enstrophy":
+              plt.savefig(outdir + "TimeAveraged_EnstrophySpectra" + file_type, bbox_inches='tight')
+       else:
+              plt.savefig(outdir + "TimeAveraged_EnergySpectra" + file_type, bbox_inches='tight')
+
+       plt.close()
+
+
+def plot_spectrum(outdir, spect, kmax, title, filename, yscale="lin", file_type=".png", fig_size=(21, 8)):
+
+    fig = plt.figure(figsize = fig_size)
+    gs  = GridSpec(1, 2)
+    ax2 = fig.add_subplot(gs[0, 0])
+    ax2.plot(np.arange(1, kmax), spect[1:kmax], 'k')
+    ax2.set_xlabel(r"$k$")
+    ax2.set_xscale('log')
+    if yscale == "log":
+        ax2.set_yscale('log')
+    ax2.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+    ax2.set_title(title)
+
+    plt.savefig(outdir + filename + file_type, bbox_inches='tight')
+    plt.close()
+
+
+def plot_str_funcs(fig_obj, ax_obj, data, powers, xlab, ylab, title, scale='log', save_fig=False, outdir=None):
+
+    num_pow, num_incr = data.shape
+
+    for i in range(num_pow):
+        ax_obj.plot(np.arange(1, num_incr + 1), data[i, :], label=r"$p = {}$".format(powers[i]))
+    ax_obj.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+    ax_obj.set_xlabel(xlab)
+    ax_obj.set_ylabel(ylab)
+    ax_obj.set_title(title)
+    ax_obj.legend()
+    if scale == 'log':
+        ax_obj.set_yscale('log')
+        ax_obj.set_xscale('log')
+
+    if save_fig:
+        fig_obj.savefig(outdir, bbox_inches='tight')
+        fig_obj.close()
+
+
+def plot_str_func_fit(fig_obj, ax_obj, r, str_funcs, powers, inert_range, insert_fig=True, scale='log10', save_fig=False, outdir=None):
+
+    inert_lim_low  = inert_range[0]
+    inert_lim_high = inert_range[-1]
+    print("Inertial Range: {} = {}".format(inert_lim_low + 1, inert_lim_high + 1))
+
+    mark_style = ['o','s','^','x','D','p']
+
+    zeta_p       = []
+    zeta_p_resid = []
+
+    if insert_fig:
+        x0     = 0.15 
+        y0     = 0.15
+        width  = 0.3
+        height = 0.2
+        ax_objin = fig.add_axes([x0, y0, width, height])
+
+    ## Get the scaling of the axes
+    if scale == 'log2':
+        log_func = np.log2
+        xlabel_Str = r"$\log_2(r)$"
+        ylabel_Str = r"$\log_2\left(S_p(r)\right)$"
+    elif scale == 'log10':
+        log_func = np.log10
+        xlabel_Str = r"$\log_{10}(r)$"
+        ylabel_Str = r"$\log_{10}\left(S_p(r)\right)$"
+    else:
+        log_func = np.log
+        xlabel_Str = r"$\ln(r)$"
+        ylabel_Str = r"$\ln\left(S_p(r)\right)$"
+
+    ## Loop over structure functions and plot
+    print("Power\tp/3\t\tDNS Slope")
+    for i in range(str_funcs.shape[0]):
+
+        ## Plot strucure function
+        p, = ax_obj.plot(log_func(r), log_func(str_funcs[i, :]), label = "$p = {}$".format(powers[i])) #marker = mark_style[i], markerfacecolor = 'None', markersize = 5.0, markevery = 1
+
+        ## Find polynomial fit and plot
+        poly_output = np.polyfit(log_func(r[inert_lim_low:inert_lim_high]), log_func(str_funcs[i, inert_lim_low:inert_lim_high]), 1, full = True)
+        pfit_info   = poly_output[0]
+        poly_resid  = poly_output[1][0]
+        pfit_slope  = pfit_info[0]
+        pfit_c      = pfit_info[1]
+        zeta_p.append(np.absolute(pfit_slope))
+        zeta_p_resid.append(poly_resid)
+        print(" {}\t {:1.4f} \t {:1.4f} +/-{:0.3f}".format(i + 1, (i + 1), pfit_slope, poly_resid))
+
+        ## Plot slopes computed from llinear fit    
+        ax_obj.plot(log_func(r[inert_lim_low:inert_lim_high]), log_func(r[inert_lim_low:inert_lim_high])*pfit_slope + pfit_c, '--', color = p.get_color())
+
+        if insert_fig:
+            # ## Compute the local derivative and plot in insert
+            # d_str_func  = np.diff(log_func(str_funcs[:, i]), n = 2)
+            # d_k         = np.diff(log_func(r), n = 2)
+            # print(d_str_func)
+            # print(d_k)
+            # local_deriv = d_str_func / d_k
+            # print(local_deriv)
+            # local_deriv = np.concatenate((local_deriv, [(log_func(str_funcs[i, -1]) - 2.0 * log_func(str_funcs[i, -2]) + log_func(str_funcs[-3, i])) / (log_func(k[-1]) - log_func(k[-2]))**2, (log_func(str_funcs[-1, i]) - 2.0 * log_func(str_funcs[-2, i]) + log_func(str_funcs[-3, i])) / (log_func(k[-1]) - log_func(k[-2]))**2]))
+            # print()
+            local_deriv = np.gradient(log_func(str_funcs[:, i]))
+            ## Plot local slopes
+            ax_objin.plot(log_func(k), local_deriv, color = p.get_color(), marker = mark_style[i], markerfacecolor = 'None', markersize = 5.0, markevery = 2)
+            ax_objin.set_ylabel(r"$\zeta_p$", labelpad = -40)
+            ax_objin.set_xlabel(xlabel_Str, labelpad = -30)
+
+    ## Set axis labels 
+    ax_obj.set_xlabel(xlabel_Str)
+    ax_obj.set_ylabel(ylabel_Str)
+
+    ## Set grids
+    ax_obj.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+    if insert_fig:
+        ax_objin.grid(which = "both", axis = "both", color = 'k', linestyle = ":", linewidth = 0.5)
+
+    ## Turn on axes
+    ax_obj.legend(loc = 'upper right')
+
+    if save_fig:
+        ## Save figure
+        fig.savefig(outdir, bbox_inches='tight')
+        fig.close()
+
+    return zeta_p, zeta_p_resid
+
+
 
 def plot_summary_snaps(out_dir, i, w, x, y, w_min, w_max, kx, ky, kx_max, tot_en, tot_ens, tot_pal, enrg_spec, enst_spec, enrg_diss, enst_diss, enrg_flux_sb, enrg_diss_sb, enst_flux_sb, enst_diss_sb, time, Nx, Ny):
 

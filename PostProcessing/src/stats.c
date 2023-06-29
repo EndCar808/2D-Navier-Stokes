@@ -18,6 +18,7 @@
 //  User Libraries and Headers
 // ---------------------------------------------------------------------
 #include "data_types.h"
+#include "utils.h"
 
 
 // ---------------------------------------------------------------------
@@ -46,8 +47,8 @@ void RealSpaceStats(int s) {
 	int N_max_incr = (int) (GSL_MIN(Nx, Ny) / 2);
 	double norm_fac = 1.0 / (Nx * Ny);
 	double radial_pow_p[8] = {0.1, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5};
-	double pow_p[8] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0};
-	// double pow_p[8] = {0.1, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5};
+	// double pow_p[8] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0};
+	double pow_p[8] = {0.1, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5};
 	double delta_x = 2.0 * M_PI / Nx;
 	double delta_y = 2.0 * M_PI / Ny;
 	int tmp_r, indx_r;
@@ -318,31 +319,149 @@ void RealSpaceStats(int s) {
 	// --------------------------------
 	// Compute Structure Functions
 	// --------------------------------
-	#if defined(__STR_FUNC_STATS)
-	for (int p = 2; p < STR_FUNC_MAX_POW; ++p) {
-		for (int r_inc = 1; r_inc <= N_max_incr; ++r_inc) {
-			// Initialize increments
-			long_increment      = 0.0;
-			trans_increment     = 0.0;
-			long_increment_abs  = 0.0;
-			trans_increment_abs = 0.0;
-			for (int i = 0; i < Nx; ++i) {
-				tmp = i * Ny;
-				for (int j = 0; j < Ny; ++j) {
-					indx = tmp + j;
-				
-					// Get increments
-					long_increment      += pow(run_data->u[SYS_DIM * (((i + r_inc) % Nx) * Ny + j) + 0] - run_data->u[SYS_DIM * (i * Ny + j) + 0], p);
-					trans_increment     += pow(run_data->u[SYS_DIM * (((i + r_inc) % Nx) * Ny + j) + 1] - run_data->u[SYS_DIM * (i * Ny + j) + 1], p);
-					long_increment_abs  += pow(fabs(run_data->u[SYS_DIM * (((i + r_inc) % Nx) * Ny + j) + 0] - run_data->u[SYS_DIM * (i * Ny + j) + 0]), p);
-					trans_increment_abs += pow(fabs(run_data->u[SYS_DIM * (((i + r_inc) % Nx) * Ny + j) + 1] - run_data->u[SYS_DIM * (i * Ny + j) + 1]), p);
+	#if defined(__VEL_STR_FUNC_STATS) 
+	#pragma omp parallel num_threads(sys_vars->num_threads) shared(run_data, stats_data) private(tmp, indx, tmp_r, indx_r)
+	{
+		#pragma omp single 
+		{	
+			#pragma omp taskloop reduction (+:vel_long_increment, vel_long_increment_abs, vel_trans_increment, vel_trans_increment_abs, vort_long_increment, vort_long_increment_abs, vort_trans_increment, vort_trans_increment_abs, mixed_vel_increment, mixed_vort_increment) grainsize(N_max_incr / sys_vars->num_threads)
+			for (int p = 1; p <= STR_FUNC_MAX_POW; ++p) {
+				for (int r_inc = 1; r_inc <= N_max_incr; ++r_inc) {
+					// Initialize increments
+					#if defined(__VEL_STR_FUNC_STATS)
+					vel_long_increment      = 0.0;
+					vel_trans_increment     = 0.0;
+					vel_long_increment_abs  = 0.0;
+					vel_trans_increment_abs = 0.0;
+					int vel_x_incr_count    = 0;
+					int vel_y_incr_count    = 0;
+					#endif
+					// Initialize vorticit increments
+					#if defined(__VORT_STR_FUNC_STATS)
+					vort_long_increment      = 0.0;
+					vort_trans_increment     = 0.0;
+					vort_long_increment_abs  = 0.0;
+					vort_trans_increment_abs = 0.0;
+					int vort_x_incr_count = 0;
+					int vort_y_incr_count = 0;
+					#endif
+					if (p == 3) {
+						#if defined(__MIXED_VEL_STR_FUNC_STATS)
+						mixed_vel_increment = 0.0;
+						#endif
+						#if defined(__MIXED_VORT_STR_FUNC_STATS)
+						mixed_vort_increment = 0.0;
+						#endif	
+					}
+					int mixed_vort_count = 0;
+					int mixed_vel_count = 0;
+
+					// Loop over space and average
+					for (int i = 0; i < Nx; ++i) {
+						tmp = i * Ny;
+						for (int j = 0; j < Ny; ++j) {
+							indx = tmp + j;
+						
+							// Get increments
+							#if defined(__VEL_STR_FUNC_STATS)
+							if (i + r_inc < Nx) {
+								vel_long_increment      += 0.5 * pow(sgn(run_data->u[SYS_DIM * ((i + r_inc) * Ny + j) + 0] - run_data->u[SYS_DIM * (i * Ny + j) + 0]), 2.0 * pow_p[p - 1]) * pow(fabs(run_data->u[SYS_DIM * ((i + r_inc) * Ny + j) + 0] - run_data->u[SYS_DIM * (i * Ny + j) + 0]), 2.0 * pow_p[p - 1]);
+								vel_trans_increment     += 0.5 * pow(sgn(run_data->u[SYS_DIM * ((i + r_inc) * Ny + j) + 1] - run_data->u[SYS_DIM * (i * Ny + j) + 1]), 2.0 * pow_p[p - 1]) * pow(fabs(run_data->u[SYS_DIM * ((i + r_inc) * Ny + j) + 1] - run_data->u[SYS_DIM * (i * Ny + j) + 1]), 2.0 * pow_p[p - 1]);
+								vel_long_increment_abs  += 0.5 * pow(fabs(run_data->u[SYS_DIM * ((i + r_inc) * Ny + j) + 0] - run_data->u[SYS_DIM * (i * Ny + j) + 0]), 2.0 * pow_p[p - 1]);
+								vel_trans_increment_abs += 0.5 * pow(fabs(run_data->u[SYS_DIM * ((i + r_inc) * Ny + j) + 1] - run_data->u[SYS_DIM * (i * Ny + j) + 1]), 2.0 * pow_p[p - 1]);
+								vel_x_incr_count++;
+							}
+							if (j + r_inc < Ny) {
+								vel_long_increment      += 0.5 * pow(sgn(run_data->u[SYS_DIM * (i * Ny + (j + r_inc)) + 1] - run_data->u[SYS_DIM * (i * Ny + j) + 1]), 2.0 * pow_p[p - 1]) * pow(fabs(run_data->u[SYS_DIM * (i * Ny + (j + r_inc)) + 1] - run_data->u[SYS_DIM * (i * Ny + j) + 1]), 2.0 * pow_p[p - 1]);
+								vel_trans_increment     += 0.5 * pow(sgn(run_data->u[SYS_DIM * (i * Ny + (j + r_inc)) + 0] - run_data->u[SYS_DIM * (i * Ny + j) + 0]), 2.0 * pow_p[p - 1]) * pow(fabs(run_data->u[SYS_DIM * (i * Ny + (j + r_inc)) + 0] - run_data->u[SYS_DIM * (i * Ny + j) + 0]), 2.0 * pow_p[p - 1]);
+								vel_long_increment_abs  += 0.5 * pow(fabs(run_data->u[SYS_DIM * (i * Ny + (j + r_inc)) + 1] - run_data->u[SYS_DIM * (i * Ny + j) + 1]), 2.0 * pow_p[p - 1]);
+								vel_trans_increment_abs += 0.5 * pow(fabs(run_data->u[SYS_DIM * (i * Ny + (j + r_inc)) + 0] - run_data->u[SYS_DIM * (i * Ny + j) + 0]), 2.0 * pow_p[p - 1]);
+								vel_y_incr_count++;
+							}
+							#endif
+							// Get vorticity increments
+							#if defined(__VORT_STR_FUNC_STATS)
+							if (i + r_inc < Nx) {
+								vort_long_increment     += pow(sgn(run_data->w[(i + r_inc) * Ny + j] - run_data->w[i * Ny + j]), 2.0 * pow_p[p - 1]) * pow(fabs(run_data->w[(i + r_inc) * Ny + j] - run_data->w[i * Ny + j]), 2.0 * pow_p[p - 1]);
+								vort_long_increment_abs += pow(fabs(run_data->w[(i + r_inc) * Ny + j] - run_data->w[i * Ny + j]), 2.0 * pow_p[p - 1]);
+								vort_x_incr_count++;
+							}
+							if (j + r_inc < Ny) {
+								vort_trans_increment     += pow(sgn(run_data->w[i * Ny + (j + r_inc)] - run_data->w[i * Ny + j]), 2.0 * pow_p[p - 1]) * pow(fabs(run_data->w[i * Ny + (j + r_inc)] - run_data->w[i * Ny + j]), 2.0 * pow_p[p - 1]);
+								vort_trans_increment_abs += pow(fabs(run_data->w[i * Ny + (j + r_inc)] - run_data->w[i * Ny + j]), 2.0 * pow_p[p - 1]);
+								vort_y_incr_count++;
+							}
+							#endif
+							if (p == 3) {
+								#if defined(__MIXED_VEL_STR_FUNC_STAS)
+								if (i + r_inc < Nx && j + r_inc < Ny) {
+									mixed_vel_increment += fabs(run_data->u[SYS_DIM * ((i + r_inc) * Ny + j) + 0] - run_data->u[SYS_DIM * (i * Ny + j) + 0]) * pow(run_data->u[SYS_DIM * ((i + r_inc) * Ny + j) + 1] - run_data->u[SYS_DIM * (i * Ny + j) + 1], 2.0);
+									mixed_vel_increment++;
+								}
+								#endif
+								#if defined(__MIXED_VORT_STR_FUNC_STATS)
+								if (i + r_inc < Nx) {
+									mixed_vort_increment += fabs(run_data->u[SYS_DIM * ((i + r_inc) * Ny + j) + 0] - run_data->u[SYS_DIM * (i * Ny + j) + 0]) * pow(fabs(run_data->w[(i + r_inc) * Ny + j] - run_data->w[i * Ny + j]), 2.0);
+									mixed_vort_count++; 
+								}
+								#endif	
+							}
+						}
+					}
+					#if defined(__VEL_STR_FUNC_STATS)
+					stats_data->u_str_func[0][p - 1][r_inc - 1]     += vel_long_increment / (vel_x_incr_count + vel_y_incr_count); //* norm_fac;	
+					stats_data->u_str_func[1][p - 1][r_inc - 1]     += vel_trans_increment / (vel_x_incr_count + vel_y_incr_count); //* norm_fac;
+					stats_data->u_str_func_abs[0][p - 1][r_inc - 1] += vel_long_increment_abs / (vel_x_incr_count + vel_y_incr_count); //* norm_fac;	
+					stats_data->u_str_func_abs[1][p - 1][r_inc - 1] += vel_trans_increment_abs / (vel_x_incr_count + vel_y_incr_count); //* norm_fac;
+					#endif
+					// Compute vorticity str function - normalize here
+					#if defined(__VORT_STR_FUNC_STATS)
+					stats_data->w_str_func[0][p - 1][r_inc - 1]     += vort_long_increment / vort_x_incr_count; //* norm_fac;	
+					stats_data->w_str_func[1][p - 1][r_inc - 1]     += vort_trans_increment / vort_y_incr_count; //* norm_fac;
+					stats_data->w_str_func_abs[0][p - 1][r_inc - 1] += vort_long_increment_abs / vort_x_incr_count; //* norm_fac;	
+					stats_data->w_str_func_abs[1][p - 1][r_inc - 1] += vort_trans_increment_abs / vort_y_incr_count; //* norm_fac;
+					#endif
+					if (p == 3) {
+						#if defined(__MIXED_VEL_STR_FUNC_STAS)
+						stats_data->mxd_u_str_func[r_inc - 1] += mixed_vel_increment / mixed_vel_countt; // * norm_fac
+						#endif
+						#if defined(__MIXED_VORT_STR_FUNC_STATS)
+						stats_data->mxd_w_str_func[r_inc - 1] += mixed_vort_increment / mixed_vort_count; // * norm_fac;
+						#endif
+					}
 				}
+
+
+				#if defined(__VORT_RADIAL_STR_FUNC_STATS)
+				// Compute the radial structure functions
+				#pragma omp taskloop reduction (+:vort_rad_increment, vort_rad_increment_abs) collapse(2) grainsize(N_max_incr * N_max_incr / sys_vars->num_threads)
+				for (int r_y = 1; r_y <= N_max_incr; ++r_y) {
+					for (int r_x = 1; r_x <= N_max_incr; ++r_x) {
+						tmp_r = (r_y - 1) * N_max_incr;
+						indx_r = tmp_r + (r_x - 1);
+
+						vort_rad_increment     = 0.0;
+						vort_rad_increment_abs = 0.0;
+						int vort_rad_count = 0;
+
+						// Loop over space and average 
+						for (int i = 0; i < Nx; ++i) {
+							for (int j = 0; j < Ny; ++j) {
+								if (i + r_x < Nx && j + r_y < Ny) {
+									vort_rad_increment     += pow(sgn(run_data->w[(i + r_x) * Ny + (j + r_y)] - run_data->w[i * Nx + j]), 2.0 * radial_pow_p[p - 1]) * pow(fabs(run_data->w[(i + r_x) * Ny + (j + r_y)] - run_data->w[i * Nx + j]), 2.0 * radial_pow_p[p - 1]);
+									vort_rad_increment_abs += pow(fabs(run_data->w[(i + r_x) * Ny + (j + r_y)] - run_data->w[i * Nx + j]), 2.0 * radial_pow_p[p - 1]);
+									vort_rad_count++;
+								}
+							}
+						}
+
+						// Update radial vorticity the structure funcitons
+						stats_data->w_radial_str_func[p - 1][indx_r]     += vort_rad_increment / vort_rad_count; //* norm_fac;	
+						stats_data->w_radial_str_func_abs[p - 1][indx_r] += vort_rad_increment_abs / vort_rad_count; //* norm_fac;	
+					}
+				}
+				#endif
 			}
-			// Compute str function - normalize here
-			stats_data->str_func[0][p - 2][r_inc - 1]     += long_increment * norm_fac;	
-			stats_data->str_func[1][p - 2][r_inc - 1]     += trans_increment * norm_fac;
-			stats_data->str_func_abs[0][p - 2][r_inc - 1] += long_increment_abs * norm_fac;	
-			stats_data->str_func_abs[1][p - 2][r_inc - 1] += trans_increment_abs * norm_fac;
 		}
 	}
 	#endif	
@@ -441,12 +560,12 @@ void AllocateStatsMemory(const long int* N) {
 	for (int i = 0; i < INCR_TYPES; ++i) {
 		for (int j = 0; j < NUM_INCR; ++j) {
 			#if defined(__VEL_INC_STATS)
-			stats_data->u_incr_hist[i][j]        = gsl_histogram_alloc(N_BINS);
+			stats_data->u_incr_hist[i][j]  = gsl_histogram_alloc(N_BINS);
 			stats_data->u_incr_stats[i][j] = gsl_rstat_alloc();
 			#endif
 			
 			#if defined(__VORT_INC_STATS)
-			stats_data->w_incr_hist[i][j]           = gsl_histogram_alloc(N_BINS);
+			stats_data->w_incr_hist[i][j]  = gsl_histogram_alloc(N_BINS);
 			stats_data->w_incr_stats[i][j] = gsl_rstat_alloc();
 			#endif
 		}
@@ -456,28 +575,91 @@ void AllocateStatsMemory(const long int* N) {
 	// --------------------------------	
 	//  Initialize Str Func Stats
 	// --------------------------------
-	#if defined(__STR_FUNC_STATS)
+	#if defined(__VEL_STR_FUNC_STATS) || defined(__VORT_STR_FUNC_STATS)	|| defined(__VORT_RAD_STR_FUNC_STATS)
 	// Allocate memory for each structure function for each of the increment directions
-	int N_max_incr = (int) GSL_MIN(Nx, Ny) / 2;
-	for (int i = 0; i < INCR_TYPES; ++i) {
-		for (int j = 2; j < STR_FUNC_MAX_POW; ++j) {
-			stats_data->str_func[i][j - 2] = (double* )fftw_malloc(sizeof(double) * (N_max_incr));
-			if (stats_data->str_func[i][j - 2] == NULL) {
+	for (int p = 1; p <= STR_FUNC_MAX_POW; ++p) {
+		for (int i = 0; i < INCR_TYPES; ++i) {
+
+			///----------------------------------- Velocity Structure functions
+			#if defined(__VEL_STR_FUNC_STATS)
+			stats_data->u_str_func[i][p - 1] = (double* )fftw_malloc(sizeof(double) * (N_max_incr));
+			if (stats_data->u_str_func[i][p - 1] == NULL) {
 				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Structure Functions");
 				exit(1);
 			}
-			stats_data->str_func_abs[i][j - 2] = (double* )fftw_malloc(sizeof(double) * (N_max_incr));
-			if (stats_data->str_func_abs[i][j - 2] == NULL) {
+			stats_data->u_str_func_abs[i][p - 1] = (double* )fftw_malloc(sizeof(double) * (N_max_incr));
+			if (stats_data->u_str_func_abs[i][p - 1] == NULL) {
 				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Structure Functions Absolute");
 				exit(1);
 			}
 
 			// Initialize array
 			for (int r = 0; r < N_max_incr; ++r) {
-				stats_data->str_func[i][j - 2][r]     = 0.0;
-				stats_data->str_func_abs[i][j - 2][r] = 0.0;
+				stats_data->u_str_func[i][p - 1][r]     = 0.0;
+				stats_data->u_str_func_abs[i][p - 1][r] = 0.0;
 			}
+			#endif
+
+			///----------------------------------- Vorticity Structure functions
+			#if defined(__VORT_STR_FUNC_STATS)
+			stats_data->w_str_func[i][p - 1] = (double* )fftw_malloc(sizeof(double) * (N_max_incr));
+			if (stats_data->w_str_func[i][p - 1] == NULL) {
+				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Vorticity Structure Functions");
+				exit(1);
+			}
+			stats_data->w_str_func_abs[i][p - 1] = (double* )fftw_malloc(sizeof(double) * (N_max_incr));
+			if (stats_data->w_str_func_abs[i][p - 1] == NULL) {
+				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Vorticity Structure Functions Absolute");
+				exit(1);
+			}
+
+			// Initialize array
+			for (int r = 0; r < N_max_incr; ++r) {
+				stats_data->w_str_func[i][p - 1][r]     = 0.0;
+				stats_data->w_str_func_abs[i][p - 1][r] = 0.0;
+			}
+			#endif
 		}
+		///----------------------------------- Radial Vorticity Structure functions
+		#if defined(__VORT_RAD_STR_FUNC_STATS)
+		stats_data->w_radial_str_func[p - 1] = (double* )fftw_malloc(sizeof(double) * (N_max_incr) * (N_max_incr));
+		if (stats_data->w_radial_str_func[p - 1] == NULL) {
+			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Radial Vorticity Structure Functions");
+			exit(1);
+		}
+		stats_data->w_radial_str_func_abs[p - 1] = (double* )fftw_malloc(sizeof(double) * (N_max_incr) * (N_max_incr));
+		if (stats_data->w_radial_str_func_abs[p - 1] == NULL) {
+			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Radial Vorticity Structure Functions Absolute");
+			exit(1);
+		}
+
+		// Initialize array
+		for (int r = 0; r < N_max_incr * N_max_incr; ++r) {
+			stats_data->w_radial_str_func[p - 1][r]     = 0.0;
+			stats_data->w_radial_str_func_abs[p - 1][r] = 0.0;
+		}
+		#endif
+	}
+	#endif
+
+	#if defined(__MIXED_VEL_STR_FUNC_STATS)
+	stats_data->mxd_u_str_func = (double* )fftw_malloc(sizeof(double) * (N_max_incr));
+	if (stats_data->mxd_u_str_func == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Mixed Velocity Structure Functions");
+		exit(1);
+	}
+	for (int r = 0; r < N_max_incr; ++r) {
+		stats_data->mxd_u_str_func[r] = 0.0;
+	}
+	#endif
+	#if defined(__MIXED_VORT_STR_FUNC_STATS)
+	stats_data->mxd_w_str_func = (double* )fftw_malloc(sizeof(double) * (N_max_incr));
+	if (stats_data->mxd_w_str_func == NULL) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to allocate memory for the ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Mixed Vorticity Structure Functions");
+		exit(1);
+	}
+	for (int r = 0; r < N_max_incr; ++r) {
+		stats_data->mxd_w_str_func[r] = 0.0;
 	}
 	#endif
 }
@@ -489,14 +671,32 @@ void FreeStatsObjects(void) {
 	// --------------------------------
 	//  Free memory
 	// --------------------------------
-	#if defined(__STR_FUNC_STATS)
-	for (int i = 2; i < STR_FUNC_MAX_POW; ++i) {
-		fftw_free(stats_data->str_func[0][i - 2]);
-		fftw_free(stats_data->str_func[1][i - 2]);
-		fftw_free(stats_data->str_func_abs[0][i - 2]);
-		fftw_free(stats_data->str_func_abs[1][i - 2]);
+	// Structure Functions
+	for (int p = 1; p <= STR_FUNC_MAX_POW; ++p) {
+		#if defined(__VEL_STR_FUNC_STATS)
+		fftw_free(stats_data->u_str_func[0][p - 1]);
+		fftw_free(stats_data->u_str_func[1][p - 1]);
+		fftw_free(stats_data->u_str_func_abs[0][p - 1]);
+		fftw_free(stats_data->u_str_func_abs[1][p - 1]);
+		#endif
+		#if defined(__VORT_STR_FUNC_STATS)
+		fftw_free(stats_data->w_str_func[0][p - 1]);
+		fftw_free(stats_data->w_str_func[1][p - 1]);
+		fftw_free(stats_data->w_str_func_abs[0][p - 1]);
+		fftw_free(stats_data->w_str_func_abs[1][p - 1]);
+		#endif
+		#if defined(__VORT_RAD_STR_FUNC_STATS)
+		fftw_free(stats_data->w_radial_str_func[p - 1]);
+		fftw_free(stats_data->w_radial_str_func_abs[p - 1]);
+		#endif
 	}
+	#if defined(__MIXED_VEL_STR_FUNC_STATS)
+	fftw_free(stats_data->mxd_u_str_func);
 	#endif
+	#if defined(__MIXED_VORT_STR_FUNC_STATS)
+	fftw_free(stats_data->mxd_w_str_func);
+	#endif
+	// Other Stats
 	#if defined(__VEL_GRAD_STATS)
 	fftw_free(proc_data->grad_u_hat);
 	fftw_free(proc_data->grad_u);
@@ -507,12 +707,12 @@ void FreeStatsObjects(void) {
 	#endif
 	fftw_free(stats_data->increments);
 
+
 	// --------------------------------
 	//  Free GSL objects
 	// --------------------------------
 	// Free histogram structs
 	#if defined(__REAL_STATS)
-
 	gsl_histogram_free(stats_data->w_hist);
 	gsl_histogram_free(stats_data->u_hist);
 	gsl_rstat_free(stats_data->w_stats);

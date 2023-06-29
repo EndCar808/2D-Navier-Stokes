@@ -55,16 +55,19 @@
 #define FORCING 1 				// Indicates if forcing was used in simulation
 // Post processing Modes
 #if defined(__POST_STATS)
+// In time stats
 // #define __REAL_STATS
+// Increment stats
 #define __VEL_INC_STATS
 #define __VORT_INC_STATS
 #define __VEL_GRAD_STATS
 #define __VORT_GRAD_STATS
-// #define __VEL_STR_FUNC_STATS
-// #define __VORT_STR_FUNC_STATS
-// #define __VORT_RADIAL_STR_FUNC_STATS
-// #define __MIXED_VEL_STR_FUNC_STATS
-// #define __MIXED_VORT_STR_FUNC_STATS
+// Structure Function Stats
+#define __VEL_STR_FUNC_STATS
+#define __VORT_STR_FUNC_STATS
+// #define __VORT_RAD_STR_FUNC_STATS
+#define __MIXED_VEL_STR_FUNC_STATS
+#define __MIXED_VORT_STR_FUNC_STATS
 #endif
 #if defined(__POST_FIELD) || defined(__POST_SYNC)
 #define __FULL_FIELD
@@ -83,7 +86,7 @@
 // #define __SEC_PHASE_SYNC_STATS_IN_TIME_1D
 // #define __SEC_PHASE_SYNC_STATS_IN_TIME_2D
 #endif
-// Postprocessing data sets
+// Postprocessing data sets - these are controlled in Makefile
 // #define __VORT_FOUR
 // #define __VORT_REAL
 // #define __MODES
@@ -341,8 +344,14 @@ typedef struct stats_data_struct {
 	gsl_histogram* w_grad_hist[SYS_DIM + 1];	 					// Array to hold the PDFs of the longitudinal and transverse vorticity gradients 
 	gsl_histogram* u_incr_hist[INCR_TYPES][NUM_INCR];				// Array to hold the PDFs of the longitudinal and transverse velocity increments for each increment
 	gsl_histogram* w_incr_hist[INCR_TYPES][NUM_INCR];				// Array to hold the PDFs of the longitudinal and transverse vorticity increments for each increment
-	double* str_func[INCR_TYPES][STR_FUNC_MAX_POW - 2];				// Array to hold the structure functions longitudinal and transverse velocity increments for each increment
-	double* str_func_abs[INCR_TYPES][STR_FUNC_MAX_POW - 2];			// Array to hold the structure functions longitudinal and transverse velocity increments for each absolute increment
+	double* u_str_func[INCR_TYPES][STR_FUNC_MAX_POW];				// Array to hold the structure functions longitudinal and transverse velocity increments for each increment
+	double* u_str_func_abs[INCR_TYPES][STR_FUNC_MAX_POW];			// Array to hold the structure functions longitudinal and transverse velocity increments for each absolute increment
+	double* w_str_func[INCR_TYPES][STR_FUNC_MAX_POW];				// Array to hold the structure functions  longitudinal and transverse vorticity increments for each increment
+	double* w_str_func_abs[INCR_TYPES][STR_FUNC_MAX_POW];			// Array to hold the structure functions  longitudinal and transverse vorticity increments for each absolute increment
+	double* w_radial_str_func[STR_FUNC_MAX_POW];					// Array to hold the structure functions radial vorticity increments for each increment
+	double* w_radial_str_func_abs[STR_FUNC_MAX_POW];				// Array to hold the structure functions radial vorticity increments for each absolute increment
+	double* mxd_u_str_func;											// Array to hold the mixed velocity structure functions
+	double* mxd_w_str_func;											// Array to hold the mixed structure functions 
 	int* increments;												// Array to hold the increments used in the increment histograms
 	int N_max_incr;
 } stats_data_struct;

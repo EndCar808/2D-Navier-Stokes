@@ -69,7 +69,6 @@ void OpenInputAndInitialize(void) {
 		exit(1);
 	}
 	
-	
 
 	// --------------------------------
 	//  Open File
@@ -269,7 +268,7 @@ void ReadInData(int snap_indx) {
 	// --------------------------------
 	//  Read in Real Vorticity
 	// --------------------------------
-	#if defined(__REAL_STATS) || defined(__VEL_INC_STATS) || defined(__STR_FUNC_STATS) || defined(__VEL_GRAD_STATS) || defined(__VORT_GRAD_STATS)
+	#if defined(__REAL_STATS) || defined(__VEL_INC_STATS) || defined(__VEL_STR_FUNC_STATS) || defined(__VEL_GRAD_STATS) || defined(__VORT_GRAD_STATS)
 	// If Real Space vorticity exists read it in
 	sprintf(group_string, "/Iter_%05d/w", snap_indx);	
 	if (H5Lexists(file_info->input_file_handle, group_string, H5P_DEFAULT) > 0 ) {
@@ -317,7 +316,7 @@ void ReadInData(int snap_indx) {
 	// --------------------------------
 	//  Read in Real Velocity
 	// --------------------------------
-	#if defined(__REAL_STATS) || defined(__VEL_INC_STATS) || defined(__STR_FUNC_STATS) || defined(__VEL_GRAD_STATS) || defined(__VORT_GRAD_STATS)
+	#if defined(__REAL_STATS) || defined(__VEL_INC_STATS) || defined(__VEL_STR_FUNC_STATS) || defined(__VEL_GRAD_STATS) || defined(__VORT_GRAD_STATS)
 	// If Real Space Velocity exists read it in
 	sprintf(group_string, "/Iter_%05d/u", snap_indx);	
 	if (H5Lexists(file_info->input_file_handle, group_string, H5P_DEFAULT) > 0 ) {
@@ -1918,32 +1917,32 @@ void FinalWriteAndClose(void) {
 
 
 	///----------------------------------- Write the Structure Functions
-    #if defined(__STR_FUNC_STATS)
+    #if defined(__VEL_STR_FUNC_STATS)
     int N_max_incr = (int ) GSL_MIN(sys_vars->N[0], sys_vars->N[1]) / 2;
     // Allocate temporary memory to record the histogram data contiguously
-    double* str_funcs = (double*) fftw_malloc(sizeof(double) * (STR_FUNC_MAX_POW - 2) * (N_max_incr));
+    double* vel_str_funcs = (double*) fftw_malloc(sizeof(double) * (STR_FUNC_MAX_POW) * (N_max_incr));
 
     //----------------------- Write the longitudinal structure functions
     // Normal Structure functions
-   	for (int p = 0; p < STR_FUNC_MAX_POW - 2; ++p) {
+   	for (int p = 0; p < STR_FUNC_MAX_POW; ++p) {
    		for (int r = 0; r < N_max_incr; ++r) {
-	   		str_funcs[p * (N_max_incr) + r] = stats_data->str_func[0][p][r] / sys_vars->num_snaps;
+	   		vel_str_funcs[p * (N_max_incr) + r] = stats_data->u_str_func[0][p][r];  // sys_vars->num_snaps;
    		}
    	}
-   	dset_dims_2d[0] = STR_FUNC_MAX_POW - 2;
+   	dset_dims_2d[0] = STR_FUNC_MAX_POW;
    	dset_dims_2d[1] = N_max_incr;
-   	status = H5LTmake_dataset(file_info->output_file_handle, "LongitudinalStructureFunctions", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, str_funcs);
+   	status = H5LTmake_dataset(file_info->output_file_handle, "VelocityLongitudinalStructureFunctions", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, vel_str_funcs);
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Longitudinal Structure Functions");
         exit(1);
     }			
     // Absolute Structure functions
-   	for (int p = 0; p < STR_FUNC_MAX_POW - 2; ++p) {
+   	for (int p = 0; p < STR_FUNC_MAX_POW; ++p) {
    		for (int r = 0; r < N_max_incr; ++r) {
-	   		str_funcs[p * (N_max_incr) + r] = stats_data->str_func_abs[0][p][r] / sys_vars->num_snaps;
+	   		vel_str_funcs[p * (N_max_incr) + r] = stats_data->u_str_func_abs[0][p][r];  // sys_vars->num_snaps;
    		}
    	}
-	status = H5LTmake_dataset(file_info->output_file_handle, "AbsoluteLongitudinalStructureFunctions", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, str_funcs);
+	status = H5LTmake_dataset(file_info->output_file_handle, "AbsoluteVelocityLongitudinalStructureFunctions", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, vel_str_funcs);
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Absolute Longitudinal Structure Functions");
         exit(1);
@@ -1951,30 +1950,196 @@ void FinalWriteAndClose(void) {
 
     //----------------------- Write the transverse structure functions
     // Normal structure functions
-    for (int p = 0; p < STR_FUNC_MAX_POW - 2; ++p) {
+    for (int p = 0; p < STR_FUNC_MAX_POW; ++p) {
    		for (int r = 0; r < N_max_incr; ++r) {
-	   		str_funcs[p * (N_max_incr) + r] = stats_data->str_func[1][p][r] / sys_vars->num_snaps;
+	   		vel_str_funcs[p * (N_max_incr) + r] = stats_data->u_str_func[1][p][r];  // sys_vars->num_snaps;
    		}
    	}
-   	status = H5LTmake_dataset(file_info->output_file_handle, "TransverseStructureFunctions", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, str_funcs);
+   	status = H5LTmake_dataset(file_info->output_file_handle, "VelocityTransverseStructureFunctions", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, vel_str_funcs);
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Transverse Structure Funcitons");
         exit(1);
     }		
     // Absolute structure functions
-    for (int p = 0; p < STR_FUNC_MAX_POW - 2; ++p) {
+    for (int p = 0; p < STR_FUNC_MAX_POW; ++p) {
    		for (int r = 0; r < N_max_incr; ++r) {
-	   		str_funcs[p * (N_max_incr) + r] = stats_data->str_func_abs[1][p][r] / sys_vars->num_snaps;
+	   		vel_str_funcs[p * (N_max_incr) + r] = stats_data->u_str_func_abs[1][p][r];  // sys_vars->num_snaps;
    		}
    	}
-   	status = H5LTmake_dataset(file_info->output_file_handle, "AbsoluteTransverseStructureFunctions", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, str_funcs);
+   	status = H5LTmake_dataset(file_info->output_file_handle, "AbsoluteVelocityTransverseStructureFunctions", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, vel_str_funcs);
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Absolute Transverse Structure Funcitons");
         exit(1);
     }		
 	
     // Free temporary memory
-    fftw_free(str_funcs);
+    fftw_free(vel_str_funcs);
+    #endif
+
+    ///----------------------------------- Write the Vorticity Structure Functions
+    #if defined(__VORT_STR_FUNC_STATS)
+    // Allocate temporary memory to record the histogram data contiguously
+    double* vort_str_funcs = (double*) fftw_malloc(sizeof(double) * STR_FUNC_MAX_POW * (N_max_incr));
+
+    //----------------------- Write the longitudinal structure functions
+    // Normal Structure functions
+   	for (int p = 0; p < STR_FUNC_MAX_POW; ++p) {
+   		for (int r = 0; r < N_max_incr; ++r) {
+	   		vort_str_funcs[p * (N_max_incr) + r] = stats_data->w_str_func[0][p][r] ; /// sys_vars->num_snaps;
+   		}
+   	}
+   	dset_dims_2d[0] = STR_FUNC_MAX_POW;
+   	dset_dims_2d[1] = N_max_incr;
+   	status = H5LTmake_dataset(file_info->output_file_handle, "VorticityLongitudinalStructureFunctions", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, vort_str_funcs);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Vorticity Longitudinal Structure Functions");
+        exit(1);
+    }			
+    // Absolute Structure functions
+   	for (int p = 0; p < STR_FUNC_MAX_POW; ++p) {
+   		for (int r = 0; r < N_max_incr; ++r) {
+	   		vort_str_funcs[p * (N_max_incr) + r] = stats_data->w_str_func_abs[0][p][r] ; /// sys_vars->num_snaps;
+   		}
+   	}
+	status = H5LTmake_dataset(file_info->output_file_handle, "AbsoluteVorticityLongitudinalStructureFunctions", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, vort_str_funcs);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Absolute Vorticity Longitudinal Structure Functions");
+        exit(1);
+    }	
+
+    //----------------------- Write the transverse structure functions
+    // Normal structure functions
+    for (int p = 0; p < STR_FUNC_MAX_POW; ++p) {
+   		for (int r = 0; r < N_max_incr; ++r) {
+	   		vort_str_funcs[p * (N_max_incr) + r] = stats_data->w_str_func[1][p][r] ; /// sys_vars->num_snaps;
+   		}
+   	}
+   	status = H5LTmake_dataset(file_info->output_file_handle, "VorticityTransverseStructureFunctions", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, vort_str_funcs);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Vorticity Transverse Structure Funcitons");
+        exit(1);
+    }		
+    // Absolute structure functions
+    for (int p = 0; p < STR_FUNC_MAX_POW; ++p) {
+   		for (int r = 0; r < N_max_incr; ++r) {
+	   		vort_str_funcs[p * (N_max_incr) + r] = stats_data->w_str_func_abs[1][p][r] ; /// sys_vars->num_snaps;
+   		}
+   	}
+   	status = H5LTmake_dataset(file_info->output_file_handle, "AbsoluteVorticityTransverseStructureFunctions", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, vort_str_funcs);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Absolute Vorticity Transverse Structure Funcitons");
+        exit(1);
+    }		
+	
+    // Free temporary memory
+    fftw_free(vort_str_funcs);
+    #endif
+
+    ///----------------------------------- Write the Velocity Structure Functions
+    #if defined(__VORT_RAD_STR_FUNC_STATS)
+    // Get the max shell index for the radial averaging
+    int shell_indx, indx, tmp;
+    int max_shell_indx = (int) round(sqrt((N_max_incr) * (N_max_incr) + (N_max_incr) * (N_max_incr)));
+
+    // Allocate temporary memory to record the histogram data contiguously
+    double* vort_radial_str_funcs = (double*) fftw_malloc(sizeof(double) * STR_FUNC_MAX_POW * (max_shell_indx));
+    for (int p = 0; p < STR_FUNC_MAX_POW; ++p) {
+    	for (int i = 0; i < max_shell_indx; ++i) {
+    		vort_radial_str_funcs[p * (max_shell_indx) + i] = 0.0;
+    	}
+    }
+
+    //----------------------- Write the longitudinal structure functions
+    // Normal Structure functions
+   	for (int p = 0; p < STR_FUNC_MAX_POW; ++p) {
+   		for (int r_x = 0; r_x < N_max_incr; ++r_x) {
+   			tmp = r_x * N_max_incr;
+   			for (int r_y = 0; r_y < N_max_incr; ++r_y) {
+   				indx = tmp + r_y;
+
+   				shell_indx = (int) round(sqrt(r_x * r_x + r_y * r_y));
+
+		   		vort_radial_str_funcs[p * (max_shell_indx) + shell_indx] += stats_data->w_radial_str_func[p][indx] ; /// sys_vars->num_snaps / (2.0 * M_PI * shell_indx);
+		   	}
+   		}
+   	}
+
+   	// Save the radially averaged raidal structure function
+   	dset_dims_2d[0] = STR_FUNC_MAX_POW;
+   	dset_dims_2d[1] = max_shell_indx;
+   	status = H5LTmake_dataset(file_info->output_file_handle, "RadialVorticityStructureFunctions", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, vort_radial_str_funcs);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Radial Vorticity  Structure Functions");
+        exit(1);
+    }
+    // Save the raidal structure function field
+   	dset_dims_3d[0] = STR_FUNC_MAX_POW;
+   	dset_dims_3d[1] = N_max_incr;
+   	dset_dims_3d[2] = N_max_incr;
+   	status = H5LTmake_dataset(file_info->output_file_handle, "RadialVorticityStructureFunctionsField", Dims3D, dset_dims_3d, H5T_NATIVE_DOUBLE, stats_data->w_radial_str_func[0]);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Radial Vorticity  Structure Functions Field");
+        exit(1);
+    }
+
+    // Free memory
+    fftw_free(vort_radial_str_funcs);
+
+    // Allocate temporary memory to record the histogram data contiguously
+    double* vort_radial_str_funcs_abs = (double*) fftw_malloc(sizeof(double) * STR_FUNC_MAX_POW * (max_shell_indx));
+    for (int p = 0; p < STR_FUNC_MAX_POW; ++p) {
+    	for (int i = 0; i < max_shell_indx; ++i) {
+    		vort_radial_str_funcs_abs[p * (max_shell_indx) + i] = 0.0;
+    	}
+    }
+		
+    // Absolute Structure functions
+   	for (int p = 0; p < STR_FUNC_MAX_POW; ++p) {
+   		for (int r_x = 0; r_x < N_max_incr; ++r_x) {
+   			tmp = r_x * N_max_incr;
+   			for (int r_y = 0; r_y < N_max_incr; ++r_y) {
+   				indx = tmp + r_y;
+
+   				shell_indx = (int) round(sqrt(r_x * r_x + r_y * r_y));
+
+		   		vort_radial_str_funcs_abs[p * (max_shell_indx) + shell_indx] += stats_data->w_radial_str_func_abs[p][indx] ; /// sys_vars->num_snaps / (2.0 * M_PI * shell_indx);
+		   	}
+   		}
+   	}
+	status = H5LTmake_dataset(file_info->output_file_handle, "AbsoluteRadialVorticityStructureFunctions", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, vort_radial_str_funcs_abs);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Absolute Radial Vorticity  Structure Functions");
+        exit(1);
+    }	
+
+    // Save the raidal structure function field
+   	dset_dims_3d[0] = STR_FUNC_MAX_POW;
+   	dset_dims_3d[1] = N_max_incr;
+   	dset_dims_3d[2] = N_max_incr;
+   	status = H5LTmake_dataset(file_info->output_file_handle, "AbsoluteRadialVorticityStructureFunctionsField", Dims3D, dset_dims_3d, H5T_NATIVE_DOUBLE, stats_data->w_radial_str_func_abs[0]);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "Absolute Radial Vorticity  Structure Functions Field");
+        exit(1);
+    }	
+	
+    // Free temporary memory
+    fftw_free(vort_radial_str_funcs_abs);
+    #endif
+
+	///----------------------------------- Write Mixed Structure Functions
+    #if defined(__MIXED_VEL_STR_FUNC_STATS) 
+    // Define the dimensions of the mixed velocity structure funciton array
+    dset_dims_1d[0] = N_max_incr;
+    if ( (H5LTmake_dataset(file_info->output_file_handle, "MixedVelocityStructureFunctions", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, stats_data->mxd_u_str_func)) < 0) {
+    	printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "MixedVelocityStructureFunctions");
+    }
+    #endif
+    #if defined(__MIXED_VORT_STR_FUNC_STATS) 
+    // Define the dimensions of the mixed vorticity structure funciton array
+    dset_dims_1d[0] = N_max_incr;
+    if ( (H5LTmake_dataset(file_info->output_file_handle, "MixedVorticityStructureFunctions", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, stats_data->mxd_w_str_func)) < 0) {
+    	printf("\n["MAGENTA"WARNING"RESET"] --- Failed to make dataset ["CYAN"%s"RESET"]\n", "MixedVorticityStructureFunctions");
+    }
     #endif
 	
 

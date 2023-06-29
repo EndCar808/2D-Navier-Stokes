@@ -680,14 +680,36 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                 if 'TransverseVortIncrements_BinCounts' in list(f.keys()):
                     self.vort_trans_incr_counts = f["TransverseVortIncrements_BinCounts"][:, :]
                 ## Get the structure function data
-                if 'LongitudinalStructureFunctions' in list(f.keys()):
-                    self.long_str_func = f["LongitudinalStructureFunctions"][:, :]
-                if 'TransverseStructureFunctions' in list(f.keys()):
-                    self.trans_str_func = f["TransverseStructureFunctions"][:, :]
-                if 'AbsoluteLongitudinalStructureFunctions' in list(f.keys()):
-                    self.long_str_func_abs = f["AbsoluteLongitudinalStructureFunctions"][:, :]
-                if 'AbsoluteTransverseStructureFunctions' in list(f.keys()):
-                    self.trans_str_func_abs = f["AbsoluteTransverseStructureFunctions"][:, :]
+                if 'VelocityLongitudinalStructureFunctions' in list(f.keys()):
+                    self.vel_long_str_func = f["VelocityLongitudinalStructureFunctions"][:, :]
+                if 'VelocityTransverseStructureFunctions' in list(f.keys()):
+                    self.vel_trans_str_func = f["VelocityTransverseStructureFunctions"][:, :]
+                if 'AbsoluteVelocityLongitudinalStructureFunctions' in list(f.keys()):
+                    self.vel_long_str_func_abs = f["AbsoluteVelocityLongitudinalStructureFunctions"][:, :]
+                if 'AbsoluteVelocityTransverseStructureFunctions' in list(f.keys()):
+                    self.vel_trans_str_func_abs = f["AbsoluteVelocityTransverseStructureFunctions"][:, :]
+                if 'VorticityLongitudinalStructureFunctions' in list(f.keys()):
+                    self.vort_long_str_func = f["VorticityLongitudinalStructureFunctions"][:, :]
+                if 'AbsoluteVorticityLongitudinalStructureFunctions' in list(f.keys()):
+                    self.vort_long_str_func_abs = f["AbsoluteVorticityLongitudinalStructureFunctions"][:, :]
+                if 'VorticityTransverseStructureFunctions' in list(f.keys()):
+                    self.vort_trans_str_func = f["VorticityTransverseStructureFunctions"][:, :]
+                if 'AbsoluteVorticityTransverseStructureFunctions' in list(f.keys()):
+                    self.vort_trans_str_func_abs = f["AbsoluteVorticityTransverseStructureFunctions"][:, :]
+                ## Radial Vorticity Structure Function Data
+                if 'RadialVorticityStructureFunctions' in list(f.keys()):
+                    self.vort_rad_str_func = f["RadialVorticityStructureFunctions"][:, :]
+                if 'AbsoluteRadialVorticityStructureFunctions' in list(f.keys()):
+                    self.vort_rad_str_func_abs = f["AbsoluteRadialVorticityStructureFunctions"][:, :]
+                if 'RadialVorticityStructureFunctionsField' in list(f.keys()):
+                    self.vort_rad_str_func_field = f["RadialVorticityStructureFunctionsField"][:, :, :]
+                if 'AbsoluteRadialVorticityStructureFunctionsField' in list(f.keys()):
+                    self.vort_rad_str_func_field_abs = f["AbsoluteRadialVorticityStructureFunctionsField"][:, :, :]
+                ## Mixed structure funcitons
+                if 'MixedVelocityStructureFunctions' in list(f.keys()):
+                    self.mxd_vel_str_func = f["MixedVelocityStructureFunctions"][:]
+                if 'MixedVorticityStructureFunctions' in list(f.keys()):
+                    self.mxd_vort_str_func = f["MixedVorticityStructureFunctions"][:]
                 ## Get the gradient histograms
                 if 'VelocityGradient_x_BinRanges' in list(f.keys()):
                     self.grad_u_x_ranges = f["VelocityGradient_x_BinRanges"][:]

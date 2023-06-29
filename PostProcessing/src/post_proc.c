@@ -73,7 +73,7 @@ void PostProcessing(void) {
 		// --------------------------------
 		//  Real Space Stats
 		// --------------------------------
-		#if defined(__REAL_STATS) || defined(__VEL_INC_STATS) || defined(__STR_FUNC_STATS) || defined(__VEL_GRAD_STATS) || defined(__VORT_GRAD_STATS)
+		#if defined(__REAL_STATS) || defined(__VEL_INC_STATS) || defined(__VEL_STR_FUNC_STATS) || defined(__VEL_GRAD_STATS) || defined(__VORT_GRAD_STATS)
 		RealSpaceStats(s);
 		#endif
 
@@ -471,7 +471,7 @@ void AllocateMemory(const long int* N) {
 
 	//  Allocate Stats Data
 	// --------------------------------
-	#if defined(__REAL_STATS) || defined(__ENST_FLUX) || defined(__ENRG_FLUX) || defined(__SEC_PHASE_SYNC) || defined(__VEL_INC_STATS) || defined(__STR_FUNC_STATS) || defined(__VEL_GRAD_STATS) || defined(__VORT_GRAD_STATS) || defined(__VORT_REAL) || defined(__MODES) || defined(__REALSPACE)
+	#if defined(__REAL_STATS) || defined(__ENST_FLUX) || defined(__ENRG_FLUX) || defined(__SEC_PHASE_SYNC) || defined(__VEL_INC_STATS) || defined(__VEL_STR_FUNC_STATS) || defined(__VEL_GRAD_STATS) || defined(__VORT_GRAD_STATS) || defined(__VORT_REAL) || defined(__MODES) || defined(__REALSPACE)
 	// Allocate current Fourier vorticity
 	run_data->w = (double* )fftw_malloc(sizeof(double) * Nx * Ny);
 	if (run_data->w == NULL) {
@@ -506,7 +506,7 @@ void AllocateMemory(const long int* N) {
 	#endif
 	
 	//--------------------- Allocate memory for the stats objects
-	#if defined(__REAL_STATS) || defined(__VEL_GRAD_STATS) || defined(__VORT_GRAD_STATS) || defined(__VEL_INC_STATS) || defined(__STR_FUNC_STATS)
+	#if defined(__REAL_STATS) || defined(__VEL_GRAD_STATS) || defined(__VORT_GRAD_STATS) || defined(__VEL_INC_STATS) || defined(__VEL_STR_FUNC_STATS)
 	AllocateStatsMemory(N);
 	#endif
 
@@ -599,7 +599,7 @@ void FreeMemoryAndCleanUp(void) {
 		fftw_free(run_data->x[i]);
 		fftw_free(run_data->k[i]);
 	}
-	#if defined(__REAL_STATS) || defined(__VEL_INC_STATS) || defined(__STR_FUNC_STATS) || defined(__ENST_FLUX) || defined(__ENRG_FLUX) || defined(__SEC_PHASE_SYNC) || defined(__VEL_GRAD_STATS) || defined(__VORT_GRAD_STATS) || defined(__VORT_REAL) || defined(__MODES) || defined(__REALSPACE)
+	#if defined(__REAL_STATS) || defined(__VEL_INC_STATS) || defined(__VEL_STR_FUNC_STATS) || defined(__ENST_FLUX) || defined(__ENRG_FLUX) || defined(__SEC_PHASE_SYNC) || defined(__VEL_GRAD_STATS) || defined(__VORT_GRAD_STATS) || defined(__VORT_REAL) || defined(__MODES) || defined(__REALSPACE)
 	fftw_free(run_data->w);
 	fftw_free(run_data->u);
 	fftw_free(run_data->u_hat);
@@ -609,7 +609,7 @@ void FreeMemoryAndCleanUp(void) {
 	#endif
 	#endif
 
-	#if defined(__REAL_STATS) || defined(__VEL_INC_STATS) || defined(__STR_FUNC_STATS) || defined(__VEL_GRAD_STATS) || defined(__VORT_GRAD_STATS)
+	#if defined(__REAL_STATS) || defined(__VEL_INC_STATS) || defined(__VEL_STR_FUNC_STATS) || defined(__VEL_GRAD_STATS) || defined(__VORT_GRAD_STATS)
 	FreeStatsObjects();
 	#endif
 

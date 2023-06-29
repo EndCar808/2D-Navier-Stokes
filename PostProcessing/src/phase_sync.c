@@ -2040,6 +2040,10 @@ void ComputePhaseSyncConditionalStats(void) {
 		printf("Snapshot: %d/%ld\tTime: %g(s)\n", s + 1, sys_vars->num_snaps, (loop_end - loop_begin));
 	}
 
+	// --------------------------------	
+	//	Write Data To File
+	// --------------------------------
+
 
 	// --------------------------------	
 	//	Free temp Memory

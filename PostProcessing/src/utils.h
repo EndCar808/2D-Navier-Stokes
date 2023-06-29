@@ -22,6 +22,7 @@ int GetCMLArgs(int argc, char** argv);
 double MyMod(double x, double y);
 void InitializeSpaceVariables(double** x, int** k, const long int* N);
 void PrintTime(double start, double end);
+double sgn(double x);
 // ---------------------------------------------------------------------	
 //  End of File
 // ---------------------------------------------------------------------	

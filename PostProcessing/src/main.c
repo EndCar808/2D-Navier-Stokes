@@ -68,11 +68,22 @@ int main(int argc, char** argv) {
 	// Set the number of threads and get thread IDs
 	omp_set_num_threads(sys_vars->num_threads);
 	#pragma omp parallel
-	{
+	{	
+		// Get thread id
+		sys_vars->thread_id = omp_get_thread_num();
+
+		// Plot the number of active threads
 		if (!(sys_vars->thread_id)) {
-			printf("\nThreads Active: "CYAN"%d"RESET"\n", sys_vars->num_threads);
+			printf("\nOMP Threads Active: "CYAN"%d"RESET"\n", sys_vars->num_threads);
 		}
 	}
+
+	// Initialize and set threads for fftw plans
+	fftw_init_threads();
+
+	// Set the number of threads for FFTW and print to screen
+	fftw_plan_with_nthreads(sys_vars->num_fftw_threads);
+	printf("\nFFTW Threads Active: "CYAN"%d"RESET"\n", sys_vars->num_fftw_threads);
 
 	//////////////////////////////
 	// Call Post Processing
@@ -81,6 +92,16 @@ int main(int argc, char** argv) {
 	//////////////////////////////
 	// Call Post Processing
 	//////////////////////////////
+	
+
+	// --------------------------------
+	//  Clean Up FFTW Objects
+	// --------------------------------
+	// Clean up FFTW Thread Info
+	fftw_cleanup_threads();
+
+	// Clean Up FFTW Plan Objects
+	fftw_cleanup();
 
 	// --------------------------------
 	//  End Timing
