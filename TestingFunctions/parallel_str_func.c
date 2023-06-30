@@ -69,19 +69,25 @@ int main(int argc, char** argv) {
 	double* str_func_rad_par[NUM_POW];
 	double* str_func_rad_ser[NUM_POW];
 
-	double Lx = 1.0;
-	double Ly = 1.0;
-	double dx = Lx / (Nx - 1);
-	double dy = Ly / (Ny - 1);
+	// FastSF params
+	// double Lx = 1.0;
+	// double Ly = 1.0;
+	// double dx = Lx / (Nx - 1);
+	// double dy = Ly / (Ny - 1);
+
+	double Lx = 2.0 * M_PI;
+	double Ly = 2.0 * M_PI;
+	double dx = Lx / (Nx);
+	double dy = Ly / (Ny);
 
 	// Initialize test memory
-	for (int i = 0; i < Ny; ++i) {
-		tmp = i * Nx;
-		for (int j = 0; j < Nx; ++j) {
+	for (int i = 0; i < Nx; ++i) {
+		tmp = i * Ny;
+		for (int j = 0; j < Ny; ++j) {
 			indx = tmp + j;
 			// for (int l = 0; l < SYS_DIM; ++l) {
-				data_u[SYS_DIM * (indx) + 0] = j * dx;
-				data_u[SYS_DIM * (indx) + 1] = i * dy;
+				data_u[SYS_DIM * (indx) + 0] = i * dx + j * dy;
+				data_u[SYS_DIM * (indx) + 1] = i * dx + j * dy;
 				data_w[indx] = i * dx + j * dy;
 			// }
 		}
@@ -129,66 +135,65 @@ int main(int argc, char** argv) {
 	{
 		#pragma omp single 
 		{			
-				// Loop over powers
-				// #pragma omp taskloop reduction (+:increment) collapse(2) grainsize(grain_size)
-				for (int p = 1; p <= NUM_POW; ++p) {
-					// Loop over increments
-					#pragma omp taskloop reduction (+:increment) grainsize(Max_Incr / num_threads)
-					for (int r = 1; r <= Max_Incr; ++r) {
-						// Initialize increment
-						increment = 0.0;
+			// Loop over powers
+			// #pragma omp taskloop reduction (+:increment) collapse(2) grainsize(grain_size)
+			for (int p = 1; p <= NUM_POW; ++p) {
+				// Loop over increments
+				#pragma omp taskloop reduction (+:increment) grainsize(Max_Incr / num_threads)
+				for (int r = 1; r <= Max_Incr; ++r) {
+					// Initialize increment
+					increment = 0.0;
 
-						// Loop over space
-						// #pragma omp taskloop reduction (+:increment) num_tasks( * Ny * Nx / num_threads)
-						// #pragma omp taskloop reduction (+:increment) collapse(2) grainsize(grain_size)
-						for (int i = 0; i < Ny; ++i) {
-							for (int j = 0; j < Nx; ++j) {
-								tmp = i * Nx;
-								indx = tmp + j;
+					// Loop over space
+					// #pragma omp taskloop reduction (+:increment) num_tasks( * Ny * Nx / num_threads)
+					// #pragma omp taskloop reduction (+:increment) collapse(2) grainsize(grain_size)
+					for (int i = 0; i < Nx; ++i) {
+						for (int j = 0; j < Ny; ++j) {
+							tmp = i * Ny;
+							indx = tmp + j;
 
-								// Compute increments
-								increment += pow(fabs(data_u[SYS_DIM * (i * Nx + ((j + r) % Nx)) + 0]  - data_u[SYS_DIM * indx + 0]), p);
-								increment += pow(fabs(data_u[SYS_DIM * ((((i + r) % Ny) * Nx + j)) + 1] - data_u[SYS_DIM * indx + 1]), p);
-							}
-						}
-						// Update structure function
-						// str_func_par[p - 1][r - 1]               = increment * norm_fac; 
-						data_st->str_func_data_par[p - 1][r - 1] = increment * norm_fac; 
-					}
-					
-
-					#pragma omp taskloop collapse(2) grainsize(rad_grain_size)
-					for (int r_y = 1; r_y <= Max_Incr; ++r_y) {
-						for (int r_x = 1; r_x <= Max_Incr; ++r_x) {
-							r_tmp = (r_y - 1) * Max_Incr;
-							r_indx = r_tmp + (r_x - 1);
-							
-							rad_increment = 0.0;
-							int counts = 0;
-
-							// #pragma omp taskloop reduction (+:increment) collapse(3) grainsize((Nx * Ny *  / num_threads))
-							for (int i = 0; i < Ny; ++i) {
-								for (int j = 0; j < Nx; ++j) {
-									tmp = i * Nx;
-									indx = tmp + j;
-
-									// Compute increments
-									y_indx = (i + r_y);
-									x_indx = (j + r_x);
-									if (x_indx < Nx && y_indx < Ny) {
-										rad_increment += pow(fabs(data_w[y_indx * Nx + x_indx]  - data_w[indx]), p);
-										counts += 1;
-									}
-								}
-							}
-							// str_func_rad_par[p - 1][r_indx]               = rad_increment * norm_fac;
-							data_st->str_func_data_rad_par[p - 1][r_indx] = rad_increment / counts;
+							// Compute increments
+							increment += 0.5 * pow(fabs(data_u[SYS_DIM * (i * Ny + ((j + r) % Ny)) + 0]  - data_u[SYS_DIM * indx + 0]), p);
+							increment += 0.5 * pow(fabs(data_u[SYS_DIM * ((((i + r) % Nx) * Ny + j)) + 1] - data_u[SYS_DIM * indx + 1]), p);
 						}
 					}
+					// Update structure function
+					// str_func_par[p - 1][r - 1]               = increment * norm_fac; 
+					data_st->str_func_data_par[p - 1][r - 1] = increment * norm_fac; 
 				}
-			} 
-		}
-	// }
+				
+
+				// #pragma omp taskloop collapse(2) grainsize(rad_grain_size)
+				// for (int r_y = 1; r_y <= Max_Incr; ++r_y) {
+				// 	for (int r_x = 1; r_x <= Max_Incr; ++r_x) {
+				// 		r_tmp = (r_y - 1) * Max_Incr;
+				// 		r_indx = r_tmp + (r_x - 1);
+						
+				// 		rad_increment = 0.0;
+				// 		int counts = 0;
+
+				// 		// #pragma omp taskloop reduction (+:increment) collapse(3) grainsize((Nx * Ny *  / num_threads))
+				// 		for (int i = 0; i < Ny; ++i) {
+				// 			for (int j = 0; j < Nx; ++j) {
+				// 				tmp = i * Nx;
+				// 				indx = tmp + j;
+
+				// 				// Compute increments
+				// 				y_indx = (i + r_y);
+				// 				x_indx = (j + r_x);
+				// 				if (x_indx < Nx && y_indx < Ny) {
+				// 					rad_increment += pow(fabs(data_w[y_indx * Nx + x_indx]  - data_w[indx]), p);
+				// 					counts += 1;
+				// 				}
+				// 			}
+				// 		}
+				// 		// str_func_rad_par[p - 1][r_indx]               = rad_increment * norm_fac;
+				// 		data_st->str_func_data_rad_par[p - 1][r_indx] = rad_increment / counts;
+				// 	}
+				// }
+			}
+		} 
+	}
 
 	// Get parallel time
 	par_time = omp_get_wtime() - start;
@@ -206,14 +211,14 @@ int main(int argc, char** argv) {
 				increment = 0.0;
 
 				// Loop over space
-				for (int i = 0; i < Ny; ++i) {
-					for (int j = 0; j < Nx; ++j) {
-						tmp = i * Nx;
+				for (int i = 0; i < Nx; ++i) {
+					for (int j = 0; j < Ny; ++j) {
+						tmp = i * Ny;
 						indx = tmp + j;
 
 						// Compute increments
-						increment += pow(fabs(data_u[SYS_DIM * (i * Nx + ((j + r) % Nx)) + 0]  - data_u[SYS_DIM * indx + 0]), p);
-						increment += pow(fabs(data_u[SYS_DIM * ((((i + r) % Ny) * Nx + j)) + 1] - data_u[SYS_DIM * indx + 1]), p);
+						increment += 0.5 * pow(fabs(data_u[SYS_DIM * (i * Ny + ((j + r) % Ny)) + 0]  - data_u[SYS_DIM * indx + 0]), p);
+						increment += 0.5 * pow(fabs(data_u[SYS_DIM * ((((i + r) % Nx) * Ny + j)) + 1] - data_u[SYS_DIM * indx + 1]), p);
 						// printf("u: %lf \tu-u: %lf\tincr: %1.16lf\n", data_u[SYS_DIM * indx + 0], data_u[SYS_DIM * (i * Nx + ((j + r) % Nx)) + 0]  - data_u[SYS_DIM * indx + 0], increment);
 					}
 				}
@@ -222,40 +227,40 @@ int main(int argc, char** argv) {
 				data_st->str_func_data_ser[p - 1][r - 1] = increment * norm_fac; 
 			}
 		
-			for (int r_y = 0; r_y < Max_Incr; ++r_y) {
-				for (int r_x = 0; r_x < Max_Incr; ++r_x) {
-					r_tmp = (r_y) * Max_Incr;
-					r_indx = r_tmp + (r_x);
+			// for (int r_y = 0; r_y < Max_Incr; ++r_y) {
+			// 	for (int r_x = 0; r_x < Max_Incr; ++r_x) {
+			// 		r_tmp = (r_y) * Max_Incr;
+			// 		r_indx = r_tmp + (r_x);
 					
-					rad_increment = 0.0;
+			// 		rad_increment = 0.0;
 
-					for (int i = 0; i < Ny; ++i) {
-						for (int j = 0; j < Nx; ++j) {
-							tmp = i * Nx;
-							indx = tmp + j;
+			// 		for (int i = 0; i < Ny; ++i) {
+			// 			for (int j = 0; j < Nx; ++j) {
+			// 				tmp = i * Nx;
+			// 				indx = tmp + j;
 
-					// 		// Compute increments
-							// y_indx = (i + r_y) % Ny;
-							// x_indx = (j + r_x) % Nx;
-							// rad_increment += pow(fabs(data_w[y_indx * Nx + x_indx]  - data_w[indx]), p);
-					// 	}
-					// }
-					// // str_func_rad_ser[p - 1][r_indx]            = rad_increment * norm_fac;
-					// data_st->str_func_data_rad_ser[p - 1][r_indx] = rad_increment * norm_fac;
-					// 
-							// Compute increments
-							y_indx = (i + r_y);
-							x_indx = (j + r_x);
-							if (x_indx < Nx && y_indx < Ny) {
-								rad_increment += pow(fabs(data_w[y_indx * Nx + x_indx]  - data_w[indx]), p);
-								// counts += 1;
-							}
-						}
-					}
-					// str_func_rad_par[p - 1][r_indx]               = rad_increment * norm_fac;
-					data_st->str_func_data_rad_par[p - 1][r_indx] = rad_increment / ((Nx - r_x) * (Ny - r_y));
-				}
-			}
+			// 		// 		// Compute increments
+			// 				// y_indx = (i + r_y) % Ny;
+			// 				// x_indx = (j + r_x) % Nx;
+			// 				// rad_increment += pow(fabs(data_w[y_indx * Nx + x_indx]  - data_w[indx]), p);
+			// 		// 	}
+			// 		// }
+			// 		// // str_func_rad_ser[p - 1][r_indx]            = rad_increment * norm_fac;
+			// 		// data_st->str_func_data_rad_ser[p - 1][r_indx] = rad_increment * norm_fac;
+			// 		// 
+			// 				// Compute increments
+			// 				y_indx = (i + r_y);
+			// 				x_indx = (j + r_x);
+			// 				if (x_indx < Nx && y_indx < Ny) {
+			// 					rad_increment += pow(fabs(data_w[y_indx * Nx + x_indx]  - data_w[indx]), p);
+			// 					// counts += 1;
+			// 				}
+			// 			}
+			// 		}
+			// 		// str_func_rad_par[p - 1][r_indx]               = rad_increment * norm_fac;
+			// 		data_st->str_func_data_rad_par[p - 1][r_indx] = rad_increment / ((Nx - r_x) * (Ny - r_y));
+			// 	}
+			// }
 		}
 	// }
 	ser_time = omp_get_wtime() - start;
@@ -290,8 +295,12 @@ int main(int argc, char** argv) {
 				// printf("str_func_rad[%d][%d]: %lf\t%lf\t%lf\n", p, r_indx, str_func_rad_ser[p - 1][r_indx], str_func_rad_par[p - 1][r_indx], str_func_rad_ser[p - 1][r_indx] - str_func_rad_par[p - 1][r_indx]);
 			}
 			// printf("str_func[%d][%d]: %lf\t%lf\t%lf\n", p, r, str_func_ser[p - 1][r], str_func_par[p - 1][r], str_func_ser[p - 1][r] - str_func_par[p - 1][r]);
+			printf("str_func[%d][%d]: %lf\t%lf\t%lf\n", p, r, data_st->str_func_data_ser[p - 1][r], data_st->str_func_data_par[p - 1][r], (data_st->str_func_data_ser[p - 1][r] - data_st->str_func_data_par[p - 1][r]));
 		}
-		printf("str_func[%d]: (conv) %16.16lf - %16.16lf | (rad) %16.16lf - %16.16lf\t\t | (conv)%lf \t (rad)%lf | (struct) %lf \t %lf\n", p, ser_num / Max_Incr, par_num / Max_Incr, ser_rad_num / (Max_Incr * Max_Incr), par_rad_num / (Max_Incr * Max_Incr), ser_num - par_num, ser_rad_num - par_rad_num, st_ser_num - st_par_num, st_ser_rad_num - st_par_rad_num);
+	}
+
+	for (int p = 1; p <= NUM_POW; ++p) {
+		printf("str_func[%d]: (conv) %16.16lf - %16.16lf | (rad) %16.16lf - %16.16lf\t | Err: (conv)%lf \t (rad)%lf | Err: (struct) (c)%lf \t (r) %lf\n", p, ser_num / Max_Incr, par_num / Max_Incr, ser_rad_num / (Max_Incr * Max_Incr), par_rad_num / (Max_Incr * Max_Incr), ser_num - par_num, ser_rad_num - par_rad_num, st_ser_num - st_par_num, st_ser_rad_num - st_par_rad_num);
 	}
 
 
