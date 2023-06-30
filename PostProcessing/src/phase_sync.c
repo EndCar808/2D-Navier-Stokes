@@ -2043,7 +2043,109 @@ void ComputePhaseSyncConditionalStats(void) {
 	// --------------------------------	
 	//	Write Data To File
 	// --------------------------------
+	// Open file with default I/O access properties
+	file_info->output_file_handle = H5Fopen(file_info->output_file_name, H5F_ACC_RDWR, H5P_DEFAULT);
+	if (file_info->output_file_handle < 0) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to open output file ["CYAN"%s"RESET"] at end\n-->> Exiting...\n", file_info->output_file_name);
+		exit(1);
+	}
 
+	//-------- Write Increment Stats
+	// Allocate temp momery
+	int num_bins = proc_data->cond_t_w_incr_hist[0][0][0]->n;
+	double* tmp_inc_hist_ranges = (double* )fftw_malloc(sizeof(double) * NUM_COND_TYPES * INCR_TYPES * NUM_INCR * (num_bins + 1));
+	double* tmp_inc_hist_counts = (double* )fftw_malloc(sizeof(double) * NUM_COND_TYPES * INCR_TYPES * NUM_INCR * num_bins);
+	static const hsize_t Dims4D = 4;
+	hsize_t dset_dims_4d[Dims4D];
+
+	for (int i = 0; i < NUM_COND_TYPES; ++i) {
+		for (int j = 0; j < INCR_TYPES; ++j) {
+			for (int k = 0; k < NUM_INCR; ++k) {
+				for (int b = 0; b < num_bins + 1; ++b) {
+					if (b < num_bins) {
+						tmp_inc_hist_counts[num_bins * (NUM_INCR * (i * INCR_TYPES + j) + k) + b] = proc_data->cond_t_w_incr_hist[i][j][k]->bin[b];
+					}
+					tmp_inc_hist_ranges[(num_bins + 1) * (NUM_INCR * (i * INCR_TYPES + j) + k) + b] = proc_data->cond_t_w_incr_hist[i][j][k]->range[b];
+				}
+			}
+		}
+	}
+
+	// Write Counts
+	dset_dims_4d[0] = NUM_COND_TYPES;
+	dset_dims_4d[1] = INCR_TYPES;
+	dset_dims_4d[2] = NUM_INCR;
+	dset_dims_4d[3] = num_bins;
+   	status = H5LTmake_dataset(file_info->output_file_handle, "SyncConditional_VortcityIncrement_Counts", Dims4D, dset_dims_4d, H5T_NATIVE_DOUBLE, tmp_inc_hist_counts);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "SyncConditional_VortcityIncrement_Counts");
+        exit(1);
+    }
+    // Write Ranges
+	dset_dims_4d[3] = num_bins + 1;
+   	status = H5LTmake_dataset(file_info->output_file_handle, "SyncConditional_VortcityIncrement_Ranges", Dims4D, dset_dims_4d, H5T_NATIVE_DOUBLE, tmp_inc_hist_ranges);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "SyncConditional_VortcityIncrement_Ranges");
+        exit(1);
+    }	
+
+	fftw_free(tmp_inc_hist_ranges);
+	fftw_free(tmp_inc_hist_counts);
+
+	//-------- Write Joint Histgram
+	int num_bins_x = proc_data->joint_sync_enst_flux_hist[0]->nx;
+	int num_bins_y = proc_data->joint_sync_enst_flux_hist[0]->ny;
+	double* tmp_joint_hist_ranges_x = (double* )fftw_malloc(sizeof(double) * (num_bins_x + 1));
+	double* tmp_joint_hist_ranges_y = (double* )fftw_malloc(sizeof(double) * (num_bins_y + 1));
+	double* tmp_joint_hist_counts   = (double* )fftw_malloc(sizeof(double) * num_bins_x * num_bins_y);
+	static const hsize_t Dims1D = 1;
+	hsize_t dset_dims_1d[Dims1D];
+	static const hsize_t Dims2D = 2;
+	hsize_t dset_dims_2d[Dims2D];
+
+	for (int i = 0; i < num_bins_x + 1; ++i) {
+		tmp_joint_hist_ranges_x[i] = proc_data->joint_sync_enst_flux_hist[0]->xrange[i];
+	}
+	for (int i = 0; i < num_bins_y + 1; ++i) {
+		tmp_joint_hist_ranges_y[i] = proc_data->joint_sync_enst_flux_hist[0]->yrange[i];
+	}
+	for (int i = 0; i < num_bins_x + 1; ++i) {
+		for (int j = 0; j < num_bins_y + 1; ++j) {
+			tmp_joint_hist_counts[i * num_bins_y + j] = proc_data->joint_sync_enst_flux_hist[0]->bin[i * num_bins_y + j];
+		}
+	}
+
+	// Write ranges
+	dset_dims_1d[0] = num_bins + 1;
+   	status = H5LTmake_dataset(file_info->output_file_handle, "SyncConditional_JointHist_Ranges_x", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, tmp_joint_hist_ranges_x);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "SyncConditional_JointHist_Ranges_x");
+        exit(1);
+    }
+    status = H5LTmake_dataset(file_info->output_file_handle, "SyncConditional_JointHist_Ranges_y", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, tmp_joint_hist_ranges_y);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "SyncConditional_JointHist_Ranges_y");
+        exit(1);
+    }
+    // Write counts
+    dset_dims_2d[0] = num_bins_x;
+	dset_dims_2d[1] = num_bins_y;
+   	status = H5LTmake_dataset(file_info->output_file_handle, "SyncConditional_JointHist_Counts", Dims2D, dset_dims_2d, H5T_NATIVE_DOUBLE, tmp_joint_hist_counts);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "SyncConditional_JointHist_Counts");
+        exit(1);
+    }
+
+    fftw_free(tmp_joint_hist_ranges_x);
+    fftw_free(tmp_joint_hist_ranges_y);
+	fftw_free(tmp_joint_hist_counts);
+
+	// Close file
+	status = H5Fclose(file_info->output_file_handle);
+	if (status < 0) {
+		fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to close input file ["CYAN"%s"RESET"] at end\n-->> Exiting...\n", file_info->output_file_name);
+		exit(1);	
+	}
 
 	// --------------------------------	
 	//	Free temp Memory

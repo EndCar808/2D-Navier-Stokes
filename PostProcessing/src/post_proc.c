@@ -52,7 +52,7 @@ void PostProcessing(void) {
 	// --------------------------------
 	//  Perform Precomputations
 	// --------------------------------
-	#if defined(__VEL_GRAD_STATS) || defined(__VORT_GRAD_STATS) || defined(__VEL_INC_STATS) || (defined(__SEC_PHASE_SYNC) && defined(__SEC_PHASE_SYNC_FLUX_STATS))
+	#if defined(__VEL_GRAD_STATS) || defined(__VORT_GRAD_STATS) || defined(__VEL_INC_STATS) || defined(__VORT_INC_STATS) || (defined(__SEC_PHASE_SYNC) && defined(__SEC_PHASE_SYNC_FLUX_STATS))
 	Precompute();
 	#endif
 
@@ -73,7 +73,7 @@ void PostProcessing(void) {
 		// --------------------------------
 		//  Real Space Stats
 		// --------------------------------
-		#if defined(__REAL_STATS) || defined(__VEL_INC_STATS) || defined(__VEL_STR_FUNC_STATS) || defined(__VEL_GRAD_STATS) || defined(__VORT_GRAD_STATS)
+		#if defined(__REAL_STATS) || defined(__VEL_INC_STATS) || defined(__VORT_INC_STATS) || defined(__VEL_STR_FUNC_STATS) || defined(__VORT_STR_FUNC_STATS) || defined(__VORT_RAD_STR_FUNC_STATS) || defined(__VEL_GRAD_STATS) || defined(__VORT_GRAD_STATS)
 		RealSpaceStats(s);
 		#endif
 
