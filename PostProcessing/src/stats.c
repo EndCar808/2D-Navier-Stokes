@@ -36,7 +36,7 @@ void RealSpaceStats(int s) {
 	int gsl_status;
 	const long int Nx = sys_vars->N[0];
 	const long int Ny = sys_vars->N[1];
-	#if defined(__VEL_INC_STATS) || defined(__VORT_INC_STATS) || defined(__VORT_STR_FUNC_STATS) || defined(__VORT_RADIAL_STR_FUNC_STATS) || defined(__VEL_STR_FUNC_STATS) || defined(__VEL_GRAD_STATS) || defined(__VORT_GRAD_STATS)  || defined(__MIXED_VEL_STR_FUNC_STAS) || defined(__MIXED_VORT_STR_FUNC_STATS)
+	#if defined(__VEL_INC_STATS) || defined(__VORT_INC_STATS) || defined(__VORT_STR_FUNC_STATS) || defined(__VORT_RAD_STR_FUNC_STATS) || defined(__VEL_STR_FUNC_STATS) || defined(__VEL_GRAD_STATS) || defined(__VORT_GRAD_STATS)  || defined(__MIXED_VEL_STR_FUNC_STAS) || defined(__MIXED_VORT_STR_FUNC_STATS)
 	int r;
 	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
 	int x_incr, y_incr;
@@ -319,13 +319,13 @@ void RealSpaceStats(int s) {
 	// --------------------------------
 	// Compute Structure Functions
 	// --------------------------------
-	#if defined(__VEL_STR_FUNC_STATS) 
+	#if defined(__VEL_STR_FUNC_STATS) || defined(__VORT_STR_FUNC_STATS) || defined(__VORT_RAD_STR_FUNC_STATS)
 	#pragma omp parallel num_threads(sys_vars->num_threads) shared(run_data, stats_data) private(tmp, indx, tmp_r, indx_r)
 	{
 		#pragma omp single 
 		{	
-			#pragma omp taskloop reduction (+:vel_long_increment, vel_long_increment_abs, vel_trans_increment, vel_trans_increment_abs, vort_long_increment, vort_long_increment_abs, vort_trans_increment, vort_trans_increment_abs, mixed_vel_increment, mixed_vort_increment) grainsize(N_max_incr / sys_vars->num_threads)
 			for (int p = 1; p <= STR_FUNC_MAX_POW; ++p) {
+				#pragma omp taskloop reduction(+:vel_long_increment, vel_long_increment_abs, vel_trans_increment, vel_trans_increment_abs, vort_long_increment, vort_long_increment_abs, vort_trans_increment, vort_trans_increment_abs, mixed_vel_increment, mixed_vort_increment) grainsize(N_max_incr / sys_vars->num_threads)
 				for (int r_inc = 1; r_inc <= N_max_incr; ++r_inc) {
 					// Initialize increments
 					#if defined(__VEL_STR_FUNC_STATS)
@@ -351,15 +351,15 @@ void RealSpaceStats(int s) {
 						#endif
 						#if defined(__MIXED_VORT_STR_FUNC_STATS)
 						mixed_vort_increment = 0.0;
-						#endif	
+						#endif
 					}
 					int mixed_vort_count = 0;
 					int mixed_vel_count = 0;
 
 					// Loop over space and average
 					for (int i = 0; i < Nx; ++i) {
-						tmp = i * Ny;
 						for (int j = 0; j < Ny; ++j) {
+							tmp = i * Ny;
 							indx = tmp + j;
 						
 							// Get increments
@@ -432,9 +432,9 @@ void RealSpaceStats(int s) {
 				}
 
 
-				#if defined(__VORT_RADIAL_STR_FUNC_STATS)
+				#if defined(__VORT_RAD_STR_FUNC_STATS)
 				// Compute the radial structure functions
-				#pragma omp taskloop reduction (+:vort_rad_increment, vort_rad_increment_abs) collapse(2) grainsize(N_max_incr * N_max_incr / sys_vars->num_threads)
+				#pragma omp taskloop reduction(+:vort_rad_increment, vort_rad_increment_abs) collapse(2) grainsize(N_max_incr * N_max_incr / sys_vars->num_threads)
 				for (int r_y = 1; r_y <= N_max_incr; ++r_y) {
 					for (int r_x = 1; r_x <= N_max_incr; ++r_x) {
 						tmp_r = (r_y - 1) * N_max_incr;

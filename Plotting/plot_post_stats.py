@@ -484,6 +484,7 @@ if __name__ == '__main__':
 	fig   = plt.figure(figsize = (16, 8))
 	gs    = GridSpec(1, 2, hspace = 0.3)
 	ax1   = fig.add_subplot(gs[0, 0])
+	print("Velocity")
 	vel_long_zeta_p, vel_long_zeta_p_resid = plot_str_func_fit(fig, ax1, r, post_data.vel_long_str_func_abs/sys_vars.ndata, powers, inert_range, insert_fig=False)
 	# --------  Plot Anomalous Exponent
 	ax2   = fig.add_subplot(gs[0, 1])
@@ -574,6 +575,7 @@ if __name__ == '__main__':
 	fig   = plt.figure(figsize = (16, 8))
 	gs    = GridSpec(1, 2, hspace = 0.3)
 	ax1   = fig.add_subplot(gs[0, 0])
+	print("Vorticity")
 	vort_long_zeta_p, vort_long_zeta_p_resid = plot_str_func_fit(fig, ax1, r, post_data.vort_long_str_func_abs/sys_vars.ndata, powers, inert_range, insert_fig=False)
 	# --------  Plot Anomalous Exponent
 	ax2   = fig.add_subplot(gs[0, 1])
