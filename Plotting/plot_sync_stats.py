@@ -365,8 +365,8 @@ if __name__ == '__main__':
 		phase_order_R_1D = tmp_R_1D / np.amax(tmp_R_1D, axis=0)[np.newaxis, :]
 		_ , phase_order_Phi_1D, phase_order_enst_1D = get_normed_collective_phase_over_t(post_data.phase_order_C_theta_triads_1d[:, try_type, :])
 
-		for i in range(sys_vars.ndata):
-			_, phase_order_Phi[i, :], phase_order_enst[i, :]                  = get_normed_collective_phase(post_data.phase_order_C_theta_triads[i, try_type, :], np.sum(post_data.phase_order_norm_const[i, 0, try_type, :, :], axis=-1))
+		# for i in range(sys_vars.ndata):
+		# 	_, phase_order_Phi[i, :], phase_order_enst[i, :]                  = get_normed_collective_phase(post_data.phase_order_C_theta_triads[i, try_type, :], np.sum(post_data.phase_order_norm_const[i, 0, try_type, :, :], axis=-1))
 		# phase_order_R_1D[i,:], phase_order_Phi_1D[i, :], phase_order_enst_1D[i, :]          = get_normed_collective_phase(post_data.phase_order_C_theta_triads_1d[i, try_type, :], np.diag(post_data.phase_order_norm_const[i, 0, try_type, :, :]))
 		# phase_order_R_2D[i,:, :], phase_order_Phi_2D[i, :, :], phase_order_enst_2D[i, :, :] = get_normed_collective_phase_2d(post_data.phase_order_C_theta_triads_2d[i, try_type, :, :], post_data.phase_order_norm_const[i, 0, try_type, :, :])
 
@@ -470,7 +470,7 @@ if __name__ == '__main__':
 
 	ax1 = fig.add_subplot(gs[0, 1])
 	x = phase_order_R_1D.flatten()
-	y = np.real(post_data.phase_order_C_theta_triads_1d[:, try_type, :]).flatten()
+	y = np.real(post_data.phase_order_C_theta_triads_1d[:, try_type, :] / np.amax(tmp_R_1D, axis=0)[np.newaxis, :]).flatten()
 	hist, xedges, yedges = np.histogram2d(x, y, bins=(np.linspace(x.min(), x.max(), num_bins + 1), np.linspace(y.min(), y.max(), num_bins + 1)), density=True)
 	im1 = ax1.imshow(np.rot90(hist, k=1), extent=[xedges[0], xedges[-1], yedges[0], yedges[-1]], aspect='auto', cmap=my_cmap, norm = mpl.colors.LogNorm())
 	ax1.set_ylabel(r"$\Re \left\{\mathcal{R}_{\mathcal{S}_\theta^U} \right\}$")

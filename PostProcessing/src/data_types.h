@@ -76,7 +76,7 @@
 #define __ENRG_FLUX
 #endif
 #if defined(__POST_SYNC)
-#define __PHASE_SYNC
+// #define __PHASE_SYNC
 #define __SEC_PHASE_SYNC
 #define __SEC_PHASE_SYNC_COND_STATS
 // #define __SEC_PHASE_SYNC_STATS

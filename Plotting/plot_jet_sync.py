@@ -30,7 +30,7 @@ import time as TIME
 from subprocess import Popen, PIPE, run
 from matplotlib.pyplot import cm
 import concurrent.futures as cf
-from functions import tc, sim_data, import_data, import_spectra_data, import_post_processing_data, get_flux_spectrum
+from functions import tc, sim_data, import_data, import_spectra_data, import_post_processing_data, get_flux_spectrum, compute_pdf
 from plot_functions import plot_sector_phase_sync_snaps, plot_sector_phase_sync_snaps_full, plot_sector_phase_sync_snaps_full_sec, plot_sector_phase_sync_snaps_all
 ###############################
 ##       FUNCTION DEFS       ##
@@ -377,12 +377,13 @@ if __name__ == '__main__':
     # # --------  Make Output Directories
     # -----------------------------------------
     ## Make output directory for snaps
-    cmdargs.out_dir_info     = cmdargs.out_dir + "RUN_INFO/"
-    cmdargs.out_dir_avg     = cmdargs.out_dir + "PHASE_SYNC_AVG_SNAPS/"
-    cmdargs.out_dir_valid     = cmdargs.out_dir + "PHASE_SYNC_VALID_SNAPS/"
-    cmdargs.out_dir_phases     = cmdargs.out_dir + "PHASE_SYNC_SNAPS/"
-    cmdargs.out_dir_triads     = cmdargs.out_dir + "TRIAD_PHASE_SYNC_SNAPS/"
-    cmdargs.out_dir_joint     = cmdargs.out_dir + "JOINT_PDF_SNAPS/"
+    cmdargs.out_dir_info   = cmdargs.out_dir + "RUN_INFO/"
+    cmdargs.out_dir_avg    = cmdargs.out_dir + "PHASE_SYNC_AVG_SNAPS/"
+    cmdargs.out_dir_valid  = cmdargs.out_dir + "PHASE_SYNC_VALID_SNAPS/"
+    cmdargs.out_dir_phases = cmdargs.out_dir + "PHASE_SYNC_SNAPS/"
+    cmdargs.out_dir_triads = cmdargs.out_dir + "TRIAD_PHASE_SYNC_SNAPS/"
+    cmdargs.out_dir_joint  = cmdargs.out_dir + "JOINT_PDF_SNAPS/"
+    cmdargs.out_dir_stats  = cmdargs.out_dir + "PHASE_SYNC_STATS/"
     if os.path.isdir(cmdargs.out_dir_phases) != True:
         print("Making folder:" + tc.C + " PHASE_SYNC_SNAPS/" + tc.Rst)
         os.mkdir(cmdargs.out_dir_phases)
@@ -401,6 +402,9 @@ if __name__ == '__main__':
     if os.path.isdir(cmdargs.out_dir_joint) != True:
         print("Making folder:" + tc.C + " JOINT_PDF_SNAPS/" + tc.Rst)
         os.mkdir(cmdargs.out_dir_joint)
+    if os.path.isdir(cmdargs.out_dir_stats) != True:
+        print("Making folder:" + tc.C + " PHASE_SYNC_STATS/" + tc.Rst)
+        os.mkdir(cmdargs.out_dir_stats)
     print("Run info Output Folder: "+ tc.C + "{}".format(cmdargs.out_dir_phases) + tc.Rst)
     print("Phases Output Folder: "+ tc.C + "{}".format(cmdargs.out_dir_phases) + tc.Rst)
     print("Triads Output Folder: "+ tc.C + "{}".format(cmdargs.out_dir_triads) + tc.Rst)
@@ -540,6 +544,97 @@ if __name__ == '__main__':
         plt.close()
 
     # # -----------------------------------------
+    # # # --------  Sync Conditional Stats
+    # # -----------------------------------------
+    ##----------------- 2D Histogram
+    if hasattr(post_data, 'joint_enst_sync_hist_ranges_x'):
+        fig = plt.figure()
+        gs = GridSpec(1, 2, wspace=0.35)
+        ax1 = fig.add_subplot(gs[0, 0])
+        xedges = post_data.joint_enst_sync_hist_ranges_x[:]
+        yedges = post_data.joint_enst_sync_hist_ranges_y[:]
+        hist   = post_data.joint_enst_sync_hist_counts[:, :]
+        dx = xedges[1] - xedges[0]
+        dy = yedges[1] - yedges[0]
+        counts_sum = np.sum(hist)
+        pdf = hist / (counts_sum * dx * dy)
+        im1 = ax1.imshow(np.rot90(pdf, k=1), extent=[xedges[0], xedges[-1], yedges[0], yedges[-1]], aspect='auto', cmap=my_magma, norm = mpl.colors.LogNorm())
+        ax1.set_ylabel(r"$\Re \left\{\mathcal{R}_{\mathcal{S}_\theta^U} \right\}$")
+        ax1.set_xlabel(r"$\left|\mathcal{R}_{\mathcal{S}_\theta^U} \right|$")
+        div1  = make_axes_locatable(ax1)
+        cbax1 = div1.append_axes("right", size = "5%", pad = 0.05)
+        cb1   = plt.colorbar(im1, cax = cbax1)
+        cb1.set_label(r"PDF")
+        plt.savefig(cmdargs.out_dir_stats + "/ConditionalSync_JointEnstrophySync_PDF.png", bbox_inches="tight")
+        plt.close()
+
+    ##------------------ Max Norm Tseries
+    if hasattr(post_data, 'sync_cond_max_norm'):
+        fig = plt.figure(figsize = (12, 9))
+        gs  = GridSpec(1, 1, hspace=0.25)
+        ax1 = fig.add_subplot(gs[0, 0])
+        ax1.plot(run_data.time, post_data.sync_cond_max_norm[:], label=r"max")
+        ax1.set_ylabel(r"$Q = \| |\mathcal{R}_{\mathcal{S}_\theta^U}(t)| / \max_{t}|\mathcal{R}_{\mathcal{S}_\theta^U}(t)| \|_{\infty}$")
+        ax1.set_xlabel(r"$t$")
+        ax1.set_ylim(0, 1)
+        ax1.legend()
+        plt.savefig(cmdargs.out_dir_stats + "/ConditionalSync_MaxNorm.png", bbox_inches="tight")
+        plt.close()
+
+    ##------------------ Conditional Vorticity Incrment PDFs
+    if hasattr(post_data, 'sync_cond_vort_incr_hist_counts'):
+        sync_cutoff = 0.5
+        
+        fig = plt.figure(figsize = (16, 9))
+        gs  = GridSpec(1, 2, hspace=0.25)
+        ax1 = fig.add_subplot(gs[0, 0])
+        unsync_ranges = post_data.sync_cond_vort_incr_hist_ranges[0, 0, 0, :]
+        unsync_hist   = post_data.sync_cond_vort_incr_hist_counts[0, 0, 0, :]
+        print(unsync_hist)
+        bin_cent, pdf = compute_pdf(unsync_ranges, unsync_hist, normalized = True)
+        ax1.plot(bin_cent, pdf, label=r"$Q \leq {}$".format(np.around(sync_cutoff, 2)))
+        sync_ranges = post_data.sync_cond_vort_incr_hist_ranges[1, 0, 0, :]
+        sync_hist   = post_data.sync_cond_vort_incr_hist_counts[1, 0, 0, :]
+        print(sync_hist)
+        bin_cent, pdf = compute_pdf(sync_ranges, sync_hist, normalized = True)
+        ax1.plot(bin_cent, pdf, label=r"$Q > {}$".format(np.around(sync_cutoff, 2)))
+        all_ranges = post_data.sync_cond_vort_incr_hist_ranges[2, 0, 0, :]
+        all_hist   = post_data.sync_cond_vort_incr_hist_counts[2, 0, 0, :]
+        print(all_hist)
+        bin_cent, pdf = compute_pdf(all_ranges, all_hist, normalized = True)
+        ax1.plot(bin_cent, pdf, label=r"$Q \in [0, 1]$")
+        ax1.set_yscale('log')
+        ax1.set_ylabel(r"PDF")
+        ax1.legend()
+        ax1.set_xlabel(r"$\delta \omega (r) / \langle \delta \omega (r)^2\rangle^{1/2}$")
+        ax1.set_ylabel(r"PDF")
+        ax1.grid()
+        ax1.set_title("Longitudinal Increments")
+        ax1 = fig.add_subplot(gs[0, 1])
+        unsync_ranges = post_data.sync_cond_vort_incr_hist_ranges[0, 1, 0, :]
+        unsync_hist   = post_data.sync_cond_vort_incr_hist_counts[0, 1, 0, :]
+        bin_cent, pdf = compute_pdf(unsync_ranges, unsync_hist, normalized = True)
+        ax1.plot(bin_cent, pdf, label=r"$Q \leq {}$".format(np.around(sync_cutoff, 2)))
+        sync_ranges = post_data.sync_cond_vort_incr_hist_ranges[1, 1, 0, :]
+        sync_hist   = post_data.sync_cond_vort_incr_hist_counts[1, 1, 0, :]
+        bin_cent, pdf = compute_pdf(sync_ranges, sync_hist, normalized = True)
+        ax1.plot(bin_cent, pdf, label=r"$Q > {}$".format(np.around(sync_cutoff, 2)))
+        all_ranges = post_data.sync_cond_vort_incr_hist_ranges[2, 1, 0, :]
+        all_hist   = post_data.sync_cond_vort_incr_hist_counts[2, 1, 0, :]
+        bin_cent, pdf = compute_pdf(all_ranges, all_hist, normalized = True)
+        ax1.plot(bin_cent, pdf, label=r"$Q \in [0, 1]$")
+        ax1.set_yscale('log')
+        ax1.set_ylabel(r"PDF")
+        ax1.legend()
+        ax1.set_xlabel(r"$\delta \omega (r) / \langle \delta \omega (r)^2\rangle^{1/2}$")
+        ax1.set_ylabel(r"PDF")
+        ax1.grid()
+        ax1.set_title("Tansverse Increments")
+        plt.savefig(cmdargs.out_dir_stats + "/ConditionalSync_SyncCond_PDF.png", bbox_inches="tight")
+        plt.close()
+
+
+    # # -----------------------------------------
     # # # --------  Plot Time Averaged Data
     # # -----------------------------------------
     theta_k3 = post_data.theta_k3
@@ -555,6 +650,7 @@ if __name__ == '__main__':
     
     # print("Plotting Data")
     try_type = 0
+
 
     for try_type in range(post_data.triad_R_2d.shape[1]-1):  ## Ignore the last type as that is always 0
         print("Plotting Triad Type {}".format(try_type))

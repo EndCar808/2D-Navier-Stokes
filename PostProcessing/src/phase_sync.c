@@ -1731,7 +1731,7 @@ void ComputePhaseSyncConditionalStats(void) {
 	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
 	double max_norm;
 	int r;
-	double R_threshold = 0.5;
+	double R_threshold = 0.95;
 	int x_incr, y_incr;
 	int cond_type;
 	int gsl_status;
@@ -1771,6 +1771,7 @@ void ComputePhaseSyncConditionalStats(void) {
 
 	// Initialize temp memory
 	fftw_complex* tmp_collec_phase = (fftw_complex* )fftw_malloc(sizeof(fftw_complex) * sys_vars->num_k3_sectors * (NUM_TRIAD_TYPES + 1));
+	double* tmp_max_norm = (double* )fftw_malloc(sizeof(double) * sys_vars->num_snaps);
 
 	/////////////////////////////////////////////////////	
 	//	Loop Through Data to PreCompute Stats
@@ -1893,6 +1894,9 @@ void ComputePhaseSyncConditionalStats(void) {
 			for (int j = 0; j < NUM_INCR; ++j) {
 				// Get the std of the incrments
 				std_w = gsl_rstat_sd(proc_data->cond_t_w_incr_stats[cond_t][i][j]);
+				if (std_w == 0.0) {
+					std_w = 1.0;
+				}
 				
 				// Vorticity increments
 				gsl_status = gsl_histogram_set_ranges_uniform(proc_data->cond_t_w_incr_hist[cond_t][i][j], -BIN_LIM * std_w, BIN_LIM * std_w);
@@ -1903,6 +1907,8 @@ void ComputePhaseSyncConditionalStats(void) {
 			}
 		}
 	}
+
+	// printf("sync: %lf %lf\t Enst: %lf %lf\n", sync_min, sync_max, flux_min, flux_max);
 
 	// Set the bins for the joint histograms
 	gsl_histogram2d_set_ranges_uniform(proc_data->joint_sync_enst_flux_hist[0], sync_min, sync_max, flux_min, flux_max);
@@ -1962,6 +1968,8 @@ void ComputePhaseSyncConditionalStats(void) {
 			// Update max norm
 			max_norm = fmax(cabs(proc_data->phase_order_C_theta_triads[0][a]), max_norm);
 		}
+		// Record the max norm for this snapshot
+		tmp_max_norm[s] = max_norm;
 
 
 		// --------------------------------	
@@ -1974,6 +1982,7 @@ void ComputePhaseSyncConditionalStats(void) {
 		else {
 			cond_type = 1;
 		}
+		// printf("%lf-%lf-%d\n", max_norm, R_threshold, cond_type);
 
 		// Compute the increment histogram
 		for (int i = 0; i < Nx; ++i) {
@@ -2109,19 +2118,20 @@ void ComputePhaseSyncConditionalStats(void) {
 	for (int i = 0; i < num_bins_y + 1; ++i) {
 		tmp_joint_hist_ranges_y[i] = proc_data->joint_sync_enst_flux_hist[0]->yrange[i];
 	}
-	for (int i = 0; i < num_bins_x + 1; ++i) {
-		for (int j = 0; j < num_bins_y + 1; ++j) {
+	for (int i = 0; i < num_bins_x; ++i) {
+		for (int j = 0; j < num_bins_y; ++j) {
 			tmp_joint_hist_counts[i * num_bins_y + j] = proc_data->joint_sync_enst_flux_hist[0]->bin[i * num_bins_y + j];
 		}
 	}
 
 	// Write ranges
-	dset_dims_1d[0] = num_bins + 1;
+	dset_dims_1d[0] = num_bins_x + 1;
    	status = H5LTmake_dataset(file_info->output_file_handle, "SyncConditional_JointHist_Ranges_x", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, tmp_joint_hist_ranges_x);
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "SyncConditional_JointHist_Ranges_x");
         exit(1);
     }
+	dset_dims_1d[0] = num_bins_y + 1;
     status = H5LTmake_dataset(file_info->output_file_handle, "SyncConditional_JointHist_Ranges_y", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, tmp_joint_hist_ranges_y);
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "SyncConditional_JointHist_Ranges_y");
@@ -2140,6 +2150,14 @@ void ComputePhaseSyncConditionalStats(void) {
     fftw_free(tmp_joint_hist_ranges_y);
 	fftw_free(tmp_joint_hist_counts);
 
+	//----------- Max Norm Time series
+	dset_dims_1d[0] = sys_vars->num_snaps;
+    status = H5LTmake_dataset(file_info->output_file_handle, "SyncConditional_MaxNorm_Tseries", Dims1D, dset_dims_1d, H5T_NATIVE_DOUBLE, tmp_max_norm);
+	if (status < 0) {
+        fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "SyncConditional_MaxNorm_Tseries");
+        exit(1);
+    }
+
 	// Close file
 	status = H5Fclose(file_info->output_file_handle);
 	if (status < 0) {
@@ -2151,6 +2169,7 @@ void ComputePhaseSyncConditionalStats(void) {
 	//	Free temp Memory
 	// --------------------------------
 	fftw_free(tmp_collec_phase);
+	fftw_free(tmp_max_norm);
 }
 /**
  * Allocate memory and objects needed for the Phase sync computation

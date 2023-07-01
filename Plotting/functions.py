@@ -764,6 +764,22 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                     tmp = f["Snap_00000"]['TriadsWeighted_2D_InTime_Ranges_y'][:, :, :]
                     self.num_y_joint_pdf_t = tmp.shape[-1] - 1
                     self.triads_wghtd_joint_pdf_t = True
+                ## Sync Conditional Stats
+                if 'SyncConditional_JointHist_Ranges_x' in list(f.keys()):
+                    self.joint_enst_sync_hist_ranges_x = f["SyncConditional_JointHist_Ranges_x"][:]
+                if 'SyncConditional_JointHist_Ranges_y' in list(f.keys()):
+                    self.joint_enst_sync_hist_ranges_y = f["SyncConditional_JointHist_Ranges_y"][:]
+                if 'SyncConditional_JointHist_Counts' in list(f.keys()):
+                    self.joint_enst_sync_hist_counts = f["SyncConditional_JointHist_Counts"][:, :]
+                if 'SyncConditional_VortcityIncrement_Counts' in list(f.keys()):
+                    self.sync_cond_vort_incr_hist_counts = f["SyncConditional_VortcityIncrement_Counts"][:, :, :, :]
+                if 'SyncConditional_VortcityIncrement_Ranges' in list(f.keys()):
+                    self.sync_cond_vort_incr_hist_ranges = f["SyncConditional_VortcityIncrement_Ranges"][:, :, :, :]
+                if 'SyncConditional_MaxNorm_Tseries' in list(f.keys()):
+                    self.sync_cond_max_norm = f["SyncConditional_MaxNorm_Tseries"][:]
+                
+                
+
 
             ## Get the max wavenumber
             self.kmax      = int((sim_data.Nx / 3))
