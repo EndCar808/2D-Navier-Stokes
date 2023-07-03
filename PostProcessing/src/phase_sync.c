@@ -1731,7 +1731,7 @@ void ComputePhaseSyncConditionalStats(void) {
 	const long int Ny_Fourier = sys_vars->N[1] / 2 + 1;
 	double max_norm;
 	int r;
-	double R_threshold = 0.95;
+	double R_threshold = 0.5;
 	int x_incr, y_incr;
 	int cond_type;
 	int gsl_status;
@@ -1739,8 +1739,10 @@ void ComputePhaseSyncConditionalStats(void) {
 	double std_w;
 	herr_t status;
 	hid_t dset;
-	char group_string[64];
+	char coll_phase_group_string[64];
+	char vort_group_string[64];
 	int increments[NUM_INCR] = {1, 2, 4, 8, Nx/2};
+	double R_thresh[NUM_THRESH_TYPES] = {0.55, 0.65, 0.75, 0.85, 0.95};
 	double flux_min = 1e10; 
 	double flux_max = -1e10;
 	double sync_min = 0.0;
@@ -1754,8 +1756,10 @@ void ComputePhaseSyncConditionalStats(void) {
 	for (int i = 0; i < NUM_COND_TYPES; ++i) {
 		for (int j = 0; j < INCR_TYPES; ++j) {
 			for (int k = 0; k < NUM_INCR; ++k) {
-				proc_data->cond_t_w_incr_hist[i][j][k]  = gsl_histogram_alloc(N_BINS);
-				proc_data->cond_t_w_incr_stats[i][j][k] = gsl_rstat_alloc();
+				for (int l = 0; l < NUM_THRESH_TYPES; ++l) {
+					proc_data->cond_t_w_incr_hist[i][j][k][l]  = gsl_histogram_alloc(N_BINS);
+					proc_data->cond_t_w_incr_stats[i][j][k][l] = gsl_rstat_alloc();
+				}
 			}
 		}
 	}
@@ -1780,28 +1784,36 @@ void ComputePhaseSyncConditionalStats(void) {
 	for (int s = 0; s < sys_vars->num_snaps; ++s) { 
 		
 		// --------------------------------	
-		//	Open File
+		//	Open Files
 		// --------------------------------
-		// Open file with default I/O access properties
+		// Open output file with default I/O access properties -- Output file stores the Phase Sync Data
 		file_info->output_file_handle = H5Fopen(file_info->output_file_name, H5F_ACC_RDWR, H5P_DEFAULT);
 		if (file_info->output_file_handle < 0) {
 			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to open output file ["CYAN"%s"RESET"] at: Snap = ["CYAN"%d"RESET"]\n-->> Exiting...\n", file_info->output_file_name, s);
 			exit(1);
 		}
 
+		// Open input file with default I/O access properties -- input file stores the vorticity field Data
+		file_info->input_file_handle = H5Fopen(file_info->input_file_name, H5F_ACC_RDWR, H5P_DEFAULT);
+		if (file_info->input_file_handle < 0) {
+			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to open input file ["CYAN"%s"RESET"] at: Snap = ["CYAN"%d"RESET"]\n-->> Exiting...\n", file_info->output_file_name, s);
+			exit(1);
+		}
+
 		// --------------------------------	
-		//	Read in Collective Phase
+		//	Read in Data
 		// --------------------------------
+		///------------------------------------ Read in the Collective Phase Data
 		// Initialize Group Name
-		sprintf(group_string, "/Snap_%05d/CollectivePhaseOrder_C_theta_Triads", s);
-		if (H5Lexists(file_info->output_file_handle, group_string, H5P_DEFAULT) > 0 ) {
-			dset = H5Dopen (file_info->output_file_handle, group_string, H5P_DEFAULT);
+		sprintf(coll_phase_group_string, "/Snap_%05d/CollectivePhaseOrder_C_theta_Triads", s);
+		if (H5Lexists(file_info->output_file_handle, coll_phase_group_string, H5P_DEFAULT) > 0 ) {
+			dset = H5Dopen (file_info->output_file_handle, coll_phase_group_string, H5P_DEFAULT);
 			if (dset < 0 ) {
 				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to open dataset for ["CYAN"%s"RESET"] at Snap = ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", "Collective Phase Order", s);
 				exit(1);		
 			} 
 			// Read in Fourier space vorticity
-			if(H5LTread_dataset(file_info->output_file_handle, group_string, file_info->COMPLEX_DTYPE, tmp_collec_phase) < 0) {
+			if(H5LTread_dataset(file_info->output_file_handle, coll_phase_group_string, file_info->COMPLEX_DTYPE, tmp_collec_phase) < 0) {
 				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to read in data for ["CYAN"%s"RESET"] at Snap = ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", "Collective Phase Order", s);
 				exit(1);	
 			}
@@ -1811,6 +1823,46 @@ void ComputePhaseSyncConditionalStats(void) {
 			exit(1);
 		}
 
+		///------------------------------------ Read in the Vorticity Data
+		/// Initialize Group Name
+		sprintf(vort_group_string, "/Iter_%05d/w_hat", s);	
+		if (H5Lexists(file_info->input_file_handle, vort_group_string, H5P_DEFAULT) > 0 ) {
+			dset = H5Dopen (file_info->input_file_handle, vort_group_string, H5P_DEFAULT);
+			if (dset < 0 ) {
+				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to open dataset for ["CYAN"%s"RESET"] at Snap = ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", "w_hat", s);
+				exit(1);		
+			} 
+			// Read in Fourier space vorticity
+			if(H5LTread_dataset(file_info->input_file_handle, vort_group_string, file_info->COMPLEX_DTYPE, run_data->w_hat) < 0) {
+				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to read in data for ["CYAN"%s"RESET"] at Snap = ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", "w_hat", s);
+				exit(1);	
+			}
+		}
+		else {
+			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to find ["CYAN"%s"RESET"] in file ["CYAN"%s"RESET"]. Please check input file\n-->> Exiting...\n", "w_hat", file_info->input_file_name);
+			exit(1);
+		}
+
+		// Get the real space vorticity from the Fourier space
+		for (int i = 0; i < Nx; ++i) {	
+			tmp = i * Ny_Fourier;
+			for (int j = 0; j < Ny_Fourier; ++j) {
+				indx = tmp + j;
+
+				// Save the fourier vorticity before transform as it will be overwrittend
+				run_data->tmp_w_hat[indx] = run_data->w_hat[indx];
+			}
+		}
+		fftw_execute_dft_c2r(sys_vars->fftw_2d_dft_c2r, run_data->tmp_w_hat, run_data->w);
+		for (int i = 0; i < Nx; ++i) {	
+			tmp = i * Ny;
+			for (int j = 0; j < Ny; ++j) {
+				indx = tmp + j;
+
+				// Normalize the vorticity
+				run_data->w[indx] *= 1.0; // / (Nx * Ny);
+			}
+		}
 
 		// --------------------------------	
 		//	Compute Sync Indicator
@@ -1832,16 +1884,16 @@ void ComputePhaseSyncConditionalStats(void) {
 		}
 		// printf("Snap: %d - Cp: %1.16lf %1.21lf\tNormed: %1.16lf\n", s, creal(proc_data->phase_order_C_theta_triads[0][0]), cimag(proc_data->phase_order_C_theta_triads[0][0]), max_norm);
 
-		// --------------------------------	
-		//	Compute Conditional Stats
-		// --------------------------------
-		// Get the conditional type: high sync event or low sync event using the max norm
-		if (max_norm <= R_threshold) {
-			cond_type = 0;
-		}
-		else {
-			cond_type = 1;
-		}
+		// // --------------------------------	
+		// //	Compute Conditional Stats
+		// // --------------------------------
+		// // Get the conditional type: high sync event or low sync event using the max norm
+		// if (max_norm <= R_threshold) {
+		// 	cond_type = 0;
+		// }
+		// else {
+		// 	cond_type = 1;
+		// }
 
 		// Compute the increment histogram
 		for (int i = 0; i < Nx; ++i) {
@@ -1858,16 +1910,38 @@ void ComputePhaseSyncConditionalStats(void) {
 					x_incr = i + r;
 					if (x_incr < Nx) {
 						vort_long_increment  = run_data->w[x_incr * Ny + j] - run_data->w[i * Ny + j];
-						gsl_rstat_add(vort_long_increment, proc_data->cond_t_w_incr_stats[cond_type][0][r_indx]);
-						gsl_rstat_add(vort_long_increment, proc_data->cond_t_w_incr_stats[2][0][r_indx]);
+						for (int l = 0; l < NUM_THRESH_TYPES; ++l) {
+							// Cheeck the threshold criteria
+							if (max_norm <= R_thresh[l]) {
+								cond_type = 0;
+							}
+							else {
+								cond_type = 1;
+							}
+
+							// Update the appropriate 	
+							gsl_rstat_add(vort_long_increment, proc_data->cond_t_w_incr_stats[cond_type][0][r_indx][l]);
+							gsl_rstat_add(vort_long_increment, proc_data->cond_t_w_incr_stats[2][0][r_indx][l]);
+						}
 					}
 
 					// Increment in the y direction
 					y_incr = j + r; 
 					if (y_incr < Ny) {
 						vort_trans_increment = run_data->w[i * Ny + y_incr] - run_data->w[i * Ny + j];
-						gsl_rstat_add(vort_trans_increment, proc_data->cond_t_w_incr_stats[cond_type][1][r_indx]);	
-						gsl_rstat_add(vort_trans_increment, proc_data->cond_t_w_incr_stats[2][1][r_indx]);
+						for (int l = 0; l < NUM_THRESH_TYPES; ++l) {
+							// Cheeck the threshold criteria
+							if (max_norm <= R_thresh[l]) {
+								cond_type = 0;
+							}
+							else {
+								cond_type = 1;
+							}
+
+							// Update the appropriate
+							gsl_rstat_add(vort_trans_increment, proc_data->cond_t_w_incr_stats[cond_type][1][r_indx][l]);	
+							gsl_rstat_add(vort_trans_increment, proc_data->cond_t_w_incr_stats[2][1][r_indx][l]);
+						}
 					}
 				}
 			}
@@ -1892,17 +1966,19 @@ void ComputePhaseSyncConditionalStats(void) {
 	for (int cond_t = 0; cond_t < NUM_COND_TYPES; ++cond_t) {
 		for (int i = 0; i < INCR_TYPES; ++i) {
 			for (int j = 0; j < NUM_INCR; ++j) {
-				// Get the std of the incrments
-				std_w = gsl_rstat_sd(proc_data->cond_t_w_incr_stats[cond_t][i][j]);
-				if (std_w == 0.0) {
-					std_w = 1.0;
-				}
-				
-				// Vorticity increments
-				gsl_status = gsl_histogram_set_ranges_uniform(proc_data->cond_t_w_incr_hist[cond_t][i][j], -BIN_LIM * std_w, BIN_LIM * std_w);
-				if (gsl_status != 0) {
-					fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set bin ranges for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Vorticity Increments");
-					exit(1);
+				for (int l = 0; l < NUM_THRESH_TYPES; ++l) {
+					// Get the std of the incrments
+					std_w = gsl_rstat_sd(proc_data->cond_t_w_incr_stats[cond_t][i][j][l]);
+					if (std_w == 0.0) {
+						std_w = 1.0;
+					}
+					
+					// Vorticity increments
+					gsl_status = gsl_histogram_set_ranges_uniform(proc_data->cond_t_w_incr_hist[cond_t][i][j][l], -BIN_LIM * std_w, BIN_LIM * std_w);
+					if (gsl_status != 0) {
+						fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to set bin ranges for ["CYAN"%s"RESET"]\n-->> Exiting!!!\n", "Vorticity Increments");
+						exit(1);
+					}
 				}
 			}
 		}
@@ -1922,28 +1998,36 @@ void ComputePhaseSyncConditionalStats(void) {
 		double loop_begin = omp_get_wtime();
 		
 		// --------------------------------	
-		//	Open File
+		//	Open Files
 		// --------------------------------
-		// Open file with default I/O access properties
+		// Open output file with default I/O access properties -- Output file stores the Phase Sync Data
 		file_info->output_file_handle = H5Fopen(file_info->output_file_name, H5F_ACC_RDWR, H5P_DEFAULT);
 		if (file_info->output_file_handle < 0) {
 			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to open output file ["CYAN"%s"RESET"] at: Snap = ["CYAN"%d"RESET"]\n-->> Exiting...\n", file_info->output_file_name, s);
 			exit(1);
 		}
 
+		// Open input file with default I/O access properties -- input file stores the vorticity field Data
+		file_info->input_file_handle = H5Fopen(file_info->input_file_name, H5F_ACC_RDWR, H5P_DEFAULT);
+		if (file_info->input_file_handle < 0) {
+			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to open input file ["CYAN"%s"RESET"] at: Snap = ["CYAN"%d"RESET"]\n-->> Exiting...\n", file_info->output_file_name, s);
+			exit(1);
+		}
+
 		// --------------------------------	
-		//	Read in Collective Phase
+		//	Read in Data
 		// --------------------------------
+		///------------------------------------ Read in the Collective Phase Data
 		// Initialize Group Name
-		sprintf(group_string, "/Snap_%05d/CollectivePhaseOrder_C_theta_Triads", s);
-		if (H5Lexists(file_info->output_file_handle, group_string, H5P_DEFAULT) > 0 ) {
-			dset = H5Dopen (file_info->output_file_handle, group_string, H5P_DEFAULT);
+		sprintf(coll_phase_group_string, "/Snap_%05d/CollectivePhaseOrder_C_theta_Triads", s);
+		if (H5Lexists(file_info->output_file_handle, coll_phase_group_string, H5P_DEFAULT) > 0 ) {
+			dset = H5Dopen (file_info->output_file_handle, coll_phase_group_string, H5P_DEFAULT);
 			if (dset < 0 ) {
 				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to open dataset for ["CYAN"%s"RESET"] at Snap = ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", "Collective Phase Order", s);
 				exit(1);		
 			} 
 			// Read in Fourier space vorticity
-			if(H5LTread_dataset(file_info->output_file_handle, group_string, file_info->COMPLEX_DTYPE, tmp_collec_phase) < 0) {
+			if(H5LTread_dataset(file_info->output_file_handle, coll_phase_group_string, file_info->COMPLEX_DTYPE, tmp_collec_phase) < 0) {
 				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to read in data for ["CYAN"%s"RESET"] at Snap = ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", "Collective Phase Order", s);
 				exit(1);	
 			}
@@ -1951,6 +2035,47 @@ void ComputePhaseSyncConditionalStats(void) {
 		else {
 			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to find ["CYAN"%s"RESET"] in file ["CYAN"%s"RESET"]. Please check input file\n-->> Exiting...\n", "Collective Phase Order", file_info->output_file_name);
 			exit(1);
+		}
+
+		///------------------------------------ Read in the Vorticity Data
+		/// Initialize Group Name
+		sprintf(vort_group_string, "/Iter_%05d/w_hat", s);	
+		if (H5Lexists(file_info->input_file_handle, vort_group_string, H5P_DEFAULT) > 0 ) {
+			dset = H5Dopen (file_info->input_file_handle, vort_group_string, H5P_DEFAULT);
+			if (dset < 0 ) {
+				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to open dataset for ["CYAN"%s"RESET"] at Snap = ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", "w_hat", s);
+				exit(1);		
+			} 
+			// Read in Fourier space vorticity
+			if(H5LTread_dataset(file_info->input_file_handle, vort_group_string, file_info->COMPLEX_DTYPE, run_data->w_hat) < 0) {
+				fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to read in data for ["CYAN"%s"RESET"] at Snap = ["CYAN"%d"RESET"]\n-->> Exiting!!!\n", "w_hat", s);
+				exit(1);	
+			}
+		}
+		else {
+			fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to find ["CYAN"%s"RESET"] in file ["CYAN"%s"RESET"]. Please check input file\n-->> Exiting...\n", "w_hat", file_info->input_file_name);
+			exit(1);
+		}
+
+		// Get the real space vorticity from the Fourier space
+		for (int i = 0; i < Nx; ++i) {	
+			tmp = i * Ny_Fourier;
+			for (int j = 0; j < Ny_Fourier; ++j) {
+				indx = tmp + j;
+
+				// Save the fourier vorticity before transform as it will be overwrittend
+				run_data->tmp_w_hat[indx] = run_data->w_hat[indx];
+			}
+		}
+		fftw_execute_dft_c2r(sys_vars->fftw_2d_dft_c2r, run_data->tmp_w_hat, run_data->w);
+		for (int i = 0; i < Nx; ++i) {	
+			tmp = i * Ny;
+			for (int j = 0; j < Ny; ++j) {
+				indx = tmp + j;
+
+				// Normalize the vorticity
+				run_data->w[indx] *= 1.0; // / (Nx * Ny);
+			}
 		}
 
 
@@ -1972,16 +2097,16 @@ void ComputePhaseSyncConditionalStats(void) {
 		tmp_max_norm[s] = max_norm;
 
 
-		// --------------------------------	
-		//	Compute Conditional Stats
-		// --------------------------------
-		// Get the conditional type: high sync event or low sync event using the max norm
-		if (max_norm <= R_threshold) {
-			cond_type = 0;
-		}
-		else {
-			cond_type = 1;
-		}
+		// // --------------------------------	
+		// //	Compute Conditional Stats
+		// // --------------------------------
+		// // Get the conditional type: high sync event or low sync event using the max norm
+		// if (max_norm <= R_threshold) {
+		// 	cond_type = 0;
+		// }
+		// else {
+		// 	cond_type = 1;
+		// }
 		// printf("%lf-%lf-%d\n", max_norm, R_threshold, cond_type);
 
 		// Compute the increment histogram
@@ -2000,11 +2125,21 @@ void ComputePhaseSyncConditionalStats(void) {
 					x_incr = i + r;
 					if (x_incr < Nx) {
 						vort_long_increment  = run_data->w[x_incr * Ny + j] - run_data->w[i * Ny + j];
-						gsl_status = gsl_histogram_increment(proc_data->cond_t_w_incr_hist[cond_type][0][r_indx], vort_long_increment);
-						gsl_status = gsl_histogram_increment(proc_data->cond_t_w_incr_hist[2][0][r_indx], vort_long_increment);
-						if (gsl_status != 0) {
-							fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Longitudinal Vorticity Increment", s, gsl_status, vort_long_increment);
-							exit(1);
+						for (int l = 0; l < NUM_THRESH_TYPES; ++l) {
+							// Cheeck the threshold criteria
+							if (max_norm <= R_thresh[l]) {
+								cond_type = 0;
+							}
+							else {
+								cond_type = 1;
+							}
+
+							gsl_status = gsl_histogram_increment(proc_data->cond_t_w_incr_hist[cond_type][0][r_indx][l], vort_long_increment);
+							gsl_status = gsl_histogram_increment(proc_data->cond_t_w_incr_hist[2][0][r_indx][l], vort_long_increment);
+							if (gsl_status != 0) {
+								fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Longitudinal Vorticity Increment", s, gsl_status, vort_long_increment);
+								exit(1);
+							}
 						}
 					}
 
@@ -2012,11 +2147,21 @@ void ComputePhaseSyncConditionalStats(void) {
 					y_incr = j + r; 
 					if (y_incr < Ny) {
 						vort_trans_increment = run_data->w[i * Ny + y_incr] - run_data->w[i * Ny + j];
-						gsl_status = gsl_histogram_increment(proc_data->cond_t_w_incr_hist[cond_type][1][r_indx], vort_trans_increment);
-						gsl_status = gsl_histogram_increment(proc_data->cond_t_w_incr_hist[2][1][r_indx], vort_trans_increment);
-						if (gsl_status != 0) {
-							fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Transverse Vorticity Increment", s, gsl_status, vort_trans_increment);
-							exit(1);
+						for (int l = 0; l < NUM_THRESH_TYPES; ++l) {
+							// Cheeck the threshold criteria
+							if (max_norm <= R_thresh[l]) {
+								cond_type = 0;
+							}
+							else {
+								cond_type = 1;
+							}
+
+							gsl_status = gsl_histogram_increment(proc_data->cond_t_w_incr_hist[cond_type][1][r_indx][l], vort_trans_increment);
+							gsl_status = gsl_histogram_increment(proc_data->cond_t_w_incr_hist[2][1][r_indx][l], vort_trans_increment);
+							if (gsl_status != 0) {
+								fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Transverse Vorticity Increment", s, gsl_status, vort_trans_increment);
+								exit(1);
+							}
 						}			
 					}
 				}
@@ -2061,38 +2206,41 @@ void ComputePhaseSyncConditionalStats(void) {
 
 	//-------- Write Increment Stats
 	// Allocate temp momery
-	int num_bins = proc_data->cond_t_w_incr_hist[0][0][0]->n;
-	double* tmp_inc_hist_ranges = (double* )fftw_malloc(sizeof(double) * NUM_COND_TYPES * INCR_TYPES * NUM_INCR * (num_bins + 1));
-	double* tmp_inc_hist_counts = (double* )fftw_malloc(sizeof(double) * NUM_COND_TYPES * INCR_TYPES * NUM_INCR * num_bins);
-	static const hsize_t Dims4D = 4;
-	hsize_t dset_dims_4d[Dims4D];
+	int num_bins = proc_data->cond_t_w_incr_hist[0][0][0][0]->n;
+	double* tmp_inc_hist_ranges = (double* )fftw_malloc(sizeof(double) * NUM_COND_TYPES * INCR_TYPES * NUM_INCR * NUM_THRESH_TYPES * (num_bins + 1));
+	double* tmp_inc_hist_counts = (double* )fftw_malloc(sizeof(double) * NUM_COND_TYPES * INCR_TYPES * NUM_INCR * NUM_THRESH_TYPES * num_bins);
+	static const hsize_t Dims5D = 5;
+	hsize_t dset_dims_5d[Dims5D];
 
 	for (int i = 0; i < NUM_COND_TYPES; ++i) {
 		for (int j = 0; j < INCR_TYPES; ++j) {
 			for (int k = 0; k < NUM_INCR; ++k) {
-				for (int b = 0; b < num_bins + 1; ++b) {
-					if (b < num_bins) {
-						tmp_inc_hist_counts[num_bins * (NUM_INCR * (i * INCR_TYPES + j) + k) + b] = proc_data->cond_t_w_incr_hist[i][j][k]->bin[b];
+				for (int l = 0; l < NUM_THRESH_TYPES; ++l) {
+					for (int b = 0; b < num_bins + 1; ++b) {
+						if (b < num_bins) {
+							tmp_inc_hist_counts[num_bins * (NUM_THRESH_TYPES * (NUM_INCR * (i * INCR_TYPES + j) + k) + l) + b] = proc_data->cond_t_w_incr_hist[i][j][k][l]->bin[b];
+						}
+						tmp_inc_hist_ranges[(num_bins + 1) * (NUM_THRESH_TYPES * (NUM_INCR * (i * INCR_TYPES + j) + k) + l) + b] = proc_data->cond_t_w_incr_hist[i][j][k][l]->range[b];
 					}
-					tmp_inc_hist_ranges[(num_bins + 1) * (NUM_INCR * (i * INCR_TYPES + j) + k) + b] = proc_data->cond_t_w_incr_hist[i][j][k]->range[b];
 				}
 			}
 		}
 	}
 
 	// Write Counts
-	dset_dims_4d[0] = NUM_COND_TYPES;
-	dset_dims_4d[1] = INCR_TYPES;
-	dset_dims_4d[2] = NUM_INCR;
-	dset_dims_4d[3] = num_bins;
-   	status = H5LTmake_dataset(file_info->output_file_handle, "SyncConditional_VortcityIncrement_Counts", Dims4D, dset_dims_4d, H5T_NATIVE_DOUBLE, tmp_inc_hist_counts);
+	dset_dims_5d[0] = NUM_COND_TYPES;
+	dset_dims_5d[1] = INCR_TYPES;
+	dset_dims_5d[2] = NUM_INCR;
+	dset_dims_5d[3] = NUM_THRESH_TYPES;
+	dset_dims_5d[4] = num_bins;
+   	status = H5LTmake_dataset(file_info->output_file_handle, "SyncConditional_VortcityIncrement_Counts", Dims5D, dset_dims_5d, H5T_NATIVE_DOUBLE, tmp_inc_hist_counts);
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "SyncConditional_VortcityIncrement_Counts");
         exit(1);
     }
     // Write Ranges
-	dset_dims_4d[3] = num_bins + 1;
-   	status = H5LTmake_dataset(file_info->output_file_handle, "SyncConditional_VortcityIncrement_Ranges", Dims4D, dset_dims_4d, H5T_NATIVE_DOUBLE, tmp_inc_hist_ranges);
+	dset_dims_5d[4] = num_bins + 1;
+   	status = H5LTmake_dataset(file_info->output_file_handle, "SyncConditional_VortcityIncrement_Ranges", Dims5D, dset_dims_5d, H5T_NATIVE_DOUBLE, tmp_inc_hist_ranges);
 	if (status < 0) {
         fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to write ["CYAN"%s"RESET"] to file at final write!!\n-->> Exiting...\n", "SyncConditional_VortcityIncrement_Ranges");
         exit(1);
@@ -3787,8 +3935,10 @@ void FreePhaseSyncObjects(void) {
 	for (int i = 0; i < NUM_COND_TYPES; ++i) {
 		for (int j = 0; j < INCR_TYPES; ++j) {
 			for (int k = 0; k < NUM_INCR; ++k) {
-				gsl_histogram_free(proc_data->cond_t_w_incr_hist[i][j][k]);
-				gsl_rstat_free(proc_data->cond_t_w_incr_stats[i][j][k]);
+				for (int l = 0; l < NUM_THRESH_TYPES; ++l) {
+					gsl_histogram_free(proc_data->cond_t_w_incr_hist[i][j][k][l]);
+					gsl_rstat_free(proc_data->cond_t_w_incr_stats[i][j][k][l]);
+				}
 			}
 		}
 	}

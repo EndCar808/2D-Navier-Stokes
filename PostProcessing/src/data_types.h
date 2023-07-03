@@ -130,6 +130,7 @@
 #define SYNC_TEST_DATA_FLAG 0       // Indicator for the precompute test data for phase sync
 #define SYNC_DATA_FLAG 1 			// Indicator for the precompute data for phase sync
 #define NUM_COND_TYPES 3 			// The number of conidtional time stats types
+#define NUM_THRESH_TYPES 5         	// The number of sync threshold values
 // The following are not needed anymore
 // #define	K1_SQR	  6 				// The index for the |k1|^2
 // #define	K2_SQR	  7 				// The index for the |k2|^2
@@ -326,8 +327,8 @@ typedef struct postprocess_data_struct {
 	gsl_rstat_workspace*** triad_Phi_2d_stats;												// Workplace for the running stats for 2d average phase
 	gsl_rstat_workspace*** enst_flux_2d_stats;												// Workplace for the running stats for the 2d enstrophy flux contribution
 	// Conditional Time Stats
-	gsl_histogram* cond_t_w_incr_hist[3][INCR_TYPES][NUM_INCR];								// Array to hold the PDFs of the longitudinal and transverse vorticity increments for each increment conditional in time
-	gsl_rstat_workspace* cond_t_w_incr_stats[3][INCR_TYPES][NUM_INCR];						// Workplace for the running stats for the vorticity increments conditional in time
+	gsl_histogram* cond_t_w_incr_hist[3][INCR_TYPES][NUM_INCR][NUM_THRESH_TYPES];			// Array to hold the PDFs of the longitudinal and transverse vorticity increments for each increment conditional in time
+	gsl_rstat_workspace* cond_t_w_incr_stats[3][INCR_TYPES][NUM_INCR][NUM_THRESH_TYPES];	// Workplace for the running stats for the vorticity increments conditional in time
 } postprocess_data_struct;
 
 // Post processing stats data struct

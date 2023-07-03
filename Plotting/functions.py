@@ -772,9 +772,9 @@ def import_post_processing_data(input_file, sim_data, method = "default"):
                 if 'SyncConditional_JointHist_Counts' in list(f.keys()):
                     self.joint_enst_sync_hist_counts = f["SyncConditional_JointHist_Counts"][:, :]
                 if 'SyncConditional_VortcityIncrement_Counts' in list(f.keys()):
-                    self.sync_cond_vort_incr_hist_counts = f["SyncConditional_VortcityIncrement_Counts"][:, :, :, :]
+                    self.sync_cond_vort_incr_hist_counts = f["SyncConditional_VortcityIncrement_Counts"][:, :, :, :, :]
                 if 'SyncConditional_VortcityIncrement_Ranges' in list(f.keys()):
-                    self.sync_cond_vort_incr_hist_ranges = f["SyncConditional_VortcityIncrement_Ranges"][:, :, :, :]
+                    self.sync_cond_vort_incr_hist_ranges = f["SyncConditional_VortcityIncrement_Ranges"][:, :, :, :, :]
                 if 'SyncConditional_MaxNorm_Tseries' in list(f.keys()):
                     self.sync_cond_max_norm = f["SyncConditional_MaxNorm_Tseries"][:]
                 
