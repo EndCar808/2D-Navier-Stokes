@@ -1913,14 +1913,15 @@ void ComputePhaseSyncConditionalStats(void) {
 						for (int l = 0; l < NUM_THRESH_TYPES; ++l) {
 							// Cheeck the threshold criteria
 							if (max_norm <= R_thresh[l]) {
+								gsl_rstat_add(vort_long_increment, proc_data->cond_t_w_incr_stats[0][0][r_indx][l]);
 								cond_type = 0;
 							}
 							else {
+								gsl_rstat_add(vort_long_increment, proc_data->cond_t_w_incr_stats[1][0][r_indx][l]);
 								cond_type = 1;
 							}
 
 							// Update the appropriate 	
-							gsl_rstat_add(vort_long_increment, proc_data->cond_t_w_incr_stats[cond_type][0][r_indx][l]);
 							gsl_rstat_add(vort_long_increment, proc_data->cond_t_w_incr_stats[2][0][r_indx][l]);
 						}
 					}
@@ -1932,14 +1933,15 @@ void ComputePhaseSyncConditionalStats(void) {
 						for (int l = 0; l < NUM_THRESH_TYPES; ++l) {
 							// Cheeck the threshold criteria
 							if (max_norm <= R_thresh[l]) {
+								gsl_rstat_add(vort_trans_increment, proc_data->cond_t_w_incr_stats[0][1][r_indx][l]);	
 								cond_type = 0;
 							}
 							else {
+								gsl_rstat_add(vort_trans_increment, proc_data->cond_t_w_incr_stats[1][1][r_indx][l]);	
 								cond_type = 1;
 							}
 
 							// Update the appropriate
-							gsl_rstat_add(vort_trans_increment, proc_data->cond_t_w_incr_stats[cond_type][1][r_indx][l]);	
 							gsl_rstat_add(vort_trans_increment, proc_data->cond_t_w_incr_stats[2][1][r_indx][l]);
 						}
 					}
@@ -2128,13 +2130,14 @@ void ComputePhaseSyncConditionalStats(void) {
 						for (int l = 0; l < NUM_THRESH_TYPES; ++l) {
 							// Cheeck the threshold criteria
 							if (max_norm <= R_thresh[l]) {
+								gsl_status = gsl_histogram_increment(proc_data->cond_t_w_incr_hist[0][0][r_indx][l], vort_long_increment);
 								cond_type = 0;
 							}
 							else {
+								gsl_status = gsl_histogram_increment(proc_data->cond_t_w_incr_hist[1][0][r_indx][l], vort_long_increment);
 								cond_type = 1;
 							}
 
-							gsl_status = gsl_histogram_increment(proc_data->cond_t_w_incr_hist[cond_type][0][r_indx][l], vort_long_increment);
 							gsl_status = gsl_histogram_increment(proc_data->cond_t_w_incr_hist[2][0][r_indx][l], vort_long_increment);
 							if (gsl_status != 0) {
 								fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Longitudinal Vorticity Increment", s, gsl_status, vort_long_increment);
@@ -2150,13 +2153,14 @@ void ComputePhaseSyncConditionalStats(void) {
 						for (int l = 0; l < NUM_THRESH_TYPES; ++l) {
 							// Cheeck the threshold criteria
 							if (max_norm <= R_thresh[l]) {
+								gsl_status = gsl_histogram_increment(proc_data->cond_t_w_incr_hist[0][1][r_indx][l], vort_trans_increment);
 								cond_type = 0;
 							}
 							else {
+								gsl_status = gsl_histogram_increment(proc_data->cond_t_w_incr_hist[1][1][r_indx][l], vort_trans_increment);
 								cond_type = 1;
 							}
 
-							gsl_status = gsl_histogram_increment(proc_data->cond_t_w_incr_hist[cond_type][1][r_indx][l], vort_trans_increment);
 							gsl_status = gsl_histogram_increment(proc_data->cond_t_w_incr_hist[2][1][r_indx][l], vort_trans_increment);
 							if (gsl_status != 0) {
 								fprintf(stderr, "\n["RED"ERROR"RESET"] --- Unable to update bin count for ["CYAN"%s"RESET"] for Snap ["CYAN"%d"RESET"] -- GSL Exit Status [Err:"CYAN" %d"RESET" - Val:"CYAN" %lf"RESET"]\n-->> Exiting!!!\n", "Transverse Vorticity Increment", s, gsl_status, vort_trans_increment);
