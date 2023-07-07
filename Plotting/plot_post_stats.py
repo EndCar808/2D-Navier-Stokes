@@ -127,8 +127,8 @@ if __name__ == '__main__':
 	## Read in simulation parameters
 	sys_vars = sim_data(cmdargs.in_dir)
 
-	## Read in solver data
-	run_data = import_data(cmdargs.in_dir, sys_vars)
+	# ## Read in solver data
+	# run_data = import_data(cmdargs.in_dir, sys_vars)
 
 	## Read in spectra data
 	spec_data = import_spectra_data(cmdargs.in_dir, sys_vars)

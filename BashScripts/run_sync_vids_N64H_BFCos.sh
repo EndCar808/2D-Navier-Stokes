@@ -4,8 +4,8 @@
 
 ## Set solver parameters
 N=64
-T=200.000
-trans_frac=0.7
+T=10000.000
+trans_frac=0.1
 save=2
 num_procs=4
 
@@ -13,10 +13,10 @@ num_procs=4
 ## Set the post parameter space
 num_sects=(24)
 kmin=0.00
-c_radius_frac=(0.15 0.20 0.25 0.30 0.80)
+c_radius_frac=(0.5 0.6 0.7 0.8 0.9)
 
 ## Command variables
-input_dir="./Data/SectorSyncResults/Stats/"
+input_dir="./Data/Viva/"
 tag="FULL-PHASE-SYNC"
 
 num_plot_procs=25
